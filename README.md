@@ -277,6 +277,7 @@ humain ──clics────────────────────�
 | `src/store` | Source de vérité observable, écritures sérialisées |
 | `src/webmcp` | Adaptateur d'API, descriptions, six outils, enregistrement singleton |
 | `src/export` | Export d'un cahier, preuves et journal compris |
+| `src/ui` | Échappement et traduction des messages destinés à la personne |
 | `src/demo` | Cahier de démonstration et huit cahiers de mesure, reproductibles |
 | `src/tokens.css` | Jetons visuels neutres — le seul fichier que le design réécrit |
 
@@ -309,11 +310,11 @@ sérialisée, et `inputSchema` fait l'aller-retour en chaîne.
 npm run check
 ```
 
-Types, 97 tests d'invariants, build de production. Les tests couvrent le
+Types, 108 tests d’invariants, build de production. Les tests couvrent le
 versionnage, le refus d'état périmé, les écritures concurrentes, le conflit
 entre onglets, la lecture défensive du stockage, la traçabilité des refus, le
-budget de restitution, le cycle de vie, l'export, et la forme des cahiers de
-mesure.
+budget de restitution, le cycle de vie, l'export, la forme des cahiers de
+mesure, et les messages rendus à l'humain.
 
 ## Vie privée
 
