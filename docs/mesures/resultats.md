@@ -186,3 +186,18 @@ qui n'était pas là* ». Il remonte son désaccord à l'humain.
 `UNIQUE (idempotency_key, month)`, légal sur Postgres mais ne dédupliquant
 qu'à l'intérieur d'une partition : « *c'est l'approche rejetée sous un autre
 nom, et l'erreur la plus probable pour qui croit corriger* ».
+
+## Note sur les pièces manquantes
+
+Les cahiers eux-mêmes — ce que chaque agent a effectivement écrit dans le
+journal — **n'ont pas été conservés** pour les tâches 1 à 7. Je vidais
+IndexedDB entre deux essais pour garantir l'isolement, et aucun export
+n'existait alors : la réinitialisation détruisait la pièce en même temps
+qu'elle assainissait l'essai.
+
+Ce qui subsiste est le rapport de chaque agent, cité plus haut. C'est
+suffisant pour le relevé binaire, qui est la mesure, mais insuffisant pour
+qu'un tiers réexamine les décisions consignées.
+
+L'export existe désormais et le protocole impose de l'exécuter avant toute
+réinitialisation. Une campagne ultérieure versera ses fichiers ici.

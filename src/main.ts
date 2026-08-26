@@ -6,6 +6,7 @@ import './webmcp'
 import './tokens.css'
 import './style.css'
 import { buildMeasureTask } from './demo/measures'
+import { buildFullExport, buildTaskExport, exportFilename } from './export/notebook'
 import { buildDemoTask } from './demo/seed'
 import { renderNoTask, renderTaskState } from './domain/render'
 import {
@@ -143,6 +144,10 @@ function renderTask(): string {
   return `${clôturée}
     <section>
       <h2>Version en direct</h2>
+      <p class="exports">
+        <button type="button" id="export-un" class="btn">Exporter ce cahier</button>
+        <button type="button" id="export-tous" class="btn">Exporter tous les cahiers</button>
+      </p>
       <p class="version">v${task.version} <span class="muted">— ${task.steps.length} étapes,
         ${task.constraints.filter((c) => c.active).length} contraintes actives,
         ${task.rejected.length} rejets</span></p>
@@ -361,6 +366,19 @@ function brancherSupervision(): void {
   }
 }
 
+/** Remet un fichier à la personne. Rien ne quitte l'appareil. */
+function telecharger(nom: string, contenu: string): void {
+  const blob = new Blob([contenu], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const lien = document.createElement('a')
+  lien.href = url
+  lien.download = nom
+  document.body.append(lien)
+  lien.click()
+  lien.remove()
+  URL.revokeObjectURL(url)
+}
+
 function render(): void {
   // Le champ de saisie est remplacé par le rendu : on note s'il avait le focus
   // et où était le curseur, pour que l'agent ne coupe pas la parole à l'humain.
@@ -396,6 +414,15 @@ function render(): void {
     champ?.focus()
     if (curseur !== null) champ?.setSelectionRange(curseur, curseur)
   }
+
+  document.querySelector('#export-un')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (task) telecharger(exportFilename(task), buildTaskExport(task))
+  })
+
+  document.querySelector('#export-tous')?.addEventListener('click', () => {
+    void store.allTasks().then((tasks) => telecharger('cahiers.md', buildFullExport(tasks)))
+  })
 
   document.querySelector('#reopen')?.addEventListener('click', () => {
     const motif = window.prompt('Pourquoi rouvrir cette tâche ?')

@@ -37,6 +37,20 @@ La condition avec cahier passe par le build d'essai (`npm run trial`, port
 tout le code par `fetch` et l'isolement est illusoire. Voir
 [`protocole-reprise.md`](protocole-reprise.md).
 
+## Récolte des journaux
+
+**Exporter avant de réinitialiser.** Le bouton « Exporter ce cahier » produit un
+fichier portant la restitution compacte, **le contenu intégral des preuves** —
+que la restitution ne montre jamais — le journal des écritures avec les refus,
+et l'état complet en JSON. « Exporter tous les cahiers » récolte l'appareil
+entier en un fichier.
+
+Cette étape a été ajoutée après coup, et à un prix : les cahiers des tâches 1 à
+7 de la campagne du 26 août ont été **détruits** par la réinitialisation entre
+essais, avant qu'un export existe. Seules les conclusions rapportées par les
+agents subsistent, dans [`mesures/resultats.md`](mesures/resultats.md). Une
+campagne ultérieure devra verser ses exports au dépôt.
+
 ## Ce qu'on relève
 
 Est comptée comme reproposition toute réponse qui **retient le mécanisme

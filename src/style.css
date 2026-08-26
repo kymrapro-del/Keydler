@@ -297,3 +297,13 @@ footer {
 .saisie .btn {
   margin-left: 0;
 }
+
+.exports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.exports .btn {
+  margin-left: 0;
+}
