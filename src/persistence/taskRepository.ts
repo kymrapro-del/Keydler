@@ -1,5 +1,6 @@
 import { ConcurrentWriteError } from '../domain/errors'
 import { getDb } from './db'
+import { normalizeTask, toStored } from './normalize'
 import type { TaskState } from '../domain/types'
 
 /**
@@ -11,7 +12,7 @@ const LAST_TASK_KEY = 'lastTaskId'
 
 export async function loadTask(id: string): Promise<TaskState | undefined> {
   const db = await getDb()
-  return db.get('tasks', id)
+  return normalizeTask(await db.get('tasks', id))
 }
 
 /**
@@ -41,7 +42,7 @@ export async function saveTask(state: TaskState, expectedVersion?: number): Prom
   }
 
   await Promise.all([
-    tasks.put(state),
+    tasks.put(toStored(state)),
     tx.objectStore('meta').put(state.id, LAST_TASK_KEY),
     tx.done,
   ])
@@ -56,7 +57,17 @@ export async function deleteTask(id: string): Promise<void> {
 export async function listTasks(): Promise<TaskState[]> {
   const db = await getDb()
   const all = await db.getAllFromIndex('tasks', 'by-updatedAt')
-  return all.reverse()
+  // Un enregistrement illisible ne doit pas emporter toute la liste.
+  return all
+    .reverse()
+    .map((t) => {
+      try {
+        return normalizeTask(t)
+      } catch {
+        return undefined
+      }
+    })
+    .filter((t): t is TaskState => t !== undefined)
 }
 
 /**
@@ -68,7 +79,7 @@ export async function loadLastTask(): Promise<TaskState | undefined> {
   const db = await getDb()
   const id = await db.get('meta', LAST_TASK_KEY)
   if (id) {
-    const task = await db.get('tasks', id)
+    const task = normalizeTask(await db.get('tasks', id))
     if (task) return task
   }
   const all = await listTasks()
