@@ -90,7 +90,11 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('')
     lines.push('REJECTED — do not retry')
     for (const r of state.rejected) {
-      lines.push(`  ${clip(r.approach, c(90))} — ${clip(r.reason, c(110))}`)
+      // La source est rendue, comme pour les contraintes. Sans elle, un veto
+      // humain et une conjecture d'agent se lisent à l'identique — et un agent
+      // qui condamne à tort la bonne approche empoisonnerait invisiblement
+      // toutes les conversations suivantes.
+      lines.push(`  [${r.source}] ${clip(r.approach, c(84))} — ${clip(r.reason, c(104))}`)
     }
   }
 
