@@ -133,21 +133,47 @@ function renderTask(): string {
     </section>`
 }
 
+/**
+ * La page présente LA TÂCHE, pas le mécanisme qui la porte.
+ *
+ * Un essai du J3 l'a montré crûment : quand l'en-tête expliquait le versionnage
+ * et le refus d'état périmé, l'agent a conclu que sa mission était d'éprouver
+ * ce mécanisme, et il a passé son tour à tester le garde-fou au lieu de
+ * reprendre le travail. Le texte visible de la page entre en concurrence avec
+ * la description des outils pour l'attention de l'agent — et il gagne.
+ *
+ * L'explication du mécanisme est donc reléguée en pied de page, où elle
+ * renseigne un humain de passage sans détourner un agent.
+ */
+function titre(): string {
+  const task = store.getSnapshot().task
+  return task ? task.title : 'Cahier de quart'
+}
+
+function sousTitre(): string {
+  const task = store.getSnapshot().task
+  if (!task) return 'Aucune tâche ouverte sur cet appareil.'
+  if (task.status === 'completed') return `Tâche close en v${task.version}.`
+  return task.next ? `Prochaine action : ${task.next}` : 'Prochaine action non définie.'
+}
+
 function render(): void {
   const hasTask = store.getSnapshot().task !== null
   root!.innerHTML = `<main>
       <header>
-        <h1>Cahier de quart — banc d'essai</h1>
-        <p class="muted">
-          Les six outils écrivent dans un cahier versionné et persistant.
-          Toute écriture d'agent porte la version sur laquelle il croit
-          travailler ; une divergence est refusée, jamais fusionnée.
-        </p>
+        <h1>${escapeHtml(titre())}</h1>
+        <p class="muted">${escapeHtml(sousTitre())}</p>
       </header>
+      ${renderTask()}
       ${renderStatus()}
       ${renderWitness()}
-      ${renderTask()}
       ${hasTask ? '' : `<p class="muted">${escapeHtml(renderNoTask().split('\n')[0])}</p>`}
+      <footer class="muted">
+        <p>
+          Cahier de quart — mémoire de tâche persistante et supervisée, exposée
+          aux agents par WebMCP.
+        </p>
+      </footer>
     </main>`
 
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
