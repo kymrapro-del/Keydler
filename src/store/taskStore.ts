@@ -246,6 +246,26 @@ export async function mutateAsAgent(
   })
 }
 
+/**
+ * Consigne un refus qui n'a jamais atteint la mutation — entrée malformée,
+ * version illisible. Sans cela, ces refus échapperaient au journal alors que
+ * tous les autres y figurent, et la traçabilité aurait un trou.
+ */
+export async function recordAgentRefusal(
+  operation: string,
+  basedOnVersion: number | null,
+  detail: string,
+  actor: Actor = 'agent',
+): Promise<void> {
+  await enqueue(async () => {
+    const current = snapshot.task
+    if (!current) return
+    const refused = recordRefusal(current, { operation, actor, basedOnVersion, detail })
+    await saveTask(refused, current.version)
+    setSnapshot({ status: 'ready', task: refused, error: null })
+  })
+}
+
 /** Remet le magasin à son état initial. Réservé aux tests. */
 export function __resetStore(): void {
   listeners.clear()
