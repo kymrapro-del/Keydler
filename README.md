@@ -70,7 +70,7 @@ Le paquet `@mcp-b/chrome-devtools-mcp` est à éviter : sa version 3.0.0 est
 cassée à la publication — le dossier `build/` vers lequel pointent ses `bin`
 n'a jamais été publié.
 
-Le navigateur doit exposer le protocole de débogage. Deux pointsnon évidents :
+Le navigateur doit exposer le protocole de débogage. Deux points non évidents :
 
 - le basculement dans `brave://inspect/#remote-debugging` **n'ouvre aucun
   port** ; il faut le drapeau au lancement ;
