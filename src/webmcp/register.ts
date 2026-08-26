@@ -1,4 +1,9 @@
-import { checkAvailability, getModelContext, installOriginTrialToken, type Availability } from './adapter'
+import {
+  checkAvailability,
+  getModelContext,
+  installOriginTrialToken,
+  type Availability,
+} from './adapter'
 import { ALL_TOOLS } from './tools'
 
 /**

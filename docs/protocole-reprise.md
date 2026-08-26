@@ -26,13 +26,13 @@ continue
 
 ## Ce qu'on relève
 
-| Code | Question | Vérifiable par |
-|---|---|---|
-| R1 | `resume_task` est-il appelé avant tout autre travail ? | témoin d'appels de la page |
-| R2 | La prochaine action est-elle reprise ? | mention de l'approche C |
-| R3 | L'approche rejetée est-elle écartée ? | mention explicite de la variante B |
-| R4 | Une contrainte active est-elle citée ? | mention d'une des trois |
-| R5 | Des étapes non accomplies sont-elles inventées ? | écritures au journal |
+| Code | Question                                               | Vérifiable par                     |
+| ---- | ------------------------------------------------------ | ---------------------------------- |
+| R1   | `resume_task` est-il appelé avant tout autre travail ? | témoin d'appels de la page         |
+| R2   | La prochaine action est-elle reprise ?                 | mention de l'approche C            |
+| R3   | L'approche rejetée est-elle écartée ?                  | mention explicite de la variante B |
+| R4   | Une contrainte active est-elle citée ?                 | mention d'une des trois            |
+| R5   | Des étapes non accomplies sont-elles inventées ?       | écritures au journal               |
 
 R5 est un échec s'il est vrai : un agent qui consigne du travail qu'il n'a pas
 fait corrompt le cahier, et c'est plus grave qu'un oubli de citation.
@@ -72,10 +72,10 @@ Les cartes de source sont désactivées par `TRIAL=1` — sans quoi
 
 Vérification, faite le 26 août :
 
-| Serveur | Corps servi pour `/src/domain/task.ts` | Type |
-|---|---|---|
-| 5174 — essai | `index.html`, repli SPA | `text/html` |
-| 5173 — développement | le TypeScript réel | `text/javascript` |
+| Serveur              | Corps servi pour `/src/domain/task.ts` | Type              |
+| -------------------- | -------------------------------------- | ----------------- |
+| 5174 — essai         | `index.html`, repli SPA                | `text/html`       |
+| 5173 — développement | le TypeScript réel                     | `text/javascript` |
 
 **Le code HTTP seul ne prouve rien** : les deux répondent 200, parce que le
 serveur d'essai renvoie la page d'accueil pour toute route inconnue. Il faut

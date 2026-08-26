@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  ConcurrentWriteError,
-  StaleStateError,
-  ValidationError,
-} from '../src/domain/errors'
+import { ConcurrentWriteError, StaleStateError, ValidationError } from '../src/domain/errors'
 import { escapeHtml } from '../src/ui/escape'
 import { messageHumain, motifFrancais } from '../src/ui/messages'
 
@@ -38,21 +34,31 @@ describe('messages destinés à l’humain', () => {
 
   it('nomme l’action qui a échoué', () => {
     // Sans cela, le message reste ambigu quand plusieurs commandes sont à l'écran.
-    const m = messageHumain(new ValidationError('rule', 'must not be empty.'), 'Levée de la contrainte')
+    const m = messageHumain(
+      new ValidationError('rule', 'must not be empty.'),
+      'Levée de la contrainte',
+    )
     expect(m.startsWith('Levée de la contrainte')).toBe(true)
   })
 
   it('traduit les refus qu’une personne peut réellement déclencher', () => {
     const cas: Array<[ValidationError, string]> = [
       [new ValidationError('reason', 'must not be empty.'), 'le motif ne peut pas être vide.'],
-      [new ValidationError('rule', 'must be at most 2000 characters.'), 'la règle dépasse 2000 caractères.'],
+      [
+        new ValidationError('rule', 'must be at most 2000 characters.'),
+        'la règle dépasse 2000 caractères.',
+      ],
       [new ValidationError('approach', 'expected a string.'), "l'approche doit être du texte."],
       [
         new ValidationError('stepId', 'this step carries no evidence to verify.'),
         'cette étape ne porte aucune preuve à valider.',
       ],
       [
-        new ValidationError('status', 'task "X" is already completed; log_step is no longer accepted.', false),
+        new ValidationError(
+          'status',
+          'task "X" is already completed; log_step is no longer accepted.',
+          false,
+        ),
         'cette tâche est close. Rouvrez-la si du travail reste à faire.',
       ],
     ]
@@ -84,9 +90,7 @@ describe('échappement', () => {
   })
 
   it('neutralise une balise en position de contenu', () => {
-    expect(escapeHtml('<script>alert(1)</script>')).toBe(
-      '&lt;script&gt;alert(1)&lt;/script&gt;',
-    )
+    expect(escapeHtml('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;')
   })
 
   it('échappe l’esperluette en premier, sans double échappement', () => {

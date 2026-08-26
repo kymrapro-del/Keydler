@@ -33,11 +33,23 @@ export function buildDemoTask(): TaskState {
   })
 
   // Contraintes humaines : autoritaires, donc sans version revendiquée.
-  task = addConstraint(task, { rule: 'Never modify the database schema', basedOnVersion: null }, 'human')
-  task = addConstraint(task, { rule: 'Do not add any new dependency', basedOnVersion: null }, 'human')
+  task = addConstraint(
+    task,
+    { rule: 'Never modify the database schema', basedOnVersion: null },
+    'human',
+  )
+  task = addConstraint(
+    task,
+    { rule: 'Do not add any new dependency', basedOnVersion: null },
+    'human',
+  )
 
   // Contrainte que l'agent s'est lui-même donnée, sur la version courante.
-  task = addConstraint(task, { rule: 'Keep the public API unchanged', basedOnVersion: task.version }, 'agent')
+  task = addConstraint(
+    task,
+    { rule: 'Keep the public API unchanged', basedOnVersion: task.version },
+    'agent',
+  )
 
   task = rejectApproach(
     task,

@@ -67,7 +67,9 @@ describe('normalisation à la lecture', () => {
     const task = normalizeTask({
       id: 'x',
       version: 1,
-      steps: [{ id: 's1', action: 'a', result: 'b', evidence: { kind: 'télépathie', content: 'x' } }],
+      steps: [
+        { id: 's1', action: 'a', result: 'b', evidence: { kind: 'télépathie', content: 'x' } },
+      ],
     } as never)
 
     expect(task!.steps[0].evidence).toBeNull()

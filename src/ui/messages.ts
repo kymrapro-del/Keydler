@@ -31,7 +31,11 @@ const CHAMPS: Record<string, string> = {
  * pour un cas non prévu, plutôt que d'inventer une phrase approximative.
  */
 export function motifFrancais(error: ValidationError): string {
-  const brut = error.message.split('\n').slice(1).join(' ').replace(/^Field "[^"]*": /, '')
+  const brut = error.message
+    .split('\n')
+    .slice(1)
+    .join(' ')
+    .replace(/^Field "[^"]*": /, '')
   const champ = CHAMPS[error.field] ?? `le champ « ${error.field} »`
 
   if (brut.startsWith('must not be empty')) return `${champ} ne peut pas être vide.`

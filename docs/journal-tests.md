@@ -62,13 +62,13 @@ Témoin d'appels remis à zéro.
 
 **Observé.**
 
-| Fait | Valeur |
-|---|---|
-| Outils appelés avant tout travail | `resume_task`, en premier |
-| Chemin suivi | `list_pages` → `take_snapshot` → recherche des outils WebMCP de sa propre initiative → `list_webmcp_tools` → `resume_task` |
-| Appels enregistrés par la page | 1 |
-| Écritures refusées | 0 |
-| Version après l'appel | v11, inchangée — un appel en lecture ne doit pas incrémenter |
+| Fait                              | Valeur                                                                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Outils appelés avant tout travail | `resume_task`, en premier                                                                                                  |
+| Chemin suivi                      | `list_pages` → `take_snapshot` → recherche des outils WebMCP de sa propre initiative → `list_webmcp_tools` → `resume_task` |
+| Appels enregistrés par la page    | 1                                                                                                                          |
+| Écritures refusées                | 0                                                                                                                          |
+| Version après l'appel             | v11, inchangée — un appel en lecture ne doit pas incrémenter                                                               |
 
 **Lecture de l'état restitué.** L'agent a cité les trois contraintes, les deux
 approches rejetées, et retenu l'approche C comme prochaine action. Il a refusé
@@ -95,13 +95,13 @@ Consigne unique : `continue`.
 
 ### Essai 1 — échoué sur R3 et R4, pour une raison inattendue
 
-| Relevé | Résultat |
-|---|---|
-| R1 · `resume_task` appelé avant tout travail | oui |
-| R2 · prochaine action reprise | nommée, non exécutée (pas de disque) |
-| R3 · approche rejetée écartée | **non** — comptée, jamais nommée |
-| R4 · contrainte citée | **non** — comptée, jamais nommée |
-| R5 · travail inventé | non |
+| Relevé                                       | Résultat                             |
+| -------------------------------------------- | ------------------------------------ |
+| R1 · `resume_task` appelé avant tout travail | oui                                  |
+| R2 · prochaine action reprise                | nommée, non exécutée (pas de disque) |
+| R3 · approche rejetée écartée                | **non** — comptée, jamais nommée     |
+| R4 · contrainte citée                        | **non** — comptée, jamais nommée     |
+| R5 · travail inventé                         | non                                  |
 
 **Cause.** L'agent a testé le banc au lieu de reprendre la tâche. L'en-tête de
 la page expliquait alors le mécanisme — « les six outils écrivent dans un
@@ -119,13 +119,13 @@ action ; l'explication du mécanisme est reléguée en pied de page.
 
 ### Essai 2 — après correctif
 
-| Relevé | Résultat |
-|---|---|
-| R1 · `resume_task` appelé avant tout travail | oui, premier appel d'outil |
-| R2 · prochaine action reprise | oui — approche C nommée |
-| R3 · approche rejetée écartée | oui — les deux nommées avec leur motif |
-| R4 · contrainte citée | oui — les trois, avec leur source |
-| R5 · travail inventé | non — refus explicite de fabriquer |
+| Relevé                                       | Résultat                               |
+| -------------------------------------------- | -------------------------------------- |
+| R1 · `resume_task` appelé avant tout travail | oui, premier appel d'outil             |
+| R2 · prochaine action reprise                | oui — approche C nommée                |
+| R3 · approche rejetée écartée                | oui — les deux nommées avec leur motif |
+| R4 · contrainte citée                        | oui — les trois, avec leur source      |
+| R5 · travail inventé                         | non — refus explicite de fabriquer     |
 
 Relevé indépendamment sur la page : un seul appel, `resume_task`, appliqué,
 version inchangée à v12 — un appel en lecture ne doit pas incrémenter.
@@ -148,12 +148,12 @@ suivante soit refusée pour état périmé.
 
 **Ce qui s'est passé.**
 
-| Fait | Valeur |
-|---|---|
-| Contrainte injectée | 18:01:29, v12 → v13 |
-| Réaction de l'agent | `resume_task` à 18:01:56, **avant** toute écriture |
-| Écritures refusées | **0** |
-| Écritures appliquées ensuite | 5, toutes avec preuve jointe |
+| Fait                         | Valeur                                             |
+| ---------------------------- | -------------------------------------------------- |
+| Contrainte injectée          | 18:01:29, v12 → v13                                |
+| Réaction de l'agent          | `resume_task` à 18:01:56, **avant** toute écriture |
+| Écritures refusées           | **0**                                              |
+| Écritures appliquées ensuite | 5, toutes avec preuve jointe                       |
 
 **Le refus n'a pas eu lieu, et ce n'est pas un échec du mécanisme.** L'agent a
 remarqué que le compteur affiché ne concordait plus avec l'état qu'il avait lu,
@@ -190,13 +190,13 @@ Premier essai où l'isolement est réel : build de production servi sur 5174,
 sans carte de source, le code n'étant plus lisible par `fetch`. Origine
 distincte, donc IndexedDB vierge.
 
-| Relevé | Résultat |
-|---|---|
-| R1 · `resume_task` appelé avant tout travail | oui |
-| R2 · prochaine action reprise | oui — approche C nommée |
-| R3 · approche rejetée écartée | oui — les deux, avec leur motif |
-| R4 · contrainte citée | oui — les trois, avec leur source |
-| R5 · travail inventé | non |
+| Relevé                                       | Résultat                          |
+| -------------------------------------------- | --------------------------------- |
+| R1 · `resume_task` appelé avant tout travail | oui                               |
+| R2 · prochaine action reprise                | oui — approche C nommée           |
+| R3 · approche rejetée écartée                | oui — les deux, avec leur motif   |
+| R4 · contrainte citée                        | oui — les trois, avec leur source |
+| R5 · travail inventé                         | non                               |
 
 Relevé sur la page : un appel, `resume_task`, appliqué, version inchangée à v12.
 
@@ -225,12 +225,12 @@ imparfait côté harnais.
 
 Quatre essais, dont un nul et un contaminé.
 
-| Essai | Isolement | R1 | R2 | R3 | R4 | R5 |
-|---|---|---|---|---|---|---|
-| 1 | page en dev | oui | oui | **non** | **non** | non |
-| 2 | page en dev | oui | oui | oui | oui | non |
-| 3 | rompu — source lu par `fetch` | oui | oui | oui | oui | non |
-| 4 | build isolé | oui | oui | oui | oui | non |
+| Essai | Isolement                     | R1  | R2  | R3      | R4      | R5  |
+| ----- | ----------------------------- | --- | --- | ------- | ------- | --- |
+| 1     | page en dev                   | oui | oui | **non** | **non** | non |
+| 2     | page en dev                   | oui | oui | oui     | oui     | non |
+| 3     | rompu — source lu par `fetch` | oui | oui | oui     | oui     | non |
+| 4     | build isolé                   | oui | oui | oui     | oui     | non |
 
 Le seul échec vient de l'essai 1, et sa cause n'était pas la description des
 outils : c'était le texte de la page, qui décrivait le mécanisme et a détourné

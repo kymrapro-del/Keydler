@@ -37,6 +37,12 @@ export async function saveTask(state: TaskState, expectedVersion?: number): Prom
     if (stored && stored.version !== expectedVersion) {
       // Abandonner la transaction : rien de ce qu'elle contient ne doit passer.
       tx.abort()
+      // `tx.done` rejette sur abandon. Sans cette prise en charge, chaque refus
+      // laissait un rejet de promesse non géré — soit un « Uncaught (in
+      // promise) » dans la console à chaque conflit entre onglets, visible par
+      // quiconque ouvre les outils de développement. C'est l'erreur qu'on veut,
+      // pas une panne : on la neutralise ici et on lève la nôtre.
+      tx.done.catch(() => undefined)
       throw new ConcurrentWriteError(expectedVersion, stored.version)
     }
   }

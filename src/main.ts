@@ -33,8 +33,6 @@ import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCall
 const root = document.querySelector<HTMLElement>('#app')
 if (!root) throw new Error('#app introuvable')
 
-
-
 function renderStatus(): string {
   const { phase, availability, toolNames, error } = getRegistrationState()
 
@@ -338,15 +336,17 @@ function brancherSupervision(): void {
     })
   }
 
-  document.querySelector<HTMLFormElement>('#form-contrainte')?.addEventListener('submit', (event) => {
-    event.preventDefault()
-    const règle = brouillons['new-constraint'].trim()
-    if (!règle) return
-    brouillons['new-constraint'] = ''
-    actionHumaine('Ajout de la contrainte', (state) =>
-      addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'),
-    )
-  })
+  document
+    .querySelector<HTMLFormElement>('#form-contrainte')
+    ?.addEventListener('submit', (event) => {
+      event.preventDefault()
+      const règle = brouillons['new-constraint'].trim()
+      if (!règle) return
+      brouillons['new-constraint'] = ''
+      actionHumaine('Ajout de la contrainte', (state) =>
+        addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'),
+      )
+    })
 
   document.querySelector<HTMLFormElement>('#form-rejet')?.addEventListener('submit', (event) => {
     event.preventDefault()
@@ -367,9 +367,8 @@ function brancherSupervision(): void {
     bouton.addEventListener('click', () => {
       const id = bouton.dataset.toggle!
       const actif = bouton.dataset.active === 'true'
-      actionHumaine(
-        actif ? 'Levée de la contrainte' : 'Rétablissement de la contrainte',
-        (state) => setConstraintActive(state, id, !actif),
+      actionHumaine(actif ? 'Levée de la contrainte' : 'Rétablissement de la contrainte', (state) =>
+        setConstraintActive(state, id, !actif),
       )
     })
   }

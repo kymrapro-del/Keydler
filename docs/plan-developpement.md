@@ -11,14 +11,14 @@
 C'est le seul point à verrouiller avant d'écrire une ligne. Tant qu'il est
 flou, chaque tâche risque de tomber entre les deux.
 
-| Voie | Qui | Contenu |
-|---|---|---|
-| **Design** | Kymra | Charte, couleurs, typographie, formes, apparence de chaque écran |
-| **Network** | Kymra | Hébergement, URL publique, dépôt public, description de soumission, dépôt de la candidature |
-| **Tout le reste** | Moon | Architecture, domaine, WebMCP, persistance, **code de l'interface**, tests, CI, documentation, mesure |
+| Voie              | Qui   | Contenu                                                                                               |
+| ----------------- | ----- | ----------------------------------------------------------------------------------------------------- |
+| **Design**        | Kymra | Charte, couleurs, typographie, formes, apparence de chaque écran                                      |
+| **Network**       | Kymra | Hébergement, URL publique, dépôt public, description de soumission, dépôt de la candidature           |
+| **Tout le reste** | Moon  | Architecture, domaine, WebMCP, persistance, **code de l'interface**, tests, CI, documentation, mesure |
 
-Autrement dit : le *comportement* de l'interface est dans la voie de Moon, son
-*apparence* dans celle de Kymra. Un écran existe, s'affiche et réagit parce que
+Autrement dit : le _comportement_ de l'interface est dans la voie de Moon, son
+_apparence_ dans celle de Kymra. Un écran existe, s'affiche et réagit parce que
 Moon l'a codé ; il est beau parce que Kymra l'a habillé.
 
 **La vidéo est une vidéo de présentation**, produite à la fin. Elle explique ce
@@ -78,7 +78,7 @@ périmée · l'ajout humain d'une contrainte en direct · la distinction visuell
 entre travail prouvé et affirmé.
 
 Tout le reste est décor. Les deux dernières demandent une interface : leur
-*comportement* est dans la voie de Moon, leur *apparence* dans celle de Kymra.
+_comportement_ est dans la voie de Moon, leur _apparence_ dans celle de Kymra.
 
 ---
 
@@ -223,13 +223,13 @@ précédentes.
 Ces dates sont des butoirs, pas des souhaits. Chacune bloque une journée entière
 si elle glisse.
 
-| Quoi | Butoir | Bloque |
-|---|---|---|
-| URL HTTPS déployée | 31 août | La recevabilité, et le test des juges |
-| Dépôt basculé en public | 1er septembre | La recevabilité de la soumission |
-| Jetons de design | **31 août** | L'intégration du J7 |
-| Vidéo | 1er septembre | La recevabilité |
-| Description de soumission | 2 septembre | La recevabilité |
+| Quoi                      | Butoir        | Bloque                                |
+| ------------------------- | ------------- | ------------------------------------- |
+| URL HTTPS déployée        | 31 août       | La recevabilité, et le test des juges |
+| Dépôt basculé en public   | 1er septembre | La recevabilité de la soumission      |
+| Jetons de design          | **31 août**   | L'intégration du J7                   |
+| Vidéo                     | 1er septembre | La recevabilité                       |
+| Description de soumission | 2 septembre   | La recevabilité                       |
 
 Le dépôt est **privé** à ce jour, alors que le concours exige un dépôt public.
 C'est le point le plus simple à régler et le plus coûteux à oublier.

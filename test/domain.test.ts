@@ -311,7 +311,10 @@ describe('budget de restitution sous pression', () => {
     for (let i = 0; i < nbContraintes; i++) {
       task = addConstraint(
         task,
-        { rule: `Contrainte ${i} — énoncée assez longuement pour peser sur le budget`, basedOnVersion: task.version },
+        {
+          rule: `Contrainte ${i} — énoncée assez longuement pour peser sur le budget`,
+          basedOnVersion: task.version,
+        },
         'human',
         ctx(5000 + n++ * 10),
       )
@@ -352,7 +355,9 @@ describe('budget de restitution sous pression', () => {
     // Sous pression, le motif d'un rejet est coupé — mais il est là.
     expect(léger).toContain('détaillé à dessein pour occuper')
     expect(lourd).toContain('Approche condamnée numéro 29')
-    expect(lourd).not.toContain('Motif 29, détaillé à dessein pour occuper de la place dans la restitution')
+    expect(lourd).not.toContain(
+      'Motif 29, détaillé à dessein pour occuper de la place dans la restitution',
+    )
   })
 
   it('respecte le budget tant que les contraintes le permettent', () => {

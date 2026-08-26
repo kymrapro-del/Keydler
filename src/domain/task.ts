@@ -192,10 +192,7 @@ function appendAudit(audit: AuditEntry[], entry: AuditEntry): AuditEntry[] {
     last.versionBefore === entry.versionBefore
 
   const suivant = identique
-    ? [
-        ...audit.slice(0, -1),
-        { ...last, repeated: (last.repeated ?? 1) + 1, at: entry.at },
-      ]
+    ? [...audit.slice(0, -1), { ...last, repeated: (last.repeated ?? 1) + 1, at: entry.at }]
     : [...audit, entry]
 
   if (suivant.length <= MAX_AUDIT_ENTRIES) return suivant
@@ -203,7 +200,8 @@ function appendAudit(audit: AuditEntry[], entry: AuditEntry): AuditEntry[] {
   const àÉlaguer = suivant.length - MAX_AUDIT_ENTRIES + 1
   const élagués = suivant.slice(0, àÉlaguer)
   const déjàÉlaguées = élagués.reduce(
-    (n, e) => n + (e.operation === 'audit_trimmed' ? Number(e.detail.match(/^(\d+)/)?.[1] ?? 0) : 0),
+    (n, e) =>
+      n + (e.operation === 'audit_trimmed' ? Number(e.detail.match(/^(\d+)/)?.[1] ?? 0) : 0),
     0,
   )
   const compte = élagués.filter((e) => e.operation !== 'audit_trimmed').length + déjàÉlaguées
