@@ -227,7 +227,9 @@ function assertActive(state: TaskState, operation: string): void {
   if (state.status === 'completed') {
     throw new ValidationError(
       'status',
-      `task "${state.title}" is already completed; ${operation} is no longer accepted.`,
+      `task "${state.title}" is already completed; ${operation} is no longer accepted. ` +
+        'Retrying will not help — ask the human to reopen the task if work remains.',
+      false,
     )
   }
 }
@@ -479,6 +481,33 @@ export function setConstraintActive(
       basedOnVersion: null,
       detail: constraint.rule,
       patch: { constraints },
+    },
+    ctx,
+  )
+}
+
+/**
+ * Rouvre une tâche close. Humain seulement.
+ *
+ * Sans ce chemin, une clôture décidée par l'agent serait irréversible et
+ * l'humain, censé être autoritaire, se retrouverait à subir la décision d'un
+ * agent. Le résumé final est conservé : il devient une trace de ce qui avait
+ * été conclu, pas un mensonge à effacer.
+ */
+export function reopenTask(state: TaskState, reason: unknown, ctx?: MutationContext): TaskState {
+  if (state.status === 'active') {
+    throw new ValidationError('status', 'this task is already active.', false)
+  }
+  const motif = requireText('reason', reason, 400)
+
+  return apply(
+    state,
+    {
+      operation: 'reopen_task',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: motif,
+      patch: { status: 'active', next: motif },
     },
     ctx,
   )
