@@ -95,19 +95,34 @@ modèle de données définitif.
 - Un seul outil `resume_task` renvoyant une chaîne fixe, enregistré au
   chargement dans un module singleton — **jamais depuis un `useEffect`**.
 - Détection de l'absence de `document.modelContext` avec message d'aide.
-- Test dans ChatGPT : « continue », puis fermeture de la conversation et
-  répétition dans une conversation vierge.
 
-> **Critère de sortie.** Dans une conversation neuve, sans historique, l'agent
-> découvre l'outil et l'appelle spontanément. Si ce n'est pas le cas ce soir,
-> ne rien construire d'autre : reprendre la description jusqu'à ce que ça
-> marche, ou changer de piste.
+Le critère se scinde en deux tests distincts, qu'il ne faut pas confondre.
 
-**À vérifier en premier :** `localhost` est un contexte sécurisé, donc l'API
-s'enregistre avec `chrome://flags/#enable-webmcp-testing`. Reste à savoir si
-ChatGPT desktop expose les outils d'un onglet local. Si oui, le J1 ne dépend de
-personne. Si non, il faut une URL HTTPS de Kymra dès demain — c'est la première
-dépendance à lever.
+**Test A — l'enregistrement.** Chrome avec `chrome://flags/#enable-webmcp-testing`,
+puis DevTools → onglet **Application** → section **WebMCP**. Les outils
+enregistrés y apparaissent et s'invoquent à la main. Aucun agent nécessaire,
+aucun déploiement : `localhost` est un contexte sécurisé.
+
+**Test B — la découverte par un agent.** Un pont MCP
+(`@mcp-b/chrome-devtools-mcp`) expose les outils de la page à un client MCP —
+Claude Code ou Codex CLI, tous deux exécutables sous Linux. Conversation neuve,
+onglet ouvert, consigne « continue ».
+
+> **Critère de sortie.** Test A passé, et dans une conversation neuve sans
+> historique, l'agent va chercher les outils de la page et appelle `resume_task`.
+> Si le Test A échoue, le code est en cause. Si seul le Test B échoue, c'est la
+> description : la reprendre jusqu'à ce que ça marche.
+
+**Ce que le Test B n'est pas.** Via le pont, l'agent voit deux outils
+génériques — `list_webmcp_tools` et `call_webmcp_tool` — et non les outils de la
+page directement. C'est un chemin de découverte différent de celui du navigateur
+intégré de ChatGPT. Réel, mais différent : à ne pas présenter pour autre chose
+qu'il n'est.
+
+**Contrainte de poste.** ChatGPT desktop n'existe pas sous Linux. Ce n'est pas
+bloquant : les règles du concours demandent une URL accessible « via le
+navigateur intégré de ChatGPT **ou** Google Chrome avec WebMCP activé », et
+n'imposent aucun client IA pour la démonstration.
 
 ### J2 — 27 août · Le noyau
 
@@ -209,7 +224,7 @@ si elle glisse.
 
 | Quoi | Butoir | Bloque |
 |---|---|---|
-| URL HTTPS déployée | **27 août** si le test local du J1 échoue | Tout le J1, donc tout le reste |
+| URL HTTPS déployée | 31 août | La recevabilité, et le test des juges |
 | Dépôt basculé en public | 1er septembre | La recevabilité de la soumission |
 | Jetons de design | **31 août** | L'intégration du J7 |
 | Vidéo | 1er septembre | La recevabilité |
@@ -259,6 +274,13 @@ gonflé découvert par un juge élimine.
 
 Trois livrables sur quatre dépendent d'une URL en ligne. Si elle n'existe qu'au
 1er septembre, il ne reste aucune marge pour découvrir qu'elle ne marche pas.
+Le développement, lui, ne l'attend pas : tout se teste sur `localhost`.
+
+### On confond enregistrement et découverte
+
+Le panneau DevTools prouve que les outils existent, pas qu'un agent les appelle
+de lui-même. Valider le J1 sur le seul Test A donnerait une fausse assurance et
+ferait découvrir le vrai problème le 1er septembre.
 
 ---
 
