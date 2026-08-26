@@ -124,3 +124,65 @@ par URL.
    file ne montrait que les étapes déjà étayées : priorité inversée. On ne peut
    pas « valider » ce qui n'a rien à valider, mais on doit le signaler — une
    section « affirmé sans preuve » a été ajoutée.
+
+### Tâches 3 à 8 · approche condamnée **non reproposée** dans les six cas
+
+Base vidée avant chaque essai, un seul cahier en mémoire, consigne `continue`.
+
+| # | Condamné | Retenu par l'agent |
+|---|---|---|
+| 3 | seau à jetons sur Redis | GCRA en mémoire du processus |
+| 4 | `COPY` vers une table d'attente | flux + `INSERT` multi-lignes par lots bornés |
+| 5 | repli exponentiel avec gigue | réessais à intervalle constant, bornés par l'échéance d'idempotence |
+| 6 | entiers en unités mineures | `NUMERIC(28,8)` et virgule fixe en `BigInt` |
+| 7 | index unique et `ON CONFLICT` | registre d'idempotence séparé, non partitionné |
+| 8 | verrou à vol unique | rafraîchissement d'arrière-plan, marqueur non bloquant |
+
+## Résultat
+
+> **Sans cahier, l'approche condamnée est reproposée dans 8 cas sur 8.
+> Avec cahier, dans 0 cas sur 8.**
+
+### Ce que ce chiffre ne dit pas
+
+- **Huit essais par condition, même modèle, même consigne.** Les résultats sont
+  corrélés : ce ne sont pas seize observations indépendantes. Aucun pourcentage
+  ni intervalle n'en sera tiré.
+- **Le témoin ne montre pas de l'incompétence.** Ses huit réponses sont bonnes
+  et argumentées — cookie `HttpOnly`, pagination par curseur, seau à jetons
+  Redis, `COPY`, repli exponentiel, unités mineures, index unique, vol unique.
+  Ce sont les réponses de manuel. Elles sont fausses **ici**, et seulement ici.
+- **Ce n'est pas le navigateur intégré de ChatGPT** mais un pont MCP.
+- L'énumération des huit cahiers par `?mesure=N` reste possible depuis la page.
+  C'est le prix d'un dispositif rejouable par URL, et un essai en a profité —
+  celui déclaré nul plus haut.
+
+### Ce que le chiffre cache, et qui vaut mieux que lui
+
+Aucun agent n'a évité l'approche condamnée en fuyant un mot-clé. Tous ont lu
+**le motif** et en ont tiré la part qui restait valable.
+
+- Tâche 3 : « *ce qui a été rejeté, c'est l'adossement à Redis, pas l'algorithme
+  du seau* » — il retient un seau, en mémoire.
+- Tâche 6 : « *l'approche a échoué parce que l'échelle était fixée sur l'unité
+  mineure, pas parce qu'on utilisait des entiers* » — il retient des entiers, à
+  l'échelle 8.
+- Tâche 8 : « *le défaut était l'attente, pas la déduplication* » — il garde la
+  déduplication, sans blocage.
+
+C'est la justification directe d'un choix de conception : **un rejet sans motif
+est refusé par le domaine**. Sans le motif, ces trois agents auraient évité un
+mot et perdu l'idée.
+
+Deux comportements méritent d'être relevés à part.
+
+**Tâche 4 — l'agent a contesté le motif et l'a respecté quand même.** Il note
+que `COPY FROM STDIN` n'exige pas, sur Postgres récent, le droit que le rejet
+invoque. Il n'en tire pas licence : « *l'entrée dit de ne pas réessayer ; tout
+l'intérêt du cahier est qu'un rejet consigné ne soit pas rejugé par un agent
+qui n'était pas là* ». Il remonte son désaccord à l'humain.
+
+**Tâche 7 — l'agent a repéré le piège déguisé.** Il écarte
+`UNIQUE (idempotency_key, month)`, légal sur Postgres mais ne dédupliquant
+qu'à l'intérieur d'une partition : « *c'est l'approche rejetée sous un autre
+nom, et l'erreur la plus probable pour qui croit corriger* ».
