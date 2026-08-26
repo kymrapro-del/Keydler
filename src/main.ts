@@ -5,6 +5,7 @@ import './webmcp'
 
 import './tokens.css'
 import './style.css'
+import { buildMeasureTask } from './demo/measures'
 import { buildDemoTask } from './demo/seed'
 import { renderNoTask, renderTaskState } from './domain/render'
 import {
@@ -373,7 +374,10 @@ function render(): void {
     void store.mutate((state) => reopenTask(state, motif))
   })
   document.querySelector('#seed')?.addEventListener('click', () => {
-    void store.openPreparedTask(buildDemoTask())
+    // `?mesure=N` charge la tâche de mesure N au lieu du cahier de
+    // démonstration, pour que le protocole du J6 soit rejouable tel quel.
+    const n = Number(new URLSearchParams(location.search).get('mesure'))
+    void store.openPreparedTask(n ? buildMeasureTask(n) : buildDemoTask())
   })
 }
 
