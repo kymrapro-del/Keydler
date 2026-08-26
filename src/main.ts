@@ -7,6 +7,7 @@ import './tokens.css'
 import './style.css'
 import { buildMeasureTask } from './demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from './export/notebook'
+import { ConcurrentWriteError, StaleStateError, ValidationError } from './domain/errors'
 import { buildDemoTask } from './demo/seed'
 import { renderTaskState } from './domain/render'
 import {
@@ -216,11 +217,82 @@ const brouillons: Record<string, string> = {
  */
 let erreurHumaine: string | null = null
 
-/** Exécute une action humaine en rendant son échec visible. */
-function actionHumaine(muter: Parameters<typeof store.mutate>[0]): void {
+/**
+ * Traduit une erreur du domaine pour la personne qui a cliqué.
+ *
+ * Les messages du domaine sont écrits pour un agent : ils sont en anglais et se
+ * terminent par « Call resume_task before continuing ». Quelqu'un qui vient
+ * d'appuyer sur un bouton n'appellera jamais resume_task. Lui montrer ce texte
+ * brut, c'est la même faute que laisser NO ACTIVE TASK traîner à l'écran.
+ */
+function messageHumain(error: unknown, action: string): string {
+  if (error instanceof ConcurrentWriteError) {
+    return (
+      `${action} : un autre onglet a modifié ce cahier entre-temps. ` +
+      `Il vient d'être rechargé à la version ${error.foundVersion} — refaites votre geste.`
+    )
+  }
+  if (error instanceof StaleStateError) {
+    return `${action} : le cahier a changé depuis l'affichage. Refaites votre geste.`
+  }
+  if (error instanceof ValidationError) {
+    return `${action} impossible : ${motifFrancais(error)}`
+  }
+  if (error instanceof Error && error.message.startsWith('NO ACTIVE TASK')) {
+    return `${action} impossible : aucun cahier n'est ouvert sur cet appareil.`
+  }
+  if (error instanceof Error && error.message.startsWith('STORAGE UNAVAILABLE')) {
+    return (
+      `${action} impossible : le navigateur refuse l'accès au stockage. ` +
+      "La navigation privée et le blocage des données de site en sont les causes habituelles."
+    )
+  }
+  return `${action} impossible : ${error instanceof Error ? error.message : String(error)}`
+}
+
+/** Noms français des champs que l'interface expose réellement. */
+const CHAMPS: Record<string, string> = {
+  rule: 'la règle',
+  approach: "l'approche",
+  reason: 'le motif',
+  next: 'la prochaine action',
+  title: 'le titre',
+  summary: 'le résumé',
+  stepId: "l'étape",
+  constraintId: 'la contrainte',
+  status: 'la tâche',
+}
+
+/**
+ * Traduit le motif d'un refus de validation.
+ *
+ * Les cas qu'une personne peut déclencher depuis l'interface sont en nombre
+ * fini : on les traduit, et on retombe sur le texte d'origine pour le reste
+ * plutôt que d'inventer une phrase approximative.
+ */
+function motifFrancais(error: ValidationError): string {
+  const brut = error.message.split('\n').slice(1).join(' ').replace(/^Field "[^"]*": /, '')
+  const champ = CHAMPS[error.field] ?? `le champ « ${error.field} »`
+
+  if (brut.startsWith('must not be empty')) return `${champ} ne peut pas être vide.`
+
+  const tropLong = brut.match(/^must be at most (\d+) characters/)
+  if (tropLong) return `${champ} dépasse ${tropLong[1]} caractères.`
+
+  if (brut.startsWith('expected a string')) return `${champ} doit être du texte.`
+  if (brut.includes('carries no evidence')) return "cette étape ne porte aucune preuve à valider."
+  if (brut.includes('is already active')) return "cette tâche n'est pas close."
+  if (brut.includes('already completed')) {
+    return 'cette tâche est close. Rouvrez-la si du travail reste à faire.'
+  }
+  return brut
+}
+
+/** Exécute une action humaine en rendant son échec lisible par un humain. */
+function actionHumaine(action: string, muter: Parameters<typeof store.mutate>[0]): void {
   erreurHumaine = null
   void store.mutate(muter).catch((error: unknown) => {
-    erreurHumaine = error instanceof Error ? error.message : String(error)
+    erreurHumaine = messageHumain(error, action)
     scheduleRender()
   })
 }
@@ -341,6 +413,12 @@ function brancherSupervision(): void {
     champ.value = brouillons[id]
     champ.addEventListener('input', () => {
       brouillons[id] = champ.value
+      // Corriger sa saisie efface le reproche : sinon l'erreur resterait
+      // affichée pendant qu'on répare ce qu'elle signale.
+      if (erreurHumaine !== null) {
+        erreurHumaine = null
+        scheduleRender()
+      }
     })
   }
 
@@ -349,7 +427,9 @@ function brancherSupervision(): void {
     const règle = brouillons['new-constraint'].trim()
     if (!règle) return
     brouillons['new-constraint'] = ''
-    actionHumaine((state) => addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'))
+    actionHumaine('Ajout de la contrainte', (state) =>
+      addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'),
+    )
   })
 
   document.querySelector<HTMLFormElement>('#form-rejet')?.addEventListener('submit', (event) => {
@@ -358,7 +438,7 @@ function brancherSupervision(): void {
     const motif = brouillons['new-rejection-reason'].trim()
     // On laisse le domaine refuser un motif vide plutôt que de l'intercepter
     // ici : une seule règle, un seul endroit où elle est écrite.
-    actionHumaine((state) =>
+    actionHumaine('Condamnation de l’approche', (state) =>
       rejectApproach(state, { approach: approche, reason: motif, basedOnVersion: null }, 'human'),
     )
     if (approche && motif) {
@@ -371,13 +451,18 @@ function brancherSupervision(): void {
     bouton.addEventListener('click', () => {
       const id = bouton.dataset.toggle!
       const actif = bouton.dataset.active === 'true'
-      actionHumaine((state) => setConstraintActive(state, id, !actif))
+      actionHumaine(
+        actif ? 'Levée de la contrainte' : 'Rétablissement de la contrainte',
+        (state) => setConstraintActive(state, id, !actif),
+      )
     })
   }
 
   for (const bouton of document.querySelectorAll<HTMLButtonElement>('[data-verify]')) {
     bouton.addEventListener('click', () => {
-      actionHumaine((state) => verifyEvidence(state, bouton.dataset.verify!))
+      actionHumaine('Validation de la preuve', (state) =>
+        verifyEvidence(state, bouton.dataset.verify!),
+      )
     })
   }
 }
@@ -442,7 +527,7 @@ function render(): void {
   document.querySelector('#reopen')?.addEventListener('click', () => {
     const motif = window.prompt('Pourquoi rouvrir cette tâche ?')
     if (!motif?.trim()) return
-    void store.mutate((state) => reopenTask(state, motif))
+    actionHumaine('Réouverture de la tâche', (state) => reopenTask(state, motif))
   })
   document.querySelector('#seed')?.addEventListener('click', () => {
     // `?mesure=N` charge la tâche de mesure N au lieu du cahier de
