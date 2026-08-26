@@ -27,29 +27,37 @@ const CHAMPS: Record<string, string> = {
 }
 
 /**
- * Traduit le motif d'un refus de validation. Retombe sur le texte d'origine
- * pour un cas non prévu, plutôt que d'inventer une phrase approximative.
+ * Traduit le motif d'un refus de validation, **par son code**.
+ *
+ * Une version antérieure reconnaissait chaque refus à son texte anglais. Le
+ * couplage était invisible depuis le domaine : reformuler « must not be
+ * empty. » laissait tous les tests verts et faisait silencieusement retomber
+ * l'écran en anglais devant la personne qui avait cliqué. Sur un code, ajouter
+ * un cas au domaine casse la compilation ici.
  */
 export function motifFrancais(error: ValidationError): string {
-  const brut = error.message
-    .split('\n')
-    .slice(1)
-    .join(' ')
-    .replace(/^Field "[^"]*": /, '')
   const champ = CHAMPS[error.field] ?? `le champ « ${error.field} »`
 
-  if (brut.startsWith('must not be empty')) return `${champ} ne peut pas être vide.`
-
-  const tropLong = brut.match(/^must be at most (\d+) characters/)
-  if (tropLong) return `${champ} dépasse ${tropLong[1]} caractères.`
-
-  if (brut.startsWith('expected a string')) return `${champ} doit être du texte.`
-  if (brut.includes('carries no evidence')) return 'cette étape ne porte aucune preuve à valider.'
-  if (brut.includes('is already active')) return "cette tâche n'est pas close."
-  if (brut.includes('already completed')) {
-    return 'cette tâche est close. Rouvrez-la si du travail reste à faire.'
+  switch (error.code) {
+    case 'empty':
+      return `${champ} ne peut pas être vide.`
+    case 'too-long':
+      return `${champ} dépasse ${error.max ?? 0} caractères.`
+    case 'not-a-string':
+      return `${champ} doit être du texte.`
+    case 'bad-version':
+      return `${champ} doit être un numéro de version.`
+    case 'bad-enum':
+      return `${champ} ne fait pas partie des valeurs acceptées.`
+    case 'not-found':
+      return `${champ} est introuvable — la page a peut-être changé entre-temps.`
+    case 'no-evidence':
+      return 'cette étape ne porte aucune preuve à valider.'
+    case 'already-active':
+      return "cette tâche n'est pas close."
+    case 'already-completed':
+      return 'cette tâche est close. Rouvrez-la si du travail reste à faire.'
   }
-  return brut
 }
 
 /** Message complet, nommant l'action qui a échoué. */

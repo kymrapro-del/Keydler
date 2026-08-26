@@ -19,14 +19,19 @@ function originTrialMeta(token: string | undefined): Plugin {
     name: 'webmcp-origin-trial',
     transformIndexHtml(html) {
       if (!token) return html
-      const meta = `<meta http-equiv="origin-trial" content="${token}" />`
+      // Le jeton est échappé pour l'attribut : un guillemet le ferait sortir de
+      // la balise. Et le remplacement passe par une fonction, faute de quoi
+      // `String.replace` interpréterait `$&` ou `$'` dans le jeton comme des
+      // motifs de substitution — silencieusement, à la construction.
+      const sûr = token.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+      const meta = `<meta http-equiv="origin-trial" content="${sûr}" />`
       // Juste après la déclaration d'encodage, qui doit rester en tête, et
       // avant toute balise de script : un jeton d'origin trial doit être lu le
       // plus tôt possible dans l'analyse du document.
       const charset = html.match(/<meta\s+charset=[^>]*>/i)
       return charset
-        ? html.replace(charset[0], `${charset[0]}\n    ${meta}`)
-        : html.replace(/<head>/i, `<head>\n    ${meta}`)
+        ? html.replace(charset[0], () => `${charset[0]}\n    ${meta}`)
+        : html.replace(/<head>/i, () => `<head>\n    ${meta}`)
     },
   }
 }

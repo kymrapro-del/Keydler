@@ -97,7 +97,7 @@ function renderWitness(): string {
     )
     .join('')
 
-  return `<div class="witness" role="status" aria-live="polite">
+  return `<div class="witness">
       <span class="witness__count">${total}</span>
       <span class="witness__label">
         appel${total > 1 ? 's' : ''} d'outil<br />
@@ -113,7 +113,10 @@ function renderTask(): string {
 
   if (status === 'loading') return `<p class="muted">Chargement du cahier…</p>`
   if (status === 'error') {
-    return `<div class="status status--error"><p>${escapeHtml(error ?? '')}</p></div>`
+    // Traduite comme toute autre erreur montrée à une personne : c'est le seul
+    // chemin par lequel une panne de stockage atteint réellement l'écran.
+    const texte = messageHumain(new Error(error ?? ''), 'Ouverture du cahier')
+    return `<div class="status status--error" role="alert"><p>${escapeHtml(texte)}</p></div>`
   }
   if (!task) {
     // État vide, et première impression pour qui arrive sans rien savoir.
@@ -151,7 +154,7 @@ function renderTask(): string {
         <button type="button" id="export-un" class="btn">Exporter ce cahier</button>
         <button type="button" id="export-tous" class="btn">Exporter tous les cahiers</button>
       </p>
-      <p class="version" aria-live="polite" aria-atomic="true">v${task.version} <span class="muted">— ${task.steps.length} étapes,
+      <p class="version">v${task.version} <span class="muted">— ${task.steps.length} étapes,
         ${task.constraints.filter((c) => c.active).length} contraintes actives,
         ${task.rejected.length} rejets</span></p>
     </section>
@@ -208,12 +211,19 @@ const brouillons: Record<string, string> = {
 let erreurHumaine: string | null = null
 
 /** Exécute une action humaine en rendant son échec lisible par un humain. */
-function actionHumaine(action: string, muter: Parameters<typeof store.mutate>[0]): void {
+function actionHumaine(
+  action: string,
+  muter: Parameters<typeof store.mutate>[0],
+  siRéussi?: () => void,
+): void {
   erreurHumaine = null
-  void store.mutate(muter).catch((error: unknown) => {
-    erreurHumaine = messageHumain(error, action)
-    scheduleRender()
-  })
+  void store.mutate(muter).then(
+    () => siRéussi?.(),
+    (error: unknown) => {
+      erreurHumaine = messageHumain(error, action)
+      scheduleRender()
+    },
+  )
 }
 
 /** Nombre de lignes affichées par liste de supervision. */
@@ -251,8 +261,12 @@ function renderSupervision(): string {
   // reconstruites à chaque écriture d'agent. Au-delà d'une poignée, on annonce
   // le reste plutôt que de rebâtir des centaines de nœuds à chaque rafale.
   const attente = task.steps.filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
+  // Les PLUS ANCIENNES d'abord : le clic humain est le seul chemin vers
+  // « human_verified », et montrer les plus récentes rendait les anciennes
+  // inatteignables tant que les nouvelles n'étaient pas traitées. Prises par le
+  // début, la file se vide.
   const àValider = attente
-    .slice(-MAX_LIGNES)
+    .slice(0, MAX_LIGNES)
     .map(
       (s) => `<li class="regle">
         <span class="chip chip--${s.confidence}">${s.confidence}</span>
@@ -277,7 +291,7 @@ function renderSupervision(): string {
 
   const saisieContrainte =
     task.status === 'active'
-      ? `<form id="form-contrainte" class="saisie">
+      ? `<form id="form-contrainte" class="saisie" novalidate>
            <label for="new-constraint">Ajouter une contrainte</label>
            <input id="new-constraint" type="text" autocomplete="off"
                   placeholder="Ne jamais modifier le schéma de base" />
@@ -291,13 +305,13 @@ function renderSupervision(): string {
 
   const saisieRejet =
     task.status === 'active'
-      ? `<form id="form-rejet" class="saisie">
+      ? `<form id="form-rejet" class="saisie" novalidate>
            <label for="new-rejection">Approche à condamner</label>
            <input id="new-rejection" type="text" autocomplete="off"
                   placeholder="Approche à écarter" />
            <label for="new-rejection-reason">Motif du rejet, obligatoire</label>
            <input id="new-rejection-reason" type="text" autocomplete="off"
-                  required aria-required="true"
+                  aria-required="true"
                   placeholder="Pourquoi elle a échoué" />
            <button type="submit" class="btn">Rejeter</button>
          </form>
@@ -348,11 +362,13 @@ function brancherSupervision(): void {
     champ.value = brouillons[id]
     champ.addEventListener('input', () => {
       brouillons[id] = champ.value
-      // Corriger sa saisie efface le reproche : sinon l'erreur resterait
-      // affichée pendant qu'on répare ce qu'elle signale.
+      // Corriger sa saisie efface le reproche. On retire l'alerte du DOM sans
+      // redessiner : un rendu complet détruirait le champ en cours de frappe,
+      // ce qui interrompt une composition (saisies asiatiques, touches mortes)
+      // et vide la pile d'annulation du navigateur.
       if (erreurHumaine !== null) {
         erreurHumaine = null
-        scheduleRender()
+        document.querySelector('.supervision [role="alert"]')?.remove()
       }
     })
   }
@@ -363,9 +379,14 @@ function brancherSupervision(): void {
       event.preventDefault()
       const règle = brouillons['new-constraint'].trim()
       if (!règle) return
-      brouillons['new-constraint'] = ''
-      actionHumaine('Ajout de la contrainte', (state) =>
-        addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'),
+      // Vidé seulement si la mutation passe : sinon une règle refusée pour
+      // longueur disparaissait de l'écran, et on ne pouvait plus la raccourcir.
+      actionHumaine(
+        'Ajout de la contrainte',
+        (state) => addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'),
+        () => {
+          brouillons['new-constraint'] = ''
+        },
       )
     })
 
@@ -375,13 +396,15 @@ function brancherSupervision(): void {
     const motif = brouillons['new-rejection-reason'].trim()
     // On laisse le domaine refuser un motif vide plutôt que de l'intercepter
     // ici : une seule règle, un seul endroit où elle est écrite.
-    actionHumaine('Condamnation de l’approche', (state) =>
-      rejectApproach(state, { approach: approche, reason: motif, basedOnVersion: null }, 'human'),
+    actionHumaine(
+      'Condamnation de l’approche',
+      (state) =>
+        rejectApproach(state, { approach: approche, reason: motif, basedOnVersion: null }, 'human'),
+      () => {
+        brouillons['new-rejection'] = ''
+        brouillons['new-rejection-reason'] = ''
+      },
     )
-    if (approche && motif) {
-      brouillons['new-rejection'] = ''
-      brouillons['new-rejection-reason'] = ''
-    }
   })
 
   for (const bouton of document.querySelectorAll<HTMLButtonElement>('[data-toggle]')) {
@@ -413,7 +436,36 @@ function telecharger(nom: string, contenu: string): void {
   document.body.append(lien)
   lien.click()
   lien.remove()
-  URL.revokeObjectURL(url)
+  // Révoquée au tour suivant : révoquer dans le même tour que le clic peut
+  // laisser un téléchargement vide sur les navigateurs qui résolvent la
+  // navigation plus tard.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
+/** Dernier état annoncé, pour ne pas répéter la même phrase. */
+let dernièreAnnonce = ''
+
+/**
+ * Annonce un changement dans la région persistante.
+ *
+ * Les attributs `aria-live` posés sur les nœuds du rendu ne produisaient aucune
+ * annonce : `render()` remplace tout le sous-arbre, et une région réinsérée est
+ * du DOM neuf, pas une mutation. Seule une région qui survit au rendu est
+ * suivie par une aide technique.
+ */
+function annoncer(): void {
+  const région = document.querySelector('#annonces')
+  if (!région) return
+
+  const task = store.getSnapshot().task
+  const { total, refused } = getWitness()
+  const phrase = task
+    ? `Version ${task.version}. ${total} appel${total > 1 ? 's' : ''} d'outil, ${refused} refusé${refused > 1 ? 's' : ''}.`
+    : ''
+
+  if (phrase === dernièreAnnonce) return
+  dernièreAnnonce = phrase
+  région.textContent = phrase
 }
 
 function render(): void {
@@ -424,14 +476,21 @@ function render(): void {
     actif instanceof HTMLInputElement && actif.id in brouillons ? actif.id : null
   const curseur = champFocalisé ? (actif as HTMLInputElement).selectionStart : null
 
-  root!.innerHTML = `<a class="skip-link" href="#supervision-ancre">Aller aux commandes de supervision</a>
+  // Le lien d'évitement ne s'émet que si son ancre existe : elle vit dans la
+  // supervision, qui n'est pas rendue tant qu'aucun cahier n'est ouvert.
+  const supervision = renderSupervision()
+  const lienEvitement = supervision
+    ? '<a class="skip-link" href="#supervision-ancre">Aller aux commandes de supervision</a>'
+    : ''
+
+  root!.innerHTML = `${lienEvitement}
     <main id="contenu">
       <header>
         <h1>${escapeHtml(titre())}</h1>
         <p class="muted">${escapeHtml(sousTitre())}</p>
       </header>
       ${renderTask()}
-      ${renderSupervision()}
+      ${supervision}
       ${renderStatus()}
       ${renderWitness()}
       <footer class="muted">
@@ -451,13 +510,23 @@ function render(): void {
     if (curseur !== null) champ?.setSelectionRange(curseur, curseur)
   }
 
+  annoncer()
+
   document.querySelector('#export-un')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (task) telecharger(exportFilename(task), buildTaskExport(task))
   })
 
   document.querySelector('#export-tous')?.addEventListener('click', () => {
-    void store.allTasks().then((tasks) => telecharger('cahiers.md', buildFullExport(tasks)))
+    void store.allTasks().then(
+      (tasks) => telecharger('cahiers.md', buildFullExport(tasks)),
+      (error: unknown) => {
+        // Sans cette branche, un stockage indisponible ne produisait ni fichier,
+        // ni message, et laissait un rejet non géré dans la console.
+        erreurHumaine = messageHumain(error, 'Export des cahiers')
+        scheduleRender()
+      },
+    )
   })
 
   document.querySelector('#reopen')?.addEventListener('click', () => {
@@ -486,7 +555,16 @@ let renduPrevu = false
 function scheduleRender(): void {
   if (renduPrevu) return
   renduPrevu = true
-  queueMicrotask(() => {
+  // À la frame, pas à la micro-tâche. Les deux notifications d'une écriture
+  // d'agent — le magasin puis le témoin d'appels — sont séparées par un
+  // `await` : la micro-tâche du magasin est purgée AVANT que le témoin ne
+  // notifie, si bien qu'elle ne groupait rien. Une frame couvre la chaîne
+  // de promesses entière.
+  const planifier =
+    typeof requestAnimationFrame === 'function'
+      ? requestAnimationFrame
+      : (fn: () => void) => setTimeout(fn, 0)
+  planifier(() => {
     renduPrevu = false
     render()
   })

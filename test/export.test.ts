@@ -64,6 +64,37 @@ describe('export d’un cahier', () => {
     expect(buildFullExport([])).toContain('Aucun cahier')
   })
 
+  it('ne laisse pas une preuve refermer le bloc qui la contient', () => {
+    let task = buildMeasureTask(4)
+    task = logStep(
+      task,
+      {
+        action: 'Sortie contenant une clôture de bloc',
+        result: 'r',
+        // Une sortie de commande peut parfaitement contenir trois accents
+        // graves. Sans clôture plus longue, tout ce qui suit s'interpréterait
+        // comme du markdown chez qui vient vérifier une campagne.
+        evidence: { kind: 'command_output', content: '```\n# Faux titre injecté\n```' },
+        basedOnVersion: task.version,
+      },
+      'agent',
+    )
+
+    const sortie = buildTaskExport(task)
+
+    // La preuve est enveloppée d'une clôture plus longue que celle qu'elle
+    // contient : le faux titre reste donc à l'intérieur du bloc, inerte.
+    expect(sortie).toContain('````\n```\n# Faux titre injecté\n```\n````')
+  })
+
+  it('survit à un horodatage hors plage plutôt que d’emporter tout l’export', () => {
+    const task = { ...buildMeasureTask(5), updatedAt: 1e20 }
+    // Un seul enregistrement corrompu faisait échouer l'export de tous les
+    // autres, ce qui ruine la reproductibilité que ce module existe pour offrir.
+    expect(() => buildTaskExport(task)).not.toThrow()
+    expect(buildTaskExport(task)).toContain('horodatage illisible')
+  })
+
   it('donne un nom de fichier stable et sans caractère hasardeux', () => {
     const task = buildMeasureTask(5)
     const nom = exportFilename(task)

@@ -3,6 +3,7 @@ import { createTask } from '../src/domain/task'
 import { SCHEMA_VERSION } from '../src/domain/types'
 import { getDb } from '../src/persistence/db'
 import { FutureSchemaError, normalizeTask } from '../src/persistence/normalize'
+import { escapeHtml } from '../src/ui/escape'
 import { listTasks, loadTask, saveTask } from '../src/persistence/taskRepository'
 
 /**
@@ -75,27 +76,32 @@ describe('normalisation à la lecture', () => {
     expect(task!.steps[0].evidence).toBeNull()
   })
 
-  it('réduit un identifiant relu au jeu de caractères qu’on émet', () => {
+  it('conserve un identifiant tel quel : c’est la clé primaire', async () => {
+    // Le réduire à la lecture faisait qu'un enregistrement ne correspondait
+    // plus à sa propre clé : `saveTask` cherchait alors une clé inexistante,
+    // sautait la comparaison de version sans erreur, et forkait un second
+    // enregistrement. L'échappement est l'affaire du rendu, pas de la lecture.
+    const bizarre = 'x" onload="alert(1)'
+    await écrireBrut({ id: bizarre, title: 'Cahier', version: 3, updatedAt: 1 })
+
+    const relu = await loadTask(bizarre)
+    expect(relu?.id).toBe(bizarre)
+    // Et il reste retrouvable par sa clé, ce qui est tout l'enjeu.
+    expect(relu?.version).toBe(3)
+  })
+
+  it('neutralise un identifiant hostile au rendu, pas au stockage', () => {
     const task = normalizeTask({
       id: 'x" onload="alert(1)',
       version: 1,
       steps: [{ id: 's1"><script>', action: 'a', result: 'b' }],
-      constraints: [{ id: '../../etc', rule: 'R' }],
     } as never)
 
-    // Ces identifiants finissent dans des attributs HTML et des sélecteurs :
-    // un guillemet qui passe est une porte ouverte.
-    expect(task!.id).toBe('xonloadalert1')
-    expect(task!.steps[0].id).toBe('s1script')
-    expect(task!.constraints[0].id).toBe('etc')
-    for (const id of [task!.id, task!.steps[0].id, task!.constraints[0].id]) {
-      expect(id).toMatch(/^[A-Za-z0-9_-]*$/)
-    }
-  })
-
-  it('borne la longueur d’un identifiant relu', () => {
-    const task = normalizeTask({ id: 'a'.repeat(500), version: 1 } as never)
-    expect(task!.id).toHaveLength(64)
+    // Intacts en mémoire…
+    expect(task!.steps[0].id).toBe('s1"><script>')
+    // …et inoffensifs une fois interpolés dans un attribut.
+    expect(escapeHtml(task!.steps[0].id)).not.toContain('"')
+    expect(escapeHtml(task!.steps[0].id)).not.toContain('<')
   })
 
   it('refuse un enregistrement écrit par une version plus récente', async () => {
