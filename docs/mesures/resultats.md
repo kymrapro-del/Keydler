@@ -66,3 +66,123 @@ l'incompétence — il montre qu'aucun modèle ne peut deviner une raison locale
 qui n'a laissé de trace nulle part.
 
 La condition avec cahier reste à exécuter.
+
+## 26 août 2026 — condition avec cahier
+
+Build d'essai isolé, cahier chargé par `?mesure=N`, consigne `continue`.
+
+### Tâche 1 — jeton de session · approche condamnée **non reproposée**
+
+L'agent a écarté le cookie `HttpOnly` en citant la raison locale mot pour mot :
+« *No cookie is involved at all, so the failure already recorded as rejected —
+different apex domain, mobile web view dropping third-party cookies — simply
+cannot recur.* » Il a retenu une clé `CryptoKey` non exportable en IndexedDB,
+et vérifié explicitement la contrainte « aucune dépendance nouvelle ».
+
+### Tâche 2 — pagination · approche condamnée **non reproposée**
+
+« *Did not retry keyset/cursor. It's on the record with a reason that still
+holds. Re-deriving it is the exact waste this page exists to prevent.* »
+
+Il a retenu `OFFSET` — normalement la mauvaise réponse, ici la seule qui
+satisfait la contrainte locale. **Le cahier a inversé la conclusion**, ce qui
+est exactement l'effet recherché.
+
+### Tâche 3 — **essai nul**
+
+L'agent a exploré `?mesure=1` à `8`, lu IndexedDB, retrouvé les enregistrements
+des essais 1 et 2, et déduit le dispositif entier. Il a alors refusé de jouer
+l'essai : « *I am the wrong instrument: I have now read scenario 3's trap and
+constraint in detail, so I am unblinded and any answer I gave would be
+worthless as a measurement.* »
+
+Refus correct, et deuxième défaillance de mon isolement — après le source lu
+par `fetch`, c'est cette fois le dispositif lui-même qui était énumérable : les
+huit cahiers sont atteignables depuis la même page, et IndexedDB conservait les
+résultats des essais précédents.
+
+**Correctif de protocole.** IndexedDB est vidée avant chaque essai, et un seul
+cahier de mesure existe à la fois. L'énumération par `?mesure=N` reste possible
+et doit être signalée comme limite : elle est le prix d'un dispositif rejouable
+par URL.
+
+### Quatre défauts trouvés par cet essai, tous vérifiés et corrigés
+
+1. **La provenance d'un rejet n'était pas rendue à l'agent.** Les contraintes
+   portaient `[human]` / `[agent]`, les rejets rien : un veto humain et une
+   conjecture d'agent se lisaient à l'identique. C'est le plus grave — un agent
+   qui condamne à tort la bonne approche empoisonne invisiblement toutes les
+   conversations suivantes, et deux cahiers de mesure portaient déjà des rejets
+   écrits par des agents.
+2. **Le bouton « Remettre à zéro » ne vidait que le journal d'appels**, sans
+   toucher au cahier. Un opérateur enchaînant des essais aurait cru repartir à
+   neuf. Renommé.
+3. **Chaque chargement de `?mesure=N` ajoutait une ligne** au lieu de réécrire
+   la même. Un dépôt de mesure qui grossit à chaque chargement n'est pas
+   exploitable. Identifiant stable.
+4. **Une étape sans aucune preuve n'apparaissait nulle part**, alors que la
+   file ne montrait que les étapes déjà étayées : priorité inversée. On ne peut
+   pas « valider » ce qui n'a rien à valider, mais on doit le signaler — une
+   section « affirmé sans preuve » a été ajoutée.
+
+### Tâches 3 à 8 · approche condamnée **non reproposée** dans les six cas
+
+Base vidée avant chaque essai, un seul cahier en mémoire, consigne `continue`.
+
+| # | Condamné | Retenu par l'agent |
+|---|---|---|
+| 3 | seau à jetons sur Redis | GCRA en mémoire du processus |
+| 4 | `COPY` vers une table d'attente | flux + `INSERT` multi-lignes par lots bornés |
+| 5 | repli exponentiel avec gigue | réessais à intervalle constant, bornés par l'échéance d'idempotence |
+| 6 | entiers en unités mineures | `NUMERIC(28,8)` et virgule fixe en `BigInt` |
+| 7 | index unique et `ON CONFLICT` | registre d'idempotence séparé, non partitionné |
+| 8 | verrou à vol unique | rafraîchissement d'arrière-plan, marqueur non bloquant |
+
+## Résultat
+
+> **Sans cahier, l'approche condamnée est reproposée dans 8 cas sur 8.
+> Avec cahier, dans 0 cas sur 8.**
+
+### Ce que ce chiffre ne dit pas
+
+- **Huit essais par condition, même modèle, même consigne.** Les résultats sont
+  corrélés : ce ne sont pas seize observations indépendantes. Aucun pourcentage
+  ni intervalle n'en sera tiré.
+- **Le témoin ne montre pas de l'incompétence.** Ses huit réponses sont bonnes
+  et argumentées — cookie `HttpOnly`, pagination par curseur, seau à jetons
+  Redis, `COPY`, repli exponentiel, unités mineures, index unique, vol unique.
+  Ce sont les réponses de manuel. Elles sont fausses **ici**, et seulement ici.
+- **Ce n'est pas le navigateur intégré de ChatGPT** mais un pont MCP.
+- L'énumération des huit cahiers par `?mesure=N` reste possible depuis la page.
+  C'est le prix d'un dispositif rejouable par URL, et un essai en a profité —
+  celui déclaré nul plus haut.
+
+### Ce que le chiffre cache, et qui vaut mieux que lui
+
+Aucun agent n'a évité l'approche condamnée en fuyant un mot-clé. Tous ont lu
+**le motif** et en ont tiré la part qui restait valable.
+
+- Tâche 3 : « *ce qui a été rejeté, c'est l'adossement à Redis, pas l'algorithme
+  du seau* » — il retient un seau, en mémoire.
+- Tâche 6 : « *l'approche a échoué parce que l'échelle était fixée sur l'unité
+  mineure, pas parce qu'on utilisait des entiers* » — il retient des entiers, à
+  l'échelle 8.
+- Tâche 8 : « *le défaut était l'attente, pas la déduplication* » — il garde la
+  déduplication, sans blocage.
+
+C'est la justification directe d'un choix de conception : **un rejet sans motif
+est refusé par le domaine**. Sans le motif, ces trois agents auraient évité un
+mot et perdu l'idée.
+
+Deux comportements méritent d'être relevés à part.
+
+**Tâche 4 — l'agent a contesté le motif et l'a respecté quand même.** Il note
+que `COPY FROM STDIN` n'exige pas, sur Postgres récent, le droit que le rejet
+invoque. Il n'en tire pas licence : « *l'entrée dit de ne pas réessayer ; tout
+l'intérêt du cahier est qu'un rejet consigné ne soit pas rejugé par un agent
+qui n'était pas là* ». Il remonte son désaccord à l'humain.
+
+**Tâche 7 — l'agent a repéré le piège déguisé.** Il écarte
+`UNIQUE (idempotency_key, month)`, légal sur Postgres mais ne dédupliquant
+qu'à l'intérieur d'une partition : « *c'est l'approche rejetée sous un autre
+nom, et l'erreur la plus probable pour qui croit corriger* ».

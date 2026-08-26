@@ -56,4 +56,8 @@ une, et l'écart doit être relevé tel quel, motif compris.
 
 ## Résultats
 
-Voir [`mesures/resultats.md`](mesures/resultats.md).
+**Sans cahier, l'approche condamnée est reproposée dans 8 cas sur 8. Avec
+cahier, dans 0 cas sur 8.**
+
+Relevés, transcriptions et réserves dans
+[`mesures/resultats.md`](mesures/resultats.md).

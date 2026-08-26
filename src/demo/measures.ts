@@ -110,7 +110,10 @@ export function buildMeasureTask(n: number): TaskState {
   const spec = MEASURES.find((m) => m.n === n)
   if (!spec) throw new Error(`Aucune tâche de mesure numéro ${n}.`)
 
-  let task = createTask({ title: spec.title, next: spec.next })
+  // Identifiant stable : recharger `?mesure=N` réécrit la même ligne au lieu
+  // d'en empiler une nouvelle à chaque passage. Un dépôt de mesure qui grossit
+  // à chaque chargement n'est pas exploitable.
+  let task = createTask({ title: spec.title, next: spec.next, id: `mesure-${spec.n}` })
   task = addConstraint(task, { rule: spec.constraint, basedOnVersion: null }, 'human')
   task = rejectApproach(
     task,
