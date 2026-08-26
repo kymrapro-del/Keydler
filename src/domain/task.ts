@@ -6,7 +6,7 @@ import {
   requireText,
   requireVersion,
 } from './validate'
-import { MACHINE_EVIDENCE_KINDS, MAX_AUDIT_ENTRIES } from './types'
+import { MAX_AUDIT_ENTRIES, MAX_MUTATION_RECORDS } from './types'
 import type {
   Actor,
   AuditEntry,
@@ -14,7 +14,9 @@ import type {
   Constraint,
   Decision,
   Evidence,
+  MutationRecord,
   Rejection,
+  Standing,
   Step,
   TaskState,
 } from './types'
@@ -29,6 +31,10 @@ import type {
  *    travailler ; une divergence est refusée, jamais fusionnée.
  * 3. Une écriture humaine est autoritaire : elle ne porte pas de version et
  *    n'est jamais refusée. C'est précisément ce qui périme celle de l'agent.
+ * 4. Une règle ou un rejet écrit par un agent est une PROPOSITION. Il n'oppose
+ *    rien tant qu'un humain ne l'a pas endossé. Sans cette quatrième règle, un
+ *    agent se donne à lui-même — et donne à toutes les conversations suivantes
+ *    — des interdits que personne n'a jamais validés.
  *
  * Le journal d'audit est append-only et n'incrémente pas `version` : il décrit
  * ce qui est arrivé au cahier, il n'en fait pas partie.
@@ -77,6 +83,7 @@ export function createTask(
     steps: [],
     decisions: [],
     rejected: [],
+    mutations: [],
     audit: [
       {
         id: newId(),
@@ -221,6 +228,29 @@ function appendAudit(audit: AuditEntry[], entry: AuditEntry): AuditEntry[] {
   return [marque, ...suivant.slice(àÉlaguer)]
 }
 
+/**
+ * Mémorise une écriture d'agent appliquée sous son `mutation_id`.
+ *
+ * N'incrémente PAS la version : la mutation a déjà fait avancer le cahier, et
+ * sa trace n'est pas un changement de contenu. Comme le journal d'audit, la
+ * liste est bornée par le plus ancien.
+ */
+export function recordMutation(state: TaskState, record: MutationRecord): TaskState {
+  const mutations = [...state.mutations, record]
+  return {
+    ...state,
+    mutations:
+      mutations.length > MAX_MUTATION_RECORDS
+        ? mutations.slice(mutations.length - MAX_MUTATION_RECORDS)
+        : mutations,
+  }
+}
+
+/** Retrouve une écriture déjà appliquée sous ce `mutation_id`, s'il en existe une. */
+export function findMutation(state: TaskState, mutationId: string): MutationRecord | undefined {
+  return state.mutations.find((m) => m.id === mutationId)
+}
+
 function assertActive(state: TaskState, operation: string): void {
   if (state.status === 'completed') {
     throw new ValidationError(
@@ -262,20 +292,22 @@ export function logStep(
     evidence = {
       kind: requireEvidenceKind('evidence.kind', input.evidence.kind),
       content: requireEvidenceContent('evidence.content', input.evidence.content),
-      verifiedAt: null,
+      verifiedAt: actor === 'human' ? now : null,
     }
   }
 
-  // Le degré n'est jamais déclaré, il est DÉDUIT de ce que l'écriture apporte.
-  // Aucune auto-attribution n'est donc possible : un agent qui voudrait se
-  // dire vérifié doit joindre la sortie d'une machine, et « human_verified »
-  // reste hors d'atteinte — seul un clic humain l'accorde.
+  // Le degré n'est jamais déclaré, il est DÉDUIT de ce que l'écriture apporte —
+  // et ce qu'une écriture d'AGENT apporte plafonne à « evidence ».
+  //
+  // Une version antérieure accordait « machine_verified » dès que l'étiquette
+  // jointe valait `command_output` ou `test_report`. Or l'agent choisit
+  // l'étiquette comme il choisit le contenu : rien n'avait été vérifié par une
+  // machine, un texte avait été recopié. Le degré promettait à l'humain une
+  // garantie que le système n'avait jamais obtenue. Il n'existe plus.
+  //
+  // Une écriture humaine, elle, atteste de ce que la personne a sous les yeux.
   const confidence: Confidence =
-    evidence === null
-      ? 'claimed'
-      : MACHINE_EVIDENCE_KINDS.includes(evidence.kind)
-        ? 'machine_verified'
-        : 'evidence'
+    evidence === null ? 'claimed' : actor === 'human' ? 'human_verified' : 'evidence'
 
   const step: Step = {
     id: newId(),
@@ -349,6 +381,7 @@ export function rejectApproach(
     reason: requireText('reason', input.reason),
     source: actor,
     addedAtVersion: state.version + 1,
+    standing: actor === 'human' ? 'accepted' : 'proposed',
     at: now,
   }
 
@@ -381,6 +414,7 @@ export function addConstraint(
     source: actor,
     addedAtVersion: state.version + 1,
     active: true,
+    standing: actor === 'human' ? 'accepted' : 'proposed',
   }
 
   return apply(
@@ -427,8 +461,23 @@ export function completeTask(
 /**
  * Valide une preuve d'un clic. C'est le seul chemin vers `human_verified` :
  * aucun agent ne peut s'auto-attribuer ce degré.
+ *
+ * `reviewedContent` est le contenu que l'appelant AFFICHAIT au moment du clic.
+ * Il doit correspondre à celui du cahier, sans quoi la validation est refusée.
+ *
+ * Ce n'est pas une formalité. Sans lui, « l'humain a validé la preuve » ne veut
+ * rien dire de plus que « quelqu'un a cliqué à côté d'un titre » : la file de
+ * validation n'affichait que l'action, jamais la preuve, et le clic attestait
+ * donc d'un texte que personne n'avait lu. Un appelant ne peut produire ce
+ * paramètre qu'en ayant le contenu sous la main, et une régression d'interface
+ * qui cesserait de l'afficher casse ici au lieu de valider en aveugle.
  */
-export function verifyEvidence(state: TaskState, stepId: string, ctx?: MutationContext): TaskState {
+export function verifyEvidence(
+  state: TaskState,
+  stepId: string,
+  reviewedContent: string,
+  ctx?: MutationContext,
+): TaskState {
   const { now } = resolve(ctx)
   const step = state.steps.find((s) => s.id === stepId)
   if (!step)
@@ -437,6 +486,14 @@ export function verifyEvidence(state: TaskState, stepId: string, ctx?: MutationC
     throw new ValidationError('stepId', 'this step carries no evidence to verify.', {
       code: 'no-evidence',
     })
+  }
+  if (reviewedContent !== step.evidence.content) {
+    throw new ValidationError(
+      'reviewedContent',
+      'does not match the evidence held for this step; it may have changed since it was displayed. ' +
+        'Re-read the evidence before validating it.',
+      { code: 'content-not-reviewed', retryable: false },
+    )
   }
 
   const steps = state.steps.map((s) =>
@@ -457,6 +514,81 @@ export function verifyEvidence(state: TaskState, stepId: string, ctx?: MutationC
       basedOnVersion: null,
       detail: step.action,
       patch: { steps },
+    },
+    ctx,
+  )
+}
+
+/**
+ * Endosse ou écarte une proposition d'agent. Humain seulement.
+ *
+ * C'est le seul chemin par lequel une règle ou un rejet écrit par un agent
+ * devient opposable. Tant qu'il n'est pas emprunté, la proposition se lit dans
+ * le cahier mais n'y impose rien.
+ */
+export function setConstraintStanding(
+  state: TaskState,
+  constraintId: string,
+  standing: Standing,
+  ctx?: MutationContext,
+): TaskState {
+  const constraint = state.constraints.find((c) => c.id === constraintId)
+  if (!constraint) {
+    throw new ValidationError('constraintId', `no constraint with id "${constraintId}".`, {
+      code: 'not-found',
+    })
+  }
+  if (constraint.standing === standing) {
+    throw new ValidationError('constraintId', `this constraint is already ${standing}.`, {
+      code: 'not-proposed',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: standing === 'accepted' ? 'accept_constraint' : 'decline_constraint',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: constraint.rule,
+      patch: {
+        constraints: state.constraints.map((c) => (c.id === constraintId ? { ...c, standing } : c)),
+      },
+    },
+    ctx,
+  )
+}
+
+export function setRejectionStanding(
+  state: TaskState,
+  rejectionId: string,
+  standing: Standing,
+  ctx?: MutationContext,
+): TaskState {
+  const rejection = state.rejected.find((r) => r.id === rejectionId)
+  if (!rejection) {
+    throw new ValidationError('rejectionId', `no rejected approach with id "${rejectionId}".`, {
+      code: 'not-found',
+    })
+  }
+  if (rejection.standing === standing) {
+    throw new ValidationError('rejectionId', `this rejection is already ${standing}.`, {
+      code: 'not-proposed',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: standing === 'accepted' ? 'accept_rejection' : 'decline_rejection',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: rejection.approach,
+      patch: {
+        rejected: state.rejected.map((r) => (r.id === rejectionId ? { ...r, standing } : r)),
+      },
     },
     ctx,
   )
@@ -542,15 +674,40 @@ export function setNext(state: TaskState, next: unknown, ctx?: MutationContext):
 /* Lectures dérivées                                                           */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Les règles qui s'imposent réellement : endossées ET non levées.
+ *
+ * Une proposition d'agent n'en fait pas partie. C'est la différence entre
+ * « un agent a écrit qu'il ne fallait pas » et « il ne faut pas ».
+ */
 export function activeConstraints(state: TaskState): Constraint[] {
-  return state.constraints.filter((c) => c.active)
+  return state.constraints.filter((c) => c.active && c.standing === 'accepted')
+}
+
+/** Les règles écrites par un agent, en attente d'un humain. */
+export function proposedConstraints(state: TaskState): Constraint[] {
+  return state.constraints.filter((c) => c.standing === 'proposed')
+}
+
+/** Les approches réellement condamnées. */
+export function acceptedRejections(state: TaskState): Rejection[] {
+  return state.rejected.filter((r) => r.standing === 'accepted')
+}
+
+/** Les approches qu'un agent voudrait condamner, en attente d'un humain. */
+export function proposedRejections(state: TaskState): Rejection[] {
+  return state.rejected.filter((r) => r.standing === 'proposed')
+}
+
+/** Ce qu'un humain a explicitement refusé de condamner. */
+export function declinedRejections(state: TaskState): Rejection[] {
+  return state.rejected.filter((r) => r.standing === 'declined')
 }
 
 export type EvidenceCounts = Record<Confidence, number>
 
 export function evidenceCounts(state: TaskState): EvidenceCounts {
   const counts: EvidenceCounts = {
-    machine_verified: 0,
     human_verified: 0,
     evidence: 0,
     claimed: 0,

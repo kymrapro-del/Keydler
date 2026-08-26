@@ -41,10 +41,16 @@ export type ValidationCode =
   | 'not-a-string'
   | 'bad-enum'
   | 'bad-version'
+  | 'out-of-range'
   | 'not-found'
   | 'no-evidence'
   | 'already-active'
   | 'already-completed'
+  | 'bad-mutation-id'
+  | 'mutation-id-reused'
+  | 'mutation-id-collision'
+  | 'content-not-reviewed'
+  | 'not-proposed'
 
 export type ValidationOptions = {
   code: ValidationCode
@@ -99,5 +105,26 @@ export class ConcurrentWriteError extends Error {
     this.name = 'ConcurrentWriteError'
     this.expectedVersion = expectedVersion
     this.foundVersion = foundVersion
+  }
+}
+
+/**
+ * L'agent — ou la personne devant lui — a annulé l'appel avant qu'il n'écrive.
+ *
+ * WebMCP passe un `AbortSignal` à chaque exécution et JETTE le résultat d'une
+ * exécution annulée. Un appel annulé qui écrirait quand même produirait donc
+ * une écriture que personne ne voit passer : l'agent ne reçoit rien, réessaie,
+ * et le cahier compte deux fois le même travail. On s'arrête avant d'écrire.
+ */
+export class CancelledError extends Error {
+  constructor(operation: string) {
+    super(
+      [
+        'CANCELLED',
+        `The ${operation} call was cancelled before anything was written.`,
+        'Nothing changed. Retry with the same mutation_id if you still want it recorded.',
+      ].join('\n'),
+    )
+    this.name = 'CancelledError'
   }
 }

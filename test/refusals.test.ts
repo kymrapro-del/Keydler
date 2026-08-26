@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { getDb } from '../src/persistence/db'
 import * as store from '../src/store/taskStore'
 import { ALL_TOOLS } from '../src/webmcp/tools'
+import { exec, mutationId, storeWrite } from './helpers'
 
 /**
  * Traçabilité des refus.
@@ -30,7 +31,7 @@ describe('refus consignés', () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     const avant = store.currentTask()!.audit.length
 
-    const result = await logStep().execute({ action: 'a', result: 'b' }, {})
+    const result = await logStep().execute({ action: 'a', result: 'b' }, exec())
 
     expect(result.isError).toBe(true)
     const après = store.currentTask()!
@@ -44,8 +45,8 @@ describe('refus consignés', () => {
     await store.createAndOpenTask('Tâche', undefined)
 
     const result = await logStep().execute(
-      { action: 'a', result: 'b', based_on_version: 'plus tard' },
-      {},
+      { action: 'a', result: 'b', mutation_id: mutationId(), based_on_version: 'plus tard' },
+      exec(),
     )
 
     expect(result.isError).toBe(true)
@@ -58,8 +59,13 @@ describe('refus consignés', () => {
 
     // Motif vide : l'erreur naît DANS la mutation, donc déjà tracée.
     const result = await rejectApproach().execute(
-      { approach: 'JWT B', reason: '   ', based_on_version: task.version },
-      {},
+      {
+        approach: 'JWT B',
+        reason: '   ',
+        mutation_id: mutationId(),
+        based_on_version: task.version,
+      },
+      exec(),
     )
 
     expect(result.isError).toBe(true)
@@ -70,8 +76,8 @@ describe('refus consignés', () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
 
     const result = await rejectApproach().execute(
-      { approach: 'JWT B', reason: '', based_on_version: task.version },
-      {},
+      { approach: 'JWT B', reason: '', mutation_id: mutationId(), based_on_version: task.version },
+      exec(),
     )
 
     const texte = result.content[0].text
@@ -84,14 +90,15 @@ describe('refus consignés', () => {
 
   it('n’ajoute pas ce rappel à un refus pour état périmé', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
-    await store.mutateAsAgent('add_constraint', task.version, (s) => ({
-      ...s,
-      version: s.version + 1,
-    }))
-
+    await store.mutateAsAgent(
+      storeWrite('add_constraint', task.version, { rule: 'x' }, (s) => ({
+        ...s,
+        version: s.version + 1,
+      })),
+    )
     const result = await logStep().execute(
-      { action: 'a', result: 'b', based_on_version: task.version },
-      {},
+      { action: 'a', result: 'b', mutation_id: mutationId(), based_on_version: task.version },
+      exec(),
     )
 
     const texte = result.content[0].text
@@ -106,11 +113,19 @@ describe('conseil de réessai', () => {
   it('ne suggère pas de réessayer sur une tâche close', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     const complete = ALL_TOOLS.find((t) => t.name === 'complete_task')!
-    await complete.execute({ summary: 'Terminé.', based_on_version: task.version }, {})
+    await complete.execute(
+      { summary: 'Terminé.', mutation_id: mutationId(), based_on_version: task.version },
+      exec(),
+    )
 
     const result = await logStep().execute(
-      { action: 'a', result: 'b', based_on_version: store.currentTask()!.version },
-      {},
+      {
+        action: 'a',
+        result: 'b',
+        mutation_id: mutationId(),
+        based_on_version: store.currentTask()!.version,
+      },
+      exec(),
     )
 
     const texte = result.content[0].text
@@ -125,8 +140,8 @@ describe('conseil de réessai', () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
 
     const result = await rejectApproach().execute(
-      { approach: 'JWT B', reason: '', based_on_version: task.version },
-      {},
+      { approach: 'JWT B', reason: '', mutation_id: mutationId(), based_on_version: task.version },
+      exec(),
     )
 
     expect(result.content[0].text).toContain(`Retry with based_on_version: ${task.version}`)

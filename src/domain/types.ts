@@ -6,12 +6,24 @@
  * consomme s'adapte à eux, jamais l'inverse.
  */
 
-/** Degré de preuve attaché à une étape, du plus fort au plus faible. */
-export type Confidence = 'machine_verified' | 'human_verified' | 'evidence' | 'claimed'
+/**
+ * Degré de preuve attaché à une étape, du plus fort au plus faible.
+ *
+ * Il n'existe PAS de degré « vérifié machine » accessible à un agent. Une
+ * version antérieure en accordait un dès que la preuve jointe était étiquetée
+ * `command_output` ou `test_report` — c'est-à-dire sur la seule parole de
+ * l'agent, qui choisit l'étiquette comme il choisit le contenu. Rien n'avait
+ * été vérifié par une machine : un texte avait été recopié. Le mot promettait
+ * à l'humain une garantie que le système n'avait jamais obtenue.
+ *
+ * Ce qu'un agent apporte est donc AU MIEUX `evidence` : quelque chose est
+ * joint, et reste à lire. Seul un clic humain, porté sur le contenu affiché,
+ * atteint `human_verified`.
+ */
+export type Confidence = 'human_verified' | 'evidence' | 'claimed'
 
 /** Ordre décroissant de force. Sert à l'affichage et aux compteurs. */
 export const CONFIDENCE_ORDER: readonly Confidence[] = [
-  'machine_verified',
   'human_verified',
   'evidence',
   'claimed',
@@ -19,16 +31,6 @@ export const CONFIDENCE_ORDER: readonly Confidence[] = [
 
 /** Nature d'une preuve. Détermine comment elle se rend à l'écran. */
 export type EvidenceKind = 'command_output' | 'diff' | 'url' | 'hash' | 'test_report'
-
-/**
- * Preuves qu'une machine a produites elle-même. Elles seules donnent le degré
- * `machine_verified` : un lien ou un diff attestent d'un changement, pas d'une
- * vérification.
- */
-export const MACHINE_EVIDENCE_KINDS: readonly EvidenceKind[] = [
-  'test_report',
-  'command_output',
-] as const
 
 export const EVIDENCE_KINDS: readonly EvidenceKind[] = [
   'command_output',
@@ -46,6 +48,20 @@ export type Actor = 'human' | 'agent'
 
 export type TaskStatus = 'active' | 'completed'
 
+/**
+ * Force d'une règle ou d'un rejet.
+ *
+ * `proposed` : écrit par un agent, non encore endossé. Consultable, jamais
+ * opposable — un agent ne peut pas se donner à lui-même, ni donner à la
+ * conversation suivante, un interdit que personne n'a validé.
+ *
+ * `accepted` : écrit par l'humain, ou approuvé par lui d'un clic. Autoritaire.
+ *
+ * `declined` : écarté par l'humain. Conservé, car savoir qu'une proposition a
+ * été refusée vaut mieux que la voir reproposée à l'identique.
+ */
+export type Standing = 'proposed' | 'accepted' | 'declined'
+
 export type Evidence = {
   kind: EvidenceKind
   content: string
@@ -58,7 +74,9 @@ export type Constraint = {
   rule: string
   source: Actor
   addedAtVersion: number
+  /** Une règle acceptée peut être levée sans être refusée. */
   active: boolean
+  standing: Standing
 }
 
 export type Step = {
@@ -89,6 +107,7 @@ export type Rejection = {
   reason: string
   source: Actor
   addedAtVersion: number
+  standing: Standing
   at: number
 }
 
@@ -120,6 +139,40 @@ export type AuditEntry = {
 }
 
 /**
+ * Trace d'une écriture d'agent appliquée, retrouvée par le `mutation_id` que
+ * l'appelant a fourni.
+ *
+ * Elle existe pour une raison précise : la spécification WebMCP JETTE le
+ * résultat d'une exécution annulée — l'écriture a lieu, l'agent n'en voit
+ * jamais la réponse. Sans mémoire du `mutation_id`, son réessai naturel crée un
+ * doublon. Avec elle, le réessai retrouve la réponse exacte du premier appel.
+ *
+ * Le texte rendu est conservé tel quel, plutôt que recalculé : c'est la seule
+ * façon que « restituer le résultat du premier appel » soit littéralement vrai
+ * et non « en reconstruire un qui devrait lui ressembler ».
+ */
+export type MutationRecord = {
+  /** Fourni par l'agent, unique dans ce cahier. */
+  id: string
+  operation: string
+  /** Version produite par l'application initiale. */
+  version: number
+  /**
+   * Empreinte de l'intention validée : l'opération et ses arguments, sous une
+   * forme canonique indépendante de l'ordre des clés.
+   *
+   * Sans elle, le jeton seul ne distinguait pas un rejeu d'une COLLISION —
+   * deux travaux différents arrivés sous le même identifiant. Le second était
+   * alors accueilli par la réponse du premier : jamais écrit, et pourtant
+   * accusé réception.
+   */
+  fingerprint: string
+  /** Réponse exacte rendue au premier appel. */
+  result: string
+  at: number
+}
+
+/**
  * Borne du journal d'audit.
  *
  * L'état entier est resérialisé à chaque écriture : un journal sans borne rend
@@ -128,6 +181,16 @@ export type AuditEntry = {
  * silence.
  */
 export const MAX_AUDIT_ENTRIES = 200
+
+/**
+ * Borne des mutations mémorisées.
+ *
+ * Même raison que le journal. La conséquence d'un élagage est bornée elle
+ * aussi : un réessai sur un `mutation_id` oublié redevient une écriture
+ * ordinaire, qui sera refusée pour version périmée plutôt qu'appliquée en
+ * double — l'agent reçoit un refus lisible, pas un doublon silencieux.
+ */
+export const MAX_MUTATION_RECORDS = 100
 
 export type TaskState = {
   /** Figure dans l'URL : /t/:id */
@@ -145,9 +208,16 @@ export type TaskState = {
   decisions: Decision[]
   rejected: Rejection[]
   audit: AuditEntry[]
+  mutations: MutationRecord[]
   createdAt: number
   updatedAt: number
 }
 
-/** Version du schéma persisté. Incrémenter impose d'écrire une migration. */
-export const SCHEMA_VERSION = 1
+/**
+ * Version du schéma persisté. Incrémenter impose d'écrire une migration.
+ *
+ * v2 : les contraintes et rejets portent un `standing`, le cahier porte ses
+ * `mutations`, et `machine_verified` disparaît des degrés atteignables.
+ * v3 : chaque mutation mémorisée porte l'empreinte de son intention.
+ */
+export const SCHEMA_VERSION = 3

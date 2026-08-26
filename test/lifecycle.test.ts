@@ -86,7 +86,7 @@ describe('clôture et réouverture', () => {
     const closée = close()
     // La vérification humaine reste légitime après coup : elle n'ajoute pas de
     // travail, elle en atteste.
-    const vérifiée = verifyEvidence(closée, closée.steps[0].id, ctx(30))
+    const vérifiée = verifyEvidence(closée, closée.steps[0].id, '183 passed', ctx(30))
     expect(vérifiée.steps[0].confidence).toBe('human_verified')
   })
 

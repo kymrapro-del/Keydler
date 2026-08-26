@@ -4,6 +4,7 @@ import { addConstraint, logStep } from '../src/domain/task'
 import { getDb } from '../src/persistence/db'
 import { loadTask } from '../src/persistence/taskRepository'
 import * as store from '../src/store/taskStore'
+import { storeWrite } from './helpers'
 
 /**
  * Écritures concurrentes.
@@ -34,11 +35,15 @@ describe('écritures concurrentes', () => {
     const v = task.version
 
     const résultats = await Promise.allSettled([
-      store.mutateAsAgent('log_step', v, (s) =>
-        logStep(s, { action: 'A', result: 'a', basedOnVersion: v }, 'agent'),
+      store.mutateAsAgent(
+        storeWrite('log_step', v, { n: v }, (s) =>
+          logStep(s, { action: 'A', result: 'a', basedOnVersion: v }, 'agent'),
+        ),
       ),
-      store.mutateAsAgent('log_step', v, (s) =>
-        logStep(s, { action: 'B', result: 'b', basedOnVersion: v }, 'agent'),
+      store.mutateAsAgent(
+        storeWrite('log_step', v, { n: v }, (s) =>
+          logStep(s, { action: 'B', result: 'b', basedOnVersion: v }, 'agent'),
+        ),
       ),
     ])
 
@@ -62,8 +67,10 @@ describe('écritures concurrentes', () => {
 
     const résultats = await Promise.allSettled(
       Array.from({ length: 8 }, (_, i) =>
-        store.mutateAsAgent('log_step', v, (s) =>
-          logStep(s, { action: `étape ${i}`, result: 'r', basedOnVersion: v }, 'agent'),
+        store.mutateAsAgent(
+          storeWrite('log_step', v, { n: v }, (s) =>
+            logStep(s, { action: `étape ${i}`, result: 'r', basedOnVersion: v }, 'agent'),
+          ),
         ),
       ),
     )
@@ -88,8 +95,10 @@ describe('écritures concurrentes', () => {
     let v = task.version
 
     for (let i = 0; i < 5; i++) {
-      const next = await store.mutateAsAgent('log_step', v, (s) =>
-        logStep(s, { action: `étape ${i}`, result: 'r', basedOnVersion: v }, 'agent'),
+      const next = await store.mutateAsAgent(
+        storeWrite('log_step', v, { n: v }, (s) =>
+          logStep(s, { action: `étape ${i}`, result: 'r', basedOnVersion: v }, 'agent'),
+        ),
       )
       v = next.version
     }
@@ -128,8 +137,10 @@ describe('écritures concurrentes', () => {
     const v = task.version
 
     await Promise.allSettled([
-      store.mutateAsAgent('log_step', v, (s) =>
-        logStep(s, { action: 'A', result: 'a', basedOnVersion: v }, 'agent'),
+      store.mutateAsAgent(
+        storeWrite('log_step', v, { n: v }, (s) =>
+          logStep(s, { action: 'A', result: 'a', basedOnVersion: v }, 'agent'),
+        ),
       ),
       store.mutate((s) => addConstraint(s, { rule: 'humaine', basedOnVersion: null }, 'human')),
     ])

@@ -1,305 +1,508 @@
-import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { buildMeasureTask } from '../src/demo/measures'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildDemoTask } from '../src/demo/seed'
 import { renderTaskState } from '../src/domain/render'
-import { completeTask } from '../src/domain/task'
-import { getDb } from '../src/persistence/db'
+import {
+  acceptedRejections,
+  activeConstraints,
+  addConstraint,
+  completeTask,
+  logStep,
+  proposedRejections,
+} from '../src/domain/task'
 import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { resetCalls } from '../src/webmcp/witness'
+import { __resetRegistration, registerTools } from '../src/webmcp/register'
+import { clearDatabase, installModelContext, mutationId, removeModelContext } from './helpers'
 
 /**
- * La vue du banc d'essai.
+ * L'expérience, pas le mécanisme.
  *
- * Ces cas existent parce que huit des quinze constats de la revue vivaient dans
- * ce code, et qu'aucun test ne l'atteignait — ce qui est précisément pourquoi
- * ils avaient tous passé la CI. Chacun ci-dessous verrouille l'un d'eux.
+ * Ces cas décrivent ce qu'une personne voit et peut faire. Ils ne se contentent
+ * pas de chercher des mots : quand un geste doit changer l'état, ils vérifient
+ * l'état.
  */
 
 let root: HTMLElement
-let démonter: () => void
-
-async function viderBase() {
-  const db = await getDb()
-  const tx = db.transaction(['tasks', 'meta'], 'readwrite')
-  await Promise.all([tx.objectStore('tasks').clear(), tx.objectStore('meta').clear(), tx.done])
-}
+let unmount: () => void
 
 /**
  * Laisse une action humaine aboutir, puis force un rendu.
  *
  * Une action passe par la file d'écriture du magasin puis par IndexedDB : un
  * seul tour de boucle ne suffit pas, et attendre trop peu faisait échouer des
- * cas pour une raison qui n'avait rien à voir avec ce qu'ils testaient.
+ * cas pour une raison sans rapport avec ce qu'ils éprouvaient.
  */
-async function rendu(tours = 4) {
-  for (let i = 0; i < tours; i++) await new Promise((r) => setTimeout(r, 0))
+async function settled(turns = 4) {
+  for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
   __renderNow()
 }
+
+/** Remplit un champ comme une personne le remplit : par des événements. */
+function type(id: string, value: string) {
+  const field = root.querySelector<HTMLInputElement>(`#${id}`)
+  if (!field) throw new Error(`champ #${id} absent`)
+  field.value = value
+  field.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function button(label: string): HTMLButtonElement {
+  const found = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
+    (b) => b.textContent?.trim() === label,
+  )
+  if (!found) throw new Error(`bouton « ${label} » absent`)
+  return found
+}
+
+const text = () => root.textContent?.replace(/\s+/g, ' ') ?? ''
 
 beforeEach(async () => {
   store.__resetStore()
   resetCalls()
-  await viderBase()
+  await clearDatabase()
+  // Sans ce chargement, le magasin reste en « loading » et la page n'affiche
+  // que son écran d'attente : on éprouverait un état que personne ne voit.
+  await store.init()
+  history.replaceState(null, '', '/')
   document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
   root = document.querySelector<HTMLElement>('#app')!
-  démonter = mount(root)
+  unmount = mount(root)
 })
 
-afterEach(() => démonter())
+afterEach(() => {
+  unmount()
+  history.replaceState(null, '', '/')
+})
 
-describe('état vide', () => {
-  it('n’émet pas de lien d’évitement sans ancre où aller', async () => {
-    await rendu()
-    // Le lien était rendu inconditionnellement alors que son ancre vit dans la
-    // supervision, absente tant qu'aucun cahier n'est ouvert : le premier arrêt
-    // de tabulation du premier écran ne menait nulle part.
-    expect(root.querySelector('.skip-link')).toBeNull()
-    expect(root.querySelector('#supervision-ancre')).toBeNull()
+/* -------------------------------------------------------------------------- */
+
+describe('première visite', () => {
+  it('explique le bénéfice avant le mécanisme, et sans jargon', async () => {
+    await settled()
+
+    expect(text()).toContain('Give your AI a memory that survives the conversation.')
+    expect(text()).toContain('completed work, rules to follow, and mistakes not to repeat')
+
+    // Le premier écran ne doit pas apprendre le protocole à qui découvre. Un
+    // essai l'a montré crûment : quand la page expliquait le versionnage,
+    // l'agent concluait que sa mission était d'éprouver le mécanisme.
+    for (const jargon of ['based_on_version', 'mutation_id', 'IndexedDB', 'AbortController']) {
+      expect(text(), jargon).not.toContain(jargon)
+    }
   })
 
-  it('ne laisse pas fuir la restitution destinée à l’agent', async () => {
-    // Sans cet `init`, on observerait l'état de CHARGEMENT en croyant observer
-    // l'état vide — deux écrans différents.
-    await store.init()
-    await rendu()
-    expect(root.textContent).not.toContain('NO ACTIVE TASK')
-    expect(root.textContent).toContain('Aucun cahier ouvert')
+  it('offre les deux portes d’entrée, la principale d’abord', async () => {
+    await settled()
+    const primary = root.querySelector<HTMLButtonElement>('.btn--primary')
+    expect(primary?.textContent?.trim()).toBe('Create a task')
+    expect(button('Try the demo')).toBeTruthy()
   })
 })
 
-describe('avec un cahier', () => {
+describe('création d’une tâche', () => {
+  async function openForm() {
+    await settled()
+    button('Create a task').click()
+    await settled()
+  }
+
+  it('donne le focus au premier champ à l’ouverture du formulaire', async () => {
+    await openForm()
+    expect(document.activeElement?.id).toBe('new-title')
+  })
+
+  it('crée une vraie tâche et conserve titre, prochaine action et première règle', async () => {
+    await openForm()
+    type('new-title', 'Refactor the authentication module')
+    type('new-next', 'Map the existing entry points')
+    type('new-rule', 'Never modify the database schema')
+    root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
+    await settled(8)
+
+    const task = store.currentTask()!
+    expect(task.title).toBe('Refactor the authentication module')
+    expect(task.next).toBe('Map the existing entry points')
+
+    // La règle facultative est une contrainte HUMAINE, donc opposable d'emblée
+    // — pas une proposition que l'agent pourrait ignorer.
+    const rules = activeConstraints(task)
+    expect(rules).toHaveLength(1)
+    expect(rules[0].rule).toBe('Never modify the database schema')
+    expect(rules[0].source).toBe('human')
+    expect(rules[0].standing).toBe('accepted')
+  })
+
+  it('place le focus sur le titre après création, et l’y laisse', async () => {
+    await openForm()
+    type('new-title', 'Add rate limiting to our HTTP API')
+    type('new-next', 'Choose the mechanism')
+    root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
+    await settled(8)
+
+    // Une frame planifiée par le magasin s'exécutait APRÈS ce focus et
+    // remplaçait tout le sous-arbre : la personne se retrouvait sans point
+    // d'ancrage, et une aide technique n'annonçait rien.
+    expect(document.activeElement?.tagName).toBe('H1')
+    expect(document.activeElement?.textContent).toBe('Add rate limiting to our HTTP API')
+  })
+
+  it('lie la tâche à /t/:id', async () => {
+    await openForm()
+    type('new-title', 'Ship the invoice export')
+    type('new-next', 'List the current columns')
+    root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
+    await settled(8)
+
+    expect(location.pathname).toBe(`/t/${store.currentTask()!.id}`)
+  })
+
+  it('refuse un titre vide en langage humain, sans rien écrire', async () => {
+    await openForm()
+    type('new-next', 'Map the existing entry points')
+    root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
+    await settled()
+
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('give the task a title')
+    expect(store.currentTask()).toBeNull()
+    expect(document.activeElement?.id).toBe('new-title')
+  })
+
+  it('refuse une prochaine action vide, en disant pourquoi elle compte', async () => {
+    await openForm()
+    type('new-title', 'Something')
+    root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
+    await settled()
+
+    expect(root.querySelector('[role="alert"]')?.textContent).toContain('next action')
+    expect(store.currentTask()).toBeNull()
+  })
+
+  it('conserve la saisie quand le formulaire est refusé', async () => {
+    await openForm()
+    type('new-next', 'Map the existing entry points')
+    root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
+    await settled()
+
+    // Vider les champs à l'échec obligerait à tout retaper pour une virgule.
+    expect(root.querySelector<HTMLInputElement>('#new-next')!.value).toBe(
+      'Map the existing entry points',
+    )
+  })
+
+  it('guide vers l’agent juste après la création, sans expliquer le protocole', async () => {
+    await openForm()
+    type('new-title', 'Refactor the authentication module')
+    type('new-next', 'Map the existing entry points')
+    root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
+    await settled(8)
+
+    const guide = root.querySelector('.card--guide')!
+    expect(guide.textContent).toContain('Ready for your AI')
+    expect(guide.textContent).toContain('Continue this task.')
+
+    // Le guide dit quoi faire, pas comment le protocole fonctionne. Le
+    // versionnage existe toujours — il est sous « Technical details », replié.
+    for (const jargon of ['based_on_version', 'mutation_id', 'IndexedDB']) {
+      expect(guide.textContent, jargon).not.toContain(jargon)
+    }
+    expect(root.querySelector('details.technical')!.textContent).toContain('based_on_version')
+  })
+})
+
+describe('démonstration', () => {
+  it('« Try the demo » charge le cahier préparé', async () => {
+    await settled()
+    button('Try the demo').click()
+    await settled(8)
+
+    const task = store.currentTask()!
+    expect(task.title).toBe(buildDemoTask().title)
+    expect(task.steps.length).toBeGreaterThan(0)
+    expect(location.pathname).toBe(`/t/${task.id}`)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
+
+describe('tableau de bord', () => {
   beforeEach(async () => {
     await store.openPreparedTask(buildDemoTask())
-    await rendu()
+    await settled()
   })
 
-  it('émet le lien d’évitement et son ancre ensemble', () => {
-    expect(root.querySelector('.skip-link')).not.toBeNull()
-    expect(root.querySelector('#supervision-ancre')).not.toBeNull()
+  it('montre les quatre concepts essentiels, dans l’ordre', async () => {
+    const titles = [...root.querySelectorAll('h2')].map((h) => h.textContent?.trim() ?? '')
+    const wanted = ['Next', 'Completed work', 'Rules to follow', 'Don’t retry']
+    for (const w of wanted) expect(titles, w).toContain(w)
+
+    // L'ordre est le sujet : ce qu'il y a à faire vient avant ce qui est fait.
+    const positions = wanted.map((w) => titles.indexOf(w))
+    expect(positions).toEqual([...positions].sort((a, b) => a - b))
   })
 
-  it('n’impose pas de validation native au champ du motif', () => {
-    // `required` faisait bloquer la soumission par le navigateur, si bien que le
-    // domaine n'arbitrait jamais et que son message restait inatteignable.
-    const motif = root.querySelector<HTMLInputElement>('#new-rejection-reason')!
-    expect(motif.required).toBe(false)
-    expect(root.querySelector<HTMLFormElement>('#form-rejet')!.noValidate).toBe(true)
-    expect(root.querySelector<HTMLFormElement>('#form-contrainte')!.noValidate).toBe(true)
+  it('rend la prochaine action dominante', async () => {
+    const hero = root.querySelector('.hero')!
+    expect(hero.textContent).toContain('Implement approach C')
   })
 
-  it('propose de valider les preuves LES PLUS ANCIENNES d’abord', () => {
-    // Prendre les plus récentes rendait les anciennes inatteignables tant que
-    // les nouvelles n'étaient pas traitées, alors que le clic humain est le seul
-    // chemin vers « human_verified ».
-    const première = root.querySelector('[data-verify]')!.closest('li')!
-    // La file exclut à juste titre ce qu'un humain a déjà validé : la plus
-    // ancienne EN ATTENTE, donc, pas la plus ancienne tout court.
-    const attendue = store
-      .currentTask()!
-      .steps.find((s) => s.evidence !== null && s.confidence !== 'human_verified')!
-    expect(première.textContent).toContain(attendue.action)
+  it('nomme les trois degrés de preuve en clair', async () => {
+    expect(text()).toContain('Verified by you')
+    expect(text()).toContain('Evidence attached')
+    expect(text()).toContain('Claimed without evidence')
+    // Le degré retiré ne doit reparaître nulle part.
+    expect(text()).not.toContain('machine_verified')
   })
 
-  it('conserve la saisie quand le domaine refuse la règle', async () => {
-    const champ = root.querySelector<HTMLInputElement>('#new-constraint')!
-    const trop = 'R'.repeat(2500)
-    champ.value = trop
-    champ.dispatchEvent(new Event('input', { bubbles: true }))
-    root.querySelector<HTMLFormElement>('#form-contrainte')!.requestSubmit()
+  it('sépare les propositions d’agent des règles contraignantes', async () => {
+    const pending = proposedRejections(store.currentTask()!)[0]
 
-    await rendu()
-    // Vidé avant la mutation, un texte refusé pour longueur disparaissait et ne
-    // pouvait plus être raccourci.
-    expect(root.querySelector<HTMLInputElement>('#new-constraint')!.value).toHaveLength(2500)
-    expect(root.querySelector('[role="alert"]')?.textContent).toContain('dépasse 2000')
+    const proposals = root.querySelector('.card--proposals')!
+    expect(proposals.textContent).toContain(pending.approach)
+    expect(proposals.textContent).toContain('no effect until you accept them')
+
+    // Et surtout : la proposition ne figure pas dans la section qui condamne.
+    const dontRetry = [...root.querySelectorAll('.card')].find((c) =>
+      c.querySelector('h2')?.textContent?.includes('Don’t retry'),
+    )!
+    expect(dontRetry.textContent).not.toContain(pending.approach)
   })
 
-  it('parle français quand une action humaine échoue', async () => {
-    const champ = root.querySelector<HTMLInputElement>('#new-rejection')!
-    champ.value = 'Approche X'
-    champ.dispatchEvent(new Event('input', { bubbles: true }))
-    root.querySelector<HTMLFormElement>('#form-rejet')!.requestSubmit()
+  it('rend une proposition opposable d’un clic, et pas avant', async () => {
+    const pending = proposedRejections(store.currentTask()!)[0]
+    expect(acceptedRejections(store.currentTask()!).map((r) => r.id)).not.toContain(pending.id)
 
-    await rendu()
-    const alerte = root.querySelector('[role="alert"]')!.textContent!
-    expect(alerte).toContain('le motif ne peut pas être vide')
-    // Aucun message d'agent ne doit atteindre l'écran d'une personne.
-    expect(alerte).not.toContain('resume_task')
-    expect(alerte).not.toContain('INVALID INPUT')
+    root.querySelector<HTMLButtonElement>(`[data-accept="${pending.id}"]`)!.click()
+    await settled()
+
+    expect(acceptedRejections(store.currentTask()!).map((r) => r.id)).toContain(pending.id)
+    expect(store.currentTask()!.audit.at(-1)).toMatchObject({
+      operation: 'accept_rejection',
+      actor: 'human',
+    })
   })
 
-  it('efface le reproche sans détruire le champ en cours de frappe', async () => {
-    const motif = root.querySelector<HTMLInputElement>('#new-rejection-reason')!
-    root.querySelector<HTMLFormElement>('#form-rejet')!.requestSubmit()
-    await rendu()
-    expect(root.querySelector('[role="alert"]')).not.toBeNull()
+  it('écarte une proposition sans l’effacer', async () => {
+    const pending = proposedRejections(store.currentTask()!)[0]
+    root.querySelector<HTMLButtonElement>(`[data-decline="${pending.id}"]`)!.click()
+    await settled()
 
-    const avant = root.querySelector('#new-rejection-reason')
-    motif.value = 'x'
-    motif.dispatchEvent(new Event('input', { bubbles: true }))
-
-    // Le nœud doit être le MÊME : un rendu complet interromprait une
-    // composition et viderait la pile d'annulation du navigateur.
-    expect(root.querySelector('#new-rejection-reason')).toBe(avant)
-    expect(root.querySelector('[role="alert"]')).toBeNull()
+    const after = store.currentTask()!
+    expect(proposedRejections(after)).toHaveLength(0)
+    expect(after.rejected.map((r) => r.id)).toContain(pending.id)
   })
 
-  it('annonce dans une région qui survit au rendu', async () => {
-    const région = document.querySelector('#annonces')!
-    expect(région.textContent).toContain(`Version ${store.currentTask()!.version}`)
-    // La région vit hors de la racine remplacée : sinon elle serait du DOM neuf
-    // à chaque mise à jour, donc muette pour une aide technique.
-    expect(root.contains(région)).toBe(false)
-  })
-})
+  it('affiche le contenu de la preuve AVANT le bouton qui la valide', async () => {
+    const verify = root.querySelector<HTMLButtonElement>('[data-verify]')!
+    const item = verify.closest('li')!
+    const evidence = item.querySelector('pre')
 
-describe('commandes de supervision', () => {
-  beforeEach(async () => {
-    await store.openPreparedTask(buildDemoTask())
-    await rendu()
+    // Sans cela, « vérifié par un humain » ne veut rien dire de plus que
+    // « quelqu'un a cliqué à côté d'un titre ».
+    expect(evidence).not.toBeNull()
+    const step = store.currentTask()!.steps.find((s) => s.id === verify.dataset.verify)!
+    expect(evidence!.textContent).toBe(step.evidence!.content)
   })
 
-  it('lève puis rétablit une contrainte, en incrémentant chaque fois', async () => {
-    const avant = store.currentTask()!.version
-    const bouton = root.querySelector<HTMLButtonElement>('[data-toggle]')!
-    const règle = bouton.closest('li')!.querySelector('.regle__texte')!.textContent!.trim()
+  it('valide une preuve, seul chemin vers « verified »', async () => {
+    const verify = root.querySelector<HTMLButtonElement>('[data-verify]')!
+    const id = verify.dataset.verify!
+    verify.click()
+    await settled()
 
-    bouton.click()
-    await rendu()
-    expect(store.currentTask()!.version).toBe(avant + 1)
+    const step = store.currentTask()!.steps.find((s) => s.id === id)!
+    expect(step.confidence).toBe('human_verified')
+    expect(step.evidence!.verifiedAt).not.toBeNull()
+  })
+
+  it('replie les détails techniques par défaut', async () => {
+    const details = root.querySelector<HTMLDetailsElement>('details.technical')!
+    expect(details.open).toBe(false)
+    expect(details.querySelector('summary')?.textContent?.trim()).toBe('Technical details')
+
+    // Repliés, pas supprimés : tout ce qui servait au diagnostic reste là.
+    const body = details.textContent ?? ''
+    expect(body).toContain('Task ID')
+    expect(body).toContain('getTools()')
+    expect(body).toContain('Lifecycle')
+    expect(body).toContain('resume_task')
+  })
+
+  it('garde le rendu brut de resume_task sous les détails', async () => {
+    const pre = root.querySelector('details.technical pre')!
+    expect(pre.textContent).toBe(renderTaskState(store.currentTask()!))
+  })
+
+  it('ajoute une règle humaine, immédiatement opposable', async () => {
+    const before = activeConstraints(store.currentTask()!).length
+    type('new-constraint', 'Do not touch the router')
+    root.querySelector<HTMLFormElement>('#form-constraint')!.requestSubmit()
+    await settled()
+
+    const rules = activeConstraints(store.currentTask()!)
+    expect(rules).toHaveLength(before + 1)
+    expect(rules.at(-1)).toMatchObject({ source: 'human', standing: 'accepted', active: true })
+  })
+
+  it('lève puis rétablit une règle, et la restitution suit', async () => {
+    const rule = activeConstraints(store.currentTask()!)[0].rule
+    root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
+    await settled()
+
     // Une règle levée disparaît de ce que l'agent relit : c'est tout l'effet.
-    expect(renderTaskState(store.currentTask()!)).not.toContain(règle)
+    expect(renderTaskState(store.currentTask()!)).not.toContain(rule)
 
     root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
-    await rendu()
-    expect(store.currentTask()!.version).toBe(avant + 2)
-    expect(renderTaskState(store.currentTask()!)).toContain(règle)
+    await settled()
+    expect(renderTaskState(store.currentTask()!)).toContain(rule)
   })
 
-  it('valide une preuve, seul chemin vers « vérifié humain »', async () => {
-    const avant = store.currentTask()!.steps.filter((s) => s.confidence === 'human_verified').length
-    root.querySelector<HTMLButtonElement>('[data-verify]')!.click()
-    await rendu()
+  it('condamne une approche, marquée humaine', async () => {
+    type('new-rejection', 'Client-side rotation')
+    type('new-rejection-reason', 'exposes the token to the browser')
+    root.querySelector<HTMLFormElement>('#form-rejection')!.requestSubmit()
+    await settled()
 
-    const après = store.currentTask()!.steps.filter((s) => s.confidence === 'human_verified')
-    expect(après).toHaveLength(avant + 1)
-    // Et la preuve validée quitte la file, sinon on la revaliderait sans fin.
-    expect(après.at(-1)!.evidence?.verifiedAt).not.toBeNull()
+    const last = acceptedRejections(store.currentTask()!).at(-1)!
+    expect(last).toMatchObject({ approach: 'Client-side rotation', source: 'human' })
+    expect(renderTaskState(store.currentTask()!)).toContain('Client-side rotation')
   })
 
-  it('condamne une approche, marquée humaine et rendue à l’agent', async () => {
-    const set = (id: string, v: string) => {
-      const champ = root.querySelector<HTMLInputElement>(`#${id}`)!
-      champ.value = v
-      champ.dispatchEvent(new Event('input', { bubbles: true }))
-    }
-    set('new-rejection', 'Rotation côté client')
-    set('new-rejection-reason', 'expose le jeton au navigateur')
-    root.querySelector<HTMLFormElement>('#form-rejet')!.requestSubmit()
-    await rendu()
+  it('refuse un motif vide, en langage humain', async () => {
+    type('new-rejection', 'Some approach')
+    root.querySelector<HTMLFormElement>('#form-rejection')!.requestSubmit()
+    await settled()
 
-    const rejet = store.currentTask()!.rejected.at(-1)!
-    expect(rejet.source).toBe('human')
-    expect(renderTaskState(store.currentTask()!)).toContain('[human] Rotation côté client')
-    // Les deux champs se vident une fois la mutation acceptée, pas avant.
-    expect(root.querySelector<HTMLInputElement>('#new-rejection')!.value).toBe('')
-    expect(root.querySelector<HTMLInputElement>('#new-rejection-reason')!.value).toBe('')
+    const alert = root.querySelector('[role="alert"]')?.textContent ?? ''
+    expect(alert).toContain('the reason cannot be empty')
+    expect(alert).not.toContain('INVALID INPUT')
   })
 })
+
+/* -------------------------------------------------------------------------- */
+
+describe('supervision pendant qu’un agent travaille', () => {
+  beforeEach(async () => {
+    await store.openPreparedTask(buildDemoTask())
+    await settled()
+  })
+
+  it('rend un refus pour état périmé immédiatement visible, en langage humain', async () => {
+    const stale = store.currentTask()!.version
+
+    // L'humain pose une règle : la version de l'agent devient périmée.
+    await store.mutate((s) =>
+      addConstraint(s, { rule: 'No new dependency', basedOnVersion: null }, 'human'),
+    )
+
+    // L'agent écrit sur la version qu'il croyait courante.
+    await store
+      .mutateAsAgent({
+        operation: 'log_step',
+        basedOnVersion: stale,
+        mutationId: mutationId(),
+        fingerprint: 'stale-fp',
+        mutate: (s) => logStep(s, { action: 'a', result: 'b', basedOnVersion: stale }, 'agent'),
+        render: (n) => `v${n.version}`,
+      })
+      .catch(() => undefined)
+    await settled()
+
+    const notice = root.querySelector('.notice--stale')
+    expect(notice).not.toBeNull()
+    expect(notice!.textContent).toContain(
+      'The task changed while the agent was working. It must read the log again.',
+    )
+    // Ni jargon, ni message destiné à l'agent.
+    expect(notice!.textContent).not.toContain('STALE STATE')
+    expect(notice!.textContent).not.toContain('based_on_version')
+  })
+
+  it('conserve la saisie humaine quand l’agent écrit pendant la frappe', async () => {
+    type('new-constraint', 'Do not touch the rou')
+    const field = root.querySelector<HTMLInputElement>('#new-constraint')!
+    field.focus()
+    field.setSelectionRange(20, 20)
+
+    await store.mutateAsAgent({
+      operation: 'log_step',
+      basedOnVersion: store.currentTask()!.version,
+      mutationId: mutationId(),
+      fingerprint: 'concurrent-fp',
+      mutate: (s) =>
+        logStep(s, { action: 'agent step', result: 'done', basedOnVersion: s.version }, 'agent'),
+      render: (n) => `v${n.version}`,
+    })
+    await settled()
+
+    // Sans le report, l'agent effacerait la règle qu'on rédige contre lui —
+    // soit exactement le moment que ce produit existe pour rendre possible.
+    const after = root.querySelector<HTMLInputElement>('#new-constraint')!
+    expect(after.value).toBe('Do not touch the rou')
+    expect(document.activeElement).toBe(after)
+    expect(after.selectionStart).toBe(20)
+  })
+})
+
+/* -------------------------------------------------------------------------- */
 
 describe('tâche close', () => {
   beforeEach(async () => {
-    let task = buildDemoTask()
-    task = completeTask(task, { summary: 'Terminé.', basedOnVersion: task.version }, 'agent')
-    await store.openPreparedTask(task)
-    await rendu()
+    await store.openPreparedTask(buildDemoTask())
+    await store.mutate((s) =>
+      completeTask(s, { summary: 'Approach C shipped.', basedOnVersion: null }, 'human'),
+    )
+    await settled()
   })
 
-  it('propose la réouverture et retire les formulaires de saisie', () => {
-    expect(root.querySelector('#reopen')).not.toBeNull()
-    // Écrire dans un cahier clos n'a pas de sens : les formulaires disparaissent.
-    expect(root.querySelector('#form-contrainte')).toBeNull()
-    expect(root.querySelector('#form-rejet')).toBeNull()
+  it('annonce la clôture et son résumé', async () => {
+    expect(text()).toContain('Task closed')
+    expect(text()).toContain('Approach C shipped.')
   })
 
-  it('dit à l’agent que la tâche est close, plutôt que de le laisser échouer', () => {
-    const restitué = root.querySelector('pre')!.textContent!
-    expect(restitué).toContain('TASK CLOSED')
-    expect(restitué).not.toContain('WRITE PROTOCOL')
+  it('retire les formulaires d’écriture humaine', async () => {
+    expect(root.querySelector('#form-constraint')).toBeNull()
+    expect(root.querySelector('#form-rejection')).toBeNull()
+  })
+
+  it('laisse l’humain rouvrir ce que l’agent a clos', async () => {
+    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('Rotation still needs measuring')
+    button('Reopen this task').click()
+    await settled()
+
+    const task = store.currentTask()!
+    expect(task.status).toBe('active')
+    expect(task.next).toBe('Rotation still needs measuring')
+    expect(text()).toContain('Rotation still needs measuring')
+    prompt.mockRestore()
   })
 })
 
-describe('état de la couche WebMCP', () => {
-  it('explique quoi activer quand l’API manque, sans paraître cassé', async () => {
-    await store.init()
-    await rendu()
-    // jsdom n'expose pas document.modelContext : c'est le cas du visiteur
-    // ordinaire, et le plus important à soigner.
-    const texte = root.textContent!
-    expect(texte).toContain('chrome://flags/#enable-webmcp-testing')
-    expect(texte).toContain('document.modelContext')
-  })
-})
+/* -------------------------------------------------------------------------- */
 
-describe('démontage', () => {
-  it('n’écrit plus rien après avoir été démonté', async () => {
+describe('détails techniques', () => {
+  it('montre les outils relus par getTools() et la politique de retrait', async () => {
+    const fake = installModelContext()
+    __resetRegistration()
     await store.openPreparedTask(buildDemoTask())
-    await rendu()
-    const avant = root.innerHTML
+    await registerTools()
+    await settled()
 
-    démonter()
-    // Une frame planifiée juste avant le démontage s'exécutait quand même et
-    // écrivait dans une racine devenue nulle.
-    await store.mutate((task) => ({ ...task, version: task.version + 1 }))
-    await new Promise((r) => setTimeout(r, 20))
+    const details = root.querySelector('details.technical')!.textContent ?? ''
+    expect(details).toContain('log_step')
 
-    expect(root.innerHTML).toBe(avant)
-    // `afterEach` rappelle `démonter` : il doit être sans effet la seconde fois.
-    démonter = () => {}
-  })
-})
+    // `getTools()` relit la table du navigateur — une source distincte de la
+    // carte que la page tient. Mais la spécification en fait l'API des agents
+    // DANS la page : l'appeler « ce que voit l'agent » ferait passer une
+    // relecture locale pour une preuve de découverte côté client MCP.
+    expect(details).toContain('Observed through')
+    expect(details).not.toMatch(/what the agent sees/i)
 
-describe('suppression d’un cahier', () => {
-  beforeEach(async () => {
-    await store.openPreparedTask(buildDemoTask())
-    await rendu()
-  })
+    // La politique de retrait est affichée avec ce sur quoi elle se fonde.
+    expect(details).toContain('Lifecycle')
+    expect(details).toContain('static')
+    expect(fake.names()).toContain('log_step')
 
-  it('ne supprime rien si l’on renonce', async () => {
-    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    root.querySelector<HTMLButtonElement>('#supprimer')!.click()
-    await rendu()
-
-    expect(store.currentTask()).not.toBeNull()
-    // La question doit nommer ce qui disparaît, sinon elle ne vaut rien.
-    expect(confirmer.mock.calls[0][0]).toContain('Refactor the authentication module')
-    confirmer.mockRestore()
-  })
-
-  it('supprime et revient à l’état vide quand il ne reste rien', async () => {
-    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    root.querySelector<HTMLButtonElement>('#supprimer')!.click()
-    await rendu()
-
-    expect(store.currentTask()).toBeNull()
-    expect(root.textContent).toContain('Aucun cahier ouvert')
-    confirmer.mockRestore()
-  })
-
-  it('rouvre le cahier suivant s’il en reste un', async () => {
-    const autre = buildMeasureTask(3)
-    await store.openPreparedTask(autre)
-    await store.openPreparedTask(buildDemoTask())
-    await rendu()
-
-    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    root.querySelector<HTMLButtonElement>('#supprimer')!.click()
-    await rendu()
-
-    // Supprimer le cahier ouvert ne doit pas donner l'impression d'avoir tout
-    // perdu quand il en reste.
-    expect(store.currentTask()?.title).toBe(autre.title)
-    confirmer.mockRestore()
+    __resetRegistration()
+    removeModelContext()
   })
 })
