@@ -7,6 +7,7 @@ import './tokens.css'
 import './style.css'
 import { buildDemoTask } from './demo/seed'
 import { renderNoTask, renderTaskState } from './domain/render'
+import { reopenTask } from './domain/task'
 import * as store from './store/taskStore'
 import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCalls } from './webmcp'
 
@@ -110,7 +111,17 @@ function renderTask(): string {
     </div>`
   }
 
-  return `<section>
+  const clôturée =
+    task.status === 'completed'
+      ? `<div class="status status--warn">
+           <p class="status__title">Tâche close</p>
+           <p>Les écritures d'agent sont refusées. L'humain reste maître : il peut rouvrir.</p>
+           <p><button type="button" id="reopen" class="btn">Rouvrir la tâche</button></p>
+         </div>`
+      : ''
+
+  return `${clôturée}
+    <section>
       <h2>Version en direct</h2>
       <p class="version">v${task.version} <span class="muted">— ${task.steps.length} étapes,
         ${task.constraints.filter((c) => c.active).length} contraintes actives,
@@ -140,6 +151,11 @@ function render(): void {
     </main>`
 
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
+  document.querySelector('#reopen')?.addEventListener('click', () => {
+    const motif = window.prompt('Pourquoi rouvrir cette tâche ?')
+    if (!motif?.trim()) return
+    void store.mutate((state) => reopenTask(state, motif))
+  })
   document.querySelector('#seed')?.addEventListener('click', () => {
     void store.openPreparedTask(buildDemoTask())
   })

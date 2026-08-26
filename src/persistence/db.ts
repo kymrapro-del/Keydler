@@ -41,6 +41,28 @@ export function getDb(): Promise<IDBPDatabase<WatchLogDB>> {
           db.createObjectStore('meta')
         }
       },
+
+      /**
+       * Un autre onglet tient encore l'ancienne version ouverte, ce qui
+       * empêche la montée de version. Sans ce signal, `getDb()` resterait en
+       * attente indéfiniment et la page paraîtrait figée sans rien dire.
+       */
+      blocked() {
+        console.warn(
+          '[cahier-de-quart] Mise à jour du stockage bloquée : un autre onglet tient encore l’ancienne version. Fermez-le puis rechargez.',
+        )
+      },
+
+      /** C'est nous qui bloquons une autre page : on lui rend la main. */
+      blocking() {
+        void getDb().then((db) => db.close())
+        dbPromise = null
+      },
+
+      /** Le navigateur a fermé la connexion de son côté (mémoire, onglet inactif). */
+      terminated() {
+        dbPromise = null
+      },
     })
   }
   return dbPromise
