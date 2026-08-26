@@ -110,8 +110,24 @@ export type AuditEntry = {
   outcome: 'applied' | 'refused'
   /** Motif du refus, ou résumé d'une ligne de ce qui a été appliqué. */
   detail: string
+  /**
+   * Nombre de fois que la même tentative s'est répétée d'affilée. Absent vaut
+   * une. Un agent bloqué sur une version périmée réessaie à l'identique : on
+   * compte plutôt que d'empiler.
+   */
+  repeated?: number
   at: number
 }
+
+/**
+ * Borne du journal d'audit.
+ *
+ * L'état entier est resérialisé à chaque écriture : un journal sans borne rend
+ * le coût d'écriture quadratique et finit par peser sur la page. On élague le
+ * plus ancien en disant combien, plutôt que de laisser filer ou de perdre en
+ * silence.
+ */
+export const MAX_AUDIT_ENTRIES = 200
 
 export type TaskState = {
   /** Figure dans l'URL : /t/:id */

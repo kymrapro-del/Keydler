@@ -76,9 +76,11 @@ describe('écritures concurrentes', () => {
     expect(final.version).toBe(v + 1)
     expect(final.steps).toHaveLength(1)
 
-    // Chaque refus laisse une trace : aucun n'est passé sous silence.
+    // Aucun refus n'est passé sous silence, mais sept tentatives identiques
+    // tiennent en une entrée comptée plutôt qu'en sept lignes de bruit.
     const refus = final.audit.filter((e) => e.outcome === 'refused')
-    expect(refus).toHaveLength(7)
+    expect(refus).toHaveLength(1)
+    expect(refus[0].repeated).toBe(7)
   })
 
   it('applique une chaîne d’écritures qui respectent la version rendue', async () => {

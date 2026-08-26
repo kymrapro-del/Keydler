@@ -6,7 +6,7 @@ import {
   requireText,
   requireVersion,
 } from './validate'
-import { MACHINE_EVIDENCE_KINDS } from './types'
+import { MACHINE_EVIDENCE_KINDS, MAX_AUDIT_ENTRIES } from './types'
 import type {
   Actor,
   AuditEntry,
@@ -137,7 +137,7 @@ function apply(state: TaskState, mutation: AppliedMutation, ctx?: MutationContex
     ...mutation.patch,
     version: versionAfter,
     updatedAt: now,
-    audit: [...state.audit, entry],
+    audit: appendAudit(state.audit, entry),
   }
 }
 
@@ -168,7 +168,59 @@ export function recordRefusal(
     detail: input.detail,
     at: now,
   }
-  return { ...state, updatedAt: now, audit: [...state.audit, entry] }
+  return { ...state, updatedAt: now, audit: appendAudit(state.audit, entry) }
+}
+
+/**
+ * Ajoute une entrée au journal.
+ *
+ * Deux protections, l'une contre le bruit, l'autre contre la croissance :
+ * une tentative refusée à l'identique juste après la précédente est comptée et
+ * non empilée — c'est le comportement d'un agent qui insiste sur une version
+ * périmée ; et au-delà de la borne, le plus ancien est élagué en laissant une
+ * entrée qui dit combien, pour qu'aucune disparition ne soit muette.
+ */
+function appendAudit(audit: AuditEntry[], entry: AuditEntry): AuditEntry[] {
+  const last = audit[audit.length - 1]
+  const identique =
+    last !== undefined &&
+    last.outcome === 'refused' &&
+    entry.outcome === 'refused' &&
+    last.operation === entry.operation &&
+    last.actor === entry.actor &&
+    last.basedOnVersion === entry.basedOnVersion &&
+    last.versionBefore === entry.versionBefore
+
+  const suivant = identique
+    ? [
+        ...audit.slice(0, -1),
+        { ...last, repeated: (last.repeated ?? 1) + 1, at: entry.at },
+      ]
+    : [...audit, entry]
+
+  if (suivant.length <= MAX_AUDIT_ENTRIES) return suivant
+
+  const àÉlaguer = suivant.length - MAX_AUDIT_ENTRIES + 1
+  const élagués = suivant.slice(0, àÉlaguer)
+  const déjàÉlaguées = élagués.reduce(
+    (n, e) => n + (e.operation === 'audit_trimmed' ? Number(e.detail.match(/^(\d+)/)?.[1] ?? 0) : 0),
+    0,
+  )
+  const compte = élagués.filter((e) => e.operation !== 'audit_trimmed').length + déjàÉlaguées
+
+  const marque: AuditEntry = {
+    id: `${entry.id}-trim`,
+    operation: 'audit_trimmed',
+    actor: entry.actor,
+    versionBefore: élagués[0].versionBefore,
+    versionAfter: élagués[élagués.length - 1].versionAfter,
+    basedOnVersion: null,
+    outcome: 'applied',
+    detail: `${compte} earlier entries dropped to keep the log bounded`,
+    at: entry.at,
+  }
+
+  return [marque, ...suivant.slice(àÉlaguer)]
 }
 
 function assertActive(state: TaskState, operation: string): void {
