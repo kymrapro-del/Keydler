@@ -27,6 +27,10 @@ nécessaire :
 2. passer le drapeau à **Enabled** ;
 3. relancer Chrome, puis recharger la page.
 
+Sous Arch : `paru -S google-chrome`. Les navigateurs dérivés de Chromium qui
+retirent les fonctions IA de Google — Brave notamment — n'exposent pas
+forcément ce drapeau.
+
 Le bandeau en haut indique si l'outil est exposé. `localhost` étant un contexte
 sécurisé, l'API s'enregistre sans déploiement.
 
@@ -41,25 +45,44 @@ Il est injecté par script au démarrage, ce qui évite de committer dans
 
 ## Le test du J1
 
-C'est le seul test qui compte aujourd'hui. Il se déroule en deux temps.
+Deux tests distincts. Le premier ne demande aucun agent.
 
-**Premier temps — l'outil est-il découvert ?**
+### Test A — l'enregistrement
 
-1. Ouvrir la page dans Chrome, drapeau activé, et vérifier le bandeau vert.
-2. Depuis ChatGPT, avec l'onglet ouvert, écrire : `continue`.
-3. Le compteur de la page doit s'incrémenter en direct.
+1. Chrome avec le drapeau activé, page ouverte, bandeau vert.
+2. DevTools → onglet **Application** → section **WebMCP**.
+3. Sélectionner `resume_task` dans *Available Tools*, cliquer **Run tool**.
 
-**Second temps — le décisif.**
+L'état figé doit s'afficher, et le compteur de la page s'incrémenter. Cela
+prouve que le code est correct — pas qu'un agent appellera l'outil.
 
-4. **Fermer la conversation.** Ne pas la résumer, ne pas la reprendre.
-5. En ouvrir une vierge, onglet toujours ouvert, et écrire à nouveau :
-   `continue`.
+### Test B — la découverte par un agent
 
-> **Critère de sortie.** Dans la conversation neuve, sans aucun historique,
-> l'agent appelle `resume_task` de lui-même.
+ChatGPT desktop n'existe pas sous Linux, et n'est pas nécessaire : un pont MCP
+expose les outils de la page à n'importe quel client MCP.
 
-**Ce qu'il faut relever ensuite.** L'état rendu contient trois contraintes et
-deux approches rejetées. Un agent qui a réellement *lu* ce qu'il a reçu :
+```bash
+claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
+```
+
+1. Onglet ouvert dans Chrome, drapeau activé.
+2. Conversation neuve, sans aucun historique. Écrire : `continue`.
+3. Le compteur de la page doit s'incrémenter.
+
+Puis le décisif : **fermer la conversation**, en ouvrir une vierge, réécrire
+`continue`.
+
+> **Critère de sortie.** Dans la conversation neuve, l'agent va chercher les
+> outils de la page et appelle `resume_task` de lui-même.
+
+Via le pont, l'agent voit deux outils génériques — `list_webmcp_tools` et
+`call_webmcp_tool` — et non les outils de la page directement. C'est un chemin
+de découverte réel, mais différent de celui du navigateur intégré de ChatGPT.
+
+### Ce qu'il faut relever ensuite
+
+L'état rendu contient trois contraintes et deux approches rejetées. Un agent qui
+a réellement *lu* ce qu'il a reçu :
 
 - annonce l'approche C comme prochaine action ;
 - refuse la variante B en citant la rotation des jetons ;
