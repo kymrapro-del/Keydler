@@ -8,7 +8,7 @@ import './style.css'
 import { buildMeasureTask } from './demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from './export/notebook'
 import { buildDemoTask } from './demo/seed'
-import { renderNoTask, renderTaskState } from './domain/render'
+import { renderTaskState } from './domain/render'
 import {
   addConstraint,
   rejectApproach,
@@ -125,10 +125,22 @@ function renderTask(): string {
     return `<div class="status status--error"><p>${escapeHtml(error ?? '')}</p></div>`
   }
   if (!task) {
-    return `<div class="status status--warn">
-      <p class="status__title">Aucun cahier ouvert</p>
-      <p>Les six outils exigent une tâche existante. Ouvrez-en une pour tester.</p>
-      <p><button type="button" id="seed" class="btn">Ouvrir le cahier de démonstration</button></p>
+    // État vide, et première impression pour qui arrive sans rien savoir.
+    // On dit ce que la chose sert à faire et ce qu'il y a à faire — jamais
+    // comment le versionnage fonctionne : un essai a montré qu'un agent lisant
+    // une page qui décrit son mécanisme se met à éprouver le mécanisme.
+    return `<div class="status status--info">
+      <p class="status__title">Aucun cahier ouvert sur cet appareil</p>
+      <p>
+        Un cahier de quart retient ce qu'une conversation perd : les contraintes
+        en vigueur, le travail déjà prouvé, et les approches écartées avec leur
+        motif. Un agent le relit au début de chaque conversation ; vous le
+        corrigez pendant qu'il travaille.
+      </p>
+      <p>
+        Rien ne quitte cet appareil : ni compte, ni serveur.
+      </p>
+      <p><button type="button" id="seed" class="btn">Ouvrir un cahier de démonstration</button></p>
     </div>`
   }
 
@@ -391,7 +403,6 @@ function render(): void {
     actif instanceof HTMLInputElement && actif.id in brouillons ? actif.id : null
   const curseur = champFocalisé ? (actif as HTMLInputElement).selectionStart : null
 
-  const hasTask = store.getSnapshot().task !== null
   root!.innerHTML = `<a class="skip-link" href="#supervision-ancre">Aller aux commandes de supervision</a>
     <main id="contenu">
       <header>
@@ -402,7 +413,6 @@ function render(): void {
       ${renderSupervision()}
       ${renderStatus()}
       ${renderWitness()}
-      ${hasTask ? '' : `<p class="muted">${escapeHtml(renderNoTask().split('\n')[0])}</p>`}
       <footer class="muted">
         <p>
           Cahier de quart — mémoire de tâche persistante et supervisée, exposée
