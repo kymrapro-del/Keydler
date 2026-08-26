@@ -76,17 +76,6 @@ export class ValidationError extends Error {
   }
 }
 
-/** Tâche absente du magasin — lien périmé ou identifiant inventé. */
-export class TaskNotFoundError extends Error {
-  readonly taskId: string
-
-  constructor(taskId: string) {
-    super(`NO SUCH TASK\nNo task with id "${taskId}" exists on this device.`)
-    this.name = 'TaskNotFoundError'
-    this.taskId = taskId
-  }
-}
-
 /**
  * Le cahier a changé sur le disque depuis qu'on l'a lu.
  *

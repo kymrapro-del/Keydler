@@ -33,6 +33,19 @@ export class FutureSchemaError extends Error {
 const asArray = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
 
 /**
+ * Les entrées d'un tableau relu, réduites à celles qui sont des objets.
+ *
+ * Sans ce filtre, un `null` glissé dans `steps`, `rejected` ou `audit` faisait
+ * planter la lecture sur `r.id` — c'est-à-dire que le module écrit pour
+ * survivre à un enregistrement corrompu succombait à la forme la plus banale de
+ * corruption. Une entrée illisible est écartée, le reste du cahier est sauvé.
+ */
+const asObjects = (v: unknown): Record<string, unknown>[] =>
+  asArray<unknown>(v).filter(
+    (e): e is Record<string, unknown> => typeof e === 'object' && e !== null,
+  )
+
+/**
  * Un identifiant est relu tel quel.
  *
  * Une version antérieure le réduisait à un jeu de caractères sûr, pour protéger
@@ -83,7 +96,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
     status: stored.status === 'completed' ? 'completed' : 'active',
     summary: asNullableString(stored.summary),
 
-    constraints: asArray<Record<string, unknown>>(stored.constraints).map((c) => ({
+    constraints: asObjects(stored.constraints).map((c) => ({
       id: asId(c.id),
       rule: asString(c.rule, ''),
       source: c.source === 'human' ? 'human' : 'agent',
@@ -93,7 +106,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       active: c.active !== false,
     })),
 
-    steps: asArray<Record<string, unknown>>(stored.steps).map((s) => ({
+    steps: asObjects(stored.steps).map((s) => ({
       id: asId(s.id),
       action: asString(s.action, ''),
       result: asString(s.result, ''),
@@ -104,7 +117,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       at: asNumber(s.at, now),
     })),
 
-    decisions: asArray<Record<string, unknown>>(stored.decisions).map((d) => ({
+    decisions: asObjects(stored.decisions).map((d) => ({
       id: asId(d.id),
       choice: asString(d.choice, ''),
       rationale: asString(d.rationale, ''),
@@ -113,7 +126,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       at: asNumber(d.at, now),
     })),
 
-    rejected: asArray<Record<string, unknown>>(stored.rejected).map((r) => ({
+    rejected: asObjects(stored.rejected).map((r) => ({
       id: asId(r.id),
       approach: asString(r.approach, ''),
       reason: asString(r.reason, ''),
@@ -122,7 +135,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       at: asNumber(r.at, now),
     })),
 
-    audit: asArray<Record<string, unknown>>(stored.audit).map((a) => ({
+    audit: asObjects(stored.audit).map((a) => ({
       id: asId(a.id),
       operation: asString(a.operation, 'unknown'),
       actor: a.actor === 'human' ? 'human' : 'agent',

@@ -1,5 +1,5 @@
 import { ValidationError } from './errors'
-import { CONFIDENCE_ORDER, EVIDENCE_KINDS, type Confidence, type EvidenceKind } from './types'
+import { EVIDENCE_KINDS, type EvidenceKind } from './types'
 
 /** Longueur au-delà de laquelle un champ libre cesse d'être lisible dans le cahier. */
 const MAX_FIELD_LENGTH = 2000
@@ -52,16 +52,6 @@ export function requireVersion(field: string, value: unknown): number {
     })
   }
   return parsed
-}
-
-export function requireConfidence(field: string, value: unknown): Confidence {
-  if (value === undefined || value === null) return 'claimed'
-  if (typeof value !== 'string' || !CONFIDENCE_ORDER.includes(value as Confidence)) {
-    throw new ValidationError(field, `expected one of: ${CONFIDENCE_ORDER.join(', ')}.`, {
-      code: 'bad-enum',
-    })
-  }
-  return value as Confidence
 }
 
 export function requireEvidenceKind(field: string, value: unknown): EvidenceKind {

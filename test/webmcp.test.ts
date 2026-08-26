@@ -70,6 +70,20 @@ describe('enregistrement', () => {
     expect(registered).toHaveLength(6)
   })
 
+  it('distingue un contexte non sécurisé d’une absence d’API', async () => {
+    const vrai = Object.getOwnPropertyDescriptor(window, 'isSecureContext')
+    Object.defineProperty(window, 'isSecureContext', { configurable: true, value: false })
+
+    // Deux problèmes différents, donc deux consignes différentes pour qui
+    // essaie : servir en HTTPS, ou activer un drapeau.
+    expect(checkAvailability()).toEqual({ supported: false, reason: 'insecure-context' })
+    const state = await registerTools()
+    expect(state.phase).toBe('unsupported')
+
+    if (vrai) Object.defineProperty(window, 'isSecureContext', vrai)
+    else Reflect.deleteProperty(window, 'isSecureContext')
+  })
+
   it('signale l’absence d’API sans lever d’erreur', async () => {
     const state = await registerTools()
     expect(state.phase).toBe('unsupported')

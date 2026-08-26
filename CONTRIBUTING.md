@@ -52,6 +52,16 @@ git stash pop -q
 C'est ce qui a permis de chiffrer sept écritures perdues sous concurrence
 plutôt que de les supposer.
 
+## La couverture sert à trouver du code mort
+
+`npm run coverage`. Une ligne jamais atteinte est d'abord un soupçon de code
+mort, ensuite un test manquant. Trois morceaux l'ont été : `SCHEMA_VERSION`
+qui n'estampillait rien, `TaskNotFoundError` que personne ne construisait, et
+un injecteur de jeton d'origin trial rendu inerte par un correctif antérieur.
+
+Du code mort n'est pas neutre : il décrit un comportement qui n'existe pas, et
+la personne suivante le croira.
+
 ## Mesures
 
 Toute campagne passe par `npm run trial`. Le serveur de développement sert le

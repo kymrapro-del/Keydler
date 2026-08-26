@@ -538,21 +538,6 @@ export function setNext(state: TaskState, next: unknown, ctx?: MutationContext):
   )
 }
 
-export function renameTask(state: TaskState, title: unknown, ctx?: MutationContext): TaskState {
-  const value = requireText('title', title, 200)
-  return apply(
-    state,
-    {
-      operation: 'rename_task',
-      actor: 'human',
-      basedOnVersion: null,
-      detail: value,
-      patch: { title: value },
-    },
-    ctx,
-  )
-}
-
 /* -------------------------------------------------------------------------- */
 /* Lectures dérivées                                                           */
 /* -------------------------------------------------------------------------- */

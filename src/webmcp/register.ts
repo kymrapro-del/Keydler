@@ -1,9 +1,4 @@
-import {
-  checkAvailability,
-  getModelContext,
-  installOriginTrialToken,
-  type Availability,
-} from './adapter'
+import { checkAvailability, getModelContext, type Availability } from './adapter'
 import { ALL_TOOLS } from './tools'
 
 /**
@@ -61,8 +56,6 @@ export async function registerTools(): Promise<RegistrationState> {
   const guarded = globalThis as GuardedGlobal
   if (guarded[GUARD]) return state
   guarded[GUARD] = true
-
-  installOriginTrialToken(import.meta.env.VITE_WEBMCP_ORIGIN_TRIAL_TOKEN)
 
   const availability = checkAvailability()
   const modelContext = availability.supported ? getModelContext() : null
