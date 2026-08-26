@@ -1,12 +1,12 @@
 import { StaleStateError, ValidationError } from './errors'
 import {
   optionalText,
-  requireConfidence,
   requireEvidenceContent,
   requireEvidenceKind,
   requireText,
   requireVersion,
 } from './validate'
+import { MACHINE_EVIDENCE_KINDS } from './types'
 import type {
   Actor,
   AuditEntry,
@@ -214,12 +214,16 @@ export function logStep(
     }
   }
 
-  // Un degré de preuve ne peut pas être auto-attribué au-dessus de ce que
-  // l'écriture démontre : sans preuve jointe, une étape reste « claimed ».
-  let confidence: Confidence = requireConfidence('confidence', input.confidence)
-  if (evidence === null) confidence = 'claimed'
-  else if (confidence === 'claimed') confidence = 'evidence'
-  if (confidence === 'human_verified') confidence = 'evidence'
+  // Le degré n'est jamais déclaré, il est DÉDUIT de ce que l'écriture apporte.
+  // Aucune auto-attribution n'est donc possible : un agent qui voudrait se
+  // dire vérifié doit joindre la sortie d'une machine, et « human_verified »
+  // reste hors d'atteinte — seul un clic humain l'accorde.
+  const confidence: Confidence =
+    evidence === null
+      ? 'claimed'
+      : MACHINE_EVIDENCE_KINDS.includes(evidence.kind)
+        ? 'machine_verified'
+        : 'evidence'
 
   const step: Step = {
     id: newId(),

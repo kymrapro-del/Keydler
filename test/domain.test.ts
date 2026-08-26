@@ -138,8 +138,10 @@ describe('degrés de preuve', () => {
     expect(task.steps[0].confidence).toBe('claimed')
   })
 
-  it('interdit à un agent de s’attribuer « human_verified »', () => {
+  it('ignore tout degré déclaré : il est déduit de la preuve', () => {
     let task = seedTask()
+    // L'agent réclame le degré humain, la preuve est une sortie machine :
+    // il obtient « machine_verified », jamais « human_verified ».
     task = logStep(
       task,
       {
@@ -152,7 +154,41 @@ describe('degrés de preuve', () => {
       'agent',
       ctx(10),
     )
+    expect(task.steps[0].confidence).toBe('machine_verified')
+  })
+
+  it('ne tient pas un lien ou un diff pour une vérification machine', () => {
+    let task = seedTask()
+    task = logStep(
+      task,
+      {
+        action: 'a',
+        result: 'b',
+        evidence: { kind: 'url', content: 'https://example.test/build/42' },
+        confidence: 'machine_verified',
+        basedOnVersion: 1,
+      },
+      'agent',
+      ctx(10),
+    )
+    // Un lien atteste d'un changement, pas d'une vérification.
     expect(task.steps[0].confidence).toBe('evidence')
+  })
+
+  it('accorde « machine_verified » à la sortie d’une machine', () => {
+    let task = seedTask()
+    task = logStep(
+      task,
+      {
+        action: 'a',
+        result: 'b',
+        evidence: { kind: 'command_output', content: '$ npm test\n183 passed' },
+        basedOnVersion: 1,
+      },
+      'agent',
+      ctx(10),
+    )
+    expect(task.steps[0].confidence).toBe('machine_verified')
   })
 
   it('ne passe en « human_verified » que par la validation humaine', () => {

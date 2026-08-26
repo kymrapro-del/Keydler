@@ -20,6 +20,16 @@ export const CONFIDENCE_ORDER: readonly Confidence[] = [
 /** Nature d'une preuve. Détermine comment elle se rend à l'écran. */
 export type EvidenceKind = 'command_output' | 'diff' | 'url' | 'hash' | 'test_report'
 
+/**
+ * Preuves qu'une machine a produites elle-même. Elles seules donnent le degré
+ * `machine_verified` : un lien ou un diff attestent d'un changement, pas d'une
+ * vérification.
+ */
+export const MACHINE_EVIDENCE_KINDS: readonly EvidenceKind[] = [
+  'test_report',
+  'command_output',
+] as const
+
 export const EVIDENCE_KINDS: readonly EvidenceKind[] = [
   'command_output',
   'diff',
