@@ -67,10 +67,35 @@ describe('normalisation à la lecture', () => {
     const task = normalizeTask({
       id: 'x',
       version: 1,
-      steps: [{ id: 's1', action: 'a', result: 'b', evidence: { kind: 'télépathie', content: 'x' } }],
+      steps: [
+        { id: 's1', action: 'a', result: 'b', evidence: { kind: 'télépathie', content: 'x' } },
+      ],
     } as never)
 
     expect(task!.steps[0].evidence).toBeNull()
+  })
+
+  it('réduit un identifiant relu au jeu de caractères qu’on émet', () => {
+    const task = normalizeTask({
+      id: 'x" onload="alert(1)',
+      version: 1,
+      steps: [{ id: 's1"><script>', action: 'a', result: 'b' }],
+      constraints: [{ id: '../../etc', rule: 'R' }],
+    } as never)
+
+    // Ces identifiants finissent dans des attributs HTML et des sélecteurs :
+    // un guillemet qui passe est une porte ouverte.
+    expect(task!.id).toBe('xonloadalert1')
+    expect(task!.steps[0].id).toBe('s1script')
+    expect(task!.constraints[0].id).toBe('etc')
+    for (const id of [task!.id, task!.steps[0].id, task!.constraints[0].id]) {
+      expect(id).toMatch(/^[A-Za-z0-9_-]*$/)
+    }
+  })
+
+  it('borne la longueur d’un identifiant relu', () => {
+    const task = normalizeTask({ id: 'a'.repeat(500), version: 1 } as never)
+    expect(task!.id).toHaveLength(64)
   })
 
   it('refuse un enregistrement écrit par une version plus récente', async () => {

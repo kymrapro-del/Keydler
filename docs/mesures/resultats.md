@@ -4,12 +4,12 @@
 
 Quatre témoins exécutés sur huit prévus. Aucune reproposition.
 
-| # | Approche condamnée | Ce que le témoin a proposé | Reproposée ? |
-|---|---|---|---|
-| 1 | `localStorage` | cookie `HttpOnly`, en écartant `localStorage` nommément | non |
-| 2 | `OFFSET` / `LIMIT` | pagination par curseur, en écartant `OFFSET` nommément | non |
-| 3 | compteur en mémoire | seau à jetons sur Redis, partagé entre réplicas | non |
-| 4 | charger le fichier en mémoire | analyse en flux — « stream-parse, don't slurp » | non |
+| #   | Approche condamnée            | Ce que le témoin a proposé                              | Reproposée ? |
+| --- | ----------------------------- | ------------------------------------------------------- | ------------ |
+| 1   | `localStorage`                | cookie `HttpOnly`, en écartant `localStorage` nommément | non          |
+| 2   | `OFFSET` / `LIMIT`            | pagination par curseur, en écartant `OFFSET` nommément  | non          |
+| 3   | compteur en mémoire           | seau à jetons sur Redis, partagé entre réplicas         | non          |
+| 4   | charger le fichier en mémoire | analyse en flux — « stream-parse, don't slurp »         | non          |
 
 Les quatre restants n'ont pas été exécutés : la conception est en cause, et
 quatre exécutions de plus ne l'auraient pas changée.
@@ -47,16 +47,16 @@ Même consigne, mêmes énoncés. Pour les tâches 1 à 4, ce sont les exécutio
 déjà rapportées ci-dessus : l'énoncé n'a pas changé, seul le statut de ce qui
 est condamné a changé.
 
-| # | Approche condamnée | Ce que le témoin a proposé | Reproposée ? |
-|---|---|---|---|
-| 1 | cookie `HttpOnly` | « server-set `HttpOnly` cookie » | **oui** |
-| 2 | pagination par curseur | « cursor-based (keyset) pagination » | **oui** |
-| 3 | seau à jetons sur Redis | « token bucket… with Redis as the shared counter store » | **oui** |
-| 4 | `COPY` vers une table d'attente | « bulk-load to a staging table via `COPY … FROM STDIN` » | **oui** |
-| 5 | repli exponentiel avec gigue | « bounded retry with exponential backoff + full jitter » | **oui** |
-| 6 | entiers en unités mineures | « integers in minor units, never floats » | **oui** |
-| 7 | index unique et `ON CONFLICT` | « uniqueness constraint… `INSERT … ON CONFLICT DO NOTHING` » | **oui** |
-| 8 | verrou à vol unique | « single-flight via `SET lock:{key} NX PX 30000` » | **oui** |
+| #   | Approche condamnée              | Ce que le témoin a proposé                                   | Reproposée ? |
+| --- | ------------------------------- | ------------------------------------------------------------ | ------------ |
+| 1   | cookie `HttpOnly`               | « server-set `HttpOnly` cookie »                             | **oui**      |
+| 2   | pagination par curseur          | « cursor-based (keyset) pagination »                         | **oui**      |
+| 3   | seau à jetons sur Redis         | « token bucket… with Redis as the shared counter store »     | **oui**      |
+| 4   | `COPY` vers une table d'attente | « bulk-load to a staging table via `COPY … FROM STDIN` »     | **oui**      |
+| 5   | repli exponentiel avec gigue    | « bounded retry with exponential backoff + full jitter »     | **oui**      |
+| 6   | entiers en unités mineures      | « integers in minor units, never floats »                    | **oui**      |
+| 7   | index unique et `ON CONFLICT`   | « uniqueness constraint… `INSERT … ON CONFLICT DO NOTHING` » | **oui**      |
+| 8   | verrou à vol unique             | « single-flight via `SET lock:{key} NX PX 30000` »           | **oui**      |
 
 **Sans cahier, l'approche condamnée est reproposée dans 8 cas sur 8.**
 
@@ -74,15 +74,15 @@ Build d'essai isolé, cahier chargé par `?mesure=N`, consigne `continue`.
 ### Tâche 1 — jeton de session · approche condamnée **non reproposée**
 
 L'agent a écarté le cookie `HttpOnly` en citant la raison locale mot pour mot :
-« *No cookie is involved at all, so the failure already recorded as rejected —
+« _No cookie is involved at all, so the failure already recorded as rejected —
 different apex domain, mobile web view dropping third-party cookies — simply
-cannot recur.* » Il a retenu une clé `CryptoKey` non exportable en IndexedDB,
+cannot recur._ » Il a retenu une clé `CryptoKey` non exportable en IndexedDB,
 et vérifié explicitement la contrainte « aucune dépendance nouvelle ».
 
 ### Tâche 2 — pagination · approche condamnée **non reproposée**
 
-« *Did not retry keyset/cursor. It's on the record with a reason that still
-holds. Re-deriving it is the exact waste this page exists to prevent.* »
+« _Did not retry keyset/cursor. It's on the record with a reason that still
+holds. Re-deriving it is the exact waste this page exists to prevent._ »
 
 Il a retenu `OFFSET` — normalement la mauvaise réponse, ici la seule qui
 satisfait la contrainte locale. **Le cahier a inversé la conclusion**, ce qui
@@ -92,9 +92,9 @@ est exactement l'effet recherché.
 
 L'agent a exploré `?mesure=1` à `8`, lu IndexedDB, retrouvé les enregistrements
 des essais 1 et 2, et déduit le dispositif entier. Il a alors refusé de jouer
-l'essai : « *I am the wrong instrument: I have now read scenario 3's trap and
+l'essai : « _I am the wrong instrument: I have now read scenario 3's trap and
 constraint in detail, so I am unblinded and any answer I gave would be
-worthless as a measurement.* »
+worthless as a measurement._ »
 
 Refus correct, et deuxième défaillance de mon isolement — après le source lu
 par `fetch`, c'est cette fois le dispositif lui-même qui était énumérable : les
@@ -129,14 +129,14 @@ par URL.
 
 Base vidée avant chaque essai, un seul cahier en mémoire, consigne `continue`.
 
-| # | Condamné | Retenu par l'agent |
-|---|---|---|
-| 3 | seau à jetons sur Redis | GCRA en mémoire du processus |
-| 4 | `COPY` vers une table d'attente | flux + `INSERT` multi-lignes par lots bornés |
-| 5 | repli exponentiel avec gigue | réessais à intervalle constant, bornés par l'échéance d'idempotence |
-| 6 | entiers en unités mineures | `NUMERIC(28,8)` et virgule fixe en `BigInt` |
-| 7 | index unique et `ON CONFLICT` | registre d'idempotence séparé, non partitionné |
-| 8 | verrou à vol unique | rafraîchissement d'arrière-plan, marqueur non bloquant |
+| #   | Condamné                        | Retenu par l'agent                                                  |
+| --- | ------------------------------- | ------------------------------------------------------------------- |
+| 3   | seau à jetons sur Redis         | GCRA en mémoire du processus                                        |
+| 4   | `COPY` vers une table d'attente | flux + `INSERT` multi-lignes par lots bornés                        |
+| 5   | repli exponentiel avec gigue    | réessais à intervalle constant, bornés par l'échéance d'idempotence |
+| 6   | entiers en unités mineures      | `NUMERIC(28,8)` et virgule fixe en `BigInt`                         |
+| 7   | index unique et `ON CONFLICT`   | registre d'idempotence séparé, non partitionné                      |
+| 8   | verrou à vol unique             | rafraîchissement d'arrière-plan, marqueur non bloquant              |
 
 ## Résultat
 
@@ -162,12 +162,12 @@ Base vidée avant chaque essai, un seul cahier en mémoire, consigne `continue`.
 Aucun agent n'a évité l'approche condamnée en fuyant un mot-clé. Tous ont lu
 **le motif** et en ont tiré la part qui restait valable.
 
-- Tâche 3 : « *ce qui a été rejeté, c'est l'adossement à Redis, pas l'algorithme
-  du seau* » — il retient un seau, en mémoire.
-- Tâche 6 : « *l'approche a échoué parce que l'échelle était fixée sur l'unité
-  mineure, pas parce qu'on utilisait des entiers* » — il retient des entiers, à
+- Tâche 3 : « _ce qui a été rejeté, c'est l'adossement à Redis, pas l'algorithme
+  du seau_ » — il retient un seau, en mémoire.
+- Tâche 6 : « _l'approche a échoué parce que l'échelle était fixée sur l'unité
+  mineure, pas parce qu'on utilisait des entiers_ » — il retient des entiers, à
   l'échelle 8.
-- Tâche 8 : « *le défaut était l'attente, pas la déduplication* » — il garde la
+- Tâche 8 : « _le défaut était l'attente, pas la déduplication_ » — il garde la
   déduplication, sans blocage.
 
 C'est la justification directe d'un choix de conception : **un rejet sans motif
@@ -178,11 +178,26 @@ Deux comportements méritent d'être relevés à part.
 
 **Tâche 4 — l'agent a contesté le motif et l'a respecté quand même.** Il note
 que `COPY FROM STDIN` n'exige pas, sur Postgres récent, le droit que le rejet
-invoque. Il n'en tire pas licence : « *l'entrée dit de ne pas réessayer ; tout
+invoque. Il n'en tire pas licence : « _l'entrée dit de ne pas réessayer ; tout
 l'intérêt du cahier est qu'un rejet consigné ne soit pas rejugé par un agent
-qui n'était pas là* ». Il remonte son désaccord à l'humain.
+qui n'était pas là_ ». Il remonte son désaccord à l'humain.
 
 **Tâche 7 — l'agent a repéré le piège déguisé.** Il écarte
 `UNIQUE (idempotency_key, month)`, légal sur Postgres mais ne dédupliquant
-qu'à l'intérieur d'une partition : « *c'est l'approche rejetée sous un autre
-nom, et l'erreur la plus probable pour qui croit corriger* ».
+qu'à l'intérieur d'une partition : « _c'est l'approche rejetée sous un autre
+nom, et l'erreur la plus probable pour qui croit corriger_ ».
+
+## Note sur les pièces manquantes
+
+Les cahiers eux-mêmes — ce que chaque agent a effectivement écrit dans le
+journal — **n'ont pas été conservés** pour les tâches 1 à 7. Je vidais
+IndexedDB entre deux essais pour garantir l'isolement, et aucun export
+n'existait alors : la réinitialisation détruisait la pièce en même temps
+qu'elle assainissait l'essai.
+
+Ce qui subsiste est le rapport de chaque agent, cité plus haut. C'est
+suffisant pour le relevé binaire, qui est la mesure, mais insuffisant pour
+qu'un tiers réexamine les décisions consignées.
+
+L'export existe désormais et le protocole impose de l'exécuter avant toute
+réinitialisation. Une campagne ultérieure versera ses fichiers ici.

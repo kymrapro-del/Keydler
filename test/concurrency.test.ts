@@ -111,7 +111,9 @@ describe('écritures concurrentes', () => {
 
     await Promise.all(
       Array.from({ length: 6 }, (_, i) =>
-        store.mutate((s) => addConstraint(s, { rule: `règle ${i}`, basedOnVersion: null }, 'human')),
+        store.mutate((s) =>
+          addConstraint(s, { rule: `règle ${i}`, basedOnVersion: null }, 'human'),
+        ),
       ),
     )
 

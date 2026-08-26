@@ -128,7 +128,8 @@ async function runWrite(
     // Un refus survenu avant le magasin n'y a laissé aucune trace : on la pose
     // ici. Après le magasin, elle existe déjà — la reposer ferait un doublon.
     if (!atteintLeMagasin && store.currentTask()) {
-      const detail = error instanceof Error ? error.message.split('\n')[1] ?? error.message : String(error)
+      const detail =
+        error instanceof Error ? (error.message.split('\n')[1] ?? error.message) : String(error)
       await store.recordAgentRefusal(operation, null, detail)
     }
 
