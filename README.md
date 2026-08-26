@@ -202,13 +202,20 @@ En essai d'origine depuis Chrome 149. En local, aucun jeton n'est nécessaire :
 **Brave fonctionne.** Vérifié sur Brave 151 / Chromium 151 sous Linux : le
 drapeau existe et les deux surfaces sont exposées. Inutile d'installer Chrome.
 
-Pour une origine déployée, poser le jeton dans `.env` — il est injecté par
-script au démarrage, ce qui évite de committer dans `index.html` un jeton lié à
-une seule origine :
+Pour une origine déployée, poser le jeton dans `.env` :
 
 ```
 VITE_WEBMCP_ORIGIN_TRIAL_TOKEN=votre-jeton
 ```
+
+Il est alors écrit dans le `<head>` du HTML **à la construction**, ce qui est la
+voie documentée : `document.modelContext` est un accesseur dont l'existence se
+décide à l'analyse du document, et un jeton posé après coup par script peut ne
+rien débloquer. Sans jeton, aucune balise n'est émise — le dépôt ne contient
+donc jamais de jeton lié à une origine.
+
+L'injection par script demeure en second recours, pour un jeton fourni à
+l'exécution.
 
 ### Faire reprendre un agent
 

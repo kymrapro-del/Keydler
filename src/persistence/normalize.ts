@@ -33,13 +33,19 @@ export class FutureSchemaError extends Error {
 const asArray = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
 
 /**
- * Un identifiant relu est réduit au jeu de caractères qu'on émet nous-mêmes.
- * Il finit dans des attributs HTML et des sélecteurs CSS : y laisser passer un
- * guillemet ou un crochet serait offrir une porte à qui saurait écrire dans
- * IndexedDB.
+ * Un identifiant est relu tel quel.
+ *
+ * Une version antérieure le réduisait à un jeu de caractères sûr, pour protéger
+ * les attributs HTML où il finit interpolé. C'était la mauvaise couche : `id`
+ * est la clé primaire du magasin IndexedDB, et la réécrire à la lecture faisait
+ * qu'un enregistrement ne correspondait plus à sa propre clé — la comparaison
+ * de version de `saveTask` était alors sautée sans erreur, et l'écriture
+ * suivante forkait un second enregistrement.
+ *
+ * L'échappement se fait donc où il doit se faire : au rendu, dans
+ * `src/ui/escape.ts`, qui neutralise guillemets et chevrons.
  */
-const asId = (v: unknown): string =>
-  typeof v === 'string' ? v.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64) : ''
+const asId = (v: unknown): string => (typeof v === 'string' ? v : '')
 const asNumber = (v: unknown, fallback: number): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : fallback
 const asString = (v: unknown, fallback: string): string => (typeof v === 'string' ? v : fallback)

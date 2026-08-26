@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { ConcurrentWriteError, StaleStateError, ValidationError } from '../src/domain/errors'
+import {
+  ConcurrentWriteError,
+  StaleStateError,
+  ValidationError,
+  type ValidationCode,
+} from '../src/domain/errors'
 import { escapeHtml } from '../src/ui/escape'
 import { messageHumain, motifFrancais } from '../src/ui/messages'
 
@@ -16,7 +21,10 @@ describe('messages destinés à l’humain', () => {
     const messages = [
       messageHumain(new StaleStateError(5, 6), 'Ajout de la contrainte'),
       messageHumain(new ConcurrentWriteError(5, 6), 'Ajout de la contrainte'),
-      messageHumain(new ValidationError('reason', 'must not be empty.'), 'Condamnation'),
+      messageHumain(
+        new ValidationError('reason', 'must not be empty.', { code: 'empty' }),
+        'Condamnation',
+      ),
     ]
     for (const m of messages) {
       expect(m).not.toContain('resume_task')
@@ -35,7 +43,7 @@ describe('messages destinés à l’humain', () => {
   it('nomme l’action qui a échoué', () => {
     // Sans cela, le message reste ambigu quand plusieurs commandes sont à l'écran.
     const m = messageHumain(
-      new ValidationError('rule', 'must not be empty.'),
+      new ValidationError('rule', 'must not be empty.', { code: 'empty' }),
       'Levée de la contrainte',
     )
     expect(m.startsWith('Levée de la contrainte')).toBe(true)
@@ -43,36 +51,63 @@ describe('messages destinés à l’humain', () => {
 
   it('traduit les refus qu’une personne peut réellement déclencher', () => {
     const cas: Array<[ValidationError, string]> = [
-      [new ValidationError('reason', 'must not be empty.'), 'le motif ne peut pas être vide.'],
       [
-        new ValidationError('rule', 'must be at most 2000 characters.'),
+        new ValidationError('reason', 'must not be empty.', { code: 'empty' }),
+        'le motif ne peut pas être vide.',
+      ],
+      [
+        new ValidationError('rule', 'must be at most 2000 characters.', {
+          code: 'too-long',
+          max: 2000,
+        }),
         'la règle dépasse 2000 caractères.',
       ],
-      [new ValidationError('approach', 'expected a string.'), "l'approche doit être du texte."],
       [
-        new ValidationError('stepId', 'this step carries no evidence to verify.'),
+        new ValidationError('approach', 'expected a string.', { code: 'not-a-string' }),
+        "l'approche doit être du texte.",
+      ],
+      [
+        new ValidationError('stepId', 'this step carries no evidence to verify.', {
+          code: 'no-evidence',
+        }),
         'cette étape ne porte aucune preuve à valider.',
       ],
       [
-        new ValidationError(
-          'status',
-          'task "X" is already completed; log_step is no longer accepted.',
-          false,
-        ),
+        new ValidationError('status', 'task "X" is already completed.', {
+          code: 'already-completed',
+          retryable: false,
+        }),
         'cette tâche est close. Rouvrez-la si du travail reste à faire.',
       ],
     ]
     for (const [erreur, attendu] of cas) expect(motifFrancais(erreur)).toBe(attendu)
   })
 
-  it('retombe sur le texte d’origine plutôt que d’inventer une phrase', () => {
-    const inconnu = new ValidationError('mystere', 'some brand new rule was broken.')
-    // Mieux vaut un message anglais exact qu'une traduction approximative.
-    expect(motifFrancais(inconnu)).toBe('some brand new rule was broken.')
+  it('couvre chaque code sans repli sur l’anglais', () => {
+    // Le domaine ne peut plus ajouter un motif sans que la compilation le
+    // signale ici : c'est ce que le couplage par chaîne ne garantissait pas.
+    const codes: ValidationCode[] = [
+      'empty',
+      'too-long',
+      'not-a-string',
+      'bad-enum',
+      'bad-version',
+      'not-found',
+      'no-evidence',
+      'already-active',
+      'already-completed',
+    ]
+    for (const code of codes) {
+      const m = motifFrancais(new ValidationError('rule', 'peu importe', { code, max: 10 }))
+      expect(m).not.toContain('peu importe')
+      expect(m.length).toBeGreaterThan(5)
+    }
   })
 
   it('nomme un champ inconnu sans planter', () => {
-    const m = motifFrancais(new ValidationError('champInedit', 'must not be empty.'))
+    const m = motifFrancais(
+      new ValidationError('champInedit', 'must not be empty.', { code: 'empty' }),
+    )
     expect(m).toContain('« champInedit »')
   })
 

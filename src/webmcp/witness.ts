@@ -42,7 +42,11 @@ export type WitnessState = {
 }
 
 export function getWitness(): WitnessState {
-  return { total, refused: refusés, recents }
+  // Une copie, pas le tableau vivant : `recordCall` le mute en place, si bien
+  // qu'un appelant qui retenait l'objet rendu voyait `recents` grandir sous lui
+  // pendant que `total` — copié — restait figé, puis l'inverse une fois la
+  // borne atteinte. Les deux magasins voisins rendent des instantanés stables.
+  return { total, refused: refusés, recents: [...recents] }
 }
 
 export function onCall(listener: () => void): () => void {

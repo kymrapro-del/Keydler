@@ -13,7 +13,33 @@ import type { TaskState } from '../domain/types'
  * telle quelle, et l'état complet en JSON pour rejouer ou vérifier.
  */
 
-const horodatage = (at: number) => new Date(at).toISOString()
+/**
+ * Horodatage robuste.
+ *
+ * `toISOString` lève sur un nombre fini mais hors plage — au-delà de 8,64e15 —
+ * et la relecture ne garde que `Number.isFinite`. Un seul enregistrement
+ * corrompu faisait donc échouer l'export de TOUS les autres, ce qui ruine
+ * exactement la reproductibilité que ce module existe pour offrir.
+ */
+function horodatage(at: number): string {
+  try {
+    return new Date(at).toISOString()
+  } catch {
+    return `horodatage illisible (${at})`
+  }
+}
+
+/**
+ * Clôture de bloc plus longue que la plus longue suite d'accents graves du
+ * contenu. Une preuve peut en contenir — un diff, une sortie de commande — et
+ * une clôture trop courte laisserait le reste du fichier s'interpréter comme du
+ * markdown chez qui vient vérifier une campagne.
+ */
+function bloc(contenu: string, langue = ''): string[] {
+  const plusLongue = (contenu.match(/`+/g) ?? []).reduce((n, m) => Math.max(n, m.length), 0)
+  const clôture = '`'.repeat(Math.max(3, plusLongue + 1))
+  return [`${clôture}${langue}`, contenu, clôture]
+}
 
 function enTete(task: TaskState): string[] {
   return [
@@ -62,9 +88,7 @@ function preuves(task: TaskState): string[] {
     `- Nature : \`${s.evidence!.kind}\``,
     `- Validée : ${s.evidence!.verifiedAt ? horodatage(s.evidence!.verifiedAt) : 'non'}`,
     '',
-    '```',
-    s.evidence!.content,
-    '```',
+    ...bloc(s.evidence!.content),
     '',
   ])
 
@@ -83,20 +107,18 @@ export function buildTaskExport(task: TaskState): string {
     ...enTete(task),
     '## Ce que `resume_task` restitue',
     '',
-    '```',
-    renderTaskState(task, {
-      recentSteps: task.steps.length,
-      recentDecisions: task.decisions.length,
-    }),
-    '```',
+    ...bloc(
+      renderTaskState(task, {
+        recentSteps: task.steps.length,
+        recentDecisions: task.decisions.length,
+      }),
+    ),
     '',
     ...preuves(task),
     ...journal(task),
     '## État complet',
     '',
-    '```json',
-    JSON.stringify(task, null, 2),
-    '```',
+    ...bloc(JSON.stringify(task, null, 2), 'json'),
     '',
   ].join('\n')
 }

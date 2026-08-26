@@ -227,7 +227,7 @@ function assertActive(state: TaskState, operation: string): void {
       'status',
       `task "${state.title}" is already completed; ${operation} is no longer accepted. ` +
         'Retrying will not help — ask the human to reopen the task if work remains.',
-      false,
+      { code: 'already-completed', retryable: false },
     )
   }
 }
@@ -431,9 +431,12 @@ export function completeTask(
 export function verifyEvidence(state: TaskState, stepId: string, ctx?: MutationContext): TaskState {
   const { now } = resolve(ctx)
   const step = state.steps.find((s) => s.id === stepId)
-  if (!step) throw new ValidationError('stepId', `no step with id "${stepId}".`)
+  if (!step)
+    throw new ValidationError('stepId', `no step with id "${stepId}".`, { code: 'not-found' })
   if (!step.evidence) {
-    throw new ValidationError('stepId', 'this step carries no evidence to verify.')
+    throw new ValidationError('stepId', 'this step carries no evidence to verify.', {
+      code: 'no-evidence',
+    })
   }
 
   const steps = state.steps.map((s) =>
@@ -467,7 +470,9 @@ export function setConstraintActive(
 ): TaskState {
   const constraint = state.constraints.find((c) => c.id === constraintId)
   if (!constraint)
-    throw new ValidationError('constraintId', `no constraint with id "${constraintId}".`)
+    throw new ValidationError('constraintId', `no constraint with id "${constraintId}".`, {
+      code: 'not-found',
+    })
 
   const constraints = state.constraints.map((c) => (c.id === constraintId ? { ...c, active } : c))
 
@@ -494,7 +499,10 @@ export function setConstraintActive(
  */
 export function reopenTask(state: TaskState, reason: unknown, ctx?: MutationContext): TaskState {
   if (state.status === 'active') {
-    throw new ValidationError('status', 'this task is already active.', false)
+    throw new ValidationError('status', 'this task is already active.', {
+      code: 'already-active',
+      retryable: false,
+    })
   }
   const motif = requireText('reason', reason, 400)
 
