@@ -30,8 +30,21 @@ import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCall
 const root = document.querySelector<HTMLElement>('#app')
 if (!root) throw new Error('#app introuvable')
 
+/**
+ * Échappement sûr en contenu ET en position d'attribut.
+ *
+ * Les guillemets comptent : un identifiant interpolé dans `data-verify="…"`
+ * qui en contiendrait un sortirait de l'attribut. Les identifiants viennent
+ * normalement de `crypto.randomUUID`, mais ils sont relus depuis IndexedDB, et
+ * une couche d'affichage ne doit jamais faire confiance à ce qu'elle relit.
+ */
 const escapeHtml = (v: string) =>
-  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 
 function renderStatus(): string {
   const { phase, availability, toolNames, error } = getRegistrationState()
@@ -191,7 +204,7 @@ function actionHumaine(muter: Parameters<typeof store.mutate>[0]): void {
   erreurHumaine = null
   void store.mutate(muter).catch((error: unknown) => {
     erreurHumaine = error instanceof Error ? error.message : String(error)
-    render()
+    scheduleRender()
   })
 }
 
@@ -205,7 +218,7 @@ function renderSupervision(): string {
         <span class="chip chip--${c.source}">${c.source}</span>
         <span class="regle__texte">${escapeHtml(c.rule)}</span>
         <span class="muted">v${c.addedAtVersion}</span>
-        <button type="button" class="btn" data-toggle="${c.id}" data-active="${c.active}">
+        <button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}">
           ${c.active ? 'Lever' : 'Rétablir'}
         </button>
       </li>`,
@@ -220,7 +233,7 @@ function renderSupervision(): string {
       (s) => `<li class="regle">
         <span class="chip chip--${s.confidence}">${s.confidence}</span>
         <span class="regle__texte">${escapeHtml(s.action)}</span>
-        <button type="button" class="btn" data-verify="${s.id}">Valider la preuve</button>
+        <button type="button" class="btn" data-verify="${escapeHtml(s.id)}">Valider la preuve</button>
       </li>`,
     )
     .join('')
@@ -397,10 +410,29 @@ function render(): void {
   })
 }
 
+/**
+ * Rendu groupé.
+ *
+ * Une écriture d'agent notifiait deux fois — une par le magasin, une par le
+ * témoin d'appels — et la page se redessinait deux fois de suite. Sans
+ * conséquence sur l'état, mais visible à l'œil pendant une rafale d'écritures,
+ * et deux fois plus d'occasions de perdre le curseur de la personne qui tape.
+ */
+let renduPrevu = false
+
+function scheduleRender(): void {
+  if (renduPrevu) return
+  renduPrevu = true
+  queueMicrotask(() => {
+    renduPrevu = false
+    render()
+  })
+}
+
 render()
-onRegistrationChange(render)
-onCall(render)
-store.subscribe(render)
+onRegistrationChange(scheduleRender)
+onCall(scheduleRender)
+store.subscribe(scheduleRender)
 
 /**
  * `?mesure=N` charge la tâche de mesure N au chargement de la page.
