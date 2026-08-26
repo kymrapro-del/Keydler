@@ -2,6 +2,7 @@ import { ConcurrentWriteError, StaleStateError } from '../domain/errors'
 import { createTask, recordRefusal } from '../domain/task'
 import type { Actor, TaskState } from '../domain/types'
 import {
+  deleteTask,
   listTasks,
   loadLastTask,
   loadTask,
@@ -79,23 +80,6 @@ export async function init(taskId?: string): Promise<void> {
   return initPromise
 }
 
-/** Force un rechargement depuis IndexedDB, en ignorant le cache d'init. */
-export async function reload(taskId?: string): Promise<void> {
-  initPromise = null
-  return init(taskId ?? snapshot.task?.id)
-}
-
-export async function openTask(id: string): Promise<TaskState | undefined> {
-  const task = await loadTask(id)
-  if (task) {
-    await setLastTaskId(id)
-    setSnapshot({ status: 'ready', task, error: null })
-  } else {
-    setSnapshot({ status: 'empty', task: null, error: null })
-  }
-  return task
-}
-
 export async function createAndOpenTask(title: string, next?: string): Promise<TaskState> {
   const task = createTask({ title, next })
   await saveTask(task)
@@ -108,6 +92,29 @@ export async function openPreparedTask(task: TaskState): Promise<TaskState> {
   await saveTask(task)
   setSnapshot({ status: 'ready', task, error: null })
   return task
+}
+
+/**
+ * Supprime le cahier ouvert et rouvre le suivant s'il en reste un.
+ *
+ * Le protocole de mesure impose de repartir d'une base vide entre deux essais.
+ * Sans ce chemin, cela n'était possible qu'en ouvrant les outils de
+ * développement — ce que le protocole se reprochait à lui-même.
+ */
+export async function deleteCurrentTask(): Promise<void> {
+  const current = snapshot.task
+  if (!current) return
+
+  await enqueue(async () => {
+    await deleteTask(current.id)
+    const suivant = await loadLastTask()
+    if (suivant) {
+      await setLastTaskId(suivant.id)
+      setSnapshot({ status: 'ready', task: suivant, error: null })
+    } else {
+      setSnapshot({ status: 'empty', task: null, error: null })
+    }
+  })
 }
 
 export async function allTasks(): Promise<TaskState[]> {

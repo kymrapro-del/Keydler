@@ -1,4 +1,5 @@
-import { beforeEach, afterEach, describe, expect, it } from 'vitest'
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+import { buildMeasureTask } from '../src/demo/measures'
 import { buildDemoTask } from '../src/demo/seed'
 import { renderTaskState } from '../src/domain/render'
 import { completeTask } from '../src/domain/task'
@@ -256,5 +257,49 @@ describe('démontage', () => {
     expect(root.innerHTML).toBe(avant)
     // `afterEach` rappelle `démonter` : il doit être sans effet la seconde fois.
     démonter = () => {}
+  })
+})
+
+describe('suppression d’un cahier', () => {
+  beforeEach(async () => {
+    await store.openPreparedTask(buildDemoTask())
+    await rendu()
+  })
+
+  it('ne supprime rien si l’on renonce', async () => {
+    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    root.querySelector<HTMLButtonElement>('#supprimer')!.click()
+    await rendu()
+
+    expect(store.currentTask()).not.toBeNull()
+    // La question doit nommer ce qui disparaît, sinon elle ne vaut rien.
+    expect(confirmer.mock.calls[0][0]).toContain('Refactor the authentication module')
+    confirmer.mockRestore()
+  })
+
+  it('supprime et revient à l’état vide quand il ne reste rien', async () => {
+    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    root.querySelector<HTMLButtonElement>('#supprimer')!.click()
+    await rendu()
+
+    expect(store.currentTask()).toBeNull()
+    expect(root.textContent).toContain('Aucun cahier ouvert')
+    confirmer.mockRestore()
+  })
+
+  it('rouvre le cahier suivant s’il en reste un', async () => {
+    const autre = buildMeasureTask(3)
+    await store.openPreparedTask(autre)
+    await store.openPreparedTask(buildDemoTask())
+    await rendu()
+
+    const confirmer = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    root.querySelector<HTMLButtonElement>('#supprimer')!.click()
+    await rendu()
+
+    // Supprimer le cahier ouvert ne doit pas donner l'impression d'avoir tout
+    // perdu quand il en reste.
+    expect(store.currentTask()?.title).toBe(autre.title)
+    confirmer.mockRestore()
   })
 })

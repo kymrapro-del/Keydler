@@ -1,4 +1,4 @@
-import { activeConstraints, evidenceCounts } from './task'
+import { activeConstraints, provenStepCount } from './task'
 import type { Confidence, TaskState } from './types'
 
 /**
@@ -56,8 +56,9 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   const clipScale = options.clipScale ?? 1
   const c = (max: number) => Math.max(24, Math.round(max * clipScale))
 
-  const counts = evidenceCounts(state)
-  const proven = state.steps.length - counts.claimed
+  // Une seule définition de « travail prouvé » : le domaine la porte, le rendu
+  // ne la refait pas. Elle existait ici en double, écrite autrement.
+  const proven = provenStepCount(state)
   const active = activeConstraints(state)
 
   const lines: string[] = []

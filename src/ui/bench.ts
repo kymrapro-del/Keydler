@@ -157,6 +157,7 @@ function renderTask(): string {
       <p class="exports">
         <button type="button" id="export-un" class="btn">Exporter ce cahier</button>
         <button type="button" id="export-tous" class="btn">Exporter tous les cahiers</button>
+        <button type="button" id="supprimer" class="btn btn--danger">Supprimer ce cahier</button>
       </p>
       <p class="version">v${task.version} <span class="muted">— ${task.steps.length} étapes,
         ${task.constraints.filter((c) => c.active).length} contraintes actives,
@@ -536,6 +537,22 @@ function render(): void {
         scheduleRender()
       },
     )
+  })
+
+  root?.querySelector('#supprimer')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    // Destructif et irréversible : on demande, en nommant ce qui disparaît.
+    const sûr = window.confirm(
+      `Supprimer définitivement « ${task.title} » (v${task.version}) ?\n\n` +
+        "Exportez-le d'abord si vous voulez en garder trace.",
+    )
+    if (!sûr) return
+    erreurHumaine = null
+    void store.deleteCurrentTask().catch((error: unknown) => {
+      erreurHumaine = messageHumain(error, 'Suppression du cahier')
+      scheduleRender()
+    })
   })
 
   document.querySelector('#reopen')?.addEventListener('click', () => {

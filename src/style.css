@@ -348,3 +348,12 @@ footer {
   white-space: nowrap;
   border: 0;
 }
+
+.btn--danger {
+  color: var(--c-error-text);
+  border-color: var(--c-error-text);
+}
+
+.btn--danger:hover {
+  background: var(--c-error-bg);
+}

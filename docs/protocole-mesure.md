@@ -39,7 +39,11 @@ tout le code par `fetch` et l'isolement est illusoire. Voir
 
 ## Récolte des journaux
 
-**Exporter avant de réinitialiser.** Le bouton « Exporter ce cahier » produit un
+Le bouton **« Supprimer ce cahier »** repart d'une base vide entre deux essais,
+sans passer par les outils de développement. Il demande confirmation en nommant
+ce qui disparaît.
+
+**Exporter avant de supprimer.** Le bouton « Exporter ce cahier » produit un
 fichier portant la restitution compacte, **le contenu intégral des preuves** —
 que la restitution ne montre jamais — le journal des écritures avec les refus,
 et l'état complet en JSON. « Exporter tous les cahiers » récolte l'appareil
