@@ -433,6 +433,10 @@ export function setConstraintActive(
 }
 
 export function setNext(state: TaskState, next: unknown, ctx?: MutationContext): TaskState {
+  // Une tâche close n'a pas de suite : `complete_task` met `next` à null et la
+  // restitution montre le résumé à sa place. Laisser poser une prochaine action
+  // produirait un état que rien n'affiche et que personne ne reprendrait.
+  assertActive(state, 'set_next')
   const value = optionalText('next', next, 400)
   return apply(
     state,

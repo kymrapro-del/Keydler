@@ -9,6 +9,7 @@ import {
   recordRefusal,
   rejectApproach,
   setConstraintActive,
+  setNext,
   verifyEvidence,
 } from '../src/domain/task'
 import { estimateTokens, renderTaskState, TOKEN_BUDGET } from '../src/domain/render'
@@ -223,6 +224,15 @@ describe('cycle de vie', () => {
     expect(() =>
       logStep(task, { action: 'a', result: 'b', basedOnVersion: 2 }, 'agent', ctx(20)),
     ).toThrow(ValidationError)
+  })
+
+  it('refuse de poser une prochaine action sur une tâche close', () => {
+    let task = seedTask()
+    task = completeTask(task, { summary: 'Terminé.', basedOnVersion: 1 }, 'agent', ctx(10))
+    // Sinon on obtiendrait un état que la restitution n'affiche pas — elle
+    // montre le résumé à la place — et que personne ne reprendrait.
+    expect(() => setNext(task, 'encore une chose', ctx(20))).toThrow(ValidationError)
+    expect(task.next).toBeNull()
   })
 
   it('exige un motif pour tout rejet', () => {

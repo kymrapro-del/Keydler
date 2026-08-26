@@ -120,6 +120,17 @@ export function currentTask(): TaskState | null {
 }
 
 /**
+ * Panne de stockage, le cas échéant.
+ *
+ * Distinguer « aucun cahier » de « le stockage est cassé » n'est pas un détail :
+ * en navigation privée, IndexedDB peut être restreint, et confondre les deux
+ * ferait croire à un agent — et à un juge — que le cahier est simplement vide.
+ */
+export function storageFailure(): string | null {
+  return snapshot.status === 'error' ? snapshot.error : null
+}
+
+/**
  * File d'écriture.
  *
  * Un agent émet volontiers plusieurs appels d'outil en parallèle. Sans
