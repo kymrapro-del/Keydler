@@ -106,7 +106,7 @@ function renderWitness(): string {
     )
     .join('')
 
-  return `<div class="witness">
+  return `<div class="witness" role="status" aria-live="polite">
       <span class="witness__count">${calls.length}</span>
       <span class="witness__label">
         appel${calls.length > 1 ? 's' : ''} d'outil<br />
@@ -148,7 +148,7 @@ function renderTask(): string {
         <button type="button" id="export-un" class="btn">Exporter ce cahier</button>
         <button type="button" id="export-tous" class="btn">Exporter tous les cahiers</button>
       </p>
-      <p class="version">v${task.version} <span class="muted">— ${task.steps.length} étapes,
+      <p class="version" aria-live="polite" aria-atomic="true">v${task.version} <span class="muted">— ${task.steps.length} étapes,
         ${task.constraints.filter((c) => c.active).length} contraintes actives,
         ${task.rejected.length} rejets</span></p>
     </section>
@@ -223,7 +223,8 @@ function renderSupervision(): string {
         <span class="chip chip--${c.source}">${c.source}</span>
         <span class="regle__texte">${escapeHtml(c.rule)}</span>
         <span class="muted">v${c.addedAtVersion}</span>
-        <button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}">
+        <button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}"
+                aria-label="${c.active ? 'Lever' : 'Rétablir'} la contrainte : ${escapeHtml(c.rule)}">
           ${c.active ? 'Lever' : 'Rétablir'}
         </button>
       </li>`,
@@ -238,7 +239,8 @@ function renderSupervision(): string {
       (s) => `<li class="regle">
         <span class="chip chip--${s.confidence}">${s.confidence}</span>
         <span class="regle__texte">${escapeHtml(s.action)}</span>
-        <button type="button" class="btn" data-verify="${escapeHtml(s.id)}">Valider la preuve</button>
+        <button type="button" class="btn" data-verify="${escapeHtml(s.id)}"
+                aria-label="Valider la preuve de : ${escapeHtml(s.action)}">Valider la preuve</button>
       </li>`,
     )
     .join('')
@@ -272,11 +274,13 @@ function renderSupervision(): string {
   const saisieRejet =
     task.status === 'active'
       ? `<form id="form-rejet" class="saisie">
-           <label for="new-rejection">Condamner une approche</label>
+           <label for="new-rejection">Approche à condamner</label>
            <input id="new-rejection" type="text" autocomplete="off"
                   placeholder="Approche à écarter" />
+           <label for="new-rejection-reason">Motif du rejet, obligatoire</label>
            <input id="new-rejection-reason" type="text" autocomplete="off"
-                  placeholder="Motif — obligatoire" />
+                  required aria-required="true"
+                  placeholder="Pourquoi elle a échoué" />
            <button type="submit" class="btn">Rejeter</button>
          </form>
          <p class="muted">
@@ -286,7 +290,7 @@ function renderSupervision(): string {
       : ''
 
   const erreur = erreurHumaine
-    ? `<div class="status status--error"><p>${escapeHtml(erreurHumaine)}</p></div>`
+    ? `<div class="status status--error" role="alert"><p>${escapeHtml(erreurHumaine)}</p></div>`
     : ''
 
   // Une étape sans aucune preuve est celle qui mérite le plus l'attention
@@ -304,9 +308,9 @@ function renderSupervision(): string {
     )
     .join('')
 
-  return `<section class="supervision">
+  return `<section class="supervision" aria-labelledby="titre-supervision">
       ${erreur}
-      <h2>Contraintes</h2>
+      <h2 id="titre-supervision" tabindex="-1"><span id="supervision-ancre"></span>Contraintes</h2>
       <ul class="regles">${contraintes || '<li class="muted">Aucune.</li>'}</ul>
       ${saisieContrainte}
       <h2>Approches condamnées</h2>
@@ -388,7 +392,8 @@ function render(): void {
   const curseur = champFocalisé ? (actif as HTMLInputElement).selectionStart : null
 
   const hasTask = store.getSnapshot().task !== null
-  root!.innerHTML = `<main>
+  root!.innerHTML = `<a class="skip-link" href="#supervision-ancre">Aller aux commandes de supervision</a>
+    <main id="contenu">
       <header>
         <h1>${escapeHtml(titre())}</h1>
         <p class="muted">${escapeHtml(sousTitre())}</p>
