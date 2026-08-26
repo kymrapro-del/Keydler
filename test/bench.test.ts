@@ -1,5 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it } from 'vitest'
 import { buildDemoTask } from '../src/demo/seed'
+import { renderTaskState } from '../src/domain/render'
+import { completeTask } from '../src/domain/task'
 import { getDb } from '../src/persistence/db'
 import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
@@ -22,9 +24,15 @@ async function viderBase() {
   await Promise.all([tx.objectStore('tasks').clear(), tx.objectStore('meta').clear(), tx.done])
 }
 
-/** Laisse passer les micro-tâches ET la frame que `scheduleRender` attend. */
-async function rendu() {
-  await new Promise((r) => setTimeout(r, 0))
+/**
+ * Laisse une action humaine aboutir, puis force un rendu.
+ *
+ * Une action passe par la file d'écriture du magasin puis par IndexedDB : un
+ * seul tour de boucle ne suffit pas, et attendre trop peu faisait échouer des
+ * cas pour une raison qui n'avait rien à voir avec ce qu'ils testaient.
+ */
+async function rendu(tours = 4) {
+  for (let i = 0; i < tours; i++) await new Promise((r) => setTimeout(r, 0))
   __renderNow()
 }
 
@@ -142,5 +150,93 @@ describe('avec un cahier', () => {
     // La région vit hors de la racine remplacée : sinon elle serait du DOM neuf
     // à chaque mise à jour, donc muette pour une aide technique.
     expect(root.contains(région)).toBe(false)
+  })
+})
+
+describe('commandes de supervision', () => {
+  beforeEach(async () => {
+    await store.openPreparedTask(buildDemoTask())
+    await rendu()
+  })
+
+  it('lève puis rétablit une contrainte, en incrémentant chaque fois', async () => {
+    const avant = store.currentTask()!.version
+    const bouton = root.querySelector<HTMLButtonElement>('[data-toggle]')!
+    const règle = bouton.closest('li')!.querySelector('.regle__texte')!.textContent!.trim()
+
+    bouton.click()
+    await rendu()
+    expect(store.currentTask()!.version).toBe(avant + 1)
+    // Une règle levée disparaît de ce que l'agent relit : c'est tout l'effet.
+    expect(renderTaskState(store.currentTask()!)).not.toContain(règle)
+
+    root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
+    await rendu()
+    expect(store.currentTask()!.version).toBe(avant + 2)
+    expect(renderTaskState(store.currentTask()!)).toContain(règle)
+  })
+
+  it('valide une preuve, seul chemin vers « vérifié humain »', async () => {
+    const avant = store.currentTask()!.steps.filter((s) => s.confidence === 'human_verified').length
+    root.querySelector<HTMLButtonElement>('[data-verify]')!.click()
+    await rendu()
+
+    const après = store.currentTask()!.steps.filter((s) => s.confidence === 'human_verified')
+    expect(après).toHaveLength(avant + 1)
+    // Et la preuve validée quitte la file, sinon on la revaliderait sans fin.
+    expect(après.at(-1)!.evidence?.verifiedAt).not.toBeNull()
+  })
+
+  it('condamne une approche, marquée humaine et rendue à l’agent', async () => {
+    const set = (id: string, v: string) => {
+      const champ = root.querySelector<HTMLInputElement>(`#${id}`)!
+      champ.value = v
+      champ.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+    set('new-rejection', 'Rotation côté client')
+    set('new-rejection-reason', 'expose le jeton au navigateur')
+    root.querySelector<HTMLFormElement>('#form-rejet')!.requestSubmit()
+    await rendu()
+
+    const rejet = store.currentTask()!.rejected.at(-1)!
+    expect(rejet.source).toBe('human')
+    expect(renderTaskState(store.currentTask()!)).toContain('[human] Rotation côté client')
+    // Les deux champs se vident une fois la mutation acceptée, pas avant.
+    expect(root.querySelector<HTMLInputElement>('#new-rejection')!.value).toBe('')
+    expect(root.querySelector<HTMLInputElement>('#new-rejection-reason')!.value).toBe('')
+  })
+})
+
+describe('tâche close', () => {
+  beforeEach(async () => {
+    let task = buildDemoTask()
+    task = completeTask(task, { summary: 'Terminé.', basedOnVersion: task.version }, 'agent')
+    await store.openPreparedTask(task)
+    await rendu()
+  })
+
+  it('propose la réouverture et retire les formulaires de saisie', () => {
+    expect(root.querySelector('#reopen')).not.toBeNull()
+    // Écrire dans un cahier clos n'a pas de sens : les formulaires disparaissent.
+    expect(root.querySelector('#form-contrainte')).toBeNull()
+    expect(root.querySelector('#form-rejet')).toBeNull()
+  })
+
+  it('dit à l’agent que la tâche est close, plutôt que de le laisser échouer', () => {
+    const restitué = root.querySelector('pre')!.textContent!
+    expect(restitué).toContain('TASK CLOSED')
+    expect(restitué).not.toContain('WRITE PROTOCOL')
+  })
+})
+
+describe('état de la couche WebMCP', () => {
+  it('explique quoi activer quand l’API manque, sans paraître cassé', async () => {
+    await store.init()
+    await rendu()
+    // jsdom n'expose pas document.modelContext : c'est le cas du visiteur
+    // ordinaire, et le plus important à soigner.
+    const texte = root.textContent!
+    expect(texte).toContain('chrome://flags/#enable-webmcp-testing')
+    expect(texte).toContain('document.modelContext')
   })
 })
