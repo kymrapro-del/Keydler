@@ -19,12 +19,14 @@ function originTrialMeta(token: string | undefined): Plugin {
     name: 'webmcp-origin-trial',
     transformIndexHtml(html) {
       if (!token) return html
-      // En tête du `<head>`, avant toute balise de script : un jeton d'origin
-      // trial doit être lu le plus tôt possible dans l'analyse du document.
-      return html.replace(
-        /<head>/,
-        `<head>\n    <meta http-equiv="origin-trial" content="${token}" />`,
-      )
+      const meta = `<meta http-equiv="origin-trial" content="${token}" />`
+      // Juste après la déclaration d'encodage, qui doit rester en tête, et
+      // avant toute balise de script : un jeton d'origin trial doit être lu le
+      // plus tôt possible dans l'analyse du document.
+      const charset = html.match(/<meta\s+charset=[^>]*>/i)
+      return charset
+        ? html.replace(charset[0], `${charset[0]}\n    ${meta}`)
+        : html.replace(/<head>/i, `<head>\n    ${meta}`)
     },
   }
 }
