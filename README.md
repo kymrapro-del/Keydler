@@ -175,7 +175,13 @@ travaille :
   périme donc celle sur laquelle l'agent croit travailler ;
 - **lever ou rétablir** une contrainte — une contrainte levée disparaît de ce
   que `resume_task` restitue ;
+- **condamner une approche**, motif obligatoire — un rejet sans motif n'apprend
+  rien à qui le lira ensuite, et serait retenté faute de savoir pourquoi il a
+  échoué ;
 - **valider une preuve d'un clic**, seul chemin vers le degré `human_verified`.
+
+Une action humaine qui échoue le dit à l'écran, et conserve la saisie : sans
+cela, le clic ne produirait rien de visible et l'interface paraîtrait cassée.
 
 La saisie en cours **survit aux écritures de l'agent** : texte, position du
 curseur et focus sont reportés à travers le redessin. Sans cela, l'agent

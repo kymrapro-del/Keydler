@@ -7,7 +7,13 @@ import './tokens.css'
 import './style.css'
 import { buildDemoTask } from './demo/seed'
 import { renderNoTask, renderTaskState } from './domain/render'
-import { addConstraint, reopenTask, setConstraintActive, verifyEvidence } from './domain/task'
+import {
+  addConstraint,
+  rejectApproach,
+  reopenTask,
+  setConstraintActive,
+  verifyEvidence,
+} from './domain/task'
 import * as store from './store/taskStore'
 import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCalls } from './webmcp'
 
@@ -158,14 +164,35 @@ function sousTitre(): string {
 }
 
 /**
- * Brouillon de la contrainte en cours de saisie.
+ * Saisies en cours, conservées hors du rendu.
  *
- * Il vit hors du rendu à dessein. La page se redessine à chaque écriture
- * d'agent, et c'est précisément ce qui doit arriver pendant qu'un humain tape
- * une contrainte : sans ce report, sa saisie serait effacée par l'agent qu'il
- * est en train de contredire.
+ * La page se redessine à chaque écriture d'agent, et c'est précisément ce qui
+ * doit arriver pendant qu'un humain tape : sans ce report, l'agent effacerait
+ * la contrainte qu'on est en train de rédiger contre lui.
  */
-let brouillon = ''
+const brouillons: Record<string, string> = {
+  'new-constraint': '',
+  'new-rejection': '',
+  'new-rejection-reason': '',
+}
+
+/**
+ * Dernier échec d'une action humaine.
+ *
+ * Une action humaine peut échouer — un motif de rejet vide, par exemple, est
+ * refusé par le domaine. Sans cet affichage, le clic ne produirait rien de
+ * visible et l'humain croirait l'interface cassée.
+ */
+let erreurHumaine: string | null = null
+
+/** Exécute une action humaine en rendant son échec visible. */
+function actionHumaine(muter: Parameters<typeof store.mutate>[0]): void {
+  erreurHumaine = null
+  void store.mutate(muter).catch((error: unknown) => {
+    erreurHumaine = error instanceof Error ? error.message : String(error)
+    render()
+  })
+}
 
 function renderSupervision(): string {
   const task = store.getSnapshot().task
@@ -197,7 +224,19 @@ function renderSupervision(): string {
     )
     .join('')
 
-  const saisie =
+  const rejets = task.rejected
+    .map(
+      (r) => `<li class="regle">
+        <span class="chip chip--${r.source}">${r.source}</span>
+        <span class="regle__texte">
+          ${escapeHtml(r.approach)}
+          <span class="muted"> — ${escapeHtml(r.reason)}</span>
+        </span>
+      </li>`,
+    )
+    .join('')
+
+  const saisieContrainte =
     task.status === 'active'
       ? `<form id="form-contrainte" class="saisie">
            <label for="new-constraint">Ajouter une contrainte</label>
@@ -211,45 +250,83 @@ function renderSupervision(): string {
          </p>`
       : ''
 
+  const saisieRejet =
+    task.status === 'active'
+      ? `<form id="form-rejet" class="saisie">
+           <label for="new-rejection">Condamner une approche</label>
+           <input id="new-rejection" type="text" autocomplete="off"
+                  placeholder="Approche à écarter" />
+           <input id="new-rejection-reason" type="text" autocomplete="off"
+                  placeholder="Motif — obligatoire" />
+           <button type="submit" class="btn">Rejeter</button>
+         </form>
+         <p class="muted">
+           Le motif est exigé : un rejet sans motif n'apprend rien à qui le lira
+           ensuite, et serait retenté faute de savoir pourquoi il a échoué.
+         </p>`
+      : ''
+
+  const erreur = erreurHumaine
+    ? `<div class="status status--error"><p>${escapeHtml(erreurHumaine)}</p></div>`
+    : ''
+
   return `<section class="supervision">
+      ${erreur}
       <h2>Contraintes</h2>
       <ul class="regles">${contraintes || '<li class="muted">Aucune.</li>'}</ul>
-      ${saisie}
+      ${saisieContrainte}
+      <h2>Approches condamnées</h2>
+      <ul class="regles">${rejets || '<li class="muted">Aucune.</li>'}</ul>
+      ${saisieRejet}
       ${àValider ? `<h2>Preuves à valider</h2><ul class="regles">${àValider}</ul>` : ''}
     </section>`
 }
 
 /** Rebranche les commandes de supervision après chaque rendu. */
 function brancherSupervision(): void {
-  const form = document.querySelector<HTMLFormElement>('#form-contrainte')
-  const input = document.querySelector<HTMLInputElement>('#new-constraint')
-
-  if (input) {
-    input.value = brouillon
-    input.addEventListener('input', () => {
-      brouillon = input.value
+  for (const id of Object.keys(brouillons)) {
+    const champ = document.querySelector<HTMLInputElement>(`#${id}`)
+    if (!champ) continue
+    champ.value = brouillons[id]
+    champ.addEventListener('input', () => {
+      brouillons[id] = champ.value
     })
   }
 
-  form?.addEventListener('submit', (event) => {
+  document.querySelector<HTMLFormElement>('#form-contrainte')?.addEventListener('submit', (event) => {
     event.preventDefault()
-    const règle = brouillon.trim()
+    const règle = brouillons['new-constraint'].trim()
     if (!règle) return
-    brouillon = ''
-    void store.mutate((state) => addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'))
+    brouillons['new-constraint'] = ''
+    actionHumaine((state) => addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'))
+  })
+
+  document.querySelector<HTMLFormElement>('#form-rejet')?.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const approche = brouillons['new-rejection'].trim()
+    const motif = brouillons['new-rejection-reason'].trim()
+    // On laisse le domaine refuser un motif vide plutôt que de l'intercepter
+    // ici : une seule règle, un seul endroit où elle est écrite.
+    actionHumaine((state) =>
+      rejectApproach(state, { approach: approche, reason: motif, basedOnVersion: null }, 'human'),
+    )
+    if (approche && motif) {
+      brouillons['new-rejection'] = ''
+      brouillons['new-rejection-reason'] = ''
+    }
   })
 
   for (const bouton of document.querySelectorAll<HTMLButtonElement>('[data-toggle]')) {
     bouton.addEventListener('click', () => {
       const id = bouton.dataset.toggle!
       const actif = bouton.dataset.active === 'true'
-      void store.mutate((state) => setConstraintActive(state, id, !actif))
+      actionHumaine((state) => setConstraintActive(state, id, !actif))
     })
   }
 
   for (const bouton of document.querySelectorAll<HTMLButtonElement>('[data-verify]')) {
     bouton.addEventListener('click', () => {
-      void store.mutate((state) => verifyEvidence(state, bouton.dataset.verify!))
+      actionHumaine((state) => verifyEvidence(state, bouton.dataset.verify!))
     })
   }
 }
@@ -258,8 +335,9 @@ function render(): void {
   // Le champ de saisie est remplacé par le rendu : on note s'il avait le focus
   // et où était le curseur, pour que l'agent ne coupe pas la parole à l'humain.
   const actif = document.activeElement
-  const avaitFocus = actif instanceof HTMLInputElement && actif.id === 'new-constraint'
-  const curseur = avaitFocus ? (actif as HTMLInputElement).selectionStart : null
+  const champFocalisé =
+    actif instanceof HTMLInputElement && actif.id in brouillons ? actif.id : null
+  const curseur = champFocalisé ? (actif as HTMLInputElement).selectionStart : null
 
   const hasTask = store.getSnapshot().task !== null
   root!.innerHTML = `<main>
@@ -283,10 +361,10 @@ function render(): void {
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
   brancherSupervision()
 
-  if (avaitFocus) {
-    const input = document.querySelector<HTMLInputElement>('#new-constraint')
-    input?.focus()
-    if (curseur !== null) input?.setSelectionRange(curseur, curseur)
+  if (champFocalisé) {
+    const champ = document.querySelector<HTMLInputElement>(`#${champFocalisé}`)
+    champ?.focus()
+    if (curseur !== null) champ?.setSelectionRange(curseur, curseur)
   }
 
   document.querySelector('#reopen')?.addEventListener('click', () => {
