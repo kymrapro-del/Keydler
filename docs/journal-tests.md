@@ -138,3 +138,48 @@ le comportement recherché : la page informe, elle ne commande pas.
 **Limite résiduelle.** L'agent a signalé que son environnement laissait
 apparaître l'historique git du projet. Il n'y a pas touché, et tout le contenu
 de son rapport provient de `resume_task` — mais l'isolement n'est pas parfait.
+
+### Essai 3 — contrainte ajoutée en cours de route
+
+**Protocole.** L'agent reçoit une tâche de vérification qui l'amène à écrire.
+Pendant qu'il travaille, une contrainte est ajoutée — « Every logged step must
+carry evidence » — et la version passe de 12 à 13. On attend que son écriture
+suivante soit refusée pour état périmé.
+
+**Ce qui s'est passé.**
+
+| Fait | Valeur |
+|---|---|
+| Contrainte injectée | 18:01:29, v12 → v13 |
+| Réaction de l'agent | `resume_task` à 18:01:56, **avant** toute écriture |
+| Écritures refusées | **0** |
+| Écritures appliquées ensuite | 5, toutes avec preuve jointe |
+
+**Le refus n'a pas eu lieu, et ce n'est pas un échec du mécanisme.** L'agent a
+remarqué que le compteur affiché ne concordait plus avec l'état qu'il avait lu,
+a relu de lui-même, puis s'est conformé à la contrainte nouvelle — les cinq
+étapes qu'il a consignées portent toutes une preuve.
+
+**Conséquence pour la vidéo.** Le scénario filmé repose sur un refus visible à
+l'écran. Si un agent prudent relit avant d'écrire, ce refus ne se produira pas
+de façon fiable. Il faudra soit accepter de montrer la reprise sans refus, soit
+provoquer le refus par une écriture déjà engagée — et le dire.
+
+**Essai contaminé pour ce qu'il conclut du contenu.** L'agent a récupéré
+`seed.ts`, `render.ts` et `task.ts` par `fetch` depuis la page : le serveur de
+développement sert le source en HTTP. Sa consigne « navigateur seul » était
+respectée à la lettre et contournée en fait. Ses observations comportementales
+— relecture avant écriture, respect de la contrainte tardive — restent
+valables ; ses conclusions sur le contenu du cahier, non.
+
+**Trois défauts réels qu'il a néanmoins mis au jour**, tous vérifiés :
+
+1. Le cahier de démonstration **se contredisait**. Une étape annonçait
+   « public API unchanged, 2 files touched » avec un diff ne touchant qu'un
+   fichier et changeant une signature exportée — sous une contrainte active
+   interdisant précisément de toucher à l'API publique. Corrigé, et verrouillé
+   par deux tests.
+2. La restitution **ne montre jamais le contenu d'une preuve**, seulement son
+   degré. La contradiction ci-dessus était donc invisible à l'écran.
+3. `machine_verified` atteste **la nature de l'artefact joint**, pas qu'une
+   machine ait vérifié l'affirmation. Le nom promet plus que la chose.
