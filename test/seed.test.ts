@@ -50,6 +50,26 @@ describe('cahier de démonstration', () => {
     expect(output).toContain('approach C')
   })
 
+  it('ne contredit pas ce qu’il affirme : le diff touche bien deux fichiers', () => {
+    const task = buildDemoTask()
+    const étape = task.steps.find((s) => s.result.includes('2 files touched'))
+    expect(étape).toBeDefined()
+
+    const fichiers = (étape!.evidence!.content.match(/^\+\+\+ /gm) ?? []).length
+    expect(fichiers).toBe(2)
+  })
+
+  it('ne contredit pas les contraintes qu’il porte : la signature exportée est intacte', () => {
+    const task = buildDemoTask()
+    const étape = task.steps.find((s) => s.result.includes('public API unchanged'))
+    const diff = étape!.evidence!.content
+
+    // Une contrainte active interdit de toucher à l'API publique. Une ligne
+    // supprimée qui exporte une fonction la violerait, preuve à l'appui.
+    const exportsSupprimés = diff.split('\n').filter((l) => /^-\s*export /.test(l))
+    expect(exportsSupprimés).toEqual([])
+  })
+
   it('est reproductible : deux constructions donnent la même forme', () => {
     const a = buildDemoTask()
     const b = buildDemoTask()

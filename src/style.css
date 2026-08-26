@@ -187,3 +187,113 @@ pre {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
 }
+
+footer {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--c-border);
+  font-size: 0.8125rem;
+}
+
+/* Surface de supervision humaine. Toutes les valeurs viennent des jetons. */
+
+.supervision {
+  padding: var(--sp-4);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+}
+
+.regles {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.regle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface);
+}
+
+.regle__texte {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.regle--levee .regle__texte {
+  text-decoration: line-through;
+  color: var(--c-text-muted);
+}
+
+.regle .btn {
+  margin-left: 0;
+  flex: none;
+}
+
+.chip {
+  flex: none;
+  padding: 1px var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--c-border);
+  color: var(--c-text);
+}
+
+.chip--human {
+  background: var(--c-ok-bg);
+  color: var(--c-ok-text);
+}
+
+.chip--agent,
+.chip--claimed {
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+}
+
+.chip--machine_verified,
+.chip--human_verified,
+.chip--evidence {
+  background: var(--c-surface);
+  color: var(--c-text-muted);
+}
+
+.saisie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.saisie label {
+  flex-basis: 100%;
+  font-size: 0.8125rem;
+  color: var(--c-text-muted);
+}
+
+.saisie input {
+  flex: 1;
+  min-width: 220px;
+  min-height: 40px;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+}
+
+.saisie input:focus {
+  border-color: var(--c-accent);
+}
+
+.saisie .btn {
+  margin-left: 0;
+}
