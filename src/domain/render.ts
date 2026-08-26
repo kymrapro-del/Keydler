@@ -120,11 +120,17 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
+  lines.push('')
   if (state.status === 'active') {
-    lines.push('')
     lines.push('WRITE PROTOCOL')
     lines.push(`  Every write must carry based_on_version: ${state.version}`)
     lines.push('  A refused write means the human changed this state. Call resume_task again.')
+  } else {
+    // Sans cette ligne, un agent qui reprend une tâche close tente une écriture
+    // et découvre le refus par l'échec. Autant le lui dire tout de suite.
+    lines.push('TASK CLOSED')
+    lines.push('  This task is complete. Writes are refused — do not log further work.')
+    lines.push('  If work remains, ask the human to reopen it.')
   }
 
   const text = lines.join('\n')
@@ -161,8 +167,8 @@ export function renderNoTask(): string {
   return [
     'NO ACTIVE TASK',
     '',
-    'This device holds no watch log yet.',
-    'Ask the human to open the dashboard and start a task, or call',
-    'log_step once a task exists.',
+    'This device holds no watch log yet, so there is nothing to resume.',
+    'Every other tool on this page will refuse until one exists.',
+    'Ask the human to open a task in the dashboard, then call resume_task again.',
   ].join('\n')
 }

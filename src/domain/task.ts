@@ -484,6 +484,33 @@ export function setConstraintActive(
   )
 }
 
+/**
+ * Rouvre une tâche close. Humain seulement.
+ *
+ * Sans ce chemin, une clôture décidée par l'agent serait irréversible et
+ * l'humain, censé être autoritaire, se retrouverait à subir la décision d'un
+ * agent. Le résumé final est conservé : il devient une trace de ce qui avait
+ * été conclu, pas un mensonge à effacer.
+ */
+export function reopenTask(state: TaskState, reason: unknown, ctx?: MutationContext): TaskState {
+  if (state.status === 'active') {
+    throw new ValidationError('status', 'this task is already active.')
+  }
+  const motif = requireText('reason', reason, 400)
+
+  return apply(
+    state,
+    {
+      operation: 'reopen_task',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: motif,
+      patch: { status: 'active', next: motif },
+    },
+    ctx,
+  )
+}
+
 export function setNext(state: TaskState, next: unknown, ctx?: MutationContext): TaskState {
   // Une tâche close n'a pas de suite : `complete_task` met `next` à null et la
   // restitution montre le résumé à sa place. Laisser poser une prochaine action
