@@ -120,7 +120,9 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
         : 'RECENT WORK',
     )
     for (const s of shown) {
-      lines.push(`  ${CONFIDENCE_TAG[s.confidence]} ${clip(s.action, c(80))} — ${clip(s.result, c(90))}`)
+      lines.push(
+        `  ${CONFIDENCE_TAG[s.confidence]} ${clip(s.action, c(80))} — ${clip(s.result, c(90))}`,
+      )
     }
   }
 

@@ -30,7 +30,12 @@ function close(): TaskState {
     'agent',
     ctx(10),
   )
-  return completeTask(t, { summary: 'Refactorisation terminée.', basedOnVersion: t.version }, 'agent', ctx(20))
+  return completeTask(
+    t,
+    { summary: 'Refactorisation terminée.', basedOnVersion: t.version },
+    'agent',
+    ctx(20),
+  )
 }
 
 describe('clôture et réouverture', () => {

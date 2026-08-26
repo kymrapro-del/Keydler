@@ -13,10 +13,10 @@ délibérément toute mesure de qualité subjective, non reproductible.
 
 ## Les deux conditions
 
-| Condition | Ce dont l'agent dispose |
-|---|---|
-| **Témoin** | L'énoncé de la tâche, et rien d'autre. Ni contrainte, ni rejet : c'est l'état où la conversation précédente a été perdue et où rien n'a survécu. |
-| **Avec cahier** | Le cahier, chargé avec la tâche, sa contrainte active et son approche condamnée motivée. Consigne d'ouverture : `continue`. |
+| Condition       | Ce dont l'agent dispose                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Témoin**      | L'énoncé de la tâche, et rien d'autre. Ni contrainte, ni rejet : c'est l'état où la conversation précédente a été perdue et où rien n'a survécu. |
+| **Avec cahier** | Le cahier, chargé avec la tâche, sa contrainte active et son approche condamnée motivée. Consigne d'ouverture : `continue`.                      |
 
 La comparaison porte donc sur ce que le cahier fait survivre, pas sur la
 formulation de la consigne.

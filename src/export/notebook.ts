@@ -32,7 +32,7 @@ function enTete(task: TaskState): string[] {
 function journal(task: TaskState): string[] {
   if (task.audit.length === 0) return []
   return [
-    "## Journal des écritures",
+    '## Journal des écritures',
     '',
     '| Horodatage | Acteur | Opération | Version | Issue | Détail |',
     '|---|---|---|---|---|---|',

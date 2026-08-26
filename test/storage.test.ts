@@ -56,10 +56,7 @@ describe('stockage indisponible', () => {
     loadLastTask.mockRejectedValue(new Error('quota exceeded'))
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
-    const result = await logStep.execute(
-      { action: 'a', result: 'b', based_on_version: 1 },
-      {},
-    )
+    const result = await logStep.execute({ action: 'a', result: 'b', based_on_version: 1 }, {})
 
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain('STORAGE UNAVAILABLE')

@@ -66,7 +66,12 @@ describe('journal d’audit', () => {
 
     // Des écritures toutes distinctes, pour qu'aucune ne soit fusionnée.
     for (let i = 0; i < MAX_AUDIT_ENTRIES + 40; i++) {
-      t = logStep(t, { action: `étape ${i}`, result: 'r', basedOnVersion: v }, 'agent', ctx(2000 + i))
+      t = logStep(
+        t,
+        { action: `étape ${i}`, result: 'r', basedOnVersion: v },
+        'agent',
+        ctx(2000 + i),
+      )
       v = t.version
     }
 
@@ -86,7 +91,12 @@ describe('journal d’audit', () => {
     let t = tâche()
     let v = t.version
     for (let i = 0; i < MAX_AUDIT_ENTRIES + 10; i++) {
-      t = logStep(t, { action: `étape ${i}`, result: 'r', basedOnVersion: v }, 'agent', ctx(3000 + i))
+      t = logStep(
+        t,
+        { action: `étape ${i}`, result: 'r', basedOnVersion: v },
+        'agent',
+        ctx(3000 + i),
+      )
       v = t.version
     }
 

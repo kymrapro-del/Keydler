@@ -75,10 +75,7 @@ describe('conflit entre pages', () => {
     )
 
     const logStepTool = ALL_TOOLS.find((t) => t.name === 'log_step')!
-    const result = await logStepTool.execute(
-      { action: 'a', result: 'b', based_on_version: 1 },
-      {},
-    )
+    const result = await logStepTool.execute({ action: 'a', result: 'b', based_on_version: 1 }, {})
 
     expect(result.isError).toBe(true)
     const texte = result.content[0].text

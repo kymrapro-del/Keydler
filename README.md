@@ -137,12 +137,12 @@ tient dans cette asymétrie.
 Le degré n'est jamais déclaré : il est **déduit** de ce que l'écriture apporte.
 Aucune auto-attribution n'est possible.
 
-| Degré | D'où il vient |
-|---|---|
-| `machine_verified` | La preuve jointe est une sortie de machine — rapport de test, sortie de commande |
-| `human_verified` | Un humain a cliqué. **Seul chemin.** Aucun agent ne peut l'atteindre |
-| `evidence` | Une preuve est jointe : lien, diff, empreinte. Elle atteste d'un changement, pas d'une vérification |
-| `claimed` | Rien de joint |
+| Degré              | D'où il vient                                                                                       |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| `machine_verified` | La preuve jointe est une sortie de machine — rapport de test, sortie de commande                    |
+| `human_verified`   | Un humain a cliqué. **Seul chemin.** Aucun agent ne peut l'atteindre                                |
+| `evidence`         | Une preuve est jointe : lien, diff, empreinte. Elle atteste d'un changement, pas d'une vérification |
+| `claimed`          | Rien de joint                                                                                       |
 
 ---
 
@@ -151,14 +151,14 @@ Aucune auto-attribution n'est possible.
 Six primitives, aucune de plus : chaque outil supplémentaire dilue la lisibilité
 de l'ensemble pour l'agent, qui choisit d'autant moins bien qu'il a plus à lire.
 
-| Outil | Entrées | Rôle |
-|---|---|---|
-| `resume_task` | — | Restitue l'état canonique et la version |
-| `log_step` | `action, result, evidence?, next?, based_on_version` | Consigne une étape et son degré de preuve |
-| `add_constraint` | `rule, based_on_version` | Consigne permanente, côté agent |
-| `reject_approach` | `approach, reason, based_on_version` | Empêche de réessayer ce qui a échoué |
-| `add_decision` | `choice, rationale, based_on_version` | Le pourquoi, que tout résumé perd |
-| `complete_task` | `summary, based_on_version` | Instantané final, transmissible |
+| Outil             | Entrées                                              | Rôle                                      |
+| ----------------- | ---------------------------------------------------- | ----------------------------------------- |
+| `resume_task`     | —                                                    | Restitue l'état canonique et la version   |
+| `log_step`        | `action, result, evidence?, next?, based_on_version` | Consigne une étape et son degré de preuve |
+| `add_constraint`  | `rule, based_on_version`                             | Consigne permanente, côté agent           |
+| `reject_approach` | `approach, reason, based_on_version`                 | Empêche de réessayer ce qui a échoué      |
+| `add_decision`    | `choice, rationale, based_on_version`                | Le pourquoi, que tout résumé perd         |
+| `complete_task`   | `summary, based_on_version`                          | Instantané final, transmissible           |
 
 ## La supervision humaine
 
@@ -270,15 +270,16 @@ agent ──WebMCP──▶  webmcp/  ──▶  store/  ──▶  persistence/
 humain ──clics──────────────────────┴──▶  interface (même magasin)
 ```
 
-| Dossier | Rôle |
-|---|---|
-| `src/domain` | Types, invariants, mutations pures. Aucune dépendance : ni DOM, ni IndexedDB, ni WebMCP |
-| `src/persistence` | IndexedDB, migrations, lecture défensive |
-| `src/store` | Source de vérité observable, écritures sérialisées |
-| `src/webmcp` | Adaptateur d'API, descriptions, six outils, enregistrement singleton |
-| `src/export` | Export d'un cahier, preuves et journal compris |
-| `src/demo` | Cahier de démonstration et huit cahiers de mesure, reproductibles |
-| `src/tokens.css` | Jetons visuels neutres — le seul fichier que le design réécrit |
+| Dossier           | Rôle                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `src/domain`      | Types, invariants, mutations pures. Aucune dépendance : ni DOM, ni IndexedDB, ni WebMCP |
+| `src/persistence` | IndexedDB, migrations, lecture défensive                                                |
+| `src/store`       | Source de vérité observable, écritures sérialisées                                      |
+| `src/webmcp`      | Adaptateur d'API, descriptions, six outils, enregistrement singleton                    |
+| `src/export`      | Export d'un cahier, preuves et journal compris                                          |
+| `src/ui`          | Échappement et traduction des messages destinés à la personne                           |
+| `src/demo`        | Cahier de démonstration et huit cahiers de mesure, reproductibles                       |
+| `src/tokens.css`  | Jetons visuels neutres — le seul fichier que le design réécrit                          |
 
 **Aucune valeur visuelle en dur hors de `src/tokens.css`.** Réécrire ce fichier
 suffit à changer l'apparence sans toucher à la logique.
@@ -294,8 +295,8 @@ L'implémentation de Chromium 151 diverge par ailleurs de l'IDL publiée, et les
 trois écarts se manifestent par le même message peu bavard :
 
 ```js
-await document.modelContext.executeTool(tool, '{}')   // ✅ chaîne JSON
-await document.modelContext.executeTool(tool, {})     // ❌ Failed to parse input arguments
+await document.modelContext.executeTool(tool, '{}') // ✅ chaîne JSON
+await document.modelContext.executeTool(tool, {}) // ❌ Failed to parse input arguments
 ```
 
 Les arguments d'entrée sont une chaîne JSON, `executeTool` renvoie une chaîne
@@ -309,11 +310,11 @@ sérialisée, et `inputSchema` fait l'aller-retour en chaîne.
 npm run check
 ```
 
-Types, 97 tests d'invariants, build de production. Les tests couvrent le
+Types, 108 tests d’invariants, build de production. Les tests couvrent le
 versionnage, le refus d'état périmé, les écritures concurrentes, le conflit
 entre onglets, la lecture défensive du stockage, la traçabilité des refus, le
-budget de restitution, le cycle de vie, l'export, et la forme des cahiers de
-mesure.
+budget de restitution, le cycle de vie, l'export, la forme des cahiers de
+mesure, et les messages rendus à l'humain.
 
 ## Vie privée
 

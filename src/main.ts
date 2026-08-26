@@ -7,6 +7,8 @@ import './tokens.css'
 import './style.css'
 import { buildMeasureTask } from './demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from './export/notebook'
+import { escapeHtml } from './ui/escape'
+import { messageHumain } from './ui/messages'
 import { buildDemoTask } from './demo/seed'
 import { renderTaskState } from './domain/render'
 import {
@@ -17,7 +19,13 @@ import {
   verifyEvidence,
 } from './domain/task'
 import * as store from './store/taskStore'
-import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCalls } from './webmcp'
+import {
+  getRegistrationState,
+  getWitness,
+  onCall,
+  onRegistrationChange,
+  resetCalls,
+} from './webmcp'
 
 /**
  * Banc d'essai.
@@ -30,22 +38,6 @@ import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCall
 
 const root = document.querySelector<HTMLElement>('#app')
 if (!root) throw new Error('#app introuvable')
-
-/**
- * Échappement sûr en contenu ET en position d'attribut.
- *
- * Les guillemets comptent : un identifiant interpolé dans `data-verify="…"`
- * qui en contiendrait un sortirait de l'attribut. Les identifiants viennent
- * normalement de `crypto.randomUUID`, mais ils sont relus depuis IndexedDB, et
- * une couche d'affichage ne doit jamais faire confiance à ce qu'elle relit.
- */
-const escapeHtml = (v: string) =>
-  v
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
 
 function renderStatus(): string {
   const { phase, availability, toolNames, error } = getRegistrationState()
@@ -91,9 +83,8 @@ function renderStatus(): string {
 }
 
 function renderWitness(): string {
-  const calls = getCalls()
-  const refused = calls.filter((c) => c.refused).length
-  const rows = [...calls]
+  const { total, refused, recents } = getWitness()
+  const rows = [...recents]
     .reverse()
     .slice(0, 10)
     .map(
@@ -107,9 +98,9 @@ function renderWitness(): string {
     .join('')
 
   return `<div class="witness" role="status" aria-live="polite">
-      <span class="witness__count">${calls.length}</span>
+      <span class="witness__count">${total}</span>
       <span class="witness__label">
-        appel${calls.length > 1 ? 's' : ''} d'outil<br />
+        appel${total > 1 ? 's' : ''} d'outil<br />
         <span class="muted">dont ${refused} refusé${refused > 1 ? 's' : ''}</span>
       </span>
       <button type="button" id="reset-witness" class="btn">Vider ce journal d'appels</button>
@@ -216,13 +207,24 @@ const brouillons: Record<string, string> = {
  */
 let erreurHumaine: string | null = null
 
-/** Exécute une action humaine en rendant son échec visible. */
-function actionHumaine(muter: Parameters<typeof store.mutate>[0]): void {
+/** Exécute une action humaine en rendant son échec lisible par un humain. */
+function actionHumaine(action: string, muter: Parameters<typeof store.mutate>[0]): void {
   erreurHumaine = null
   void store.mutate(muter).catch((error: unknown) => {
-    erreurHumaine = error instanceof Error ? error.message : String(error)
+    erreurHumaine = messageHumain(error, action)
     scheduleRender()
   })
+}
+
+/** Nombre de lignes affichées par liste de supervision. */
+const MAX_LIGNES = 8
+
+/** Annonce ce qui n'est pas montré, plutôt que de le taire. */
+function reste(total: number): string {
+  const caché = total - MAX_LIGNES
+  return caché > 0
+    ? `<p class="muted">${caché} entrée${caché > 1 ? 's' : ''} plus ancienne${caché > 1 ? 's' : ''} non affichée${caché > 1 ? 's' : ''} — l'export les contient toutes.</p>`
+    : ''
 }
 
 function renderSupervision(): string {
@@ -245,8 +247,12 @@ function renderSupervision(): string {
 
   // Une preuve ne devient « vérifiée humain » que par un clic. C'est le seul
   // chemin vers ce degré, et il n'existait jusqu'ici que dans le domaine.
-  const àValider = task.steps
-    .filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
+  // Les listes d'étapes croissent sans limite avec la tâche, et sont
+  // reconstruites à chaque écriture d'agent. Au-delà d'une poignée, on annonce
+  // le reste plutôt que de rebâtir des centaines de nœuds à chaque rafale.
+  const attente = task.steps.filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
+  const àValider = attente
+    .slice(-MAX_LIGNES)
     .map(
       (s) => `<li class="regle">
         <span class="chip chip--${s.confidence}">${s.confidence}</span>
@@ -309,8 +315,9 @@ function renderSupervision(): string {
   // humaine, et c'était précisément celle qui n'apparaissait nulle part : la
   // file ne montrait que les étapes déjà étayées. On ne peut pas « valider »
   // ce qui n'a rien à valider — on peut, et on doit, le signaler.
-  const sansPreuve = task.steps
-    .filter((s) => s.evidence === null)
+  const claims = task.steps.filter((s) => s.evidence === null)
+  const sansPreuve = claims
+    .slice(-MAX_LIGNES)
     .map(
       (s) => `<li class="regle">
         <span class="chip chip--claimed">affirmé</span>
@@ -328,8 +335,8 @@ function renderSupervision(): string {
       <h2>Approches condamnées</h2>
       <ul class="regles">${rejets || '<li class="muted">Aucune.</li>'}</ul>
       ${saisieRejet}
-      ${àValider ? `<h2>Preuves à valider</h2><ul class="regles">${àValider}</ul>` : ''}
-      ${sansPreuve ? `<h2>Affirmé sans preuve</h2><ul class="regles">${sansPreuve}</ul>` : ''}
+      ${àValider ? `<h2>Preuves à valider</h2><ul class="regles">${àValider}</ul>${reste(attente.length)}` : ''}
+      ${sansPreuve ? `<h2>Affirmé sans preuve</h2><ul class="regles">${sansPreuve}</ul>${reste(claims.length)}` : ''}
     </section>`
 }
 
@@ -341,16 +348,26 @@ function brancherSupervision(): void {
     champ.value = brouillons[id]
     champ.addEventListener('input', () => {
       brouillons[id] = champ.value
+      // Corriger sa saisie efface le reproche : sinon l'erreur resterait
+      // affichée pendant qu'on répare ce qu'elle signale.
+      if (erreurHumaine !== null) {
+        erreurHumaine = null
+        scheduleRender()
+      }
     })
   }
 
-  document.querySelector<HTMLFormElement>('#form-contrainte')?.addEventListener('submit', (event) => {
-    event.preventDefault()
-    const règle = brouillons['new-constraint'].trim()
-    if (!règle) return
-    brouillons['new-constraint'] = ''
-    actionHumaine((state) => addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'))
-  })
+  document
+    .querySelector<HTMLFormElement>('#form-contrainte')
+    ?.addEventListener('submit', (event) => {
+      event.preventDefault()
+      const règle = brouillons['new-constraint'].trim()
+      if (!règle) return
+      brouillons['new-constraint'] = ''
+      actionHumaine('Ajout de la contrainte', (state) =>
+        addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'),
+      )
+    })
 
   document.querySelector<HTMLFormElement>('#form-rejet')?.addEventListener('submit', (event) => {
     event.preventDefault()
@@ -358,7 +375,7 @@ function brancherSupervision(): void {
     const motif = brouillons['new-rejection-reason'].trim()
     // On laisse le domaine refuser un motif vide plutôt que de l'intercepter
     // ici : une seule règle, un seul endroit où elle est écrite.
-    actionHumaine((state) =>
+    actionHumaine('Condamnation de l’approche', (state) =>
       rejectApproach(state, { approach: approche, reason: motif, basedOnVersion: null }, 'human'),
     )
     if (approche && motif) {
@@ -371,13 +388,17 @@ function brancherSupervision(): void {
     bouton.addEventListener('click', () => {
       const id = bouton.dataset.toggle!
       const actif = bouton.dataset.active === 'true'
-      actionHumaine((state) => setConstraintActive(state, id, !actif))
+      actionHumaine(actif ? 'Levée de la contrainte' : 'Rétablissement de la contrainte', (state) =>
+        setConstraintActive(state, id, !actif),
+      )
     })
   }
 
   for (const bouton of document.querySelectorAll<HTMLButtonElement>('[data-verify]')) {
     bouton.addEventListener('click', () => {
-      actionHumaine((state) => verifyEvidence(state, bouton.dataset.verify!))
+      actionHumaine('Validation de la preuve', (state) =>
+        verifyEvidence(state, bouton.dataset.verify!),
+      )
     })
   }
 }
@@ -442,7 +463,7 @@ function render(): void {
   document.querySelector('#reopen')?.addEventListener('click', () => {
     const motif = window.prompt('Pourquoi rouvrir cette tâche ?')
     if (!motif?.trim()) return
-    void store.mutate((state) => reopenTask(state, motif))
+    actionHumaine('Réouverture de la tâche', (state) => reopenTask(state, motif))
   })
   document.querySelector('#seed')?.addEventListener('click', () => {
     // `?mesure=N` charge la tâche de mesure N au lieu du cahier de
