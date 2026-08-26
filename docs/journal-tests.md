@@ -244,3 +244,24 @@ contraintes et les rejets sont cités nommément, avec leur source et leur motif
 résultats sont corrélés et ne valent pas quatre observations indépendantes.
 Aucun pourcentage n'en sera tiré. Et ce n'est toujours pas le navigateur
 intégré de ChatGPT.
+
+## 26 août 2026 — recette de non-régression, après dix-huit passes
+
+Build d'essai, Brave 151, cahier de démonstration.
+
+| Vérification                                            | Résultat                                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Restitution                                             | v12, **295 tokens** sur 400                                               |
+| Les quatre degrés de preuve                             | présents, un de chaque                                                    |
+| Provenance rendue sur les rejets                        | oui, `[agent]`                                                            |
+| Écriture d'agent sur v11 alors que le cahier est en v13 | **refusée**, message `STALE STATE`                                        |
+| Conflit inter-onglets sur une action humaine            | refusée, magasin resynchronisé à v13, titre relu du disque                |
+| Message rendu à l'humain                                | « un autre onglet a modifié ce cahier entre-temps… refaites votre geste » |
+| **Console du navigateur**                               | **vide**                                                                  |
+
+La console vide est le point de la recette. Jusqu'à la dix-septième passe,
+chaque conflit entre onglets laissait un « Uncaught (in promise) » : le
+`tx.abort()` du refus faisait rejeter `tx.done`, et personne ne l'écoutait.
+C'était visible par quiconque ouvre les outils de développement pendant une
+démonstration, et c'est l'outillage — ajouté à cette même passe — qui l'a
+révélé.
