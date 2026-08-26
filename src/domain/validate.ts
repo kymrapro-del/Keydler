@@ -1,9 +1,16 @@
 import { ValidationError } from './errors'
 import { EVIDENCE_KINDS, type EvidenceKind } from './types'
 
-/** Longueur au-delà de laquelle un champ libre cesse d'être lisible dans le cahier. */
-const MAX_FIELD_LENGTH = 2000
-const MAX_EVIDENCE_LENGTH = 8000
+/**
+ * Longueur au-delà de laquelle un champ libre cesse d'être lisible dans le
+ * cahier.
+ *
+ * Exportées parce que les schémas d'outils les DÉCLARENT : sans cela, un agent
+ * n'apprenait la borne qu'en la dépassant, et la déclaration et la validation
+ * auraient fini par diverger, la première mentant sur la seconde.
+ */
+export const MAX_FIELD_LENGTH = 2000
+export const MAX_EVIDENCE_LENGTH = 8000
 
 /**
  * Exige une chaîne non vide, et se contente de la trimmer.

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { exec, mutationId } from './helpers'
 
 /**
  * Panne de stockage.
@@ -42,7 +43,7 @@ describe('stockage indisponible', () => {
   it('resume_task ne prétend pas qu’il n’y a pas de tâche', async () => {
     loadLastTask.mockRejectedValue(new Error('IndexedDB is not available in this context'))
 
-    const result = await resumeTaskTool.execute({}, {})
+    const result = await resumeTaskTool.execute({}, exec())
     const texte = result.content[0].text
 
     expect(result.isError).toBe(true)
@@ -56,7 +57,10 @@ describe('stockage indisponible', () => {
     loadLastTask.mockRejectedValue(new Error('quota exceeded'))
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
-    const result = await logStep.execute({ action: 'a', result: 'b', based_on_version: 1 }, {})
+    const result = await logStep.execute(
+      { action: 'a', result: 'b', mutation_id: mutationId(), based_on_version: 1 },
+      exec(),
+    )
 
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain('STORAGE UNAVAILABLE')
@@ -66,7 +70,7 @@ describe('stockage indisponible', () => {
   it('distingue toujours un cahier réellement absent', async () => {
     loadLastTask.mockResolvedValue(undefined)
 
-    const result = await resumeTaskTool.execute({}, {})
+    const result = await resumeTaskTool.execute({}, exec())
     expect(result.content[0].text).toContain('NO ACTIVE TASK')
     expect(result.content[0].text).not.toContain('STORAGE UNAVAILABLE')
   })

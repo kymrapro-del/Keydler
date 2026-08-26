@@ -2,11 +2,14 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { buildMeasureTask } from '../src/demo/measures'
 import { buildDemoTask } from '../src/demo/seed'
 import { renderTaskState } from '../src/domain/render'
+import { acceptedRejections, proposedRejections } from '../src/domain/task'
 import { completeTask } from '../src/domain/task'
 import { getDb } from '../src/persistence/db'
 import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { resetCalls } from '../src/webmcp/witness'
+import { __resetRegistration, registerTools } from '../src/webmcp/register'
+import { installModelContext, removeModelContext } from './helpers'
 
 /**
  * La vue du banc d'essai.
@@ -301,5 +304,149 @@ describe('suppression d’un cahier', () => {
     // perdu quand il en reste.
     expect(store.currentTask()?.title).toBe(autre.title)
     confirmer.mockRestore()
+  })
+})
+
+describe('supervision des propositions', () => {
+  beforeEach(async () => {
+    await store.openPreparedTask(buildDemoTask())
+    await rendu()
+  })
+
+  it('montre la preuve sous le bouton qui la valide', () => {
+    const ligne = root.querySelector('[data-verify]')!.closest('li')!
+    const preuve = ligne.querySelector('pre')
+
+    // Sans cela, « vérifié par un humain » ne veut rien dire de plus que
+    // « quelqu'un a cliqué à côté d'un titre » : la file n'affichait que
+    // l'action, et le clic attestait d'un texte que personne n'avait lu.
+    expect(preuve).not.toBeNull()
+    const étape = store
+      .currentTask()!
+      .steps.find(
+        (st) => st.id === root.querySelector<HTMLButtonElement>('[data-verify]')!.dataset.verify,
+      )!
+    expect(preuve!.textContent).toBe(étape.evidence!.content)
+  })
+
+  it('valide en produisant le contenu affiché, pas l’identifiant seul', async () => {
+    const bouton = root.querySelector<HTMLButtonElement>('[data-verify]')!
+    const id = bouton.dataset.verify!
+    bouton.click()
+    await rendu()
+
+    const étape = store.currentTask()!.steps.find((st) => st.id === id)!
+    expect(étape.confidence).toBe('human_verified')
+    expect(étape.evidence!.verifiedAt).not.toBeNull()
+  })
+
+  it('range les propositions d’agent à part, hors des approches condamnées', () => {
+    const titres = [...root.querySelectorAll('h2')].map((h) => h.textContent ?? '')
+    expect(titres.some((t) => t.includes('Proposé par un agent'))).toBe(true)
+
+    const enAttente = proposedRejections(store.currentTask()!)[0]
+    const condamnées = root.querySelectorAll('.regles')[1]
+    expect(condamnées.textContent).not.toContain(enAttente.approach)
+  })
+
+  it('endosse une proposition d’un clic, et la rend alors opposable', async () => {
+    const enAttente = proposedRejections(store.currentTask()!)[0]
+    const bouton = root.querySelector<HTMLButtonElement>(`[data-accept="${enAttente.id}"]`)!
+    bouton.click()
+    await rendu()
+
+    const après = store.currentTask()!
+    expect(acceptedRejections(après).map((r) => r.id)).toContain(enAttente.id)
+    expect(renderTaskState(après)).toContain('REJECTED — do not retry')
+    expect(après.audit.at(-1)).toMatchObject({ operation: 'accept_rejection', actor: 'human' })
+  })
+
+  it('écarte une proposition sans l’effacer, et elle cesse d’être proposée', async () => {
+    const enAttente = proposedRejections(store.currentTask()!)[0]
+    root.querySelector<HTMLButtonElement>(`[data-decline="${enAttente.id}"]`)!.click()
+    await rendu()
+
+    const après = store.currentTask()!
+    expect(proposedRejections(après)).toHaveLength(0)
+    expect(acceptedRejections(après).map((r) => r.id)).not.toContain(enAttente.id)
+    // Conservée : savoir qu'une proposition a été refusée vaut mieux que la
+    // voir reproposée à l'identique.
+    expect(après.rejected.map((r) => r.id)).toContain(enAttente.id)
+  })
+
+  it('montre les outils relus par getTools() et la politique de retrait retenue', async () => {
+    const fake = installModelContext()
+    __resetRegistration()
+    await registerTools()
+    await rendu()
+
+    const panneau = root.querySelector('.status--ok')!
+    expect(panneau.textContent).toContain('log_step')
+
+    // `getTools()` relit la table du navigateur — utile, parce que c'est une
+    // source distincte de la carte que la page tient. Mais la spécification
+    // en fait l'API des agents DANS LA PAGE ; l'agent du navigateur passe par
+    // un mécanisme interne. Présenter cette liste comme « ce que voit
+    // l'agent » ferait passer une relecture locale pour une preuve de
+    // découverte côté ChatGPT, qui n'a jamais été observée ici.
+    expect(panneau.textContent).toContain('Outils enregistrés, relus par')
+    expect(panneau.textContent).not.toContain('Découverts par')
+    expect(panneau.textContent).not.toMatch(/ce que (voit|verra) l/i)
+
+    // La politique de retrait est affichée, avec ce sur quoi elle se fonde :
+    // elle repose sur un reniflage de version, et change ce que l'agent voit.
+    expect(panneau.textContent).toContain('une fois posés, le restent')
+    expect(panneau.textContent).toContain('Chromium version unknown')
+    expect(fake.names()).toContain('log_step')
+
+    __resetRegistration()
+    removeModelContext()
+  })
+})
+
+describe('l’adresse et la vue', () => {
+  const chemin = () => location.pathname
+
+  afterEach(() => history.replaceState(null, '', '/'))
+
+  it('n’efface pas /t/:id au premier rendu, avant que le lien soit établi', async () => {
+    history.replaceState(null, '', '/t/abc123')
+    démonter()
+    démonter = mount(root)
+
+    // Le premier rendu est SYNCHRONE et précède la lecture du chemin par le
+    // point d'entrée. L'écraser ici renvoyait la page sur « le dernier cahier
+    // touché » — précisément ce que le lien par adresse existe pour supprimer.
+    expect(chemin()).toBe('/t/abc123')
+  })
+
+  it('aligne l’adresse sur le cahier ouvert', async () => {
+    const task = await store.openPreparedTask(buildDemoTask())
+    await rendu()
+    expect(chemin()).toBe(`/t/${task.id}`)
+  })
+
+  it('revient à la racine quand plus aucun cahier n’est ouvert', async () => {
+    await store.openPreparedTask(buildDemoTask())
+    await rendu()
+    await store.deleteCurrentTask()
+    await rendu()
+    expect(chemin()).toBe('/')
+  })
+
+  it('garde l’adresse d’un cahier disparu, et le dit au lieu d’en ouvrir un autre', async () => {
+    await store.openPreparedTask(buildDemoTask())
+    store.__resetStore()
+    démonter()
+    await store.init('jamais-existe')
+    history.replaceState(null, '', '/t/jamais-existe')
+    démonter = mount(root)
+    await rendu()
+
+    expect(chemin()).toBe('/t/jamais-existe')
+    expect(root.textContent).toContain("Ce cahier n'existe pas sur cet appareil")
+    // Le cahier de démonstration EXISTE encore : ne pas l'ouvrir est le fond
+    // du sujet.
+    expect(root.textContent).not.toContain('Refactor the authentication module')
   })
 })

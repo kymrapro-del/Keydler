@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { addConstraint, logStep } from '../src/domain/task'
 import * as store from '../src/store/taskStore'
+import { storeWrite } from './helpers'
 import { loadLastTask, loadTask } from '../src/persistence/taskRepository'
 
 /** La reprise après rechargement (TAL-69) : même état, même version. */
@@ -45,8 +46,10 @@ describe('persistance', () => {
     )
 
     await expect(
-      store.mutateAsAgent('log_step', task.version, (state) =>
-        logStep(state, { action: 'a', result: 'b', basedOnVersion: task.version }, 'agent'),
+      store.mutateAsAgent(
+        storeWrite('log_step', task.version, { n: task.version }, (state) =>
+          logStep(state, { action: 'a', result: 'b', basedOnVersion: task.version }, 'agent'),
+        ),
       ),
     ).rejects.toThrow(/STALE STATE/)
 

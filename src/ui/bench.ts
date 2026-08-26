@@ -5,10 +5,15 @@ import { messageHumain } from './messages'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
 import {
+  acceptedRejections,
   addConstraint,
+  proposedConstraints,
+  proposedRejections,
   rejectApproach,
   reopenTask,
   setConstraintActive,
+  setConstraintStanding,
+  setRejectionStanding,
   verifyEvidence,
 } from '../domain/task'
 import * as store from '../store/taskStore'
@@ -18,6 +23,7 @@ import {
   onCall,
   onRegistrationChange,
   resetCalls,
+  taskPath,
 } from '../webmcp'
 
 /**
@@ -44,14 +50,39 @@ let root: HTMLElement | null = null
  */
 
 function renderStatus(): string {
-  const { phase, availability, toolNames, error } = getRegistrationState()
+  const { phase, availability, toolNames, error, observedTools, lifecycle } = getRegistrationState()
 
-  if (phase === 'registered') {
+  if (phase === 'registered' || phase === 'partial') {
     const surface = availability.supported ? availability.surface : 'inconnue'
-    return `<div class="status status--ok">
-      <p class="status__title">WebMCP actif — ${toolNames.length} outils exposés</p>
-      <p class="mono">${toolNames.join(' · ')}</p>
-      <p class="muted">API lue sur <code>${surface}.modelContext</code>.</p>
+    // Une SECONDE SOURCE — la table du navigateur — et non ce que cette page
+    // croit avoir posé. C'est ce qui donne sa valeur à la ligne.
+    //
+    // L'étiquette dit exactement cela, et pas « ce que voit l'agent » :
+    // `getTools()` est, dans la spécification, l'API des agents qui vivent
+    // dans la page. L'agent intégré du navigateur reçoit les outils par un
+    // mécanisme interne que rien ici n'observe. Annoncer une découverte côté
+    // client MCP serait affirmer ce qu'aucun test ne montre.
+    const vus =
+      observedTools === null
+        ? ''
+        : `<p class="muted">Outils enregistrés, relus par <code>getTools()</code> :
+             ${escapeHtml(observedTools.join(' · ')) || '(aucun)'}</p>`
+    const manquants =
+      phase === 'partial'
+        ? `<p>Certains outils n'ont pas pu être enregistrés : ${escapeHtml(error ?? '')}</p>`
+        : ''
+    return `<div class="status status--${phase === 'partial' ? 'warn' : 'ok'}">
+      <p class="status__title">WebMCP actif — ${toolNames.length} outil${toolNames.length > 1 ? 's' : ''} exposé${toolNames.length > 1 ? 's' : ''}</p>
+      <p class="mono">${escapeHtml(toolNames.join(' · '))}</p>
+      ${manquants}
+      ${vus}
+      <p class="muted">API lue sur <code>${surface}.modelContext</code>.
+        ${
+          lifecycle.mode === 'dynamic'
+            ? "Les outils d'écriture suivent l'état du cahier : ils sont retirés à la clôture."
+            : "Les outils d'écriture, une fois posés, le restent : ils refusent proprement quand la tâche est absente ou close."
+        }</p>
+      <p class="muted">${escapeHtml(lifecycle.reason)}</p>
     </div>`
   }
 
@@ -116,6 +147,17 @@ function renderTask(): string {
   const { status, task, error } = store.getSnapshot()
 
   if (status === 'loading') return `<p class="muted">Chargement du cahier…</p>`
+  if (status === 'missing') {
+    // L'adresse nomme un cahier qui n'existe pas. En ouvrir un autre à sa place
+    // ferait exactement ce que le lien par adresse existe pour empêcher.
+    const { boundId } = store.getSnapshot()
+    return `<div class="status status--warn" role="alert">
+      <p class="status__title">Ce cahier n'existe pas sur cet appareil</p>
+      <p>L'adresse désigne <code>${escapeHtml(boundId ?? '')}</code>, introuvable ici.
+        Aucun autre cahier n'a été ouvert à sa place.</p>
+      <p><button type="button" id="seed" class="btn">Ouvrir un cahier de démonstration</button></p>
+    </div>`
+  }
   if (status === 'error') {
     // Traduite comme toute autre erreur montrée à une personne : c'est le seul
     // chemin par lequel une panne de stockage atteint réellement l'écran.
@@ -137,6 +179,11 @@ function renderTask(): string {
       </p>
       <p>
         Rien ne quitte cet appareil : ni compte, ni serveur.
+      </p>
+      <p class="muted">
+        Tant qu'aucun cahier n'est ouvert, seuls les outils de lecture sont
+        exposés aux agents : un outil d'écriture qui ne pourrait que refuser
+        n'aiderait personne à choisir.
       </p>
       <p><button type="button" id="seed" class="btn">Ouvrir un cahier de démonstration</button></p>
     </div>`
@@ -246,16 +293,61 @@ function renderSupervision(): string {
   const task = store.getSnapshot().task
   if (!task) return ''
 
+  // Seules les règles endossées figurent ici. Une proposition d'agent a sa
+  // propre liste, plus bas : les mêler reviendrait à laisser un agent poser
+  // une règle de la maison, ce que la restitution ne ferait plus mais que
+  // l'écran ferait encore.
   const contraintes = task.constraints
+    .filter((c) => c.standing !== 'proposed')
     .map(
-      (c) => `<li class="regle${c.active ? '' : ' regle--levee'}">
+      (c) => `<li class="regle${c.active && c.standing === 'accepted' ? '' : ' regle--levee'}">
         <span class="chip chip--${c.source}">${c.source}</span>
         <span class="regle__texte">${escapeHtml(c.rule)}</span>
-        <span class="muted">v${c.addedAtVersion}</span>
-        <button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}"
+        <span class="muted">v${c.addedAtVersion}${c.standing === 'declined' ? ' — écartée' : ''}</span>
+        ${
+          c.standing === 'declined'
+            ? ''
+            : `<button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}"
                 aria-label="${c.active ? 'Lever' : 'Rétablir'} la contrainte : ${escapeHtml(c.rule)}">
           ${c.active ? 'Lever' : 'Rétablir'}
-        </button>
+        </button>`
+        }
+      </li>`,
+    )
+    .join('')
+
+  /**
+   * Les propositions en attente : le seul endroit d'où une écriture d'agent
+   * peut devenir opposable.
+   *
+   * Un agent qui condamne à tort la bonne approche empoisonnait auparavant
+   * toutes les conversations suivantes, sans qu'aucun geste humain n'ait eu
+   * lieu. Il faut désormais un clic — et un clic peut aussi dire non.
+   */
+  const propositions = [
+    ...proposedConstraints(task).map((c) => ({
+      id: c.id,
+      quoi: 'contrainte',
+      texte: c.rule,
+      cible: 'constraint' as const,
+    })),
+    ...proposedRejections(task).map((r) => ({
+      id: r.id,
+      quoi: 'rejet',
+      texte: `${r.approach} — ${r.reason}`,
+      cible: 'rejection' as const,
+    })),
+  ]
+
+  const enAttente = propositions
+    .map(
+      (p) => `<li class="regle">
+        <span class="chip chip--agent">${p.quoi}</span>
+        <span class="regle__texte">${escapeHtml(p.texte)}</span>
+        <button type="button" class="btn" data-accept="${escapeHtml(p.id)}" data-kind="${p.cible}"
+                aria-label="Endosser : ${escapeHtml(p.texte)}">Endosser</button>
+        <button type="button" class="btn" data-decline="${escapeHtml(p.id)}" data-kind="${p.cible}"
+                aria-label="Écarter : ${escapeHtml(p.texte)}">Écarter</button>
       </li>`,
     )
     .join('')
@@ -270,19 +362,31 @@ function renderSupervision(): string {
   // « human_verified », et montrer les plus récentes rendait les anciennes
   // inatteignables tant que les nouvelles n'étaient pas traitées. Prises par le
   // début, la file se vide.
+  //
+  // La preuve elle-même est AFFICHÉE, en entier, sous le bouton qui la valide.
+  //
+  // Cette file n'affichait que l'action : le clic attestait donc d'un texte que
+  // personne n'avait vu, et « vérifié par un humain » ne voulait rien dire de
+  // plus que « quelqu'un a cliqué à côté d'un titre ». C'était la même
+  // complaisance que le degré « machine_verified » accordé sur une étiquette.
   const àValider = attente
     .slice(0, MAX_LIGNES)
     .map(
-      (s) => `<li class="regle">
-        <span class="chip chip--${s.confidence}">${s.confidence}</span>
-        <span class="regle__texte">${escapeHtml(s.action)}</span>
-        <button type="button" class="btn" data-verify="${escapeHtml(s.id)}"
-                aria-label="Valider la preuve de : ${escapeHtml(s.action)}">Valider la preuve</button>
+      (s) => `<li>
+        <div class="regle">
+          <span class="chip chip--${s.confidence}">${s.confidence}</span>
+          <span class="regle__texte">${escapeHtml(s.action)}
+            <span class="muted"> — ${escapeHtml(s.evidence!.kind)}</span>
+          </span>
+          <button type="button" class="btn" data-verify="${escapeHtml(s.id)}"
+                  aria-label="Valider la preuve de : ${escapeHtml(s.action)}">Valider la preuve</button>
+        </div>
+        <pre>${escapeHtml(s.evidence!.content)}</pre>
       </li>`,
     )
     .join('')
 
-  const rejets = task.rejected
+  const rejets = acceptedRejections(task)
     .map(
       (r) => `<li class="regle">
         <span class="chip chip--${r.source}">${r.source}</span>
@@ -354,7 +458,13 @@ function renderSupervision(): string {
       <h2>Approches condamnées</h2>
       <ul class="regles">${rejets || '<li class="muted">Aucune.</li>'}</ul>
       ${saisieRejet}
-      ${àValider ? `<h2>Preuves à valider</h2><ul class="regles">${àValider}</ul>${reste(attente.length)}` : ''}
+      ${
+        enAttente
+          ? `<h2>Proposé par un agent — sans effet tant que vous n'avez pas tranché</h2>
+             <ul class="regles">${enAttente}</ul>`
+          : ''
+      }
+      ${àValider ? `<h2>Preuves à valider</h2><p class="muted">Lisez le contenu avant de valider : c'est ce que votre clic atteste.</p><ul class="regles">${àValider}</ul>${reste(attente.length)}` : ''}
       ${sansPreuve ? `<h2>Affirmé sans preuve</h2><ul class="regles">${sansPreuve}</ul>${reste(claims.length)}` : ''}
     </section>`
 }
@@ -424,8 +534,31 @@ function brancherSupervision(): void {
 
   for (const bouton of document.querySelectorAll<HTMLButtonElement>('[data-verify]')) {
     bouton.addEventListener('click', () => {
+      // Le contenu RELU est repris du bloc affiché juste sous le bouton, et
+      // non de l'état : c'est ce qui fait de ce paramètre une attestation. Si
+      // l'agent a réécrit l'étape entre l'affichage et le clic, les deux
+      // divergent et le domaine refuse — plutôt que de valider en aveugle un
+      // texte que personne n'a lu.
+      const affiché = bouton.closest('li')?.querySelector('pre')?.textContent ?? ''
       actionHumaine('Validation de la preuve', (state) =>
-        verifyEvidence(state, bouton.dataset.verify!),
+        verifyEvidence(state, bouton.dataset.verify!, affiché),
+      )
+    })
+  }
+
+  for (const bouton of document.querySelectorAll<HTMLButtonElement>(
+    '[data-accept],[data-decline]',
+  )) {
+    bouton.addEventListener('click', () => {
+      const endosse = bouton.dataset.accept !== undefined
+      const id = (endosse ? bouton.dataset.accept : bouton.dataset.decline)!
+      const standing = endosse ? 'accepted' : 'declined'
+      actionHumaine(
+        endosse ? 'Endossement de la proposition' : 'Mise à l’écart de la proposition',
+        (state) =>
+          bouton.dataset.kind === 'constraint'
+            ? setConstraintStanding(state, id, standing)
+            : setRejectionStanding(state, id, standing),
       )
     })
   }
@@ -449,6 +582,38 @@ function telecharger(nom: string, contenu: string): void {
 
 /** Dernier état annoncé, pour ne pas répéter la même phrase. */
 let dernièreAnnonce = ''
+
+/**
+ * Aligne l'adresse de la barre sur le cahier ouvert.
+ *
+ * `replaceState`, pas `pushState` : ouvrir un cahier n'est pas une navigation
+ * qu'on veut pouvoir défaire par la flèche « précédent ». L'adresse est là pour
+ * que le cahier soit RETROUVABLE — copiée, elle rouvre cette tâche-là et pas la
+ * dernière touchée sur l'appareil.
+ */
+function refléterAdresse(): void {
+  if (typeof history === 'undefined' || typeof history.replaceState !== 'function') return
+
+  const { status, boundId } = store.getSnapshot()
+
+  // Tant que le magasin n'a pas tranché, l'adresse est la SOURCE du lien et non
+  // son reflet. Écrire ici effaçait `/t/:id` au premier rendu — synchrone, donc
+  // AVANT que le point d'entrée n'ait lu le chemin — et la page repartait sur
+  // « le dernier cahier touché », c'est-à-dire précisément le comportement que
+  // le lien par adresse existe pour supprimer. Un navigateur l'a montré tout de
+  // suite ; aucun test de vue ne l'aurait vu, faute de vraie barre d'adresse.
+  if (status === 'loading') return
+
+  const voulue = boundId ? taskPath(boundId) : '/'
+  if (location.pathname === voulue) return
+  try {
+    history.replaceState(null, '', `${voulue}${location.search}`)
+  } catch {
+    // Une origine opaque — un `srcdoc`, un fichier local — refuse l'écriture de
+    // l'historique. L'adresse est un confort, pas le lien lui-même : celui-ci
+    // vit dans le magasin, et rien ne doit tomber pour si peu.
+  }
+}
 
 /**
  * Annonce un changement dans la région persistante.
@@ -521,6 +686,7 @@ function render(): void {
   }
 
   annoncer()
+  refléterAdresse()
 
   document.querySelector('#export-un')?.addEventListener('click', () => {
     const task = store.currentTask()

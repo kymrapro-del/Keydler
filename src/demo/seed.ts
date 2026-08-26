@@ -4,6 +4,8 @@ import {
   createTask,
   logStep,
   rejectApproach,
+  setConstraintStanding,
+  setRejectionStanding,
   verifyEvidence,
 } from '../domain/task'
 import type { TaskState } from '../domain/types'
@@ -16,15 +18,21 @@ import type { TaskState } from '../domain/types'
  * ou nous-mêmes sur une machine vierge en navigation privée — de retrouver
  * exactement l'état qui sert à la démonstration et à la mesure.
  *
- * Il porte trois contraintes et deux approches rejetées. Ce n'est pas
- * décoratif : c'est ce qui rend le test mesurable. Un agent qui a réellement lu
- * ce qu'il a reçu annonce l'approche C, refuse la variante B en citant la
+ * Il porte trois contraintes en vigueur et deux approches condamnées. Ce n'est
+ * pas décoratif : c'est ce qui rend le test mesurable. Un agent qui a réellement
+ * lu ce qu'il a reçu annonce l'approche C, refuse la variante B en citant la
  * rotation des jetons, et n'ajoute aucune dépendance. Sans ces éléments, on ne
  * mesure que le fait qu'un outil a été appelé.
  *
- * Les quatre degrés de preuve y figurent, du plus fort au plus faible : c'est
+ * Il porte AUSSI une proposition d'agent laissée en attente, et c'est le
+ * deuxième enseignement de la démonstration : ce qu'un agent écrit n'oppose
+ * rien tant qu'un humain ne l'a pas endossé. Sans elle, la page ne montrerait
+ * que le cas où l'agent a raison — et c'est le cas où il a tort qui décide de
+ * la valeur du cahier.
+ *
+ * Les trois degrés de preuve y figurent, du plus fort au plus faible : c'est
  * la distinction entre travail prouvé et travail affirmé qui doit se voir à
- * l'écran, et elle ne se voit que si les quatre sont présents.
+ * l'écran, et elle ne se voit que si les trois sont présents.
  */
 export function buildDemoTask(): TaskState {
   let task = createTask({
@@ -44,27 +52,47 @@ export function buildDemoTask(): TaskState {
     'human',
   )
 
-  // Contrainte que l'agent s'est lui-même donnée, sur la version courante.
+  // Contrainte que l'agent a proposée, puis que l'humain a endossée d'un clic.
+  // Elle devient opposable, et garde la marque de qui l'a écrite.
   task = addConstraint(
     task,
     { rule: 'Keep the public API unchanged', basedOnVersion: task.version },
     'agent',
   )
+  task = setConstraintStanding(task, task.constraints[task.constraints.length - 1].id, 'accepted')
 
+  // Veto humain : autoritaire d'emblée. C'est celui que la mesure interroge.
   task = rejectApproach(
     task,
     {
       approach: 'JWT approach B',
       reason: 'breaks refresh token rotation under concurrent logins',
-      basedOnVersion: task.version,
+      basedOnVersion: null,
     },
-    'agent',
+    'human',
   )
+
+  // Condamnation proposée par un agent, puis endossée : la voie complète.
   task = rejectApproach(
     task,
     {
       approach: 'Partial index on sessions',
       reason: 'benchmarked 3x slower than the full index',
+      basedOnVersion: task.version,
+    },
+    'agent',
+  )
+  task = setRejectionStanding(task, task.rejected[task.rejected.length - 1].id, 'accepted')
+
+  // Et celle qui reste en attente. Elle condamne la bonne réponse pour un motif
+  // que l'agent a cru vrai : c'est exactement le cas où une écriture d'agent
+  // tenue pour autoritaire empoisonnerait toutes les conversations suivantes.
+  // Personne n'a tranché, donc elle n'interdit rien — elle se lit, à part.
+  task = rejectApproach(
+    task,
+    {
+      approach: 'Rotating refresh tokens on every request',
+      reason: 'assumed to conflict with the mobile client, not measured',
       basedOnVersion: task.version,
     },
     'agent',
@@ -92,8 +120,10 @@ export function buildDemoTask(): TaskState {
   )
 
   // Une preuve validée d'un clic humain : c'est le seul chemin vers
-  // « human_verified », et il faut qu'il soit représenté.
-  task = verifyEvidence(task, task.steps[task.steps.length - 1].id)
+  // « human_verified », et il faut qu'il soit représenté. Le contenu relu est
+  // repris de l'étape elle-même : c'est ce qu'un écran affiche avant le clic.
+  const relue = task.steps[task.steps.length - 1]
+  task = verifyEvidence(task, relue.id, relue.evidence!.content)
 
   task = logStep(
     task,

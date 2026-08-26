@@ -5,6 +5,7 @@ import { getDb } from '../src/persistence/db'
 import { loadTask, saveTask } from '../src/persistence/taskRepository'
 import * as store from '../src/store/taskStore'
 import { ALL_TOOLS } from '../src/webmcp/tools'
+import { exec, mutationId, storeWrite } from './helpers'
 
 /**
  * Écriture depuis une autre page.
@@ -75,7 +76,10 @@ describe('conflit entre pages', () => {
     )
 
     const logStepTool = ALL_TOOLS.find((t) => t.name === 'log_step')!
-    const result = await logStepTool.execute({ action: 'a', result: 'b', based_on_version: 1 }, {})
+    const result = await logStepTool.execute(
+      { action: 'a', result: 'b', mutation_id: mutationId(), based_on_version: 1 },
+      exec(),
+    )
 
     expect(result.isError).toBe(true)
     const texte = result.content[0].text
@@ -94,10 +98,13 @@ describe('conflit entre pages', () => {
     await store.mutate((s) => s).catch(() => undefined) // provoque la resynchro
     const v = store.currentTask()!.version
 
-    const après = await store.mutateAsAgent('log_step', v, (s) =>
-      logStep(s, { action: 'a', result: 'b', basedOnVersion: v }, 'agent'),
+    const après = await store.mutateAsAgent(
+      storeWrite('log_step', v, { n: v }, (s) =>
+        logStep(s, { action: 'a', result: 'b', basedOnVersion: v }, 'agent'),
+      ),
     )
     expect(après.version).toBe(v + 1)
-    expect(après.steps).toHaveLength(1)
+    expect(après.replayed).toBe(false)
+    expect(store.currentTask()!.steps).toHaveLength(1)
   })
 })

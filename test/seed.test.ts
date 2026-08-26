@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { buildDemoTask } from '../src/demo/seed'
 import { renderTaskState } from '../src/domain/render'
-import { activeConstraints, evidenceCounts } from '../src/domain/task'
+import {
+  acceptedRejections,
+  activeConstraints,
+  evidenceCounts,
+  proposedRejections,
+} from '../src/domain/task'
 
 /**
  * Le cahier de démonstration est un livrable, pas un décor.
@@ -11,31 +16,50 @@ import { activeConstraints, evidenceCounts } from '../src/domain/task'
  * exactement ce que le contrôle avant dépôt interdit.
  */
 describe('cahier de démonstration', () => {
-  it('porte trois contraintes actives et deux approches rejetées', () => {
+  it('porte trois contraintes en vigueur et deux approches condamnées', () => {
     const task = buildDemoTask()
     // Ces deux nombres sont cités dans le README : les changer sans changer le
     // texte publierait un chiffre faux.
     expect(activeConstraints(task)).toHaveLength(3)
-    expect(task.rejected).toHaveLength(2)
+    expect(acceptedRejections(task)).toHaveLength(2)
+  })
+
+  it('laisse une proposition d’agent en attente, sans qu’elle interdise rien', () => {
+    const task = buildDemoTask()
+    const enAttente = proposedRejections(task)
+    expect(enAttente).toHaveLength(1)
+    expect(enAttente[0].source).toBe('agent')
+
+    // Elle se lit — un agent doit pouvoir la peser — mais pas sous l'en-tête
+    // qui condamne. Sans cette séparation, une conjecture d'agent fermerait la
+    // bonne réponse à toutes les conversations suivantes.
+    const output = renderTaskState(task)
+    expect(output).toContain('PROPOSED BY AN AGENT — NOT binding')
+    expect(output).toContain(enAttente[0].approach)
+    const condamnations = output.slice(output.indexOf('REJECTED'), output.indexOf('PROPOSED BY'))
+    expect(condamnations).not.toContain(enAttente[0].approach)
   })
 
   it('distingue les contraintes humaines de celles de l’agent', () => {
     const task = buildDemoTask()
     const sources = activeConstraints(task).map((c) => c.source)
     expect(sources.filter((s) => s === 'human')).toHaveLength(2)
+    // Écrite par un agent, opposable parce qu'un humain l'a endossée : la
+    // provenance reste visible, l'autorité vient du clic.
     expect(sources.filter((s) => s === 'agent')).toHaveLength(1)
+    expect(activeConstraints(task).every((c) => c.standing === 'accepted')).toBe(true)
   })
 
   it('propose l’approche C comme prochaine action', () => {
     expect(buildDemoTask().next).toContain('approach C')
   })
 
-  it('représente les quatre degrés de preuve', () => {
+  it('représente les trois degrés de preuve', () => {
     const counts = evidenceCounts(buildDemoTask())
-    // La distinction prouvé / affirmé ne se voit que si les quatre sont là.
+    // La distinction prouvé / affirmé ne se voit que si les trois sont là.
     // « human_verified » en particulier : sans lui, la démonstration ne
-    // montrerait pas la supervision humaine.
-    expect(counts.machine_verified).toBeGreaterThan(0)
+    // montrerait pas la supervision humaine — et c'est le seul degré qu'un
+    // agent ne peut pas atteindre.
     expect(counts.human_verified).toBeGreaterThan(0)
     expect(counts.evidence).toBeGreaterThan(0)
     expect(counts.claimed).toBeGreaterThan(0)

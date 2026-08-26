@@ -47,6 +47,8 @@ export function motifFrancais(error: ValidationError): string {
       return `${champ} doit être du texte.`
     case 'bad-version':
       return `${champ} doit être un numéro de version.`
+    case 'out-of-range':
+      return `${champ} est hors des bornes acceptées.`
     case 'bad-enum':
       return `${champ} ne fait pas partie des valeurs acceptées.`
     case 'not-found':
@@ -57,6 +59,16 @@ export function motifFrancais(error: ValidationError): string {
       return "cette tâche n'est pas close."
     case 'already-completed':
       return 'cette tâche est close. Rouvrez-la si du travail reste à faire.'
+    case 'bad-mutation-id':
+      return `${champ} doit être un identifiant d'écriture valide.`
+    case 'mutation-id-reused':
+      return `${champ} a déjà servi à une autre écriture.`
+    case 'mutation-id-collision':
+      return `${champ} a déjà servi, avec d'autres arguments.`
+    case 'content-not-reviewed':
+      return 'la preuve affichée ne correspond plus à celle du cahier — relisez-la avant de valider.'
+    case 'not-proposed':
+      return 'cette proposition a déjà été traitée.'
   }
 }
 

@@ -1,5 +1,6 @@
-import { ConcurrentWriteError, StaleStateError } from '../domain/errors'
-import { createTask, recordRefusal } from '../domain/task'
+import { ConcurrentWriteError, StaleStateError, ValidationError } from '../domain/errors'
+import { CancelledError } from '../domain/errors'
+import { createTask, findMutation, recordMutation, recordRefusal } from '../domain/task'
 import type { Actor, TaskState } from '../domain/types'
 import {
   deleteTask,
@@ -22,19 +23,29 @@ import {
  * monté, et le mode strict de React ne doit jamais pouvoir les dédoubler.
  */
 
-export type StoreStatus = 'loading' | 'ready' | 'empty' | 'error'
+export type StoreStatus = 'loading' | 'ready' | 'empty' | 'error' | 'missing'
 
 export type Snapshot = {
   status: StoreStatus
   task: TaskState | null
   error: string | null
+  /**
+   * Le cahier auquel la page est LIÉE, par son adresse `/t/:id`.
+   *
+   * Sans ce lien, `resume_task` rendait « le dernier cahier touché sur cet
+   * appareil ». Deux onglets ouverts sur deux tâches suffisaient donc à ce
+   * qu'un agent reçoive l'état d'une tâche qui n'était pas la sienne, sans
+   * qu'aucune ligne de la réponse ne le dise. Une page liée rend cette tâche-là
+   * ou dit qu'elle a disparu ; elle n'en substitue jamais une autre.
+   */
+  boundId: string | null
 }
 
 type Listener = () => void
 
 const listeners = new Set<Listener>()
 
-let snapshot: Snapshot = { status: 'loading', task: null, error: null }
+let snapshot: Snapshot = { status: 'loading', task: null, error: null, boundId: null }
 let initPromise: Promise<void> | null = null
 
 function setSnapshot(next: Snapshot): void {
@@ -53,29 +64,58 @@ export function subscribe(listener: Listener): () => void {
   }
 }
 
+/** Le cahier auquel la page est liée, ou `null` si elle ne l'est pas encore. */
+export function boundTaskId(): string | null {
+  return snapshot.boundId
+}
+
 /**
- * Charge un cahier. Sans identifiant, reprend le dernier ouvert — c'est le
- * chemin emprunté par un agent qui arrive sans contexte.
+ * Charge un cahier.
+ *
+ * Avec un identifiant — celui de l'adresse — la page s'y LIE : elle rendra
+ * cette tâche ou signalera sa disparition, jamais une autre.
+ *
+ * Sans identifiant, elle reprend le dernier cahier ouvert puis s'y lie. C'est
+ * le chemin d'une première visite ; une fois lié, le comportement est le même.
  */
 export async function init(taskId?: string): Promise<void> {
-  if (!initPromise || taskId) {
-    initPromise = (async () => {
+  if (!initPromise || (taskId !== undefined && taskId !== snapshot.boundId)) {
+    // DANS la file d'écriture, comme tout ce qui pose un état.
+    //
+    // La lecture du disque et le `setSnapshot` qui la suit étaient hors file.
+    // Rien n'empêchait donc la lecture de partir avant qu'une écriture en
+    // cours ne soit persistée et d'atterrir après : la page se retrouvait avec
+    // un état ANTÉRIEUR à celui qu'elle venait d'appliquer, et le numéro de
+    // version reculait. Le déclencheur est banal — `requireTask()` appelle
+    // `init()`, donc le tout premier appel d'outil d'un agent suffisait à
+    // défaire la contrainte que l'humain venait de poser.
+    //
+    // Sérialisée, la lecture ne peut plus voir un disque en retard sur la
+    // mémoire : toute écriture appliquée a déjà été persistée dans le tour
+    // précédent. Un état plus RÉCENT venu d'un autre onglet, lui, s'impose
+    // toujours — c'est le comportement voulu.
+    initPromise = enqueue(async () => {
       try {
         const task = taskId ? await loadTask(taskId) : await loadLastTask()
         if (task) {
           await setLastTaskId(task.id)
-          setSnapshot({ status: 'ready', task, error: null })
+          setSnapshot({ status: 'ready', task, error: null, boundId: task.id })
+        } else if (taskId) {
+          // Nommée par l'adresse et introuvable : cas distinct du cahier
+          // absent, et le seul où la substitution serait tentante.
+          setSnapshot({ status: 'missing', task: null, error: null, boundId: taskId })
         } else {
-          setSnapshot({ status: 'empty', task: null, error: null })
+          setSnapshot({ status: 'empty', task: null, error: null, boundId: null })
         }
       } catch (error) {
         setSnapshot({
           status: 'error',
           task: null,
           error: error instanceof Error ? error.message : String(error),
+          boundId: taskId ?? null,
         })
       }
-    })()
+    })
   }
   return initPromise
 }
@@ -83,14 +123,14 @@ export async function init(taskId?: string): Promise<void> {
 export async function createAndOpenTask(title: string, next?: string): Promise<TaskState> {
   const task = createTask({ title, next })
   await saveTask(task)
-  setSnapshot({ status: 'ready', task, error: null })
+  setSnapshot({ status: 'ready', task, error: null, boundId: task.id })
   return task
 }
 
 /** Ouvre un cahier déjà constitué. Sert au cahier de démonstration. */
 export async function openPreparedTask(task: TaskState): Promise<TaskState> {
   await saveTask(task)
-  setSnapshot({ status: 'ready', task, error: null })
+  setSnapshot({ status: 'ready', task, error: null, boundId: task.id })
   return task
 }
 
@@ -100,6 +140,10 @@ export async function openPreparedTask(task: TaskState): Promise<TaskState> {
  * Le protocole de mesure impose de repartir d'une base vide entre deux essais.
  * Sans ce chemin, cela n'était possible qu'en ouvrant les outils de
  * développement — ce que le protocole se reprochait à lui-même.
+ *
+ * Le lien suit la suppression : l'adresse et le `TASK ID` rendu par
+ * `resume_task` changent tous les deux, donc l'agent VOIT qu'il a changé de
+ * cahier au lieu de le découvrir dans le contenu.
  */
 export async function deleteCurrentTask(): Promise<void> {
   const current = snapshot.task
@@ -110,9 +154,9 @@ export async function deleteCurrentTask(): Promise<void> {
     const suivant = await loadLastTask()
     if (suivant) {
       await setLastTaskId(suivant.id)
-      setSnapshot({ status: 'ready', task: suivant, error: null })
+      setSnapshot({ status: 'ready', task: suivant, error: null, boundId: suivant.id })
     } else {
-      setSnapshot({ status: 'empty', task: null, error: null })
+      setSnapshot({ status: 'empty', task: null, error: null, boundId: null })
     }
   })
 }
@@ -135,6 +179,11 @@ export function currentTask(): TaskState | null {
  */
 export function storageFailure(): string | null {
   return snapshot.status === 'error' ? snapshot.error : null
+}
+
+/** L'identifiant lié dont le cahier a disparu, le cas échéant. */
+export function missingTaskId(): string | null {
+  return snapshot.status === 'missing' ? snapshot.boundId : null
 }
 
 /**
@@ -187,7 +236,7 @@ async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskSta
     throw error
   }
 
-  setSnapshot({ status: 'ready', task: next, error: null })
+  setSnapshot({ status: 'ready', task: next, error: null, boundId: next.id })
   return next
 }
 
@@ -196,7 +245,7 @@ async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskSta
 async function resyncFromDisk(id: string): Promise<void> {
   try {
     const fresh = await loadTask(id)
-    if (fresh) setSnapshot({ status: 'ready', task: fresh, error: null })
+    if (fresh) setSnapshot({ status: 'ready', task: fresh, error: null, boundId: fresh.id })
   } catch {
     /* on garde l'erreur de conflit */
   }
@@ -211,42 +260,156 @@ export async function mutate(fn: (state: TaskState) => TaskState): Promise<TaskS
   return enqueue(() => applyLocked(fn))
 }
 
+/** Une écriture d'agent, avec de quoi la rejouer à l'identique. */
+export type AgentWrite = {
+  operation: string
+  basedOnVersion: number
+  /**
+   * Fourni par l'agent. Deux appels qui le partagent PRÉTENDENT être le même
+   * appel ; c'est l'empreinte qui décide s'ils le sont.
+   */
+  mutationId: string
+  /** Empreinte de l'intention validée. Voir `domain/intent.ts`. */
+  fingerprint: string
+  /** Le signal que WebMCP passe à toute exécution d'outil. */
+  signal?: AbortSignal
+  mutate: (state: TaskState) => TaskState
+  /** Rend la réponse. Appelé une seule fois, sur l'état appliqué, et mémorisé. */
+  render: (next: TaskState) => string
+}
+
+export type AgentWriteOutcome = {
+  /** La réponse à rendre. Au rejeu, celle du premier appel, mot pour mot. */
+  text: string
+  replayed: boolean
+  version: number
+}
+
 /**
- * Applique une écriture d'agent. Un refus pour état périmé est journalisé puis
- * relancé : le tableau de bord doit pouvoir l'afficher, et l'agent doit
- * recevoir l'instruction de rappeler `resume_task`.
+ * Applique une écriture d'agent, une seule fois par `mutation_id`.
+ *
+ * Trois choses arrivent ici, dans cet ordre, et l'ordre est le fond du sujet :
+ *
+ * 1. **Le rejeu passe avant le contrôle de version.** Un réessai porte
+ *    forcément une version périmée — l'appel d'origine l'a fait avancer.
+ *    Contrôler d'abord rendrait STALE STATE à un agent qui ne demande rien de
+ *    plus que la réponse qu'il n'a pas reçue, et l'idempotence ne servirait
+ *    jamais.
+ * 2. **L'annulation est constatée une fois la file obtenue**, pas à l'entrée :
+ *    un appel annulé pendant qu'il attendait son tour ne doit pas écrire.
+ * 3. **La trace est écrite dans la même transaction que la mutation.** Séparées,
+ *    une panne entre les deux laisserait une écriture appliquée sans mémoire
+ *    d'elle-même — et le réessai la referait.
+ *
+ * Un refus pour état périmé est journalisé puis relancé : le tableau de bord
+ * doit pouvoir l'afficher, et l'agent doit recevoir l'instruction de rappeler
+ * `resume_task`.
  */
 export async function mutateAsAgent(
-  operation: string,
-  basedOnVersion: number | null,
-  fn: (state: TaskState) => TaskState,
+  write: AgentWrite,
   actor: Actor = 'agent',
-): Promise<TaskState> {
+): Promise<AgentWriteOutcome> {
   // Un seul passage dans la file pour la mutation ET la journalisation du
   // refus : deux passages laisseraient une autre écriture s'intercaler entre
   // l'échec et sa trace.
   return enqueue(async () => {
+    const ouvert = snapshot.task
+    if (!ouvert) {
+      throw new Error('NO ACTIVE TASK\nNo watch log is open on this device.')
+    }
+
+    let rendu = ''
     try {
-      return await applyLocked(fn)
+      // TOUS les refus vivent DANS le try, et c'est le fond du sujet.
+      //
+      // L'annulation et les collisions de `mutation_id` étaient contrôlées
+      // au-dessus, si bien que ces refus-là ne laissaient aucune trace : ni au
+      // journal d'audit, ni à l'écran qui le lit. L'agent recevait un message,
+      // l'humain ne voyait rien.
+      //
+      // Ce sont pourtant les deux refus qu'il faut le plus voir passer. Une
+      // annulation, l'agent lui-même ne saura pas forcément qu'elle a eu lieu.
+      // Une collision, elle, dit à un agent que son travail n'a PAS été
+      // consigné : si personne ne peut le constater après coup, il ne reste
+      // aucune trace du travail perdu.
+      if (write.signal?.aborted) throw new CancelledError(write.operation)
+
+      const déjàFaite = findMutation(ouvert, write.mutationId)
+      if (déjàFaite) {
+        if (déjàFaite.operation !== write.operation) {
+          // Le même jeton pour deux outils différents : rendre la première
+          // réponse serait accuser réception d'un travail jamais fait.
+          throw new ValidationError(
+            'mutation_id',
+            `was already used for ${déjàFaite.operation}; a mutation_id identifies one write and cannot be reused. ` +
+              'Use a fresh one.',
+            { code: 'mutation-id-reused', retryable: false },
+          )
+        }
+        if (déjàFaite.fingerprint !== write.fingerprint) {
+          // Même outil, mais pas le même travail. C'est le cas dangereux : sans
+          // empreinte, il se lisait comme un rejeu et le second travail
+          // repartait avec la réponse du premier, jamais écrit et pourtant
+          // accusé réception. Un agent qui croit son travail consigné ne le
+          // reconsigne pas.
+          throw new ValidationError(
+            'mutation_id',
+            `was already used for a ${déjàFaite.operation} call with different arguments. ` +
+              'A mutation_id identifies one write. Nothing was written. ' +
+              'Use a fresh mutation_id for this work, or resend the original arguments to get the original reply.',
+            { code: 'mutation-id-collision', retryable: false },
+          )
+        }
+        return { text: déjàFaite.result, replayed: true, version: déjàFaite.version }
+      }
+
+      // La version rendue vient de l'état APPLIQUÉ, pas d'une relecture du
+      // magasin : lire l'instantané après coup marcherait tant que rien ne
+      // s'intercale, ce qui est précisément l'hypothèse que la file existe
+      // pour ne pas avoir à faire.
+      const appliqué = await applyLocked((state) => {
+        const next = write.mutate(state)
+        rendu = write.render(next)
+        return recordMutation(next, {
+          id: write.mutationId,
+          operation: write.operation,
+          version: next.version,
+          fingerprint: write.fingerprint,
+          result: rendu,
+          at: next.updatedAt,
+        })
+      })
+      return { text: rendu, replayed: false, version: appliqué.version }
     } catch (error) {
       const current = snapshot.task
       if (current) {
-        const detail = error instanceof Error ? error.message.split('\n')[0] : String(error)
+        // « INVALID INPUT » ne dit rien à qui relit le journal. Le code d'un
+        // refus de validation, lui, est court, stable, et nomme exactement la
+        // règle qui a joué — c'est ce qui rend une collision de `mutation_id`
+        // reconnaissable dans un export, des semaines plus tard.
+        const detail =
+          error instanceof ValidationError
+            ? `${error.field}: ${error.code}`
+            : error instanceof Error
+              ? error.message.split('\n')[0]
+              : String(error)
         const refused = recordRefusal(current, {
-          operation,
+          operation: write.operation,
           actor,
-          basedOnVersion,
+          basedOnVersion: write.basedOnVersion,
           detail:
             error instanceof StaleStateError
               ? `stale write on v${error.claimedVersion}, current v${error.currentVersion}`
               : error instanceof ConcurrentWriteError
                 ? `another page wrote v${error.foundVersion} while this one held v${error.expectedVersion}`
-                : detail,
+                : error instanceof CancelledError
+                  ? 'cancelled before anything was written'
+                  : detail,
         })
         // Le refus n'incrémente pas la version : la comparaison porte donc
         // sur celle de l'état courant, resynchronisé le cas échéant.
         await saveTask(refused, current.version)
-        setSnapshot({ status: 'ready', task: refused, error: null })
+        setSnapshot({ status: 'ready', task: refused, error: null, boundId: refused.id })
       }
       throw error
     }
@@ -269,7 +432,7 @@ export async function recordAgentRefusal(
     if (!current) return
     const refused = recordRefusal(current, { operation, actor, basedOnVersion, detail })
     await saveTask(refused, current.version)
-    setSnapshot({ status: 'ready', task: refused, error: null })
+    setSnapshot({ status: 'ready', task: refused, error: null, boundId: refused.id })
   })
 }
 
@@ -277,6 +440,6 @@ export async function recordAgentRefusal(
 export function __resetStore(): void {
   listeners.clear()
   writeQueue = Promise.resolve()
-  snapshot = { status: 'loading', task: null, error: null }
+  snapshot = { status: 'loading', task: null, error: null, boundId: null }
   initPromise = null
 }

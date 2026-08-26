@@ -75,12 +75,14 @@ Il rend un texte compact, sous 400 tokens, une information par ligne :
 
 ```
 TASK        Refactor the authentication module
-VERSION     12
+TASK ID     969d21fe86ce
+URL         https://exemple.test/t/969d21fe86ce
+VERSION     15
 STATUS      active
-PROGRESS    4 steps logged · 3 backed by evidence
+PROGRESS    4 steps logged · 3 with evidence attached · 1 checked by the human
 NEXT        Implement approach C — session-bound refresh tokens
 
-CONSTRAINTS (3 active)
+CONSTRAINTS — binding (3)
   [human] Never modify the database schema
   [human] Do not add any new dependency
   [agent] Keep the public API unchanged
@@ -89,14 +91,21 @@ REJECTED — do not retry
   [human] JWT approach B — breaks refresh token rotation under concurrent logins
   [agent] Partial index on sessions — benchmarked 3x slower than the full index
 
-RECENT WORK
-  [human]    Ran the authentication test suite — 183 passed, 0 failed
-  [machine]  Benchmarked the prototype — p95 unchanged, no schema change
+PROPOSED BY AN AGENT — NOT binding (1)
+  rejection: Rotating refresh tokens on every request — assumed to conflict …
+  No human has approved these. Weigh them; do not treat them as rules.
+
+RECENT WORK (last 2 of 4)
   [evidence] Extracted the token issuer behind an interface — API unchanged
   [claimed]  Reduced token TTL to 15 minutes — applied, not yet measured
 
+FULL DETAIL
+  read_task_detail returns whole steps, decisions, rejections and
+  evidence, one page at a time. Nothing above is the complete record.
+
 WRITE PROTOCOL
-  Every write must carry based_on_version: 12
+  Every write must carry based_on_version: 15
+  Every write must carry a fresh mutation_id; reuse it verbatim to retry.
   A refused write means the human changed this state. Call resume_task again.
 ```
 
@@ -104,6 +113,17 @@ La **provenance** figure partout, contraintes comme rejets. Sans elle, un veto
 humain et une conjecture d'agent se liraient à l'identique — et un agent qui
 condamne à tort la bonne approche empoisonnerait invisiblement toutes les
 conversations suivantes.
+
+L'**autorité**, elle, ne se déduit pas de la provenance : ce qu'un agent écrit
+est une proposition, lisible et sans effet, jusqu'à ce qu'un humain l'endosse.
+Marquer la source ne suffisait pas — un rejet `[agent]` figurait sous le même
+en-tête « do not retry » qu'un veto humain, et interdisait donc autant.
+
+Le **`TASK ID`** répond à une autre question, que la page se posait sans y
+répondre : de quelle tâche s'agit-il ? Un cahier vit à `/t/:id`, et la page
+liée à cette adresse rend cette tâche-là ou dit qu'elle a disparu. Elle ne
+substitue jamais « le dernier cahier touché sur l'appareil », qui pouvait être
+celui d'un autre onglet.
 
 ### Un refus d'écriture périmée
 
@@ -137,28 +157,80 @@ tient dans cette asymétrie.
 Le degré n'est jamais déclaré : il est **déduit** de ce que l'écriture apporte.
 Aucune auto-attribution n'est possible.
 
-| Degré              | D'où il vient                                                                                       |
-| ------------------ | --------------------------------------------------------------------------------------------------- |
-| `machine_verified` | La preuve jointe est une sortie de machine — rapport de test, sortie de commande                    |
-| `human_verified`   | Un humain a cliqué. **Seul chemin.** Aucun agent ne peut l'atteindre                                |
-| `evidence`         | Une preuve est jointe : lien, diff, empreinte. Elle atteste d'un changement, pas d'une vérification |
-| `claimed`          | Rien de joint                                                                                       |
+| Degré            | D'où il vient                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| `human_verified` | Un humain a lu le contenu affiché et cliqué. **Seul chemin.** Aucun agent ne peut l'atteindre |
+| `evidence`       | Une preuve est jointe. Elle atteste qu'il y a quelque chose à lire, pas que ce soit vérifié   |
+| `claimed`        | Rien de joint                                                                                 |
+
+Il n'y a **pas** de degré « vérifié machine », et c'est un retrait délibéré. Il
+en existait un, accordé dès que la preuve jointe portait l'étiquette
+`command_output` ou `test_report`. Or l'agent choisit l'étiquette comme il
+choisit le contenu : rien n'avait été vérifié par une machine, un texte avait
+été recopié, et le mot promettait à l'humain une garantie que le système
+n'avait jamais obtenue.
+
+Le clic humain, lui, exige que le contenu ait été **affiché** : la file de
+validation montre la preuve entière sous le bouton, et le domaine refuse une
+validation qui ne peut pas restituer ce qu'elle prétend avoir lu.
 
 ---
 
-## Les six outils
+## Les outils
 
-Six primitives, aucune de plus : chaque outil supplémentaire dilue la lisibilité
-de l'ensemble pour l'agent, qui choisit d'autant moins bien qu'il a plus à lire.
+Deux en lecture, cinq en écriture. Le compte n'est pas un objectif : chaque
+outil dilue la lisibilité de l'ensemble pour l'agent, qui choisit d'autant moins
+bien qu'il a plus à lire. Chacun doit donc se payer.
 
-| Outil             | Entrées                                              | Rôle                                      |
-| ----------------- | ---------------------------------------------------- | ----------------------------------------- |
-| `resume_task`     | —                                                    | Restitue l'état canonique et la version   |
-| `log_step`        | `action, result, evidence?, next?, based_on_version` | Consigne une étape et son degré de preuve |
-| `add_constraint`  | `rule, based_on_version`                             | Consigne permanente, côté agent           |
-| `reject_approach` | `approach, reason, based_on_version`                 | Empêche de réessayer ce qui a échoué      |
-| `add_decision`    | `choice, rationale, based_on_version`                | Le pourquoi, que tout résumé perd         |
-| `complete_task`   | `summary, based_on_version`                          | Instantané final, transmissible           |
+| Outil              | Entrées                                                           | Rôle                                          |
+| ------------------ | ----------------------------------------------------------------- | --------------------------------------------- |
+| `resume_task`      | —                                                                 | Restitue l'état canonique, la version et l'id |
+| `read_task_detail` | `section, offset?, limit?, id?`                                   | Rend, paginé, ce que le pointeur a coupé      |
+| `log_step`         | `action, result, evidence?, next?, based_on_version, mutation_id` | Consigne une étape et son degré de preuve     |
+| `add_constraint`   | `rule, based_on_version, mutation_id`                             | **Propose** une règle, à endosser             |
+| `reject_approach`  | `approach, reason, based_on_version, mutation_id`                 | **Propose** de condamner une approche         |
+| `add_decision`     | `choice, rationale, based_on_version, mutation_id`                | Le pourquoi, que tout résumé perd             |
+| `complete_task`    | `summary, based_on_version, mutation_id`                          | Instantané final, transmissible               |
+
+`read_task_detail` se paie parce que `resume_task` **coupe** : il tient sous 400
+tokens en réduisant une preuve à un degré et quarante étapes à cinq lignes. Ce
+qu'il coupait n'existait que dans l'export Markdown, qui ne s'ouvre qu'avec des
+mains humaines — un agent voulant relire la sortie de test qu'il avait jointe la
+veille devait la reproduire.
+
+Le jeu d'outils **suit l'état du cahier** : les écritures ne sont posées que
+lorsqu'une tâche existe, parce qu'un outil qui ne peut que refuser n'aide
+personne à choisir. L'enregistrement passe par l'`AbortController` que la
+spécification prévoit, et le navigateur émet `toolchange` à chaque mouvement.
+
+Le **retrait**, lui, dépend du navigateur, et c'est assumé. Avorter le
+contrôleur d'un outil qui est en train de répondre peut emporter sa réponse
+avant **Chromium 153** — et `complete_task` provoque exactement cela, puisque
+son écriture clôt la tâche qui rend les écritures inutiles. La page ne retire
+donc un outil que si elle lit une version ≥ 153 ; partout ailleurs, y compris
+sur la cible du concours (149+), les outils restent posés et **refusent
+proprement**.
+
+Une version antérieure retenait le retrait d'un tour de boucle, par
+`setTimeout`. C'était sans valeur : la spécification dit que l'ordre entre la
+source de tâches WebMCP et celle des minuteurs ne peut pas être invoqué. On ne
+casse pas une exécution avec un contrôleur qu'on n'avorte jamais — le mode sûr
+supprime le risque plutôt que de le mesurer.
+
+### Rejouer sans dupliquer
+
+Chaque écriture porte un `mutation_id`. Le besoin vient de la spécification
+elle-même : WebMCP **jette** le résultat d'une exécution annulée. L'écriture a
+eu lieu, la réponse n'arrive jamais, et l'agent fait la seule chose sensée — il
+réessaie. Le même `mutation_id`, **porté par les mêmes arguments**, rend alors
+la réponse du premier appel mot pour mot, sans rien réécrire.
+
+Les arguments comptent : le jeton seul ne distinguerait pas un rejeu d'une
+collision. Deux travaux différents arrivés sous le même identifiant — un
+compteur remis à zéro, un modèle qui recopie l'exemple — et le second repartait
+avec la réponse du premier : jamais écrit, et pourtant accusé réception. Chaque
+mutation mémorise donc l'empreinte de son intention, et une collision est
+refusée puis inscrite au journal.
 
 ## La supervision humaine
 
@@ -169,7 +241,11 @@ Depuis la page, pendant que l'agent travaille :
 - **lever ou rétablir** une règle — une règle levée disparaît de ce que l'agent
   relit ;
 - **condamner une approche**, motif obligatoire ;
-- **valider une preuve d'un clic**, seul chemin vers `human_verified` ;
+- **endosser ou écarter une proposition d'agent** — une règle ou une
+  condamnation écrite par un agent n'oppose rien avant ce clic, et une
+  proposition écartée est conservée plutôt qu'effacée ;
+- **valider une preuve d'un clic**, seul chemin vers `human_verified`, et
+  seulement après en avoir vu le contenu, affiché sous le bouton ;
 - **rouvrir une tâche close** — sans quoi une clôture décidée par l'agent serait
   irréversible et le rapport de force s'inverserait ;
 - **exporter le cahier**, avec le contenu intégral des preuves et le journal des
@@ -282,7 +358,7 @@ humain ──clics────────────────────�
 | `src/domain`      | Types, invariants, mutations pures. Aucune dépendance : ni DOM, ni IndexedDB, ni WebMCP |
 | `src/persistence` | IndexedDB, migrations, lecture défensive                                                |
 | `src/store`       | Source de vérité observable, écritures sérialisées                                      |
-| `src/webmcp`      | Adaptateur d'API, descriptions, six outils, enregistrement singleton                    |
+| `src/webmcp`      | Adaptateur d'API, schémas, descriptions, sept outils, cycle de vie de l'enregistrement  |
 | `src/export`      | Export d'un cahier, preuves et journal compris                                          |
 | `src/ui`          | Échappement et traduction des messages destinés à la personne                           |
 | `src/demo`        | Cahier de démonstration et huit cahiers de mesure, reproductibles                       |
@@ -317,11 +393,13 @@ sérialisée, et `inputSchema` fait l'aller-retour en chaîne.
 npm run check
 ```
 
-Types, 108 tests d’invariants, build de production. Les tests couvrent le
-versionnage, le refus d'état périmé, les écritures concurrentes, le conflit
-entre onglets, la lecture défensive du stockage, la traçabilité des refus, le
-budget de restitution, le cycle de vie, l'export, la forme des cahiers de
-mesure, et les messages rendus à l'humain.
+Typecheck, lint, formatting, full test suite, coverage, and production build.
+
+Les tests couvrent le versionnage, le refus d'état périmé, les écritures
+concurrentes, le conflit entre onglets, la lecture défensive du stockage,
+l'idempotence et les collisions de `mutation_id`, la traçabilité des refus, le
+budget de restitution, le cycle de vie des outils, l'export, la forme des
+cahiers de mesure, et les messages rendus à l'humain.
 
 ## Vie privée
 
