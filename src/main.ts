@@ -385,4 +385,23 @@ render()
 onRegistrationChange(render)
 onCall(render)
 store.subscribe(render)
-void store.init()
+
+/**
+ * `?mesure=N` charge la tâche de mesure N au chargement de la page.
+ *
+ * Le protocole du J6 doit être rejouable par une simple URL : un juge ouvre
+ * l'adresse et retrouve exactement l'état sur lequel la mesure a été faite,
+ * sans manipulation. La tâche n'est reconstruite que si le cahier ouvert n'est
+ * pas déjà celle-là, pour qu'un rechargement en cours d'essai ne remette pas
+ * le compteur à zéro.
+ */
+void (async () => {
+  await store.init()
+
+  const n = Number(new URLSearchParams(location.search).get('mesure'))
+  if (!n) return
+
+  const voulue = buildMeasureTask(n)
+  if (store.currentTask()?.title === voulue.title) return
+  await store.openPreparedTask(voulue)
+})()
