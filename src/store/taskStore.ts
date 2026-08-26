@@ -1,4 +1,4 @@
-import { StaleStateError } from '../domain/errors'
+import { ConcurrentWriteError, StaleStateError } from '../domain/errors'
 import { createTask, recordRefusal } from '../domain/task'
 import type { Actor, TaskState } from '../domain/types'
 import {
@@ -166,9 +166,33 @@ async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskSta
     throw new Error('NO ACTIVE TASK\nNo watch log is open on this device.')
   }
   const next = fn(current)
-  await saveTask(next)
+
+  try {
+    // La version lue est passée au stockage, qui arbitre : la file d'écriture
+    // ne connaît que cet onglet, une autre page a pu écrire entre-temps.
+    await saveTask(next, current.version)
+  } catch (error) {
+    if (error instanceof ConcurrentWriteError) {
+      // Se resynchroniser avant de relancer : sans cela, l'écran et l'agent
+      // continueraient de raisonner sur un état que le disque a dépassé.
+      await resyncFromDisk(current.id)
+    }
+    throw error
+  }
+
   setSnapshot({ status: 'ready', task: next, error: null })
   return next
+}
+
+/** Recharge l'état réel après un conflit. Silencieux en cas d'échec : l'erreur
+ *  d'origine reste la plus utile à remonter. */
+async function resyncFromDisk(id: string): Promise<void> {
+  try {
+    const fresh = await loadTask(id)
+    if (fresh) setSnapshot({ status: 'ready', task: fresh, error: null })
+  } catch {
+    /* on garde l'erreur de conflit */
+  }
 }
 
 /**
@@ -208,9 +232,13 @@ export async function mutateAsAgent(
           detail:
             error instanceof StaleStateError
               ? `stale write on v${error.claimedVersion}, current v${error.currentVersion}`
-              : detail,
+              : error instanceof ConcurrentWriteError
+                ? `another page wrote v${error.foundVersion} while this one held v${error.expectedVersion}`
+                : detail,
         })
-        await saveTask(refused)
+        // Le refus n'incrémente pas la version : la comparaison porte donc
+        // sur celle de l'état courant, resynchronisé le cas échéant.
+        await saveTask(refused, current.version)
         setSnapshot({ status: 'ready', task: refused, error: null })
       }
       throw error

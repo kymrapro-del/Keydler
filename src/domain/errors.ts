@@ -47,3 +47,29 @@ export class TaskNotFoundError extends Error {
     this.taskId = taskId
   }
 }
+
+/**
+ * Le cahier a changé sur le disque depuis qu'on l'a lu.
+ *
+ * Se produit quand une autre page — un second onglet, une autre fenêtre —
+ * écrit entre notre lecture et notre écriture. La file d'écriture en mémoire
+ * ne peut rien contre ça : elle ne connaît que son propre onglet. Seul le
+ * stockage arbitre.
+ */
+export class ConcurrentWriteError extends Error {
+  readonly expectedVersion: number
+  readonly foundVersion: number
+
+  constructor(expectedVersion: number, foundVersion: number) {
+    super(
+      [
+        'STALE STATE',
+        `You are attempting to write against task state v${expectedVersion}.`,
+        `Another page has since written v${foundVersion}. Call resume_task before continuing.`,
+      ].join('\n'),
+    )
+    this.name = 'ConcurrentWriteError'
+    this.expectedVersion = expectedVersion
+    this.foundVersion = foundVersion
+  }
+}

@@ -1,3 +1,4 @@
+import { ConcurrentWriteError } from '../domain/errors'
 import { getDb } from './db'
 import type { TaskState } from '../domain/types'
 
@@ -13,11 +14,34 @@ export async function loadTask(id: string): Promise<TaskState | undefined> {
   return db.get('tasks', id)
 }
 
-export async function saveTask(state: TaskState): Promise<void> {
+/**
+ * Écrit le cahier, en refusant d'écraser une version qu'on n'a pas lue.
+ *
+ * `expectedVersion` est la version sur laquelle la mutation a été calculée. La
+ * comparaison se fait DANS la transaction : c'est ce qui rend la garantie
+ * réelle plutôt que limitée à l'onglet courant. Sans elle, deux onglets
+ * ouverts sur le même cahier reproduisent exactement la perte silencieuse que
+ * la file d'écriture élimine à l'intérieur d'une page.
+ *
+ * Omettre `expectedVersion` écrit sans condition — réservé à la création et à
+ * l'ouverture d'un cahier préparé, où il n'y a rien à écraser.
+ */
+export async function saveTask(state: TaskState, expectedVersion?: number): Promise<void> {
   const db = await getDb()
   const tx = db.transaction(['tasks', 'meta'], 'readwrite')
+  const tasks = tx.objectStore('tasks')
+
+  if (expectedVersion !== undefined) {
+    const stored = await tasks.get(state.id)
+    if (stored && stored.version !== expectedVersion) {
+      // Abandonner la transaction : rien de ce qu'elle contient ne doit passer.
+      tx.abort()
+      throw new ConcurrentWriteError(expectedVersion, stored.version)
+    }
+  }
+
   await Promise.all([
-    tx.objectStore('tasks').put(state),
+    tasks.put(state),
     tx.objectStore('meta').put(state.id, LAST_TASK_KEY),
     tx.done,
   ])

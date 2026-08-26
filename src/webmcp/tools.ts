@@ -1,4 +1,4 @@
-import { StaleStateError, ValidationError } from '../domain/errors'
+import { ConcurrentWriteError, StaleStateError, ValidationError } from '../domain/errors'
 import {
   addConstraint,
   addDecision,
@@ -42,7 +42,13 @@ const versionProperty = {
  * — l'agent doit voir le texte, pas une trace de pile.
  */
 function toToolError(error: unknown): ToolResult {
-  if (error instanceof StaleStateError || error instanceof ValidationError) {
+  if (
+    error instanceof StaleStateError ||
+    error instanceof ConcurrentWriteError ||
+    error instanceof ValidationError
+  ) {
+    // Ces messages sont déjà écrits pour être lus par un agent : ils portent
+    // l'instruction à suivre. Les préfixer d'un ERROR les affaiblirait.
     return failure(error.message)
   }
   if (error instanceof Error) return failure(`ERROR\n${error.message}`)
