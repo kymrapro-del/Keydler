@@ -6,8 +6,9 @@ import './webmcp'
 import './tokens.css'
 import './style.css'
 import { buildMeasureTask } from './demo/measures'
+import { buildFullExport, buildTaskExport, exportFilename } from './export/notebook'
 import { buildDemoTask } from './demo/seed'
-import { renderNoTask, renderTaskState } from './domain/render'
+import { renderTaskState } from './domain/render'
 import {
   addConstraint,
   rejectApproach,
@@ -30,8 +31,21 @@ import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCall
 const root = document.querySelector<HTMLElement>('#app')
 if (!root) throw new Error('#app introuvable')
 
+/**
+ * Échappement sûr en contenu ET en position d'attribut.
+ *
+ * Les guillemets comptent : un identifiant interpolé dans `data-verify="…"`
+ * qui en contiendrait un sortirait de l'attribut. Les identifiants viennent
+ * normalement de `crypto.randomUUID`, mais ils sont relus depuis IndexedDB, et
+ * une couche d'affichage ne doit jamais faire confiance à ce qu'elle relit.
+ */
 const escapeHtml = (v: string) =>
-  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 
 function renderStatus(): string {
   const { phase, availability, toolNames, error } = getRegistrationState()
@@ -92,7 +106,7 @@ function renderWitness(): string {
     )
     .join('')
 
-  return `<div class="witness">
+  return `<div class="witness" role="status" aria-live="polite">
       <span class="witness__count">${calls.length}</span>
       <span class="witness__label">
         appel${calls.length > 1 ? 's' : ''} d'outil<br />
@@ -111,10 +125,22 @@ function renderTask(): string {
     return `<div class="status status--error"><p>${escapeHtml(error ?? '')}</p></div>`
   }
   if (!task) {
-    return `<div class="status status--warn">
-      <p class="status__title">Aucun cahier ouvert</p>
-      <p>Les six outils exigent une tâche existante. Ouvrez-en une pour tester.</p>
-      <p><button type="button" id="seed" class="btn">Ouvrir le cahier de démonstration</button></p>
+    // État vide, et première impression pour qui arrive sans rien savoir.
+    // On dit ce que la chose sert à faire et ce qu'il y a à faire — jamais
+    // comment le versionnage fonctionne : un essai a montré qu'un agent lisant
+    // une page qui décrit son mécanisme se met à éprouver le mécanisme.
+    return `<div class="status status--info">
+      <p class="status__title">Aucun cahier ouvert sur cet appareil</p>
+      <p>
+        Un cahier de quart retient ce qu'une conversation perd : les contraintes
+        en vigueur, le travail déjà prouvé, et les approches écartées avec leur
+        motif. Un agent le relit au début de chaque conversation ; vous le
+        corrigez pendant qu'il travaille.
+      </p>
+      <p>
+        Rien ne quitte cet appareil : ni compte, ni serveur.
+      </p>
+      <p><button type="button" id="seed" class="btn">Ouvrir un cahier de démonstration</button></p>
     </div>`
   }
 
@@ -130,7 +156,11 @@ function renderTask(): string {
   return `${clôturée}
     <section>
       <h2>Version en direct</h2>
-      <p class="version">v${task.version} <span class="muted">— ${task.steps.length} étapes,
+      <p class="exports">
+        <button type="button" id="export-un" class="btn">Exporter ce cahier</button>
+        <button type="button" id="export-tous" class="btn">Exporter tous les cahiers</button>
+      </p>
+      <p class="version" aria-live="polite" aria-atomic="true">v${task.version} <span class="muted">— ${task.steps.length} étapes,
         ${task.constraints.filter((c) => c.active).length} contraintes actives,
         ${task.rejected.length} rejets</span></p>
     </section>
@@ -191,7 +221,7 @@ function actionHumaine(muter: Parameters<typeof store.mutate>[0]): void {
   erreurHumaine = null
   void store.mutate(muter).catch((error: unknown) => {
     erreurHumaine = error instanceof Error ? error.message : String(error)
-    render()
+    scheduleRender()
   })
 }
 
@@ -205,7 +235,8 @@ function renderSupervision(): string {
         <span class="chip chip--${c.source}">${c.source}</span>
         <span class="regle__texte">${escapeHtml(c.rule)}</span>
         <span class="muted">v${c.addedAtVersion}</span>
-        <button type="button" class="btn" data-toggle="${c.id}" data-active="${c.active}">
+        <button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}"
+                aria-label="${c.active ? 'Lever' : 'Rétablir'} la contrainte : ${escapeHtml(c.rule)}">
           ${c.active ? 'Lever' : 'Rétablir'}
         </button>
       </li>`,
@@ -220,7 +251,8 @@ function renderSupervision(): string {
       (s) => `<li class="regle">
         <span class="chip chip--${s.confidence}">${s.confidence}</span>
         <span class="regle__texte">${escapeHtml(s.action)}</span>
-        <button type="button" class="btn" data-verify="${s.id}">Valider la preuve</button>
+        <button type="button" class="btn" data-verify="${escapeHtml(s.id)}"
+                aria-label="Valider la preuve de : ${escapeHtml(s.action)}">Valider la preuve</button>
       </li>`,
     )
     .join('')
@@ -254,11 +286,13 @@ function renderSupervision(): string {
   const saisieRejet =
     task.status === 'active'
       ? `<form id="form-rejet" class="saisie">
-           <label for="new-rejection">Condamner une approche</label>
+           <label for="new-rejection">Approche à condamner</label>
            <input id="new-rejection" type="text" autocomplete="off"
                   placeholder="Approche à écarter" />
+           <label for="new-rejection-reason">Motif du rejet, obligatoire</label>
            <input id="new-rejection-reason" type="text" autocomplete="off"
-                  placeholder="Motif — obligatoire" />
+                  required aria-required="true"
+                  placeholder="Pourquoi elle a échoué" />
            <button type="submit" class="btn">Rejeter</button>
          </form>
          <p class="muted">
@@ -268,7 +302,7 @@ function renderSupervision(): string {
       : ''
 
   const erreur = erreurHumaine
-    ? `<div class="status status--error"><p>${escapeHtml(erreurHumaine)}</p></div>`
+    ? `<div class="status status--error" role="alert"><p>${escapeHtml(erreurHumaine)}</p></div>`
     : ''
 
   // Une étape sans aucune preuve est celle qui mérite le plus l'attention
@@ -286,9 +320,9 @@ function renderSupervision(): string {
     )
     .join('')
 
-  return `<section class="supervision">
+  return `<section class="supervision" aria-labelledby="titre-supervision">
       ${erreur}
-      <h2>Contraintes</h2>
+      <h2 id="titre-supervision" tabindex="-1"><span id="supervision-ancre"></span>Contraintes</h2>
       <ul class="regles">${contraintes || '<li class="muted">Aucune.</li>'}</ul>
       ${saisieContrainte}
       <h2>Approches condamnées</h2>
@@ -348,6 +382,19 @@ function brancherSupervision(): void {
   }
 }
 
+/** Remet un fichier à la personne. Rien ne quitte l'appareil. */
+function telecharger(nom: string, contenu: string): void {
+  const blob = new Blob([contenu], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const lien = document.createElement('a')
+  lien.href = url
+  lien.download = nom
+  document.body.append(lien)
+  lien.click()
+  lien.remove()
+  URL.revokeObjectURL(url)
+}
+
 function render(): void {
   // Le champ de saisie est remplacé par le rendu : on note s'il avait le focus
   // et où était le curseur, pour que l'agent ne coupe pas la parole à l'humain.
@@ -356,8 +403,8 @@ function render(): void {
     actif instanceof HTMLInputElement && actif.id in brouillons ? actif.id : null
   const curseur = champFocalisé ? (actif as HTMLInputElement).selectionStart : null
 
-  const hasTask = store.getSnapshot().task !== null
-  root!.innerHTML = `<main>
+  root!.innerHTML = `<a class="skip-link" href="#supervision-ancre">Aller aux commandes de supervision</a>
+    <main id="contenu">
       <header>
         <h1>${escapeHtml(titre())}</h1>
         <p class="muted">${escapeHtml(sousTitre())}</p>
@@ -366,7 +413,6 @@ function render(): void {
       ${renderSupervision()}
       ${renderStatus()}
       ${renderWitness()}
-      ${hasTask ? '' : `<p class="muted">${escapeHtml(renderNoTask().split('\n')[0])}</p>`}
       <footer class="muted">
         <p>
           Cahier de quart — mémoire de tâche persistante et supervisée, exposée
@@ -384,6 +430,15 @@ function render(): void {
     if (curseur !== null) champ?.setSelectionRange(curseur, curseur)
   }
 
+  document.querySelector('#export-un')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (task) telecharger(exportFilename(task), buildTaskExport(task))
+  })
+
+  document.querySelector('#export-tous')?.addEventListener('click', () => {
+    void store.allTasks().then((tasks) => telecharger('cahiers.md', buildFullExport(tasks)))
+  })
+
   document.querySelector('#reopen')?.addEventListener('click', () => {
     const motif = window.prompt('Pourquoi rouvrir cette tâche ?')
     if (!motif?.trim()) return
@@ -397,10 +452,29 @@ function render(): void {
   })
 }
 
+/**
+ * Rendu groupé.
+ *
+ * Une écriture d'agent notifiait deux fois — une par le magasin, une par le
+ * témoin d'appels — et la page se redessinait deux fois de suite. Sans
+ * conséquence sur l'état, mais visible à l'œil pendant une rafale d'écritures,
+ * et deux fois plus d'occasions de perdre le curseur de la personne qui tape.
+ */
+let renduPrevu = false
+
+function scheduleRender(): void {
+  if (renduPrevu) return
+  renduPrevu = true
+  queueMicrotask(() => {
+    renduPrevu = false
+    render()
+  })
+}
+
 render()
-onRegistrationChange(render)
-onCall(render)
-store.subscribe(render)
+onRegistrationChange(scheduleRender)
+onCall(scheduleRender)
+store.subscribe(scheduleRender)
 
 /**
  * `?mesure=N` charge la tâche de mesure N au chargement de la page.

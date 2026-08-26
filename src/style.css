@@ -297,3 +297,41 @@ footer {
 .saisie .btn {
   margin-left: 0;
 }
+
+.exports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.exports .btn {
+  margin-left: 0;
+}
+
+/* Lien d'évitement : premier arrêt de tabulation, visible dès qu'il est atteint. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: var(--sp-2);
+  z-index: 10;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-accent);
+  color: var(--c-bg);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  left: var(--sp-4);
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+.status--info {
+  background: var(--c-surface);
+  color: var(--c-text);
+  border-color: var(--c-border);
+}

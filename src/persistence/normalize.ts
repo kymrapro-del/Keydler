@@ -31,6 +31,15 @@ export class FutureSchemaError extends Error {
 }
 
 const asArray = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
+
+/**
+ * Un identifiant relu est réduit au jeu de caractères qu'on émet nous-mêmes.
+ * Il finit dans des attributs HTML et des sélecteurs CSS : y laisser passer un
+ * guillemet ou un crochet serait offrir une porte à qui saurait écrire dans
+ * IndexedDB.
+ */
+const asId = (v: unknown): string =>
+  typeof v === 'string' ? v.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64) : ''
 const asNumber = (v: unknown, fallback: number): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : fallback
 const asString = (v: unknown, fallback: string): string => (typeof v === 'string' ? v : fallback)
@@ -61,7 +70,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
   const now = asNumber(stored.updatedAt, Date.now())
 
   return {
-    id: asString(stored.id, ''),
+    id: asId(stored.id),
     title: asString(stored.title, 'Untitled task'),
     version: Math.max(1, Math.trunc(asNumber(stored.version, 1))),
     next: asNullableString(stored.next),
@@ -69,7 +78,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
     summary: asNullableString(stored.summary),
 
     constraints: asArray<Record<string, unknown>>(stored.constraints).map((c) => ({
-      id: asString(c.id, ''),
+      id: asId(c.id),
       rule: asString(c.rule, ''),
       source: c.source === 'human' ? 'human' : 'agent',
       addedAtVersion: asNumber(c.addedAtVersion, 1),
@@ -79,7 +88,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
     })),
 
     steps: asArray<Record<string, unknown>>(stored.steps).map((s) => ({
-      id: asString(s.id, ''),
+      id: asId(s.id),
       action: asString(s.action, ''),
       result: asString(s.result, ''),
       evidence: normalizeEvidence(s.evidence),
@@ -90,7 +99,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
     })),
 
     decisions: asArray<Record<string, unknown>>(stored.decisions).map((d) => ({
-      id: asString(d.id, ''),
+      id: asId(d.id),
       choice: asString(d.choice, ''),
       rationale: asString(d.rationale, ''),
       source: d.source === 'human' ? 'human' : 'agent',
@@ -99,7 +108,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
     })),
 
     rejected: asArray<Record<string, unknown>>(stored.rejected).map((r) => ({
-      id: asString(r.id, ''),
+      id: asId(r.id),
       approach: asString(r.approach, ''),
       reason: asString(r.reason, ''),
       source: r.source === 'human' ? 'human' : 'agent',
@@ -108,7 +117,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
     })),
 
     audit: asArray<Record<string, unknown>>(stored.audit).map((a) => ({
-      id: asString(a.id, ''),
+      id: asId(a.id),
       operation: asString(a.operation, 'unknown'),
       actor: a.actor === 'human' ? 'human' : 'agent',
       versionBefore: asNumber(a.versionBefore, 0),
