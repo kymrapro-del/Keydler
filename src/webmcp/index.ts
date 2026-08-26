@@ -10,5 +10,6 @@ export { getRegistrationState, onRegistrationChange, registerTools } from './reg
 export type { RegistrationState } from './register'
 export { ALL_TOOLS, resumeTaskTool } from './tools'
 export { RESUME_TASK_DESCRIPTION } from './descriptions'
-export { getCalls, onCall, resetCalls } from './witness'
+export { getWitness, onCall, resetCalls } from './witness'
+export type { Call, WitnessState } from './witness'
 export { checkAvailability } from './adapter'

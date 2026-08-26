@@ -2,15 +2,15 @@
 
 ## Commandes
 
-| Commande | Effet |
-|---|---|
-| `npm run dev` | Serveur de développement sur `localhost:5173` |
-| `npm run trial` | Build d'essai **sans carte de source**, servi sur `localhost:5174` |
-| `npm run build` | Vérification de types puis build de production |
-| `npm test` | Tests d'invariants |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier, en écriture |
-| `npm run check` | Types, lint, format, tests, build — ce que la CI exécute |
+| Commande         | Effet                                                              |
+| ---------------- | ------------------------------------------------------------------ |
+| `npm run dev`    | Serveur de développement sur `localhost:5173`                      |
+| `npm run trial`  | Build d'essai **sans carte de source**, servi sur `localhost:5174` |
+| `npm run build`  | Vérification de types puis build de production                     |
+| `npm test`       | Tests d'invariants                                                 |
+| `npm run lint`   | ESLint                                                             |
+| `npm run format` | Prettier, en écriture                                              |
+| `npm run check`  | Types, lint, format, tests, build — ce que la CI exécute           |
 
 `npm run check` doit passer avant toute publication. La CI exécute exactement
 les mêmes étapes : un échec distant doit toujours être reproductible en local.
@@ -63,6 +63,6 @@ la pièce en même temps qu'elle assainit l'essai.
 
 ## Messages de commit
 
-Sujet à l'impératif. Le corps explique le *pourquoi* quand il n'est pas
-évident — le *quoi* est déjà dans le diff. Un correctif énonce le symptôme
+Sujet à l'impératif. Le corps explique le _pourquoi_ quand il n'est pas
+évident — le _quoi_ est déjà dans le diff. Un correctif énonce le symptôme
 observé, pas seulement la ligne changée.

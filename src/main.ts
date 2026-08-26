@@ -19,7 +19,13 @@ import {
   verifyEvidence,
 } from './domain/task'
 import * as store from './store/taskStore'
-import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCalls } from './webmcp'
+import {
+  getRegistrationState,
+  getWitness,
+  onCall,
+  onRegistrationChange,
+  resetCalls,
+} from './webmcp'
 
 /**
  * Banc d'essai.
@@ -77,9 +83,8 @@ function renderStatus(): string {
 }
 
 function renderWitness(): string {
-  const calls = getCalls()
-  const refused = calls.filter((c) => c.refused).length
-  const rows = [...calls]
+  const { total, refused, recents } = getWitness()
+  const rows = [...recents]
     .reverse()
     .slice(0, 10)
     .map(
@@ -93,9 +98,9 @@ function renderWitness(): string {
     .join('')
 
   return `<div class="witness" role="status" aria-live="polite">
-      <span class="witness__count">${calls.length}</span>
+      <span class="witness__count">${total}</span>
       <span class="witness__label">
-        appel${calls.length > 1 ? 's' : ''} d'outil<br />
+        appel${total > 1 ? 's' : ''} d'outil<br />
         <span class="muted">dont ${refused} refusé${refused > 1 ? 's' : ''}</span>
       </span>
       <button type="button" id="reset-witness" class="btn">Vider ce journal d'appels</button>
@@ -211,6 +216,17 @@ function actionHumaine(action: string, muter: Parameters<typeof store.mutate>[0]
   })
 }
 
+/** Nombre de lignes affichées par liste de supervision. */
+const MAX_LIGNES = 8
+
+/** Annonce ce qui n'est pas montré, plutôt que de le taire. */
+function reste(total: number): string {
+  const caché = total - MAX_LIGNES
+  return caché > 0
+    ? `<p class="muted">${caché} entrée${caché > 1 ? 's' : ''} plus ancienne${caché > 1 ? 's' : ''} non affichée${caché > 1 ? 's' : ''} — l'export les contient toutes.</p>`
+    : ''
+}
+
 function renderSupervision(): string {
   const task = store.getSnapshot().task
   if (!task) return ''
@@ -231,8 +247,12 @@ function renderSupervision(): string {
 
   // Une preuve ne devient « vérifiée humain » que par un clic. C'est le seul
   // chemin vers ce degré, et il n'existait jusqu'ici que dans le domaine.
-  const àValider = task.steps
-    .filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
+  // Les listes d'étapes croissent sans limite avec la tâche, et sont
+  // reconstruites à chaque écriture d'agent. Au-delà d'une poignée, on annonce
+  // le reste plutôt que de rebâtir des centaines de nœuds à chaque rafale.
+  const attente = task.steps.filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
+  const àValider = attente
+    .slice(-MAX_LIGNES)
     .map(
       (s) => `<li class="regle">
         <span class="chip chip--${s.confidence}">${s.confidence}</span>
@@ -295,8 +315,9 @@ function renderSupervision(): string {
   // humaine, et c'était précisément celle qui n'apparaissait nulle part : la
   // file ne montrait que les étapes déjà étayées. On ne peut pas « valider »
   // ce qui n'a rien à valider — on peut, et on doit, le signaler.
-  const sansPreuve = task.steps
-    .filter((s) => s.evidence === null)
+  const claims = task.steps.filter((s) => s.evidence === null)
+  const sansPreuve = claims
+    .slice(-MAX_LIGNES)
     .map(
       (s) => `<li class="regle">
         <span class="chip chip--claimed">affirmé</span>
@@ -314,8 +335,8 @@ function renderSupervision(): string {
       <h2>Approches condamnées</h2>
       <ul class="regles">${rejets || '<li class="muted">Aucune.</li>'}</ul>
       ${saisieRejet}
-      ${àValider ? `<h2>Preuves à valider</h2><ul class="regles">${àValider}</ul>` : ''}
-      ${sansPreuve ? `<h2>Affirmé sans preuve</h2><ul class="regles">${sansPreuve}</ul>` : ''}
+      ${àValider ? `<h2>Preuves à valider</h2><ul class="regles">${àValider}</ul>${reste(attente.length)}` : ''}
+      ${sansPreuve ? `<h2>Affirmé sans preuve</h2><ul class="regles">${sansPreuve}</ul>${reste(claims.length)}` : ''}
     </section>`
 }
 
