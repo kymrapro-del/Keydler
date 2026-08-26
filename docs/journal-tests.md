@@ -160,10 +160,10 @@ remarqué que le compteur affiché ne concordait plus avec l'état qu'il avait l
 a relu de lui-même, puis s'est conformé à la contrainte nouvelle — les cinq
 étapes qu'il a consignées portent toutes une preuve.
 
-**Conséquence pour la vidéo.** Le scénario filmé repose sur un refus visible à
-l'écran. Si un agent prudent relit avant d'écrire, ce refus ne se produira pas
-de façon fiable. Il faudra soit accepter de montrer la reprise sans refus, soit
-provoquer le refus par une écriture déjà engagée — et le dire.
+**Conséquence.** Un agent prudent relit avant d'écrire ; on ne peut donc pas
+compter sur un refus survenant de lui-même. La vidéo étant une présentation,
+ce n'est pas bloquant — mais toute démonstration du refus devra être provoquée
+délibérément, et présentée comme telle.
 
 **Essai contaminé pour ce qu'il conclut du contenu.** L'agent a récupéré
 `seed.ts`, `render.ts` et `task.ts` par `fetch` depuis la page : le serveur de

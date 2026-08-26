@@ -61,11 +61,33 @@ C'est arrivé, au troisième essai. L'agent a lu `seed.ts`, `render.ts` et
 `task.ts` par la page, et en a tiré sa « vérité terrain ». La consigne était
 respectée à la lettre et contournée en fait.
 
-**Règle pour les essais suivants.** Servir un build de production
-(`npm run build && npm run preview`), **cartes de source désactivées** — sinon
-`dist/assets/*.js.map` reconstitue le source. Tout essai où l'agent a récupéré
-du source est déclaré nul pour ce qu'il conclut du contenu ; ses observations
-purement comportementales restent valables.
+**Règle pour les essais suivants.** Servir le build d'essai :
+
+```bash
+npm run trial      # build sans carte de source, puis preview sur 5174
+```
+
+Les cartes de source sont désactivées par `TRIAL=1` — sans quoi
+`dist/assets/*.js.map` reconstitue l'intégralité du code.
+
+Vérification, faite le 26 août :
+
+| Serveur | Corps servi pour `/src/domain/task.ts` | Type |
+|---|---|---|
+| 5174 — essai | `index.html`, repli SPA | `text/html` |
+| 5173 — développement | le TypeScript réel | `text/javascript` |
+
+**Le code HTTP seul ne prouve rien** : les deux répondent 200, parce que le
+serveur d'essai renvoie la page d'accueil pour toute route inconnue. Il faut
+regarder le type de contenu ou le corps. Contrôler le statut m'a d'abord fait
+conclure à tort que l'isolement avait échoué.
+
+Dans le bundle, `buildDemoTask`, `MACHINE_EVIDENCE_KINDS` et `appendAudit` sont
+minifiés et introuvables.
+
+Tout essai où l'agent a récupéré du source est déclaré nul pour ce qu'il
+conclut du contenu ; ses observations purement comportementales restent
+valables.
 
 ## Ce qu'on s'interdit de conclure
 
