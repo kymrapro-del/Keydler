@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { StaleStateError, ValidationError } from '../src/domain/errors'
 import {
   addConstraint,
+  addDecision,
   completeTask,
   createTask,
   evidenceCounts,
@@ -363,6 +364,21 @@ describe('budget de restitution sous pression', () => {
   it('respecte le budget tant que les contraintes le permettent', () => {
     const task = chargé(4, 3)
     expect(estimateTokens(renderTaskState(task))).toBeLessThanOrEqual(TOKEN_BUDGET)
+  })
+
+  it('annonce combien de décisions sont montrées sur combien', () => {
+    let task = seedTask()
+    for (let i = 0; i < 6; i++) {
+      task = addDecision(
+        task,
+        { choice: `Choix ${i}`, rationale: `Motif ${i}`, basedOnVersion: task.version },
+        'agent',
+        ctx(7000 + i * 10),
+      )
+    }
+    const output = renderTaskState(task)
+    // Sans ce compte, un agent croirait avoir la liste entière.
+    expect(output).toMatch(/DECISIONS \(last \d+ of 6\)/)
   })
 
   it('reste déterministe : deux rendus du même état sont identiques', () => {

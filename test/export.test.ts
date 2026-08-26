@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildMeasureTask } from '../src/demo/measures'
 import { buildDemoTask } from '../src/demo/seed'
 import { buildFullExport, buildTaskExport, exportFilename } from '../src/export/notebook'
-import { logStep, recordRefusal } from '../src/domain/task'
+import { completeTask, logStep, recordRefusal } from '../src/domain/task'
 
 /**
  * L'export est ce qui rend une campagne de mesure vérifiable par un tiers :
@@ -100,5 +100,36 @@ describe('export d’un cahier', () => {
     const nom = exportFilename(task)
     expect(nom).toMatch(/^cahier-[a-z0-9-]+-v\d+\.md$/)
     expect(exportFilename(task)).toBe(nom)
+  })
+})
+
+describe('export : cas limites', () => {
+  it('omet les sections vides plutôt que d’afficher des titres creux', () => {
+    const nu = { ...buildMeasureTask(1), steps: [], audit: [], decisions: [] }
+    const sortie = buildTaskExport(nu)
+    expect(sortie).not.toContain('## Preuves jointes')
+    expect(sortie).not.toContain('## Journal des écritures')
+    // L'état complet, lui, est toujours là : c'est ce qui rend l'export rejouable.
+    expect(sortie).toContain('## État complet')
+  })
+
+  it('rend le résumé final d’une tâche close', () => {
+    const task = completeTask(
+      buildMeasureTask(2),
+      { summary: 'Approche retenue et livrée.', basedOnVersion: buildMeasureTask(2).version },
+      'agent',
+    )
+    const sortie = buildTaskExport(task)
+    expect(sortie).toContain('- État : completed')
+    expect(sortie).toContain('Approche retenue et livrée.')
+  })
+
+  it('marque une preuve validée par un humain, et une autre non', () => {
+    let task = buildDemoTask()
+    const sortie = buildTaskExport(task)
+    expect(sortie).toContain('- Validée : non')
+    expect(sortie).toMatch(/- Validée : \d{4}-/)
+    task = { ...task, steps: [] }
+    expect(buildTaskExport(task)).not.toContain('- Validée :')
   })
 })

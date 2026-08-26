@@ -121,6 +121,35 @@ describe('normalisation à la lecture', () => {
     expect(tasks.map((t) => t.title)).toEqual(['Sain'])
   })
 
+  it('répare décisions, rejets et journal d’un enregistrement mutilé', () => {
+    // Ces trois tableaux n'étaient couverts par aucun cas : ce sont pourtant
+    // eux qui portent le « pourquoi » et les interdits, donc l'essentiel.
+    const task = normalizeTask({
+      id: 'x',
+      version: 2,
+      decisions: [{ id: 'd1', choice: 'Approche C' }, null],
+      rejected: [{ id: 'r1', approach: 'JWT B', source: 'human' }, null],
+      audit: [{ id: 'a1', operation: 'log_step', outcome: 'refused', repeated: 3 }, { id: 'a2' }],
+    } as never)
+
+    // L'entrée nulle est écartée, pas relayée : le reste du cahier est sauvé.
+    expect(task!.decisions).toHaveLength(1)
+    expect(task!.decisions[0]).toMatchObject({
+      choice: 'Approche C',
+      rationale: '',
+      source: 'agent',
+    })
+    expect(task!.rejected).toHaveLength(1)
+    expect(task!.rejected[0]).toMatchObject({ approach: 'JWT B', reason: '', source: 'human' })
+    expect(task!.audit[0]).toMatchObject({ outcome: 'refused', repeated: 3 })
+    // Une issue illisible est tenue pour appliquée, pas pour un refus inventé,
+    // et une source illisible retombe sur « agent » : jamais sur « human »,
+    // qui conférerait à tort l'autorité humaine à une conjecture.
+    expect(task!.audit[1].outcome).toBe('applied')
+    expect(task!.audit[1].actor).toBe('agent')
+    expect(task!.audit[1].repeated).toBeUndefined()
+  })
+
   it('conserve intact un cahier normal', async () => {
     const original = createTask({ title: 'Normal', next: 'Suite' })
     await saveTask(original)
