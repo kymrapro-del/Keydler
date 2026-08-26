@@ -62,8 +62,38 @@ ChatGPT desktop n'existe pas sous Linux, et n'est pas nécessaire : un pont MCP
 expose les outils de la page à n'importe quel client MCP.
 
 ```bash
-claude mcp add chrome-devtools npx @mcp-b/chrome-devtools-mcp@latest
+claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest \
+  --browserUrl http://127.0.0.1:9222 --categoryExperimentalWebmcp
 ```
+
+Le paquet `@mcp-b/chrome-devtools-mcp` est à éviter : sa version 3.0.0 est
+cassée à la publication — le dossier `build/` vers lequel pointent ses `bin`
+n'a jamais été publié.
+
+Le navigateur doit exposer le protocole de débogage. Deux pointsnon évidents :
+
+- le basculement dans `brave://inspect/#remote-debugging` **n'ouvre aucun
+  port** ; il faut le drapeau au lancement ;
+- Chromium ≥ 136 **refuse** le débogage distant sur le profil par défaut, d'où
+  le `--user-data-dir` séparé — qui perd les réglages de `brave://flags`, d'où
+  le drapeau de fonctionnalité passé explicitement.
+
+```bash
+brave --remote-debugging-port=9222 \
+  --user-data-dir=/tmp/brave-webmcp \
+  --enable-features=WebMCP,WebMCPTesting \
+  http://localhost:5173
+```
+
+La fonctionnalité s'appelle **`WebMCPTesting`** dans Brave 151, alors que
+l'aide de `chrome-devtools-mcp` annonce `WebMCP`. Passer les deux.
+
+> **Limite du pont, à ne pas maquiller.** `navigate_page` renvoie la liste
+> complète des outils de la page, descriptions comprises, sans qu'on la
+> demande. L'agent n'a donc rien à découvrir : on la lui met sous les yeux.
+> C'est un chemin plus favorable que le navigateur intégré de ChatGPT, où
+> l'agent doit décider d'aller chercher les outils. Un test réussi par ce pont
+> ne démontre pas la découverte spontanée.
 
 1. Onglet ouvert dans Chrome, drapeau activé.
 2. Conversation neuve, sans aucun historique. Écrire : `continue`.
