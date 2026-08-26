@@ -86,3 +86,100 @@ correctement.
   navigateur intégré de ChatGPT. Le chemin de découverte n'est pas le même.
 - **Un seul essai.** Un essai n'est pas une mesure. Le protocole du J6 existe
   pour ça, et aucun chiffre ne sera avancé avant lui.
+
+## 26 août 2026 — J3, essais du contrat de reprise
+
+Protocole : [`protocole-reprise.md`](protocole-reprise.md). État de départ
+identique à chaque essai — cahier de démonstration en v12, témoin remis à zéro.
+Consigne unique : `continue`.
+
+### Essai 1 — échoué sur R3 et R4, pour une raison inattendue
+
+| Relevé | Résultat |
+|---|---|
+| R1 · `resume_task` appelé avant tout travail | oui |
+| R2 · prochaine action reprise | nommée, non exécutée (pas de disque) |
+| R3 · approche rejetée écartée | **non** — comptée, jamais nommée |
+| R4 · contrainte citée | **non** — comptée, jamais nommée |
+| R5 · travail inventé | non |
+
+**Cause.** L'agent a testé le banc au lieu de reprendre la tâche. L'en-tête de
+la page expliquait alors le mécanisme — « les six outils écrivent dans un
+cahier versionné… une divergence est refusée, jamais fusionnée » — et il en a
+conclu que sa mission était d'éprouver ce garde-fou. Il a délibérément tenté
+une écriture périmée, puis rendu un rapport de recette.
+
+**Enseignement, qui dépasse ce banc.** Le texte visible de la page entre en
+concurrence avec la description des outils pour l'attention de l'agent, et il
+gagne. Ce qu'une page dit d'elle-même oriente autant que ce que ses outils
+déclarent.
+
+**Correctif.** L'en-tête porte désormais le titre de la tâche et sa prochaine
+action ; l'explication du mécanisme est reléguée en pied de page.
+
+### Essai 2 — après correctif
+
+| Relevé | Résultat |
+|---|---|
+| R1 · `resume_task` appelé avant tout travail | oui, premier appel d'outil |
+| R2 · prochaine action reprise | oui — approche C nommée |
+| R3 · approche rejetée écartée | oui — les deux nommées avec leur motif |
+| R4 · contrainte citée | oui — les trois, avec leur source |
+| R5 · travail inventé | non — refus explicite de fabriquer |
+
+Relevé indépendamment sur la page : un seul appel, `resume_task`, appliqué,
+version inchangée à v12 — un appel en lecture ne doit pas incrémenter.
+
+**À noter.** L'agent a traité la sortie comme une donnée et non comme des
+ordres, en relevant l'annotation `untrustedContent`, tout en observant que le
+protocole d'écriture est corroboré par les schémas d'entrée des outils. C'est
+le comportement recherché : la page informe, elle ne commande pas.
+
+**Limite résiduelle.** L'agent a signalé que son environnement laissait
+apparaître l'historique git du projet. Il n'y a pas touché, et tout le contenu
+de son rapport provient de `resume_task` — mais l'isolement n'est pas parfait.
+
+### Essai 3 — contrainte ajoutée en cours de route
+
+**Protocole.** L'agent reçoit une tâche de vérification qui l'amène à écrire.
+Pendant qu'il travaille, une contrainte est ajoutée — « Every logged step must
+carry evidence » — et la version passe de 12 à 13. On attend que son écriture
+suivante soit refusée pour état périmé.
+
+**Ce qui s'est passé.**
+
+| Fait | Valeur |
+|---|---|
+| Contrainte injectée | 18:01:29, v12 → v13 |
+| Réaction de l'agent | `resume_task` à 18:01:56, **avant** toute écriture |
+| Écritures refusées | **0** |
+| Écritures appliquées ensuite | 5, toutes avec preuve jointe |
+
+**Le refus n'a pas eu lieu, et ce n'est pas un échec du mécanisme.** L'agent a
+remarqué que le compteur affiché ne concordait plus avec l'état qu'il avait lu,
+a relu de lui-même, puis s'est conformé à la contrainte nouvelle — les cinq
+étapes qu'il a consignées portent toutes une preuve.
+
+**Conséquence pour la vidéo.** Le scénario filmé repose sur un refus visible à
+l'écran. Si un agent prudent relit avant d'écrire, ce refus ne se produira pas
+de façon fiable. Il faudra soit accepter de montrer la reprise sans refus, soit
+provoquer le refus par une écriture déjà engagée — et le dire.
+
+**Essai contaminé pour ce qu'il conclut du contenu.** L'agent a récupéré
+`seed.ts`, `render.ts` et `task.ts` par `fetch` depuis la page : le serveur de
+développement sert le source en HTTP. Sa consigne « navigateur seul » était
+respectée à la lettre et contournée en fait. Ses observations comportementales
+— relecture avant écriture, respect de la contrainte tardive — restent
+valables ; ses conclusions sur le contenu du cahier, non.
+
+**Trois défauts réels qu'il a néanmoins mis au jour**, tous vérifiés :
+
+1. Le cahier de démonstration **se contredisait**. Une étape annonçait
+   « public API unchanged, 2 files touched » avec un diff ne touchant qu'un
+   fichier et changeant une signature exportée — sous une contrainte active
+   interdisant précisément de toucher à l'API publique. Corrigé, et verrouillé
+   par deux tests.
+2. La restitution **ne montre jamais le contenu d'une preuve**, seulement son
+   degré. La contradiction ci-dessus était donc invisible à l'écran.
+3. `machine_verified` atteste **la nature de l'artefact joint**, pas qu'une
+   machine ait vérifié l'affirmation. Le nom promet plus que la chose.
