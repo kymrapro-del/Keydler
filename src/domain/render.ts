@@ -38,11 +38,23 @@ export type RenderOptions = {
   recentSteps?: number
   /** Nombre de décisions rappelées. */
   recentDecisions?: number
+  /**
+   * Facteur appliqué aux longueurs de coupe, de 1 à 0,4.
+   *
+   * Sous pression de budget, une contrainte ou un rejet est RACCOURCI, jamais
+   * retiré : un agent doit savoir qu'une approche est condamnée même s'il n'en
+   * lit pas le motif entier. Retirer la ligne reviendrait à lever l'interdit.
+   */
+  clipScale?: number
 }
+
+const CLIP_FLOOR = 0.4
 
 export function renderTaskState(state: TaskState, options: RenderOptions = {}): string {
   const recentSteps = options.recentSteps ?? 5
   const recentDecisions = options.recentDecisions ?? 3
+  const clipScale = options.clipScale ?? 1
+  const c = (max: number) => Math.max(24, Math.round(max * clipScale))
 
   const counts = evidenceCounts(state)
   const proven = state.steps.length - counts.claimed
@@ -50,15 +62,15 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   const lines: string[] = []
 
-  lines.push(`TASK        ${clip(state.title, 120)}`)
+  lines.push(`TASK        ${clip(state.title, c(120))}`)
   lines.push(`VERSION     ${state.version}`)
   lines.push(`STATUS      ${state.status}`)
   lines.push(`PROGRESS    ${state.steps.length} steps logged · ${proven} backed by evidence`)
   if (state.status === 'completed' && state.summary) {
-    lines.push(`SUMMARY     ${clip(state.summary, 300)}`)
+    lines.push(`SUMMARY     ${clip(state.summary, c(300))}`)
   } else {
     lines.push(
-      `NEXT        ${state.next ? clip(state.next, 200) : '(not set — decide and log it)'}`,
+      `NEXT        ${state.next ? clip(state.next, c(200)) : '(not set — decide and log it)'}`,
     )
   }
 
@@ -68,8 +80,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   if (active.length === 0) {
     lines.push('  (none)')
   } else {
-    for (const c of active) {
-      lines.push(`  [${c.source}] ${clip(c.rule, 160)}`)
+    for (const constraint of active) {
+      lines.push(`  [${constraint.source}] ${clip(constraint.rule, c(160))}`)
     }
   }
 
@@ -78,7 +90,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('')
     lines.push('REJECTED — do not retry')
     for (const r of state.rejected) {
-      lines.push(`  ${clip(r.approach, 90)} — ${clip(r.reason, 110)}`)
+      lines.push(`  ${clip(r.approach, c(90))} — ${clip(r.reason, c(110))}`)
     }
   }
 
@@ -91,7 +103,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
         : 'DECISIONS',
     )
     for (const d of shown) {
-      lines.push(`  ${clip(d.choice, 90)} — ${clip(d.rationale, 110)}`)
+      lines.push(`  ${clip(d.choice, c(90))} — ${clip(d.rationale, c(110))}`)
     }
   }
 
@@ -104,7 +116,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
         : 'RECENT WORK',
     )
     for (const s of shown) {
-      lines.push(`  ${CONFIDENCE_TAG[s.confidence]} ${clip(s.action, 80)} — ${clip(s.result, 90)}`)
+      lines.push(`  ${CONFIDENCE_TAG[s.confidence]} ${clip(s.action, c(80))} — ${clip(s.result, c(90))}`)
     }
   }
 
@@ -117,15 +129,30 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   const text = lines.join('\n')
 
-  // Dégradation progressive : on resserre les sections optionnelles plutôt que
-  // de rendre un pavé que l'agent ne lira pas en entier.
-  if (estimateTokens(text) > TOKEN_BUDGET && (recentSteps > 2 || recentDecisions > 1)) {
+  if (estimateTokens(text) <= TOKEN_BUDGET) return text
+
+  // Dégradation progressive, dans cet ordre : on sacrifie d'abord le nombre
+  // d'éléments facultatifs — étapes récentes, décisions — puis, seulement une
+  // fois ceux-ci au plancher, la longueur de chaque ligne.
+  if (recentSteps > 2 || recentDecisions > 1) {
     return renderTaskState(state, {
       recentSteps: Math.max(2, recentSteps - 2),
       recentDecisions: Math.max(1, recentDecisions - 1),
+      clipScale,
     })
   }
 
+  if (clipScale > CLIP_FLOOR) {
+    return renderTaskState(state, {
+      recentSteps,
+      recentDecisions,
+      clipScale: Math.max(CLIP_FLOOR, clipScale - 0.2),
+    })
+  }
+
+  // Plancher atteint : le cahier porte plus de contraintes et de rejets que le
+  // budget n'en peut contenir. On rend quand même tout, car en retirer une
+  // reviendrait à lever un interdit sans le dire.
   return text
 }
 

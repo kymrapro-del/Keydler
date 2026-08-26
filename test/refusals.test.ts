@@ -1,0 +1,103 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { getDb } from '../src/persistence/db'
+import * as store from '../src/store/taskStore'
+import { ALL_TOOLS } from '../src/webmcp/tools'
+
+/**
+ * Traçabilité des refus.
+ *
+ * Le produit vend la traçabilité : un refus qui n'apparaît pas au journal est
+ * un trou dans cette promesse. Une entrée malformée est rejetée avant même
+ * d'atteindre le magasin — c'est exactement le cas qui échappait au compte.
+ */
+
+async function clear() {
+  const db = await getDb()
+  const tx = db.transaction(['tasks', 'meta'], 'readwrite')
+  await Promise.all([tx.objectStore('tasks').clear(), tx.objectStore('meta').clear(), tx.done])
+}
+
+const logStep = () => ALL_TOOLS.find((t) => t.name === 'log_step')!
+const rejectApproach = () => ALL_TOOLS.find((t) => t.name === 'reject_approach')!
+
+beforeEach(async () => {
+  store.__resetStore()
+  await clear()
+})
+
+describe('refus consignés', () => {
+  it('journalise une version manquante, qui n’atteint jamais la mutation', async () => {
+    await store.createAndOpenTask('Tâche', 'Continuer')
+    const avant = store.currentTask()!.audit.length
+
+    const result = await logStep().execute({ action: 'a', result: 'b' }, {})
+
+    expect(result.isError).toBe(true)
+    const après = store.currentTask()!
+    expect(après.audit.length).toBe(avant + 1)
+    expect(après.audit.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
+    // Le refus ne fait pas avancer la version.
+    expect(après.version).toBe(1)
+  })
+
+  it('journalise une version illisible', async () => {
+    await store.createAndOpenTask('Tâche', undefined)
+
+    const result = await logStep().execute(
+      { action: 'a', result: 'b', based_on_version: 'plus tard' },
+      {},
+    )
+
+    expect(result.isError).toBe(true)
+    expect(store.currentTask()!.audit.at(-1)).toMatchObject({ outcome: 'refused' })
+  })
+
+  it('ne consigne pas deux fois un refus déjà journalisé par le magasin', async () => {
+    const task = await store.createAndOpenTask('Tâche', undefined)
+    const avant = store.currentTask()!.audit.length
+
+    // Motif vide : l'erreur naît DANS la mutation, donc déjà tracée.
+    const result = await rejectApproach().execute(
+      { approach: 'JWT B', reason: '   ', based_on_version: task.version },
+      {},
+    )
+
+    expect(result.isError).toBe(true)
+    expect(store.currentTask()!.audit.length).toBe(avant + 1)
+  })
+
+  it('dit que rien n’a été écrit et donne la version pour réessayer', async () => {
+    const task = await store.createAndOpenTask('Tâche', undefined)
+
+    const result = await rejectApproach().execute(
+      { approach: 'JWT B', reason: '', based_on_version: task.version },
+      {},
+    )
+
+    const texte = result.content[0].text
+    expect(texte).toContain('INVALID INPUT')
+    // Sans cela, l'agent dépense un aller-retour de resume_task pour
+    // réapprendre une version qui n'a pas bougé.
+    expect(texte).toContain('Nothing was written.')
+    expect(texte).toContain(`based_on_version: ${task.version}`)
+  })
+
+  it('n’ajoute pas ce rappel à un refus pour état périmé', async () => {
+    const task = await store.createAndOpenTask('Tâche', undefined)
+    await store.mutateAsAgent('add_constraint', task.version, (s) => ({
+      ...s,
+      version: s.version + 1,
+    }))
+
+    const result = await logStep().execute(
+      { action: 'a', result: 'b', based_on_version: task.version },
+      {},
+    )
+
+    const texte = result.content[0].text
+    expect(texte).toContain('STALE STATE')
+    // Là, il FAUT rappeler resume_task : suggérer un simple réessai serait faux.
+    expect(texte).not.toContain('Nothing was written.')
+    expect(texte).toContain('Call resume_task before continuing.')
+  })
+})

@@ -1,4 +1,4 @@
-import { StaleStateError, ValidationError } from '../domain/errors'
+import { ConcurrentWriteError, StaleStateError, ValidationError } from '../domain/errors'
 import {
   addConstraint,
   addDecision,
@@ -41,10 +41,23 @@ const versionProperty = {
  * comme telle. On renvoie donc un résultat marqué en erreur plutôt que de lever
  * — l'agent doit voir le texte, pas une trace de pile.
  */
-function toToolError(error: unknown): ToolResult {
-  if (error instanceof StaleStateError || error instanceof ValidationError) {
+function toToolError(error: unknown, retryVersion?: number): ToolResult {
+  if (error instanceof StaleStateError || error instanceof ConcurrentWriteError) {
+    // Ces messages sont déjà écrits pour être lus par un agent : ils portent
+    // l'instruction à suivre. Les préfixer d'un ERROR les affaiblirait.
     return failure(error.message)
   }
+
+  if (error instanceof ValidationError) {
+    // Rien n'a bougé : autant le dire et rendre la version, sinon l'agent
+    // dépense un aller-retour de resume_task pour réapprendre ce qu'il sait.
+    return failure(
+      retryVersion === undefined
+        ? error.message
+        : `${error.message}\nNothing was written. Retry with based_on_version: ${retryVersion}`,
+    )
+  }
+
   if (error instanceof Error) return failure(`ERROR\n${error.message}`)
   return failure(`ERROR\n${String(error)}`)
 }
@@ -90,9 +103,11 @@ async function runWrite(
   input: Record<string, unknown>,
   mutate: (state: TaskState, basedOnVersion: number) => TaskState,
 ): Promise<ToolResult> {
+  let atteintLeMagasin = false
   try {
     await requireTask()
     const basedOnVersion = requireVersion('based_on_version', input.based_on_version)
+    atteintLeMagasin = true
     const next = await store.mutateAsAgent(operation, basedOnVersion, (state) =>
       mutate(state, basedOnVersion),
     )
@@ -106,7 +121,15 @@ async function runWrite(
     )
   } catch (error) {
     recordCall(operation, true)
-    return toToolError(error)
+
+    // Un refus survenu avant le magasin n'y a laissé aucune trace : on la pose
+    // ici. Après le magasin, elle existe déjà — la reposer ferait un doublon.
+    if (!atteintLeMagasin && store.currentTask()) {
+      const detail = error instanceof Error ? error.message.split('\n')[1] ?? error.message : String(error)
+      await store.recordAgentRefusal(operation, null, detail)
+    }
+
+    return toToolError(error, store.currentTask()?.version)
   }
 }
 

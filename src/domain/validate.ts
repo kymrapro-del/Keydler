@@ -5,7 +5,14 @@ import { CONFIDENCE_ORDER, EVIDENCE_KINDS, type Confidence, type EvidenceKind } 
 const MAX_FIELD_LENGTH = 2000
 const MAX_EVIDENCE_LENGTH = 8000
 
-/** Exige une chaîne non vide et la normalise (trim + espaces compactés). */
+/**
+ * Exige une chaîne non vide, et se contente de la trimmer.
+ *
+ * Surtout ne pas compacter les espaces internes ici : `requireEvidenceContent`
+ * passe par cette même fonction, et un diff ou une sortie de commande y
+ * perdraient leurs retours à la ligne — donc toute leur valeur de preuve. La
+ * mise sur une seule ligne est l'affaire du rendu, qui sait ce qu'il affiche.
+ */
 export function requireText(field: string, value: unknown, maxLength = MAX_FIELD_LENGTH): string {
   if (typeof value !== 'string') {
     throw new ValidationError(field, 'expected a string.')

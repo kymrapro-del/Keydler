@@ -303,3 +303,65 @@ describe('restitution', () => {
     for (let i = 0; i < 6; i++) expect(output).toContain(`Contrainte ${i}`)
   })
 })
+
+describe('budget de restitution sous pression', () => {
+  function chargé(nbRejets: number, nbContraintes: number): TaskState {
+    let task = seedTask()
+    let n = 0
+    for (let i = 0; i < nbContraintes; i++) {
+      task = addConstraint(
+        task,
+        { rule: `Contrainte ${i} — énoncée assez longuement pour peser sur le budget`, basedOnVersion: task.version },
+        'human',
+        ctx(5000 + n++ * 10),
+      )
+    }
+    for (let i = 0; i < nbRejets; i++) {
+      task = rejectApproach(
+        task,
+        {
+          approach: `Approche condamnée numéro ${i}`,
+          reason: `Motif ${i}, détaillé à dessein pour occuper de la place dans la restitution`,
+          basedOnVersion: task.version,
+        },
+        'agent',
+        ctx(6000 + n++ * 10),
+      )
+    }
+    return task
+  }
+
+  it('n’escamote jamais un rejet, même très au-delà du budget', () => {
+    const task = chargé(30, 10)
+    const output = renderTaskState(task)
+
+    // Toutes les approches condamnées restent nommées : en retirer une
+    // reviendrait à lever l'interdit sans le dire.
+    for (let i = 0; i < 30; i++) {
+      expect(output).toContain(`Approche condamnée numéro ${i}`)
+    }
+    for (let i = 0; i < 10; i++) {
+      expect(output).toContain(`Contrainte ${i}`)
+    }
+  })
+
+  it('raccourcit les lignes plutôt que d’en supprimer', () => {
+    const léger = renderTaskState(chargé(2, 2))
+    const lourd = renderTaskState(chargé(30, 10))
+
+    // Sous pression, le motif d'un rejet est coupé — mais il est là.
+    expect(léger).toContain('détaillé à dessein pour occuper')
+    expect(lourd).toContain('Approche condamnée numéro 29')
+    expect(lourd).not.toContain('Motif 29, détaillé à dessein pour occuper de la place dans la restitution')
+  })
+
+  it('respecte le budget tant que les contraintes le permettent', () => {
+    const task = chargé(4, 3)
+    expect(estimateTokens(renderTaskState(task))).toBeLessThanOrEqual(TOKEN_BUDGET)
+  })
+
+  it('reste déterministe : deux rendus du même état sont identiques', () => {
+    const task = chargé(30, 10)
+    expect(renderTaskState(task)).toBe(renderTaskState(task))
+  })
+})
