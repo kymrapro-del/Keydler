@@ -53,6 +53,14 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: ['./test/setup.ts'],
       include: ['test/**/*.test.ts'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text-summary', 'text'],
+        // `main.ts` n'est que l'accrochage au document et la lecture de l'URL ;
+        // tout ce qui est testable en a été sorti vers `ui/bench.ts`.
+        exclude: ['src/main.ts', 'src/env.d.ts', '**/*.css'],
+        include: ['src/**/*.ts'],
+      },
     },
   }
 })

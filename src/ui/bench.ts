@@ -473,6 +473,11 @@ function annoncer(): void {
 }
 
 function render(): void {
+  // Une frame planifiée avant le démontage s'exécute quand même : sans ce
+  // garde-fou, elle écrivait dans une racine devenue nulle. En production rien
+  // ne démonte, si bien que seul un test pouvait le montrer.
+  if (!root) return
+
   // Le champ de saisie est remplacé par le rendu : on note s'il avait le focus
   // et où était le curseur, pour que l'agent ne coupe pas la parole à l'humain.
   const actif = document.activeElement
@@ -487,7 +492,7 @@ function render(): void {
     ? '<a class="skip-link" href="#supervision-ancre">Aller aux commandes de supervision</a>'
     : ''
 
-  root!.innerHTML = `${lienEvitement}
+  root.innerHTML = `${lienEvitement}
     <main id="contenu">
       <header>
         <h1>${escapeHtml(titre())}</h1>
@@ -555,6 +560,7 @@ function render(): void {
  * et deux fois plus d'occasions de perdre le curseur de la personne qui tape.
  */
 let renduPrevu = false
+let frameEnAttente: number | null = null
 
 function scheduleRender(): void {
   if (renduPrevu) return
@@ -568,10 +574,11 @@ function scheduleRender(): void {
     typeof requestAnimationFrame === 'function'
       ? requestAnimationFrame
       : (fn: () => void) => setTimeout(fn, 0)
-  planifier(() => {
+  frameEnAttente = planifier(() => {
+    frameEnAttente = null
     renduPrevu = false
     render()
-  })
+  }) as unknown as number
 }
 
 /**
@@ -594,6 +601,12 @@ export function mount(cible: HTMLElement): () => void {
 
   return () => {
     for (const retirer of abonnements) retirer()
+    if (frameEnAttente !== null) {
+      if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frameEnAttente)
+      else clearTimeout(frameEnAttente)
+      frameEnAttente = null
+    }
+    renduPrevu = false
     root = null
   }
 }

@@ -90,16 +90,15 @@ export function failure(value: string): ToolResult {
   return { content: [{ type: 'text', text: value }], isError: true }
 }
 
-/**
- * Pose le jeton d'origin trial par script. Chrome accepte un `<meta>` ajouté
- * dynamiquement, ce qui évite de committer dans `index.html` un jeton lié à une
- * seule origine — chaque déploiement a la sienne.
+/*
+ * Le jeton d'origin trial n'est PAS posé ici.
+ *
+ * Une version antérieure l'injectait par script au démarrage. C'était inerte
+ * dans tous les cas : `import.meta.env` est figé à la construction, donc quand
+ * le jeton existe la balise du build est déjà dans le `<head>` et l'injection
+ * s'arrêtait aussitôt ; quand il n'existe pas, il n'y avait rien à poser.
+ *
+ * Pire, `document.modelContext` est un accesseur dont l'existence se décide à
+ * l'analyse du document : un jeton arrivé après coup n'aurait rien débloqué.
+ * Il est donc écrit dans le HTML à la construction — voir `vite.config.ts`.
  */
-export function installOriginTrialToken(token: string | undefined): void {
-  if (!token || typeof document === 'undefined') return
-  if (document.querySelector('meta[http-equiv="origin-trial"]')) return
-  const meta = document.createElement('meta')
-  meta.httpEquiv = 'origin-trial'
-  meta.content = token
-  document.head.prepend(meta)
-}

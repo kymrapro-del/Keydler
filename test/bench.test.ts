@@ -240,3 +240,21 @@ describe('état de la couche WebMCP', () => {
     expect(texte).toContain('document.modelContext')
   })
 })
+
+describe('démontage', () => {
+  it('n’écrit plus rien après avoir été démonté', async () => {
+    await store.openPreparedTask(buildDemoTask())
+    await rendu()
+    const avant = root.innerHTML
+
+    démonter()
+    // Une frame planifiée juste avant le démontage s'exécutait quand même et
+    // écrivait dans une racine devenue nulle.
+    await store.mutate((task) => ({ ...task, version: task.version + 1 }))
+    await new Promise((r) => setTimeout(r, 20))
+
+    expect(root.innerHTML).toBe(avant)
+    // `afterEach` rappelle `démonter` : il doit être sans effet la seconde fois.
+    démonter = () => {}
+  })
+})
