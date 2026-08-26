@@ -21,8 +21,9 @@ Autrement dit : le *comportement* de l'interface est dans la voie de Moon, son
 *apparence* dans celle de Kymra. Un écran existe, s'affiche et réagit parce que
 Moon l'a codé ; il est beau parce que Kymra l'a habillé.
 
-**À trancher :** la vidéo montre un scénario technique mais relève de la
-présentation. Elle n'est attribuée à personne pour l'instant.
+**La vidéo est une vidéo de présentation**, produite à la fin. Elle explique ce
+qui a été construit et l'usage fait de WebMCP ; elle ne dépend donc pas d'un
+refus d'écriture capté en direct. Décidé le 26 août.
 
 ---
 

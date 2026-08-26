@@ -11,7 +11,9 @@
     "preview": "vite preview --host",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "tsc --noEmit && npm test && vite build"
+    "check": "tsc --noEmit && npm test && vite build",
+    "build:trial": "TRIAL=1 tsc --noEmit && TRIAL=1 vite build",
+    "trial": "npm run build:trial && vite preview --port 5174"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.2",
