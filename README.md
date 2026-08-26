@@ -130,8 +130,12 @@ Vérifié le 26 août 2026 sur Brave 151.
 
 ### Ce qu'il faut relever ensuite
 
-L'état rendu contient trois contraintes et deux approches rejetées. Un agent qui
-a réellement *lu* ce qu'il a reçu :
+Ouvrez d'abord le cahier de démonstration depuis la page. Il est construit par
+les mutations du domaine, donc reproductible à l'identique sur n'importe quelle
+machine — sa forme est verrouillée par `test/seed.test.ts`.
+
+Il porte trois contraintes actives et deux approches rejetées. Un agent qui a
+réellement *lu* ce qu'il a reçu :
 
 - annonce l'approche C comme prochaine action ;
 - refuse la variante B en citant la rotation des jetons ;

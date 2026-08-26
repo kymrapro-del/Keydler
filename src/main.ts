@@ -5,6 +5,7 @@ import './webmcp'
 
 import './tokens.css'
 import './style.css'
+import { buildDemoTask } from './demo/seed'
 import { renderNoTask, renderTaskState } from './domain/render'
 import * as store from './store/taskStore'
 import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCalls } from './webmcp'
@@ -105,7 +106,7 @@ function renderTask(): string {
     return `<div class="status status--warn">
       <p class="status__title">Aucun cahier ouvert</p>
       <p>Les six outils exigent une tâche existante. Ouvrez-en une pour tester.</p>
-      <p><button type="button" id="seed" class="btn">Ouvrir un cahier de démonstration</button></p>
+      <p><button type="button" id="seed" class="btn">Ouvrir le cahier de démonstration</button></p>
     </div>`
   }
 
@@ -140,10 +141,7 @@ function render(): void {
 
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
   document.querySelector('#seed')?.addEventListener('click', () => {
-    void store.createAndOpenTask(
-      'Refactor the authentication module',
-      'Map the existing entry points',
-    )
+    void store.openPreparedTask(buildDemoTask())
   })
 }
 
