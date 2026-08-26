@@ -98,7 +98,7 @@ function renderWitness(): string {
         appel${calls.length > 1 ? 's' : ''} d'outil<br />
         <span class="muted">dont ${refused} refusé${refused > 1 ? 's' : ''}</span>
       </span>
-      <button type="button" id="reset-witness" class="btn">Remettre à zéro</button>
+      <button type="button" id="reset-witness" class="btn">Vider ce journal d'appels</button>
     </div>
     ${rows ? `<ul class="calls">${rows}</ul>` : ''}`
 }
@@ -271,6 +271,21 @@ function renderSupervision(): string {
     ? `<div class="status status--error"><p>${escapeHtml(erreurHumaine)}</p></div>`
     : ''
 
+  // Une étape sans aucune preuve est celle qui mérite le plus l'attention
+  // humaine, et c'était précisément celle qui n'apparaissait nulle part : la
+  // file ne montrait que les étapes déjà étayées. On ne peut pas « valider »
+  // ce qui n'a rien à valider — on peut, et on doit, le signaler.
+  const sansPreuve = task.steps
+    .filter((s) => s.evidence === null)
+    .map(
+      (s) => `<li class="regle">
+        <span class="chip chip--claimed">affirmé</span>
+        <span class="regle__texte">${escapeHtml(s.action)}</span>
+        <span class="muted">aucune preuve jointe</span>
+      </li>`,
+    )
+    .join('')
+
   return `<section class="supervision">
       ${erreur}
       <h2>Contraintes</h2>
@@ -280,6 +295,7 @@ function renderSupervision(): string {
       <ul class="regles">${rejets || '<li class="muted">Aucune.</li>'}</ul>
       ${saisieRejet}
       ${àValider ? `<h2>Preuves à valider</h2><ul class="regles">${àValider}</ul>` : ''}
+      ${sansPreuve ? `<h2>Affirmé sans preuve</h2><ul class="regles">${sansPreuve}</ul>` : ''}
     </section>`
 }
 

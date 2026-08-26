@@ -43,6 +43,17 @@ describe('cahiers de mesure', () => {
     }
   })
 
+  it('rend la provenance de l’approche condamnée', () => {
+    // Sans elle, un veto humain et une conjecture d'agent se lisent pareil.
+    const output = renderTaskState(buildMeasureTask(1))
+    expect(output).toMatch(/REJECTED — do not retry\n {2}\[human\]/)
+  })
+
+  it('porte un identifiant stable, pour ne pas empiler une ligne par chargement', () => {
+    expect(buildMeasureTask(3).id).toBe('mesure-3')
+    expect(buildMeasureTask(3).id).toBe(buildMeasureTask(3).id)
+  })
+
   it('refuse un numéro inconnu plutôt que de rendre un cahier vide', () => {
     expect(() => buildMeasureTask(99)).toThrow(/99/)
   })
