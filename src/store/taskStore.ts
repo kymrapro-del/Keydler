@@ -103,6 +103,13 @@ export async function createAndOpenTask(title: string, next?: string): Promise<T
   return task
 }
 
+/** Ouvre un cahier déjà constitué. Sert au cahier de démonstration. */
+export async function openPreparedTask(task: TaskState): Promise<TaskState> {
+  await saveTask(task)
+  setSnapshot({ status: 'ready', task, error: null })
+  return task
+}
+
 export async function allTasks(): Promise<TaskState[]> {
   return listTasks()
 }
