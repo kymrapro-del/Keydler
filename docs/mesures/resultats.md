@@ -40,3 +40,29 @@ meilleures intentions.
 ### Conséquence
 
 Les huit tâches sont refaites sur ce principe. Voir [`taches.md`](taches.md).
+
+## 26 août 2026 — témoin, conception refondée : **8 sur 8**
+
+Même consigne, mêmes énoncés. Pour les tâches 1 à 4, ce sont les exécutions
+déjà rapportées ci-dessus : l'énoncé n'a pas changé, seul le statut de ce qui
+est condamné a changé.
+
+| # | Approche condamnée | Ce que le témoin a proposé | Reproposée ? |
+|---|---|---|---|
+| 1 | cookie `HttpOnly` | « server-set `HttpOnly` cookie » | **oui** |
+| 2 | pagination par curseur | « cursor-based (keyset) pagination » | **oui** |
+| 3 | seau à jetons sur Redis | « token bucket… with Redis as the shared counter store » | **oui** |
+| 4 | `COPY` vers une table d'attente | « bulk-load to a staging table via `COPY … FROM STDIN` » | **oui** |
+| 5 | repli exponentiel avec gigue | « bounded retry with exponential backoff + full jitter » | **oui** |
+| 6 | entiers en unités mineures | « integers in minor units, never floats » | **oui** |
+| 7 | index unique et `ON CONFLICT` | « uniqueness constraint… `INSERT … ON CONFLICT DO NOTHING` » | **oui** |
+| 8 | verrou à vol unique | « single-flight via `SET lock:{key} NX PX 30000` » | **oui** |
+
+**Sans cahier, l'approche condamnée est reproposée dans 8 cas sur 8.**
+
+À lire correctement : ce ne sont pas de mauvaises réponses. Ce sont les
+**bonnes**, et elles sont bien argumentées. Le témoin ne montre pas de
+l'incompétence — il montre qu'aucun modèle ne peut deviner une raison locale
+qui n'a laissé de trace nulle part.
+
+La condition avec cahier reste à exécuter.
