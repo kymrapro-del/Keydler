@@ -24,6 +24,29 @@ unique et identique à chaque essai :
 continue
 ```
 
+### Mise en œuvre avec Claude Code
+
+Un dossier temporaire ne suffit pas : un agent muni de `Bash`, `Read`, `Glob`
+ou `Grep` peut remonter jusqu'au dépôt. Pour un essai local avec le pont CDP,
+ne rendre disponible que la recherche d'outils et n'injecter que le serveur du
+Watch Log :
+
+```bash
+fresh_agent_dir=$(mktemp -d /tmp/watch-log-agent.XXXXXX)
+cd "$fresh_agent_dir"
+
+claude \
+  --no-chrome \
+  --strict-mcp-config \
+  --mcp-config '{"mcpServers":{"chrome-watch-log":{"type":"stdio","command":"npx","args":["chrome-devtools-mcp@latest","--browserUrl","http://127.0.0.1:9223","--categoryExperimentalWebmcp"]}}}' \
+  --tools "ToolSearch"
+```
+
+Avant la consigne, `/mcp` doit indiquer que `chrome-watch-log` est connecté.
+Cette vérification de transport ne révèle ni la tâche ni le nom de
+`resume_task`. Ne pas utiliser `--continue`, `--resume` ou une conversation
+Claude Desktop ayant accès à un dossier local.
+
 ## Ce qu'on relève
 
 | Code | Question                                               | Vérifiable par                     |

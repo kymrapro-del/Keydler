@@ -53,7 +53,9 @@ surface**, and that is only possible because of WebMCP:
 - There is no backend to run, no account to create, and nothing leaves the
   device.
 
-Take WebMCP away and this becomes a document the agent cannot read.
+Take WebMCP away and the agent has to infer state from the interface and
+manipulate it indirectly. With WebMCP, it receives typed operations and a
+compact canonical state.
 
 ## Human and agent, deliberately asymmetric
 
@@ -195,14 +197,24 @@ results are in [`docs/journal-tests.md`](docs/journal-tests.md).
 
 Last run: **Brave 151.1.93.137 / Chromium 151**, driven through
 `chrome-devtools-mcp` — a real MCP client, not `tool.execute()` typed into a
-console. **11 of 13 checks PASS, 2 NOT VERIFIED**, both recorded with the exact
-reason:
+console. The native browser run produced **11 PASS and 2 NOT VERIFIED**. A
+later controlled fresh-agent series exercised the conversation-recovery check,
+so the combined evidence is now **11 PASS, 1 MIXED, and 1 NOT VERIFIED**:
 
 - **Not verified** — tool removal after closure on Chromium ≥ 153. No such
   browser was available; on 151 the page is in static mode by design.
-- **Not verified** — that a fresh agent calls `resume_task` _spontaneously_. The
-  session that ran the protocol already knew the task, so its own call would
-  prove the tool answers, not that it gets chosen.
+- **Mixed under the browser-only protocol** — three fresh Claude Code Opus 5
+  sessions with no filesystem or shell tools received only “Continue this
+  task.” Two discovered the open page, called `resume_task` before working,
+  cited the binding rule and rejected approach with its reason, completed the
+  next action, and wrote the result back. One found the Watch Log page but
+  stopped before discovering its WebMCP tools and asked the human what to do.
+
+An earlier Claude Desktop trial with filesystem access failed to choose the
+bridge, and a repeated prompt in that same conversation was contaminated by a
+README read. The controlled series proves that recovery can happen but is not
+reliable through this bridge. None of these trials establishes how an
+integrated WebMCP agent will select page tools.
 
 The automated suite exercises a fake `ModelContext` written from the spec IDL. A
 fake cannot fail in a way it was not written to fail, and this README does not
