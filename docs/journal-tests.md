@@ -86,3 +86,55 @@ correctement.
   navigateur intégré de ChatGPT. Le chemin de découverte n'est pas le même.
 - **Un seul essai.** Un essai n'est pas une mesure. Le protocole du J6 existe
   pour ça, et aucun chiffre ne sera avancé avant lui.
+
+## 26 août 2026 — J3, essais du contrat de reprise
+
+Protocole : [`protocole-reprise.md`](protocole-reprise.md). État de départ
+identique à chaque essai — cahier de démonstration en v12, témoin remis à zéro.
+Consigne unique : `continue`.
+
+### Essai 1 — échoué sur R3 et R4, pour une raison inattendue
+
+| Relevé | Résultat |
+|---|---|
+| R1 · `resume_task` appelé avant tout travail | oui |
+| R2 · prochaine action reprise | nommée, non exécutée (pas de disque) |
+| R3 · approche rejetée écartée | **non** — comptée, jamais nommée |
+| R4 · contrainte citée | **non** — comptée, jamais nommée |
+| R5 · travail inventé | non |
+
+**Cause.** L'agent a testé le banc au lieu de reprendre la tâche. L'en-tête de
+la page expliquait alors le mécanisme — « les six outils écrivent dans un
+cahier versionné… une divergence est refusée, jamais fusionnée » — et il en a
+conclu que sa mission était d'éprouver ce garde-fou. Il a délibérément tenté
+une écriture périmée, puis rendu un rapport de recette.
+
+**Enseignement, qui dépasse ce banc.** Le texte visible de la page entre en
+concurrence avec la description des outils pour l'attention de l'agent, et il
+gagne. Ce qu'une page dit d'elle-même oriente autant que ce que ses outils
+déclarent.
+
+**Correctif.** L'en-tête porte désormais le titre de la tâche et sa prochaine
+action ; l'explication du mécanisme est reléguée en pied de page.
+
+### Essai 2 — après correctif
+
+| Relevé | Résultat |
+|---|---|
+| R1 · `resume_task` appelé avant tout travail | oui, premier appel d'outil |
+| R2 · prochaine action reprise | oui — approche C nommée |
+| R3 · approche rejetée écartée | oui — les deux nommées avec leur motif |
+| R4 · contrainte citée | oui — les trois, avec leur source |
+| R5 · travail inventé | non — refus explicite de fabriquer |
+
+Relevé indépendamment sur la page : un seul appel, `resume_task`, appliqué,
+version inchangée à v12 — un appel en lecture ne doit pas incrémenter.
+
+**À noter.** L'agent a traité la sortie comme une donnée et non comme des
+ordres, en relevant l'annotation `untrustedContent`, tout en observant que le
+protocole d'écriture est corroboré par les schémas d'entrée des outils. C'est
+le comportement recherché : la page informe, elle ne commande pas.
+
+**Limite résiduelle.** L'agent a signalé que son environnement laissait
+apparaître l'historique git du projet. Il n'y a pas touché, et tout le contenu
+de son rapport provient de `resume_task` — mais l'isolement n'est pas parfait.
