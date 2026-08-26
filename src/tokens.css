@@ -37,10 +37,18 @@
   --sp-5: 24px;
   --sp-6: 32px;
 
+  --sp-7: 48px;
+
   --radius-sm: 6px;
   --radius-md: 10px;
+  --radius-lg: 14px;
 
-  --measure: 760px;
+  /* Largeur de lecture d'un paragraphe. */
+  --measure: 680px;
+  /* Largeur d'un tableau de bord : plus large qu'un texte, borné quand même. */
+  --dashboard: 880px;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 6%);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,5 +66,7 @@
     --c-warn-text: #e8c65c;
     --c-error-bg: #3a1512;
     --c-error-text: #f2b8b5;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 35%);
   }
 }
