@@ -27,9 +27,10 @@ nécessaire :
 2. passer le drapeau à **Enabled** ;
 3. relancer Chrome, puis recharger la page.
 
-Sous Arch : `paru -S google-chrome`. Les navigateurs dérivés de Chromium qui
-retirent les fonctions IA de Google — Brave notamment — n'exposent pas
-forcément ce drapeau.
+**Brave fonctionne.** Vérifié sur Brave 151 / Chromium 151 sous Linux : le
+drapeau existe (`brave://flags/#enable-webmcp-testing`) et les deux surfaces,
+`document.modelContext` et `navigator.modelContext`, sont exposées. Inutile
+d'installer Chrome.
 
 Le bandeau en haut indique si l'outil est exposé. `localhost` étant un contexte
 sécurisé, l'API s'enregistre sans déploiement.
@@ -78,6 +79,25 @@ Puis le décisif : **fermer la conversation**, en ouvrir une vierge, réécrire
 Via le pont, l'agent voit deux outils génériques — `list_webmcp_tools` et
 `call_webmcp_tool` — et non les outils de la page directement. C'est un chemin
 de découverte réel, mais différent de celui du navigateur intégré de ChatGPT.
+
+### Conventions d'appel réelles
+
+L'implémentation de Chromium 151 diverge de l'IDL publiée sur trois points. Les
+trois se manifestent par un `Failed to parse input arguments` peu bavard.
+
+```js
+const tools = await document.modelContext.getTools()
+
+await document.modelContext.executeTool(tools[0], '{}')   // ✅ chaîne JSON
+await document.modelContext.executeTool(tools[0], {})     // ❌ rejeté
+```
+
+- Les arguments d'entrée sont une **chaîne JSON**, pas un objet.
+- `executeTool` renvoie une **chaîne** : le `ToolResult` arrive sérialisé.
+- `inputSchema` fait l'aller-retour en **chaîne**, même enregistré en objet —
+  le navigateur normalise, l'enregistrement n'a pas à changer.
+
+Vérifié le 26 août 2026 sur Brave 151.
 
 ### Ce qu'il faut relever ensuite
 
