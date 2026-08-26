@@ -6,7 +6,9 @@ import { registerTools } from './register'
 
 void registerTools()
 
-export { getRegistrationState, onRegistrationChange } from './register'
+export { getRegistrationState, onRegistrationChange, registerTools } from './register'
 export type { RegistrationState } from './register'
-export { FIXED_STATE, RESUME_TASK_DESCRIPTION, getCallStats, onCall, resumeTaskTool } from './resumeTask'
+export { ALL_TOOLS, resumeTaskTool } from './tools'
+export { RESUME_TASK_DESCRIPTION } from './descriptions'
+export { getCalls, onCall, resetCalls } from './witness'
 export { checkAvailability } from './adapter'
