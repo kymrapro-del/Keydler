@@ -1,0 +1,62 @@
+/*
+ * Jetons visuels — valeurs NEUTRES, à réécrire par Kymra.
+ *
+ * Contrat entre les deux voies : aucune valeur visuelle n'est codée en dur
+ * ailleurs que dans ce fichier. Couleur, espacement, typographie, rayon : tout
+ * passe par ces variables. Réécrire ce fichier suffit à changer l'apparence de
+ * l'application sans toucher à une ligne de logique.
+ *
+ * Ce qui est ici est un point de départ lisible et accessible, pas une
+ * proposition de design.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --c-bg: #ffffff;
+  --c-surface: #f6f6f7;
+  --c-border: #d6d6da;
+  --c-text: #1a1a1e;
+  --c-text-muted: #5c5c66;
+  --c-accent: #3d4ec8;
+
+  --c-ok-bg: #e6f4ea;
+  --c-ok-text: #17603a;
+  --c-warn-bg: #fdf3d8;
+  --c-warn-text: #6b5200;
+  --c-error-bg: #fce8e6;
+  --c-error-text: #8c1d18;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', monospace;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  --measure: 760px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-bg: #131316;
+    --c-surface: #1c1c20;
+    --c-border: #34343a;
+    --c-text: #e6e6ea;
+    --c-text-muted: #a0a0ac;
+    --c-accent: #a3adf5;
+
+    --c-ok-bg: #14301f;
+    --c-ok-text: #8fd6ab;
+    --c-warn-bg: #332a0c;
+    --c-warn-text: #e8c65c;
+    --c-error-bg: #3a1512;
+    --c-error-text: #f2b8b5;
+  }
+}
