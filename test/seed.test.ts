@@ -30,10 +30,12 @@ describe('cahier de démonstration', () => {
     expect(buildDemoTask().next).toContain('approach C')
   })
 
-  it('représente les trois degrés de preuve atteignables', () => {
+  it('représente les quatre degrés de preuve', () => {
     const counts = evidenceCounts(buildDemoTask())
-    // « human_verified » n'est atteignable que par un clic humain : sans lui
-    // dans le cahier, la démonstration ne montrerait pas la supervision.
+    // La distinction prouvé / affirmé ne se voit que si les quatre sont là.
+    // « human_verified » en particulier : sans lui, la démonstration ne
+    // montrerait pas la supervision humaine.
+    expect(counts.machine_verified).toBeGreaterThan(0)
     expect(counts.human_verified).toBeGreaterThan(0)
     expect(counts.evidence).toBeGreaterThan(0)
     expect(counts.claimed).toBeGreaterThan(0)

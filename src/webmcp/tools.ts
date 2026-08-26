@@ -49,8 +49,29 @@ function toToolError(error: unknown): ToolResult {
   return failure(`ERROR\n${String(error)}`)
 }
 
+/**
+ * Panne de stockage : à ne jamais confondre avec un cahier vide. L'agent doit
+ * savoir que ce qu'il lit n'est pas fiable, plutôt que de conclure qu'il n'y a
+ * rien à reprendre.
+ */
+function storageError(detail: string): Error {
+  return new Error(
+    [
+      'STORAGE UNAVAILABLE',
+      'This page could not read its own task state, so it cannot tell you',
+      'what the current task is. Do NOT assume there is no task.',
+      `Cause: ${detail}`,
+      'Tell the human: browser storage is blocked or unavailable here',
+      '(private browsing and blocked site data are the usual causes).',
+    ].join('\n'),
+  )
+}
+
 async function requireTask(): Promise<TaskState> {
   await store.init()
+  const failure = store.storageFailure()
+  if (failure) throw storageError(failure)
+
   const task = store.currentTask()
   if (!task) {
     throw new Error(
@@ -98,6 +119,9 @@ export const resumeTaskTool: ModelContextTool = {
   async execute() {
     try {
       await store.init()
+      const failure = store.storageFailure()
+      if (failure) throw storageError(failure)
+
       const task = store.currentTask()
       recordCall('resume_task', false)
       return text(task ? renderTaskState(task) : renderNoTask())

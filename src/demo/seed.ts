@@ -21,6 +21,10 @@ import type { TaskState } from '../domain/types'
  * ce qu'il a reçu annonce l'approche C, refuse la variante B en citant la
  * rotation des jetons, et n'ajoute aucune dépendance. Sans ces éléments, on ne
  * mesure que le fait qu'un outil a été appelé.
+ *
+ * Les quatre degrés de preuve y figurent, du plus fort au plus faible : c'est
+ * la distinction entre travail prouvé et travail affirmé qui doit se voir à
+ * l'écran, et elle ne se voit que si les quatre sont présents.
  */
 export function buildDemoTask(): TaskState {
   let task = createTask({
@@ -94,6 +98,23 @@ export function buildDemoTask(): TaskState {
     'agent',
   )
 
+  // Une preuve qui atteste d'un changement sans le vérifier : degré « evidence ».
+  task = logStep(
+    task,
+    {
+      action: 'Extracted the token issuer behind an interface',
+      result: 'public API unchanged, 2 files touched',
+      evidence: {
+        kind: 'diff',
+        content:
+          '--- a/auth/issuer.ts\n+++ b/auth/issuer.ts\n@@\n-function issue(userId) {\n+function issue(userId, session) {',
+      },
+      basedOnVersion: task.version,
+    },
+    'agent',
+  )
+
+  // Rien à joindre : l'étape reste « claimed », et doit le rester visiblement.
   task = logStep(
     task,
     {
