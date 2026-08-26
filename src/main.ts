@@ -7,7 +7,7 @@ import './tokens.css'
 import './style.css'
 import { buildDemoTask } from './demo/seed'
 import { renderNoTask, renderTaskState } from './domain/render'
-import { reopenTask } from './domain/task'
+import { addConstraint, reopenTask, setConstraintActive, verifyEvidence } from './domain/task'
 import * as store from './store/taskStore'
 import { getCalls, getRegistrationState, onCall, onRegistrationChange, resetCalls } from './webmcp'
 
@@ -157,7 +157,110 @@ function sousTitre(): string {
   return task.next ? `Prochaine action : ${task.next}` : 'Prochaine action non définie.'
 }
 
+/**
+ * Brouillon de la contrainte en cours de saisie.
+ *
+ * Il vit hors du rendu à dessein. La page se redessine à chaque écriture
+ * d'agent, et c'est précisément ce qui doit arriver pendant qu'un humain tape
+ * une contrainte : sans ce report, sa saisie serait effacée par l'agent qu'il
+ * est en train de contredire.
+ */
+let brouillon = ''
+
+function renderSupervision(): string {
+  const task = store.getSnapshot().task
+  if (!task) return ''
+
+  const contraintes = task.constraints
+    .map(
+      (c) => `<li class="regle${c.active ? '' : ' regle--levee'}">
+        <span class="chip chip--${c.source}">${c.source}</span>
+        <span class="regle__texte">${escapeHtml(c.rule)}</span>
+        <span class="muted">v${c.addedAtVersion}</span>
+        <button type="button" class="btn" data-toggle="${c.id}" data-active="${c.active}">
+          ${c.active ? 'Lever' : 'Rétablir'}
+        </button>
+      </li>`,
+    )
+    .join('')
+
+  // Une preuve ne devient « vérifiée humain » que par un clic. C'est le seul
+  // chemin vers ce degré, et il n'existait jusqu'ici que dans le domaine.
+  const àValider = task.steps
+    .filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
+    .map(
+      (s) => `<li class="regle">
+        <span class="chip chip--${s.confidence}">${s.confidence}</span>
+        <span class="regle__texte">${escapeHtml(s.action)}</span>
+        <button type="button" class="btn" data-verify="${s.id}">Valider la preuve</button>
+      </li>`,
+    )
+    .join('')
+
+  const saisie =
+    task.status === 'active'
+      ? `<form id="form-contrainte" class="saisie">
+           <label for="new-constraint">Ajouter une contrainte</label>
+           <input id="new-constraint" type="text" autocomplete="off"
+                  placeholder="Ne jamais modifier le schéma de base" />
+           <button type="submit" class="btn">Ajouter</button>
+         </form>
+         <p class="muted">
+           Une contrainte posée ici est humaine : elle n'est jamais refusée, et
+           elle périme la version sur laquelle l'agent travaille.
+         </p>`
+      : ''
+
+  return `<section class="supervision">
+      <h2>Contraintes</h2>
+      <ul class="regles">${contraintes || '<li class="muted">Aucune.</li>'}</ul>
+      ${saisie}
+      ${àValider ? `<h2>Preuves à valider</h2><ul class="regles">${àValider}</ul>` : ''}
+    </section>`
+}
+
+/** Rebranche les commandes de supervision après chaque rendu. */
+function brancherSupervision(): void {
+  const form = document.querySelector<HTMLFormElement>('#form-contrainte')
+  const input = document.querySelector<HTMLInputElement>('#new-constraint')
+
+  if (input) {
+    input.value = brouillon
+    input.addEventListener('input', () => {
+      brouillon = input.value
+    })
+  }
+
+  form?.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const règle = brouillon.trim()
+    if (!règle) return
+    brouillon = ''
+    void store.mutate((state) => addConstraint(state, { rule: règle, basedOnVersion: null }, 'human'))
+  })
+
+  for (const bouton of document.querySelectorAll<HTMLButtonElement>('[data-toggle]')) {
+    bouton.addEventListener('click', () => {
+      const id = bouton.dataset.toggle!
+      const actif = bouton.dataset.active === 'true'
+      void store.mutate((state) => setConstraintActive(state, id, !actif))
+    })
+  }
+
+  for (const bouton of document.querySelectorAll<HTMLButtonElement>('[data-verify]')) {
+    bouton.addEventListener('click', () => {
+      void store.mutate((state) => verifyEvidence(state, bouton.dataset.verify!))
+    })
+  }
+}
+
 function render(): void {
+  // Le champ de saisie est remplacé par le rendu : on note s'il avait le focus
+  // et où était le curseur, pour que l'agent ne coupe pas la parole à l'humain.
+  const actif = document.activeElement
+  const avaitFocus = actif instanceof HTMLInputElement && actif.id === 'new-constraint'
+  const curseur = avaitFocus ? (actif as HTMLInputElement).selectionStart : null
+
   const hasTask = store.getSnapshot().task !== null
   root!.innerHTML = `<main>
       <header>
@@ -165,6 +268,7 @@ function render(): void {
         <p class="muted">${escapeHtml(sousTitre())}</p>
       </header>
       ${renderTask()}
+      ${renderSupervision()}
       ${renderStatus()}
       ${renderWitness()}
       ${hasTask ? '' : `<p class="muted">${escapeHtml(renderNoTask().split('\n')[0])}</p>`}
@@ -177,6 +281,14 @@ function render(): void {
     </main>`
 
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
+  brancherSupervision()
+
+  if (avaitFocus) {
+    const input = document.querySelector<HTMLInputElement>('#new-constraint')
+    input?.focus()
+    if (curseur !== null) input?.setSelectionRange(curseur, curseur)
+  }
+
   document.querySelector('#reopen')?.addEventListener('click', () => {
     const motif = window.prompt('Pourquoi rouvrir cette tâche ?')
     if (!motif?.trim()) return

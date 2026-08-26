@@ -166,6 +166,22 @@ la reformuler sur les *circonstances* d'appel, pas sur la fonction.
 | `add_decision` | `choice, rationale, based_on_version` | Le pourquoi, que tout résumé perd |
 | `complete_task` | `summary, based_on_version` | Instantané final, transmissible |
 
+### La supervision humaine
+
+La page permet à l'humain d'intervenir dans l'état pendant que l'agent
+travaille :
+
+- **ajouter une contrainte**, marquée `[human]`, qui incrémente la version et
+  périme donc celle sur laquelle l'agent croit travailler ;
+- **lever ou rétablir** une contrainte — une contrainte levée disparaît de ce
+  que `resume_task` restitue ;
+- **valider une preuve d'un clic**, seul chemin vers le degré `human_verified`.
+
+La saisie en cours **survit aux écritures de l'agent** : texte, position du
+curseur et focus sont reportés à travers le redessin. Sans cela, l'agent
+effacerait la contrainte que l'humain est en train de taper contre lui — soit
+exactement le moment que ce produit existe pour rendre possible.
+
 ### Les trois règles du noyau
 
 1. Toute mutation appliquée incrémente `version`, sans exception.
