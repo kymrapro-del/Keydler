@@ -265,3 +265,74 @@ chaque conflit entre onglets laissait un « Uncaught (in promise) » : le
 C'était visible par quiconque ouvre les outils de développement pendant une
 démonstration, et c'est l'outillage — ajouté à cette même passe — qui l'a
 révélé.
+
+---
+
+## 26 août 2026 — validation WebMCP native, par un vrai client MCP
+
+**Ce relevé est le premier à traverser un vrai client MCP.** Les passes
+précédentes exerçaient un faux `ModelContext` en test ; ici, `document.modelContext`
+est celui du navigateur, et les appels d'outils partent de `chrome-devtools-mcp`
+par le protocole de débogage — pas d'un `tool.execute()` tapé dans la console.
+
+### Environnement
+
+| Élément                 | Relevé                                                             |
+| ----------------------- | ------------------------------------------------------------------ |
+| Navigateur              | **Brave 151.1.93.137** — `Chrome/151.0.7922.169`, V8 15.1.206.21   |
+| Marques `userAgentData` | `Not=A?Brand 99`, **`Brave 151`**, **`Chromium 151`**              |
+| Client MCP              | `chrome-devtools-mcp` (`--categoryExperimentalWebmcp`), CDP :9222  |
+| Drapeaux                | `--enable-features=WebMCP,WebMCPTesting`                           |
+| Page servie             | build d'essai (`npm run build:trial`), sans carte de source, :5174 |
+| Contexte                | onglet isolé `watchlog-validation`, IndexedDB vierge               |
+| Contexte sécurisé       | oui (`localhost`)                                                  |
+
+### Résultats
+
+| #   | Vérification                                         | Résultat          | Observation factuelle                                                                                                |
+| --- | ---------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | Version exacte du navigateur                         | **PASS**          | Brave 151.1.93.137 / Chromium 151                                                                                    |
+| 2   | `document.modelContext` réellement présent           | **PASS**          | `typeof document.modelContext === 'object'`, `registerTool` est une fonction ; `navigator.modelContext` aussi        |
+| 3   | Mode lifecycle affiché                               | **PASS — static** | « Chromium 151 — below 153, where unregistering may drop an in-flight reply; tools stay registered »                 |
+| 4   | Page sans tâche : 2 outils                           | **PASS**          | `list_webmcp_tools` rend exactement `resume_task`, `read_task_detail`                                                |
+| 5   | Ouverture d'une tâche : les 5 écritures apparaissent | **PASS**          | 7 outils sans rechargement ; l'URL passe à `/t/807d06222743`                                                         |
+| 6   | `resume_task` rend id, URL, version, règles, suite   | **PASS**          | `TASK ID 807d06222743`, `URL http://localhost:5174/t/807d06222743`, `VERSION 15`, 3 contraintes, `NEXT` renseigné    |
+| 7   | `complete_task` rend sa réponse à l'agent            | **PASS**          | `OK — complete_task recorded. VERSION 17` reçu par le client                                                         |
+| 8   | Mode static : les écritures restent et refusent      | **PASS**          | `getTools()` rend toujours 7 outils après clôture ; `log_step` → « is already completed … ask the human to reopen »  |
+| 9   | Mode dynamic : elles disparaissent après clôture     | **NON VÉRIFIÉ**   | Exige Chromium ≥ 153. Ce navigateur est en 151, donc en mode static par construction. Aucun Chromium ≥ 153 ici.      |
+| 10  | Réouverture : écritures de nouveau utilisables       | **PASS**          | Réouverture humaine → v18 `active` ; `log_step` aboutit en v19                                                       |
+| 11  | Rejeu exact du même `mutation_id`                    | **PASS**          | Réponse identique + « Replay of an earlier call … Nothing was written twice. » ; aucun doublon, version figée à 16   |
+| 12  | Même `mutation_id`, arguments différents             | **PASS**          | Refusé ; audit `log_step · agent · v16 · refused` / `mutation_id: mutation-id-collision`, sans changement de version |
+| 13  | Conversation neuve : « Continue this task »          | **NON VÉRIFIÉ**   | Voir ci-dessous.                                                                                                     |
+| —   | Console du navigateur                                | **PASS**          | Aucun message d'erreur ni d'avertissement sur toute la session                                                       |
+
+### Pourquoi le point 13 n'est pas vérifié
+
+Il demande qu'un agent **sans contexte** consulte `resume_task` de lui-même. Or
+la session qui a mené ce relevé connaissait déjà l'état de la tâche : un appel
+émis depuis elle prouverait que l'outil répond, pas qu'il est **spontanément
+choisi**. Le mesurer honnêtement demande une conversation neuve, ce qui n'a pas
+été refait dans cette passe.
+
+Les relevés des 24 et 26 août plus haut portent sur ce point, avec leurs
+réserves. Ils ne sont pas rejoués ici et ne sont pas reconduits.
+
+### Deux détails que seul le vrai navigateur montre
+
+1. **Les annotations sont renommées à la projection.** Ce que la page pose en
+   `readOnlyHint` / `untrustedContentHint` ressort de `getTools()` en
+   `{"readOnly":true,"untrustedContent":true}`. Le sens est conservé, le nom
+   non — un test écrit contre le nom posé ne dirait rien de ce que le client
+   reçoit.
+
+2. **Les schémas durcis traversent intacts.** `additionalProperties: false`,
+   les bornes `minLength`/`maxLength`, l'`enum` des natures de preuve, le
+   `pattern` du `mutation_id` et l'objet `evidence` imbriqué strict figurent
+   tous dans ce que le client lit.
+
+### Ce que ce relevé ne dit pas
+
+- Rien sur le navigateur intégré de **ChatGPT**, qui n'a pas été essayé.
+- Rien sur **Chromium ≥ 153**, donc rien sur le mode dynamique en conditions
+  réelles.
+- Rien sur le choix **spontané** de `resume_task` par un agent neuf.
