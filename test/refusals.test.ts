@@ -101,3 +101,34 @@ describe('refus consignés', () => {
     expect(texte).toContain('Call resume_task before continuing.')
   })
 })
+
+describe('conseil de réessai', () => {
+  it('ne suggère pas de réessayer sur une tâche close', async () => {
+    const task = await store.createAndOpenTask('Tâche', undefined)
+    const complete = ALL_TOOLS.find((t) => t.name === 'complete_task')!
+    await complete.execute({ summary: 'Terminé.', based_on_version: task.version }, {})
+
+    const result = await logStep().execute(
+      { action: 'a', result: 'b', based_on_version: store.currentTask()!.version },
+      {},
+    )
+
+    const texte = result.content[0].text
+    expect(result.isError).toBe(true)
+    // Réessayer ne marchera jamais : le suggérer inviterait à boucler.
+    expect(texte).not.toContain('Retry with based_on_version')
+    expect(texte).toContain('Retrying will not help')
+    expect(texte).toContain('ask the human to reopen')
+  })
+
+  it('suggère toujours le réessai quand l’entrée est simplement à corriger', async () => {
+    const task = await store.createAndOpenTask('Tâche', undefined)
+
+    const result = await rejectApproach().execute(
+      { approach: 'JWT B', reason: '', based_on_version: task.version },
+      {},
+    )
+
+    expect(result.content[0].text).toContain(`Retry with based_on_version: ${task.version}`)
+  })
+})

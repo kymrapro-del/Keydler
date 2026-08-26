@@ -51,10 +51,13 @@ function toToolError(error: unknown, retryVersion?: number): ToolResult {
   if (error instanceof ValidationError) {
     // Rien n'a bougé : autant le dire et rendre la version, sinon l'agent
     // dépense un aller-retour de resume_task pour réapprendre ce qu'il sait.
+    // Mais seulement si un réessai peut aboutir : le suggérer sur un cahier
+    // clos inviterait à une boucle infinie.
+    const utile = error.retryable && retryVersion !== undefined
     return failure(
-      retryVersion === undefined
-        ? error.message
-        : `${error.message}\nNothing was written. Retry with based_on_version: ${retryVersion}`,
+      utile
+        ? `${error.message}\nNothing was written. Retry with based_on_version: ${retryVersion}`
+        : error.message,
     )
   }
 

@@ -26,14 +26,23 @@ export class StaleStateError extends Error {
   }
 }
 
-/** Entrée qui ne respecte pas le contrat d'un outil. */
+/**
+ * Entrée qui ne respecte pas le contrat d'un outil.
+ *
+ * `retryable` sépare deux situations que rien d'autre ne distingue : une
+ * entrée mal formée, qu'il suffit de corriger et de renvoyer, et un état du
+ * cahier qui interdit l'opération — où réessayer ne marchera jamais. Conseiller
+ * un réessai dans le second cas inviterait à une boucle infinie.
+ */
 export class ValidationError extends Error {
   readonly field: string
+  readonly retryable: boolean
 
-  constructor(field: string, message: string) {
+  constructor(field: string, message: string, retryable = true) {
     super(`INVALID INPUT\nField "${field}": ${message}`)
     this.name = 'ValidationError'
     this.field = field
+    this.retryable = retryable
   }
 }
 
