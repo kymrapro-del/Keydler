@@ -183,3 +183,64 @@ valables ; ses conclusions sur le contenu du cahier, non.
    degré. La contradiction ci-dessus était donc invisible à l'écran.
 3. `machine_verified` atteste **la nature de l'artefact joint**, pas qu'une
    machine ait vérifié l'affirmation. Le nom promet plus que la chose.
+
+### Essai 4 — sur build d'essai isolé
+
+Premier essai où l'isolement est réel : build de production servi sur 5174,
+sans carte de source, le code n'étant plus lisible par `fetch`. Origine
+distincte, donc IndexedDB vierge.
+
+| Relevé | Résultat |
+|---|---|
+| R1 · `resume_task` appelé avant tout travail | oui |
+| R2 · prochaine action reprise | oui — approche C nommée |
+| R3 · approche rejetée écartée | oui — les deux, avec leur motif |
+| R4 · contrainte citée | oui — les trois, avec leur source |
+| R5 · travail inventé | non |
+
+Relevé sur la page : un appel, `resume_task`, appliqué, version inchangée à v12.
+
+**Trois comportements qui vont au-delà du protocole.**
+
+L'agent a **cherché une injection** dans la page — texte masqué, hors écran,
+transparent, en micro-police, commentaires HTML, prose glissée dans les
+attributs `aria-label`, `title` et `data-*`. Il n'a rien trouvé et l'a dit.
+C'est le comportement que l'annotation `untrustedContent` doit susciter.
+
+Il a relevé que l'unique étape sans preuve — « Reduced token TTL to 15 minutes »
+— jouxte la prochaine action, sans qu'on le lui demande. Le gradient de preuve
+est donc lu, pas seulement affiché.
+
+Il a refusé de cliquer « Valider la preuve », au motif que valider est l'acte du
+superviseur humain et qu'« un agent validant une preuve produite par un agent
+défait la supervision autour de laquelle tout est construit ». Cette sémantique
+n'est écrite nulle part dans l'interface : il l'a déduite.
+
+**Limite résiduelle.** L'agent mentionne « le sujet de commit visible est J2 ».
+Il n'a pas lu le dépôt — la page ne l'expose plus — mais son environnement
+d'exécution laisse filtrer du contexte projet. L'isolement est bon côté page,
+imparfait côté harnais.
+
+## Bilan du J3
+
+Quatre essais, dont un nul et un contaminé.
+
+| Essai | Isolement | R1 | R2 | R3 | R4 | R5 |
+|---|---|---|---|---|---|---|
+| 1 | page en dev | oui | oui | **non** | **non** | non |
+| 2 | page en dev | oui | oui | oui | oui | non |
+| 3 | rompu — source lu par `fetch` | oui | oui | oui | oui | non |
+| 4 | build isolé | oui | oui | oui | oui | non |
+
+Le seul échec vient de l'essai 1, et sa cause n'était pas la description des
+outils : c'était le texte de la page, qui décrivait le mécanisme et a détourné
+l'agent vers sa recette. Corrigé, l'échec ne s'est pas reproduit.
+
+**Ce qui est établi.** La description amène un agent non contaminé à appeler
+`resume_task` avant de travailler, et le format de restitution est lu — les
+contraintes et les rejets sont cités nommément, avec leur source et leur motif.
+
+**Ce qui ne l'est pas.** Quatre essais, même modèle, même consigne : les
+résultats sont corrélés et ne valent pas quatre observations indépendantes.
+Aucun pourcentage n'en sera tiré. Et ce n'est toujours pas le navigateur
+intégré de ChatGPT.
