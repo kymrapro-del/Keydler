@@ -3,9 +3,8 @@
 Mémoire de tâche persistante et supervisée, que les agents lisent et écrivent
 par WebMCP.
 
-> **État : J1.** Le dépôt ne contient volontairement qu'un banc d'essai —
-> un seul outil, `resume_task`, qui rend une chaîne fixe. Tant que la reprise
-> après perte de contexte n'est pas prouvée, rien d'autre ne se construit.
+> **État : J2.** Les six outils écrivent dans un cahier versionné et persistant.
+> Il n'y a pas encore de tableau de bord : la page servie est un banc d'essai.
 > Le plan complet est dans [`docs/plan-developpement.md`](docs/plan-developpement.md).
 
 ## Lancer
@@ -114,12 +113,47 @@ la reformuler sur les *circonstances* d'appel, pas sur la fonction.
 
 ## Ce que le code contient
 
-| Fichier | Rôle |
+| Dossier | Rôle |
 |---|---|
-| `src/webmcp/adapter.ts` | Détection d'API et enveloppes MCP. Toute l'instabilité de la spécification est enfermée ici. |
-| `src/webmcp/resumeTask.ts` | L'outil, sa description et l'état figé. |
-| `src/webmcp/register.ts` | Enregistrement singleton, hors de tout cycle de rendu. |
+| `src/domain` | Types, invariants et mutations pures. Aucune dépendance : ni React, ni DOM, ni IndexedDB, ni WebMCP. |
+| `src/persistence` | IndexedDB et migrations de schéma. Seule porte vers le stockage. |
+| `src/store` | Source de vérité observable, partagée par l'interface et les outils. |
+| `src/webmcp` | Adaptateur d'API, descriptions, les six outils, enregistrement singleton. |
 | `src/tokens.css` | Jetons visuels neutres — le seul fichier que le design réécrit. |
+
+### Les six outils
+
+| Outil | Entrées | Rôle |
+|---|---|---|
+| `resume_task` | — | Restitue l'état canonique et la version |
+| `log_step` | `action, result, evidence?, next?, based_on_version` | Consigne une étape et son degré de preuve |
+| `add_constraint` | `rule, based_on_version` | Consigne permanente, côté agent |
+| `reject_approach` | `approach, reason, based_on_version` | Empêche de réessayer ce qui a échoué |
+| `add_decision` | `choice, rationale, based_on_version` | Le pourquoi, que tout résumé perd |
+| `complete_task` | `summary, based_on_version` | Instantané final, transmissible |
+
+### Les trois règles du noyau
+
+1. Toute mutation appliquée incrémente `version`, sans exception.
+2. Toute écriture d'agent porte un `based_on_version` ; une divergence est
+   **refusée**, jamais fusionnée :
+
+```
+STALE STATE
+You are attempting to log work based on task state v1.
+Current state is v5. Call resume_task before continuing.
+```
+
+3. Une écriture humaine est autoritaire : sans version, jamais refusée. C'est
+   elle qui périme celle de l'agent — toute la supervision tient là.
+
+## Vérifier
+
+```bash
+npm run check
+```
+
+Types, 26 tests d'invariants, build de production.
 
 ### Deux règles qui ne bougeront pas
 

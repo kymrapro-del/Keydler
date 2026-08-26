@@ -83,6 +83,14 @@ export function text(value: string): ToolResult {
 }
 
 /**
+ * Emballe un refus. Le message est destiné à être lu par l'agent : il doit
+ * porter l'instruction à suivre, pas seulement le constat d'échec.
+ */
+export function failure(value: string): ToolResult {
+  return { content: [{ type: 'text', text: value }], isError: true }
+}
+
+/**
  * Pose le jeton d'origin trial par script. Chrome accepte un `<meta>` ajouté
  * dynamiquement, ce qui évite de committer dans `index.html` un jeton lié à une
  * seule origine — chaque déploiement a la sienne.

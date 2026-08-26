@@ -1,5 +1,5 @@
 import { checkAvailability, getModelContext, installOriginTrialToken, type Availability } from './adapter'
-import { resumeTaskTool } from './resumeTask'
+import { ALL_TOOLS } from './tools'
 
 /**
  * Enregistrement des outils.
@@ -25,8 +25,6 @@ export type RegistrationState = {
 
 const GUARD = Symbol.for('cahier-de-quart.webmcp.registered')
 type GuardedGlobal = typeof globalThis & { [GUARD]?: boolean }
-
-const TOOLS = [resumeTaskTool]
 
 let state: RegistrationState = {
   phase: 'pending',
@@ -72,13 +70,13 @@ export async function registerTools(): Promise<RegistrationState> {
   }
 
   try {
-    for (const tool of TOOLS) {
+    for (const tool of ALL_TOOLS) {
       await modelContext.registerTool(tool)
     }
     setState({
       phase: 'registered',
       availability,
-      toolNames: TOOLS.map((t) => t.name),
+      toolNames: ALL_TOOLS.map((t) => t.name),
       error: null,
     })
   } catch (error) {
@@ -92,4 +90,17 @@ export async function registerTools(): Promise<RegistrationState> {
   }
 
   return state
+}
+
+/** Réinitialise le garde-fou. Réservé aux tests. */
+export function __resetRegistration(): void {
+  const guarded = globalThis as GuardedGlobal
+  delete guarded[GUARD]
+  listeners.clear()
+  state = {
+    phase: 'pending',
+    availability: { supported: false, reason: 'no-api' },
+    toolNames: [],
+    error: null,
+  }
 }
