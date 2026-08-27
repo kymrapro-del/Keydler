@@ -15,30 +15,14 @@ import { resetCalls } from '../src/webmcp/witness'
 import { __resetRegistration, registerTools } from '../src/webmcp/register'
 import { clearDatabase, installModelContext, mutationId, removeModelContext } from './helpers'
 
-/**
- * L'expérience, pas le mécanisme.
- *
- * Ces cas décrivent ce qu'une personne voit et peut faire. Ils ne se contentent
- * pas de chercher des mots : quand un geste doit changer l'état, ils vérifient
- * l'état.
- */
-
 let root: HTMLElement
 let unmount: () => void
 
-/**
- * Laisse une action humaine aboutir, puis force un rendu.
- *
- * Une action passe par la file d'écriture du magasin puis par IndexedDB : un
- * seul tour de boucle ne suffit pas, et attendre trop peu faisait échouer des
- * cas pour une raison sans rapport avec ce qu'ils éprouvaient.
- */
 async function settled(turns = 4) {
   for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
   __renderNow()
 }
 
-/** Remplit un champ comme une personne le remplit : par des événements. */
 function type(id: string, value: string) {
   const field = root.querySelector<HTMLInputElement>(`#${id}`)
   if (!field) throw new Error(`champ #${id} absent`)
@@ -60,8 +44,6 @@ beforeEach(async () => {
   store.__resetStore()
   resetCalls()
   await clearDatabase()
-  // Sans ce chargement, le magasin reste en « loading » et la page n'affiche
-  // que son écran d'attente : on éprouverait un état que personne ne voit.
   await store.init()
   history.replaceState(null, '', '/')
   document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
@@ -74,8 +56,6 @@ afterEach(() => {
   history.replaceState(null, '', '/')
 })
 
-/* -------------------------------------------------------------------------- */
-
 describe('première visite', () => {
   it('explique le bénéfice avant le mécanisme, et sans jargon', async () => {
     await settled()
@@ -83,9 +63,6 @@ describe('première visite', () => {
     expect(text()).toContain('Give your AI a memory that survives the conversation.')
     expect(text()).toContain('completed work, rules to follow, and mistakes not to repeat')
 
-    // Le premier écran ne doit pas apprendre le protocole à qui découvre. Un
-    // essai l'a montré crûment : quand la page expliquait le versionnage,
-    // l'agent concluait que sa mission était d'éprouver le mécanisme.
     for (const jargon of ['based_on_version', 'mutation_id', 'IndexedDB', 'AbortController']) {
       expect(text(), jargon).not.toContain(jargon)
     }
@@ -123,8 +100,6 @@ describe('création d’une tâche', () => {
     expect(task.title).toBe('Refactor the authentication module')
     expect(task.next).toBe('Map the existing entry points')
 
-    // La règle facultative est une contrainte HUMAINE, donc opposable d'emblée
-    // — pas une proposition que l'agent pourrait ignorer.
     const rules = activeConstraints(task)
     expect(rules).toHaveLength(1)
     expect(rules[0].rule).toBe('Never modify the database schema')
@@ -139,9 +114,6 @@ describe('création d’une tâche', () => {
     root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
     await settled(8)
 
-    // Une frame planifiée par le magasin s'exécutait APRÈS ce focus et
-    // remplaçait tout le sous-arbre : la personne se retrouvait sans point
-    // d'ancrage, et une aide technique n'annonçait rien.
     expect(document.activeElement?.tagName).toBe('H1')
     expect(document.activeElement?.textContent).toBe('Add rate limiting to our HTTP API')
   })
@@ -183,7 +155,6 @@ describe('création d’une tâche', () => {
     root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
     await settled()
 
-    // Vider les champs à l'échec obligerait à tout retaper pour une virgule.
     expect(root.querySelector<HTMLInputElement>('#new-next')!.value).toBe(
       'Map the existing entry points',
     )
@@ -200,8 +171,6 @@ describe('création d’une tâche', () => {
     expect(guide.textContent).toContain('Ready for your AI')
     expect(guide.textContent).toContain('Continue this task.')
 
-    // Le guide dit quoi faire, pas comment le protocole fonctionne. Le
-    // versionnage existe toujours — il est sous « Technical details », replié.
     for (const jargon of ['based_on_version', 'mutation_id', 'IndexedDB']) {
       expect(guide.textContent, jargon).not.toContain(jargon)
     }
@@ -222,8 +191,6 @@ describe('démonstration', () => {
   })
 })
 
-/* -------------------------------------------------------------------------- */
-
 describe('tableau de bord', () => {
   beforeEach(async () => {
     await store.openPreparedTask(buildDemoTask())
@@ -235,7 +202,6 @@ describe('tableau de bord', () => {
     const wanted = ['Next', 'Completed work', 'Rules to follow', 'Don’t retry']
     for (const w of wanted) expect(titles, w).toContain(w)
 
-    // L'ordre est le sujet : ce qu'il y a à faire vient avant ce qui est fait.
     const positions = wanted.map((w) => titles.indexOf(w))
     expect(positions).toEqual([...positions].sort((a, b) => a - b))
   })
@@ -249,7 +215,6 @@ describe('tableau de bord', () => {
     expect(text()).toContain('Verified by you')
     expect(text()).toContain('Evidence attached')
     expect(text()).toContain('Claimed without evidence')
-    // Le degré retiré ne doit reparaître nulle part.
     expect(text()).not.toContain('machine_verified')
   })
 
@@ -260,7 +225,6 @@ describe('tableau de bord', () => {
     expect(proposals.textContent).toContain(pending.approach)
     expect(proposals.textContent).toContain('no effect until you accept them')
 
-    // Et surtout : la proposition ne figure pas dans la section qui condamne.
     const dontRetry = [...root.querySelectorAll('.card')].find((c) =>
       c.querySelector('h2')?.textContent?.includes('Don’t retry'),
     )!
@@ -296,8 +260,6 @@ describe('tableau de bord', () => {
     const item = verify.closest('li')!
     const evidence = item.querySelector('pre')
 
-    // Sans cela, « vérifié par un humain » ne veut rien dire de plus que
-    // « quelqu'un a cliqué à côté d'un titre ».
     expect(evidence).not.toBeNull()
     const step = store.currentTask()!.steps.find((s) => s.id === verify.dataset.verify)!
     expect(evidence!.textContent).toBe(step.evidence!.content)
@@ -319,7 +281,6 @@ describe('tableau de bord', () => {
     expect(details.open).toBe(false)
     expect(details.querySelector('summary')?.textContent?.trim()).toBe('Technical details')
 
-    // Repliés, pas supprimés : tout ce qui servait au diagnostic reste là.
     const body = details.textContent ?? ''
     expect(body).toContain('Task ID')
     expect(body).toContain('getTools()')
@@ -348,7 +309,6 @@ describe('tableau de bord', () => {
     root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
     await settled()
 
-    // Une règle levée disparaît de ce que l'agent relit : c'est tout l'effet.
     expect(renderTaskState(store.currentTask()!)).not.toContain(rule)
 
     root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
@@ -378,8 +338,6 @@ describe('tableau de bord', () => {
   })
 })
 
-/* -------------------------------------------------------------------------- */
-
 describe('supervision pendant qu’un agent travaille', () => {
   beforeEach(async () => {
     await store.openPreparedTask(buildDemoTask())
@@ -389,12 +347,10 @@ describe('supervision pendant qu’un agent travaille', () => {
   it('rend un refus pour état périmé immédiatement visible, en langage humain', async () => {
     const stale = store.currentTask()!.version
 
-    // L'humain pose une règle : la version de l'agent devient périmée.
     await store.mutate((s) =>
       addConstraint(s, { rule: 'No new dependency', basedOnVersion: null }, 'human'),
     )
 
-    // L'agent écrit sur la version qu'il croyait courante.
     await store
       .mutateAsAgent({
         operation: 'log_step',
@@ -412,7 +368,6 @@ describe('supervision pendant qu’un agent travaille', () => {
     expect(notice!.textContent).toContain(
       'The task changed while the agent was working. It must read the log again.',
     )
-    // Ni jargon, ni message destiné à l'agent.
     expect(notice!.textContent).not.toContain('STALE STATE')
     expect(notice!.textContent).not.toContain('based_on_version')
   })
@@ -434,16 +389,12 @@ describe('supervision pendant qu’un agent travaille', () => {
     })
     await settled()
 
-    // Sans le report, l'agent effacerait la règle qu'on rédige contre lui —
-    // soit exactement le moment que ce produit existe pour rendre possible.
     const after = root.querySelector<HTMLInputElement>('#new-constraint')!
     expect(after.value).toBe('Do not touch the rou')
     expect(document.activeElement).toBe(after)
     expect(after.selectionStart).toBe(20)
   })
 })
-
-/* -------------------------------------------------------------------------- */
 
 describe('tâche close', () => {
   beforeEach(async () => {
@@ -477,8 +428,6 @@ describe('tâche close', () => {
   })
 })
 
-/* -------------------------------------------------------------------------- */
-
 describe('détails techniques', () => {
   it('montre les outils relus par getTools() et la politique de retrait', async () => {
     const fake = installModelContext()
@@ -490,14 +439,9 @@ describe('détails techniques', () => {
     const details = root.querySelector('details.technical')!.textContent ?? ''
     expect(details).toContain('log_step')
 
-    // `getTools()` relit la table du navigateur — une source distincte de la
-    // carte que la page tient. Mais la spécification en fait l'API des agents
-    // DANS la page : l'appeler « ce que voit l'agent » ferait passer une
-    // relecture locale pour une preuve de découverte côté client MCP.
     expect(details).toContain('Observed through')
     expect(details).not.toMatch(/what the agent sees/i)
 
-    // La politique de retrait est affichée avec ce sur quoi elle se fonde.
     expect(details).toContain('Lifecycle')
     expect(details).toContain('static')
     expect(fake.names()).toContain('log_step')

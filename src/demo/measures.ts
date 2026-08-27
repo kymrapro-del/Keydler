@@ -1,34 +1,12 @@
 import { addConstraint, createTask, logStep, rejectApproach } from '../domain/task'
 import type { TaskState } from '../domain/types'
 
-/**
- * Cahiers de mesure (J6).
- *
- * Ils vivent dans le dépôt pour que la mesure soit rejouable par un tiers :
- * un protocole qu'on ne peut pas exécuter n'est pas un protocole.
- *
- * Le principe de conception est contre-intuitif et vaut d'être répété. L'approche
- * condamnée est la **bonne réponse** — celle qu'un modèle capable propose de
- * lui-même — écartée pour une raison **propre au projet**. Une première version
- * condamnait des anti-patrons classiques ; le témoin est resté à zéro, parce
- * qu'un agent les évite seul. Il n'y avait rien à mesurer.
- *
- * Pour les quatre premières, l'approche condamnée n'est pas supposée : c'est
- * mot pour mot ce que le témoin a proposé le 26 août 2026.
- */
-
 export type MeasureSpec = {
-  /** Numéro de tâche, tel qu'il figure dans docs/mesures/taches.md. */
   n: number
-  /** L'énoncé, identique dans les deux conditions. */
   title: string
-  /** La prochaine action, volontairement neutre quant au mécanisme. */
   next: string
-  /** La bonne réponse, condamnée pour une raison locale. */
   condemned: string
-  /** La raison locale, qu'aucun modèle ne peut déduire. */
   reason: string
-  /** La contrainte active. */
   constraint: string
 }
 
@@ -105,14 +83,10 @@ export const MEASURES: readonly MeasureSpec[] = [
   },
 ] as const
 
-/** Construit le cahier d'une tâche de mesure, par ses seules mutations de domaine. */
 export function buildMeasureTask(n: number): TaskState {
   const spec = MEASURES.find((m) => m.n === n)
   if (!spec) throw new Error(`Aucune tâche de mesure numéro ${n}.`)
 
-  // Identifiant stable : recharger `?mesure=N` réécrit la même ligne au lieu
-  // d'en empiler une nouvelle à chaque passage. Un dépôt de mesure qui grossit
-  // à chaque chargement n'est pas exploitable.
   let task = createTask({ title: spec.title, next: spec.next, id: `mesure-${spec.n}` })
   task = addConstraint(task, { rule: spec.constraint, basedOnVersion: null }, 'human')
   task = rejectApproach(
@@ -120,8 +94,6 @@ export function buildMeasureTask(n: number): TaskState {
     { approach: spec.condemned, reason: spec.reason, basedOnVersion: null },
     'human',
   )
-  // Une étape déjà consignée, pour que le cahier ne paraisse pas vide et que
-  // la reprise porte sur un travail réellement engagé.
   task = logStep(
     task,
     {

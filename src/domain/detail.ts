@@ -1,24 +1,6 @@
 import { ValidationError } from './errors'
 import type { AuditEntry, Constraint, Decision, Rejection, Step, TaskState } from './types'
 
-/**
- * Lecture détaillée du cahier.
- *
- * `resume_task` tient sous 400 tokens, et il le tient en coupant : les preuves
- * y sont réduites à un degré, les étapes anciennes à un compte, les motifs à
- * une ligne. C'était jusqu'ici sans recours — le contenu entier n'existait que
- * dans l'export Markdown, qui ne s'ouvre qu'avec des mains humaines. Un agent
- * qui voulait relire la sortie de test qu'il avait lui-même jointe la veille
- * n'avait aucun moyen de le faire, et devait la reproduire.
- *
- * Ce module rend ce que le résumé a coupé, sans jamais rendre tout d'un coup :
- * une section à la fois, une page à la fois, ou un élément nommé en entier.
- *
- * Il ne mute rien. C'est le seul autre outil en lecture seule du produit, et le
- * seul qui puisse dépasser le budget de tokens du pointeur — parce qu'ici,
- * c'est l'agent qui demande, en sachant ce qu'il demande.
- */
-
 export const SECTIONS = [
   'steps',
   'decisions',
@@ -30,25 +12,15 @@ export const SECTIONS = [
 
 export type Section = (typeof SECTIONS)[number]
 
-/** Éléments rendus par page. Plus haut, la réponse cesse d'être lisible. */
 export const MAX_LIMIT = 20
 export const DEFAULT_LIMIT = 5
 
-/**
- * Longueur d'aperçu d'une preuve en mode paginé.
- *
- * Cinq preuves de 8000 caractères feraient une réponse de 10 000 tokens, soit
- * vingt-cinq fois le budget du pointeur : la pagination n'aurait rien borné.
- * En liste, on donne de quoi reconnaître ; pour le contenu entier, on nomme
- * l'étape — c'est exactement ce que « ciblé ou paginé » veut dire.
- */
 export const EVIDENCE_PREVIEW = 600
 
 export type DetailQuery = {
   section: Section
   offset?: number
   limit?: number
-  /** Identifiant d'un élément précis. Le rend en entier, hors pagination. */
   id?: string | null
 }
 
@@ -107,8 +79,6 @@ function evidenceLines(step: Step, full: boolean): string[] {
   const shown = tronqué ? `${content.slice(0, EVIDENCE_PREVIEW)}…` : content
   return [
     `  evidence kind: ${kind}`,
-    // Une preuve jointe par un agent n'atteste de rien tant que personne ne
-    // l'a lue. Le dire ici évite qu'elle se lise comme une vérification.
     `  human-checked: ${verifiedAt === null ? 'no — supplied by its author, not verified' : 'yes'}`,
     tronqué
       ? `  evidence (first ${EVIDENCE_PREVIEW} of ${content.length} chars — request id "${step.id}" for all of it):`
@@ -188,13 +158,6 @@ function collect(state: TaskState, section: Section): Entry[] {
   }
 }
 
-/**
- * Rend une page de détail, ou un élément nommé en entier.
- *
- * L'en-tête dit toujours où l'on est dans la collection et s'il reste quelque
- * chose : sans cela, une page vide et une collection épuisée se lisent pareil,
- * et l'agent doit deviner s'il doit redemander.
- */
 export function renderDetail(state: TaskState, query: Required<DetailQuery>): string {
   const entries = collect(state, query.section)
 

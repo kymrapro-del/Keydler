@@ -16,20 +16,6 @@ import { ValidationError } from '../src/domain/errors'
 import { renderTaskState } from '../src/domain/render'
 import { call, clearDatabase, currentTask, textOf, writeArgs } from './helpers'
 
-/**
- * Modèle de confiance.
- *
- * C'était la faille la plus grave du cahier, et la plus discrète : un agent
- * écrivait une contrainte ou une condamnation, et TOUTES les conversations
- * suivantes la lisaient comme une règle de la maison. Un agent qui condamne à
- * tort la bonne approche fermait donc la bonne réponse pour de bon, sans
- * qu'aucun geste humain n'ait eu lieu et sans que rien ne le signale.
- *
- * Le produit dit vendre une asymétrie — l'humain est autoritaire, l'agent est
- * contrôlé. Elle ne tenait que sur les écritures d'ÉTAPES. Sur les interdits,
- * qui sont la seule chose que ce cahier impose vraiment, elle n'existait pas.
- */
-
 const rejectApproachTool = ALL_TOOLS.find((t) => t.name === 'reject_approach')!
 const addConstraintTool = ALL_TOOLS.find((t) => t.name === 'add_constraint')!
 
@@ -52,7 +38,6 @@ describe('empoisonnement par un agent', () => {
     expect(écrit.isError).toBeUndefined()
 
     const état = currentTask()
-    // Consignée, donc jamais perdue — mais sans force.
     expect(état.rejected).toHaveLength(1)
     expect(état.rejected[0].standing).toBe('proposed')
     expect(acceptedRejections(état)).toHaveLength(0)
@@ -67,13 +52,10 @@ describe('empoisonnement par un agent', () => {
 
     const rendu = textOf(await call(resumeTaskTool))
 
-    // La taire serait l'autre faute : un agent doit pouvoir peser ce qu'un
-    // prédécesseur a cru. Ce qui compte, c'est qu'il sache d'où ça vient.
     expect(rendu).toContain('Cookie HttpOnly')
     expect(rendu).toContain('PROPOSED BY AN AGENT — NOT binding')
     expect(rendu).toContain('No human has approved these')
 
-    // Et surtout : elle ne figure pas sous l'en-tête qui condamne.
     expect(rendu).not.toContain('REJECTED — do not retry')
   })
 
@@ -89,8 +71,6 @@ describe('empoisonnement par un agent', () => {
 
     const rendu = textOf(await call(resumeTaskTool))
     expect(rendu).toContain('REJECTED — do not retry')
-    // La provenance survit à l'endossement : l'autorité vient du clic, pas de
-    // l'auteur, et les deux restent lisibles.
     expect(rendu).toContain('[agent] Cookie HttpOnly')
   })
 
@@ -106,8 +86,6 @@ describe('empoisonnement par un agent', () => {
 
     const état = currentTask()
     expect(état.rejected[0].standing).toBe('declined')
-    // Conservée : savoir qu'une proposition a été refusée vaut mieux que la
-    // voir reproposée à l'identique à la conversation suivante.
     expect(état.rejected).toHaveLength(1)
     expect(acceptedRejections(état)).toHaveLength(0)
     expect(proposedRejections(état)).toHaveLength(0)
@@ -159,10 +137,6 @@ describe('sémantique des preuves', () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
-    // L'étiquette est choisie par l'agent, comme le contenu. Une version
-    // antérieure accordait « machine_verified » sur cette seule étiquette :
-    // rien n'avait été vérifié, un texte avait été recopié, et le mot
-    // promettait à l'humain une garantie que le système n'avait pas obtenue.
     await call(
       logStep,
       writeArgs(task, {
@@ -175,8 +149,6 @@ describe('sémantique des preuves', () => {
     const step = currentTask().steps[0]
     expect(step.confidence).toBe('evidence')
     expect(step.evidence?.verifiedAt).toBeNull()
-    // Le degré n'existe plus du tout : il ne peut pas revenir par une autre
-    // porte.
     expect(JSON.stringify(currentTask())).not.toContain('machine_verified')
   })
 
@@ -212,9 +184,6 @@ describe('sémantique des preuves', () => {
     task = currentTask()
     const step = task.steps[0]
 
-    // Une validation qui ne peut pas produire le contenu n'a rien lu : la file
-    // n'affichait que l'action, et le clic attestait donc d'un texte que
-    // personne n'avait vu.
     expect(() => verifyEvidence(task, step.id, 'autre chose')).toThrow(ValidationError)
     expect(() => verifyEvidence(task, step.id, '')).toThrow(ValidationError)
 

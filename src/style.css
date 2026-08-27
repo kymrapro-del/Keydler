@@ -1,16 +1,3 @@
-/*
- * Mise en page du tableau de bord.
- *
- * Toutes les valeurs viennent des jetons — aucune couleur, aucun espacement,
- * aucun rayon n'est codé en dur ici. Réécrire `tokens.css` suffit à changer
- * l'apparence sans toucher à une ligne de structure.
- *
- * La hiérarchie sert une lecture, pas une esthétique : la prochaine action
- * domine, les règles et les rejets se distinguent d'un coup d'œil, une
- * proposition d'agent ne peut pas passer pour une règle, et un refus se voit
- * depuis l'autre bout de la pièce.
- */
-
 *,
 *::before,
 *::after {
@@ -107,10 +94,6 @@ pre {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Première visite                                                             */
-/* -------------------------------------------------------------------------- */
-
 .landing {
   max-width: var(--measure);
   margin: var(--sp-6) auto;
@@ -146,10 +129,6 @@ pre {
   font-size: 0.875rem;
 }
 
-/* -------------------------------------------------------------------------- */
-/* En-tête du tableau de bord                                                  */
-/* -------------------------------------------------------------------------- */
-
 .page-head {
   display: flex;
   flex-direction: column;
@@ -157,13 +136,37 @@ pre {
   margin-bottom: var(--sp-2);
 }
 
+.eyebrow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
 .page-head h1:focus {
   outline: none;
 }
 
-/* -------------------------------------------------------------------------- */
-/* La prochaine action — l'élément dominant                                    */
-/* -------------------------------------------------------------------------- */
+.page-head__title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.btn--quiet {
+  padding: var(--sp-1) var(--sp-2);
+  min-height: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--c-text-muted);
+  font-size: 0.8125rem;
+}
+
+.btn--quiet:hover {
+  background: var(--c-surface);
+  color: var(--c-text);
+}
 
 .hero {
   padding: var(--sp-5);
@@ -201,10 +204,6 @@ pre {
   font-weight: 500;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Cartes                                                                      */
-/* -------------------------------------------------------------------------- */
-
 .card {
   padding: var(--sp-4);
   border: 1px solid var(--c-border);
@@ -234,7 +233,6 @@ pre {
   opacity: 0.85;
 }
 
-/* Une proposition d'agent ne doit jamais se lire comme une règle. */
 .card--proposals {
   background: var(--c-warn-bg);
   color: var(--c-warn-text);
@@ -263,10 +261,6 @@ pre {
   color: var(--c-text-muted);
   font-size: 0.9375rem;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Lignes                                                                      */
-/* -------------------------------------------------------------------------- */
 
 .rows {
   list-style: none;
@@ -301,7 +295,6 @@ pre {
   color: var(--c-text-muted);
 }
 
-/* Un rejet endossé ferme une porte : il porte donc un repère visuel propre. */
 .row--danger {
   border-left: 3px solid var(--c-error-text);
 }
@@ -320,10 +313,6 @@ pre {
   background: transparent;
   padding: 0 var(--sp-1);
 }
-
-/* -------------------------------------------------------------------------- */
-/* Étiquettes                                                                  */
-/* -------------------------------------------------------------------------- */
 
 .chip {
   flex: none;
@@ -355,10 +344,6 @@ pre {
   color: var(--c-text-muted);
   border: 1px solid var(--c-border);
 }
-
-/* -------------------------------------------------------------------------- */
-/* Boutons                                                                     */
-/* -------------------------------------------------------------------------- */
 
 .actions {
   display: flex;
@@ -401,10 +386,6 @@ pre {
   border-color: var(--c-error-text);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Formulaires                                                                 */
-/* -------------------------------------------------------------------------- */
-
 .form {
   display: flex;
   flex-direction: column;
@@ -418,8 +399,6 @@ pre {
   align-items: flex-end;
 }
 
-/* Un bouton en colonne se dimensionne à son texte : étiré sur toute la
-   largeur, il se lit comme une zone de dépôt plutôt que comme une commande. */
 .form > .btn {
   align-self: flex-start;
 }
@@ -452,10 +431,6 @@ pre {
   border-color: var(--c-accent);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Avis                                                                        */
-/* -------------------------------------------------------------------------- */
-
 .notice {
   padding: var(--sp-4);
   border: 1px solid currentColor;
@@ -473,8 +448,6 @@ pre {
   color: var(--c-warn-text);
 }
 
-/* Un refus pour état périmé est le moment que ce produit existe pour rendre
-   visible : il est donc le contraste le plus fort de la page. */
 .notice--stale {
   background: var(--c-error-bg);
   color: var(--c-error-text);
@@ -482,10 +455,6 @@ pre {
   font-weight: 600;
   margin-bottom: var(--sp-3);
 }
-
-/* -------------------------------------------------------------------------- */
-/* Journal d'appels                                                            */
-/* -------------------------------------------------------------------------- */
 
 .calls {
   list-style: none;
@@ -511,10 +480,6 @@ pre {
   color: var(--c-error-text);
   font-weight: 600;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Détails techniques                                                          */
-/* -------------------------------------------------------------------------- */
 
 .technical {
   border: 1px solid var(--c-border);
@@ -546,10 +511,6 @@ pre {
   margin-top: var(--sp-2);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Accessibilité                                                               */
-/* -------------------------------------------------------------------------- */
-
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -562,10 +523,6 @@ pre {
   border: 0;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Écrans étroits                                                              */
-/* -------------------------------------------------------------------------- */
-
 @media (max-width: 560px) {
   body {
     padding: var(--sp-4) var(--sp-3) var(--sp-6);
@@ -575,8 +532,6 @@ pre {
     padding: var(--sp-4);
   }
 
-  /* Les lignes passent en colonne : un bouton de 40px et un texte long ne
-     tiennent pas côte à côte sans écraser l'un des deux. */
   .row {
     flex-wrap: wrap;
   }
@@ -596,5 +551,127 @@ pre {
 
   .actions .btn {
     flex: 1 1 auto;
+  }
+}
+
+.switcher > summary {
+  display: inline-block;
+  padding: var(--sp-1) var(--sp-2);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--c-text-muted);
+  border-radius: var(--radius-sm);
+}
+
+.switcher > summary:hover {
+  color: var(--c-text);
+  background: var(--c-surface);
+}
+
+.switcher__body {
+  margin-top: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  background: var(--c-bg);
+}
+
+.handoff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: 0;
+}
+
+.notice--ok {
+  background: var(--c-ok-bg);
+  color: var(--c-ok-text);
+}
+
+.search {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  margin-top: var(--sp-2);
+}
+
+.search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+.search input:focus {
+  border-color: var(--c-accent);
+}
+
+mark {
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.events {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.event {
+  display: flex;
+  gap: var(--sp-3);
+  padding: var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  border-left: 3px solid transparent;
+}
+
+.event:nth-child(odd) {
+  background: var(--c-surface);
+}
+
+.event__when {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.event__what {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event--refused {
+  border-left-color: var(--c-error-text);
+  background: var(--c-error-bg);
+  color: var(--c-error-text);
+}
+
+.event--refused .muted {
+  color: currentColor;
+  opacity: 0.8;
+}
+
+@media (max-width: 560px) {
+  .event {
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+
+  .search {
+    flex-wrap: wrap;
   }
 }

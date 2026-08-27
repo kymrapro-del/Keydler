@@ -1,19 +1,5 @@
 import { ConcurrentWriteError, StaleStateError, ValidationError } from '../domain/errors'
 
-/**
- * Messages destinés à la personne qui a cliqué.
- *
- * Les messages du domaine sont écrits pour un AGENT : ils se terminent par
- * « Call resume_task before continuing ». Quelqu'un qui vient d'appuyer sur un
- * bouton n'appellera jamais `resume_task`. Lui montrer ce texte brut serait la
- * même faute que laisser « NO ACTIVE TASK » traîner à l'écran.
- *
- * Le contrat de l'agent ne bouge pas pour autant : c'est l'interface qui
- * reformule, et elle ne reformule que ce qu'une personne peut réellement
- * déclencher.
- */
-
-/** Noms des champs tels que l'écran les nomme. */
 const FIELDS: Record<string, string> = {
   rule: 'the rule',
   approach: 'the approach',
@@ -29,15 +15,6 @@ const FIELDS: Record<string, string> = {
   status: 'this task',
 }
 
-/**
- * Reformule le motif d'un refus de validation, **par son code**.
- *
- * Une version antérieure reconnaissait chaque refus à son texte anglais. Le
- * couplage était invisible depuis le domaine : reformuler « must not be
- * empty. » laissait tous les tests verts et faisait silencieusement retomber
- * l'écran sur le texte destiné à l'agent. Sur un code, ajouter un cas au
- * domaine casse la compilation ici.
- */
 export function humanReason(error: ValidationError): string {
   const field = FIELDS[error.field] ?? `the “${error.field}” field`
 
@@ -75,7 +52,6 @@ export function humanReason(error: ValidationError): string {
   }
 }
 
-/** Message complet, nommant l'action qui a échoué. */
 export function humanMessage(error: unknown, action: string): string {
   if (error instanceof ConcurrentWriteError) {
     return (

@@ -7,24 +7,7 @@ import {
   provenStepCount,
 } from './task'
 import type { Confidence, TaskState } from './types'
-
-/**
- * Restitution compacte de l'état canonique.
- *
- * Texte structuré, jamais du JSON verbeux : moins de tokens, et les modèles le
- * lisent mieux. Sections en capitales, une information par ligne. La cible est
- * de rester sous 400 tokens même sur un cahier chargé — au-delà, l'agent
- * survole au lieu de lire. Ce qui ne tient pas ici n'est pas perdu : il se
- * demande, ciblé ou paginé, par `read_task_detail`.
- *
- * Ce qui n'est jamais tronqué : les contraintes en vigueur et les approches
- * condamnées. Ce sont elles qui imposent quelque chose ; tronquer une
- * contrainte reviendrait à la supprimer. Le reste cède la place en premier.
- *
- * Ce qui n'est jamais confondu : ce qu'un humain a endossé et ce qu'un agent a
- * proposé. Les deux se lisent, dans deux sections séparées, et la seconde dit
- * en toutes lettres qu'elle n'impose rien.
- */
+import { referenceSyntax, type SecretName } from './secret'
 
 export const TOKEN_BUDGET = 400
 
@@ -34,7 +17,6 @@ const CONFIDENCE_TAG: Record<Confidence, string> = {
   claimed: '[claimed] ',
 }
 
-/** Approximation usuelle : ~4 caractères par token. Suffisant pour calibrer. */
 export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4)
 }
@@ -45,25 +27,13 @@ function clip(value: string, max: number): string {
 }
 
 export type RenderOptions = {
-  /** Nombre d'étapes récentes détaillées. */
   recentSteps?: number
-  /** Nombre de décisions rappelées. */
   recentDecisions?: number
-  /** Nombre de propositions d'agent détaillées. Le total est toujours dit. */
   recentProposals?: number
-  /**
-   * Facteur appliqué aux longueurs de coupe, de 1 à 0,4.
-   *
-   * Sous pression de budget, une contrainte ou un rejet est RACCOURCI, jamais
-   * retiré : un agent doit savoir qu'une approche est condamnée même s'il n'en
-   * lit pas le motif entier. Retirer la ligne reviendrait à lever l'interdit.
-   */
   clipScale?: number
-  /**
-   * L'adresse à laquelle ce cahier est lié. Rendue telle quelle : c'est ce qui
-   * permet à un agent de constater qu'il regarde bien la tâche qu'il croit.
-   */
   url?: string | null
+  credentials?: readonly SecretName[]
+  recentCredentials?: number
 }
 
 const CLIP_FLOOR = 0.4
@@ -72,11 +42,10 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   const recentSteps = options.recentSteps ?? 5
   const recentDecisions = options.recentDecisions ?? 3
   const recentProposals = options.recentProposals ?? 4
+  const recentCredentials = options.recentCredentials ?? 5
   const clipScale = options.clipScale ?? 1
   const c = (max: number) => Math.max(24, Math.round(max * clipScale))
 
-  // Une seule définition de « travail prouvé » : le domaine la porte, le rendu
-  // ne la refait pas. Elle existait ici en double, écrite autrement.
   const proven = provenStepCount(state)
   const counts = evidenceCounts(state)
   const active = activeConstraints(state)
@@ -92,13 +61,10 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   const lines: string[] = []
 
   lines.push(`TASK        ${clip(state.title, c(120))}`)
-  // L'identifiant AVANT tout le reste du contenu. Un agent qui reprend doit
-  // pouvoir constater qu'on lui rend le cahier qu'il croit, et non celui qu'un
-  // autre onglet a touché en dernier.
   lines.push(`TASK ID     ${state.id}`)
   if (options.url) lines.push(`URL         ${options.url}`)
   lines.push(`VERSION     ${state.version}`)
-  lines.push(`STATUS      ${state.status}`)
+  lines.push(`STATUS      ${state.status}${state.archived ? ' · archived by the human' : ''}`)
   lines.push(
     `PROGRESS    ${state.steps.length} steps logged · ${proven} with evidence attached · ${counts.human_verified} checked by the human`,
   )
@@ -110,7 +76,6 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     )
   }
 
-  // Contraintes en vigueur : jamais tronquées.
   lines.push('')
   lines.push(`CONSTRAINTS — binding (${active.length})`)
   if (active.length === 0) {
@@ -121,24 +86,14 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  // Rejets endossés : jamais tronqués. C'est la mémoire qui empêche de refaire.
   if (condamnées.length > 0) {
     lines.push('')
     lines.push('REJECTED — do not retry')
     for (const r of condamnées) {
-      // La source est rendue, comme pour les contraintes. Sans elle, un veto
-      // humain et une conjecture d'agent se lisent à l'identique.
       lines.push(`  [${r.source}] ${clip(r.approach, c(84))} — ${clip(r.reason, c(104))}`)
     }
   }
 
-  // Propositions d'agent : lisibles, explicitement non opposables.
-  //
-  // Les laisser dans les sections ci-dessus était la faille la plus grave du
-  // cahier : un agent y écrivait un interdit, et toutes les conversations
-  // suivantes le lisaient comme une règle de la maison. Un agent qui condamne
-  // à tort la bonne approche empoisonnait ainsi la tâche sans que personne ne
-  // puisse s'en apercevoir.
   if (propositions.length > 0) {
     const shown = propositions.slice(0, recentProposals)
     lines.push('')
@@ -179,9 +134,21 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  // Ce résumé est délibérément incomplet. Le dire, et dire par où obtenir le
-  // reste, coûte deux lignes et évite qu'un agent conclue de son silence que
-  // rien d'autre n'existe.
+  if (options.credentials && options.credentials.length > 0) {
+    const all = options.credentials
+    const shown = all.slice(0, recentCredentials)
+    lines.push('')
+    lines.push(
+      all.length > shown.length
+        ? `CREDENTIALS — names only, values sealed (${shown.length} of ${all.length})`
+        : `CREDENTIALS — names only, values sealed (${all.length})`,
+    )
+    for (const secret of shown) {
+      lines.push(`  ${referenceSyntax(secret.name)} — ${clip(secret.purpose, c(90))}`)
+    }
+    lines.push('  Write these as ${name}; no tool here returns a value.')
+  }
+
   lines.push('')
   lines.push('FULL DETAIL')
   lines.push('  read_task_detail returns whole steps, decisions, rejections and')
@@ -194,8 +161,6 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('  Every write must carry a fresh mutation_id; reuse it verbatim to retry.')
     lines.push('  A refused write means the human changed this state. Call resume_task again.')
   } else {
-    // Sans cette ligne, un agent qui reprend une tâche close tente une écriture
-    // et découvre le refus par l'échec. Autant le lui dire tout de suite.
     lines.push('TASK CLOSED')
     lines.push('  This task is complete. Writes are refused — do not log further work.')
     lines.push('  If work remains, ask the human to reopen it.')
@@ -205,15 +170,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   if (estimateTokens(text) <= TOKEN_BUDGET) return text
 
-  // Dégradation progressive, dans cet ordre : on sacrifie d'abord le nombre
-  // d'éléments facultatifs — étapes récentes, décisions, propositions — puis,
-  // seulement une fois ceux-ci au plancher, la longueur de chaque ligne.
-  if (recentSteps > 2 || recentDecisions > 1 || recentProposals > 1) {
+  if (recentSteps > 2 || recentDecisions > 1 || recentProposals > 1 || recentCredentials > 1) {
     return renderTaskState(state, {
       ...options,
       recentSteps: Math.max(2, recentSteps - 2),
       recentDecisions: Math.max(1, recentDecisions - 1),
       recentProposals: Math.max(1, recentProposals - 1),
+      recentCredentials: Math.max(1, recentCredentials - 1),
       clipScale,
     })
   }
@@ -224,17 +187,14 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentSteps,
       recentDecisions,
       recentProposals,
+      recentCredentials,
       clipScale: Math.max(CLIP_FLOOR, clipScale - 0.2),
     })
   }
 
-  // Plancher atteint : le cahier porte plus de contraintes et de rejets que le
-  // budget n'en peut contenir. On rend quand même tout, car en retirer une
-  // reviendrait à lever un interdit sans le dire.
   return text
 }
 
-/** Rendu affiché quand aucun cahier n'existe encore sur cet appareil. */
 export function renderNoTask(): string {
   return [
     'NO ACTIVE TASK',
@@ -245,14 +205,6 @@ export function renderNoTask(): string {
   ].join('\n')
 }
 
-/**
- * Rendu affiché quand la page est liée à un cahier introuvable.
- *
- * Distinct de « aucun cahier » : ici, une tâche est nommée par l'adresse et
- * c'est ELLE qui manque. Rendre le dernier cahier touché à la place serait la
- * pire des réponses — l'agent reprendrait un travail qui n'est pas le sien
- * sans qu'aucune ligne ne le signale.
- */
 export function renderMissingTask(taskId: string): string {
   return [
     'TASK NOT FOUND',

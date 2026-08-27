@@ -1,20 +1,3 @@
-/**
- * Descriptions des outils.
- *
- * C'est le seul texte du projet qui mérite une demi-journée à lui seul. Un
- * agent n'appelle pas un outil parce qu'il comprend ce qu'il fait, mais parce
- * qu'il comprend qu'il en a besoin maintenant. Chaque description dit donc
- * QUAND appeler avant de dire ce que l'outil fait.
- *
- * Elles portent aussi ce que le navigateur ne transporte pas. WebMCP ne connaît
- * que deux annotations, `readOnlyHint` et `untrustedContentHint` ; il n'a pas
- * d'équivalent de `idempotentHint`. Le contrat d'idempotence est donc écrit
- * ici, en toutes lettres, là où l'agent le lira réellement.
- *
- * Toute reformulation doit être rejouée contre un agent réel : c'est ici que
- * se gagne ou se perd la reprise après perte de contexte.
- */
-
 export const RESUME_TASK_DESCRIPTION = `Persistent, human-supervised checkpoint for the current task.
 This page holds the canonical task state: binding constraints,
 completed work with its evidence, rejected approaches, and the next
@@ -27,7 +10,11 @@ conversation, after any context loss or summarization, and
 whenever a write is refused as stale.
 
 It answers for ONE task, named by TASK ID in the reply. If that id
-is not the task you meant, say so rather than working on it.`
+is not the task you meant, say so rather than working on it.
+
+The reply may list credentials by name. You can refer to one as
+\${name}; no tool here returns a value, and you are not expected to
+know one.`
 
 export const READ_DETAIL_DESCRIPTION = `Read the parts of the task record that resume_task had to cut.
 
@@ -112,17 +99,10 @@ done, what was decided, and what remains out of scope.
 Requires based_on_version from the most recent resume_task, and a
 mutation_id.`
 
-/** Rappel joint à chaque schéma d'entrée exigeant une version. */
 export const BASED_ON_VERSION_DESCRIPTION =
   'The version number returned by the most recent resume_task call. ' +
   'If it no longer matches the current state, the write is refused and you must call resume_task again.'
 
-/**
- * Rappel joint à chaque schéma d'entrée exigeant un jeton d'idempotence.
- *
- * Il dit la règle du retry explicitement, parce que le réflexe inverse — un
- * nouveau jeton à chaque tentative — est celui qui produit les doublons.
- */
 export const MUTATION_ID_DESCRIPTION =
   'A unique id you generate for THIS write, e.g. a UUID. ' +
   'If you do not get a reply — the call was cancelled, the page was closed, the answer was lost — ' +

@@ -76,16 +76,26 @@ follows — silently, and with no way to notice.
 
 ![Empty state](docs/assets/empty-state.png)
 
-**An active task**
+**An active task** — next action, work with its confidence, binding rules,
+ruled-out approaches, agent proposals awaiting a decision, evidence to review,
+and the whole history
 
 ![Active task](docs/assets/active-task.png)
 
-**A human interrupts, mid-work**
+**A human interrupts, mid-work.** The human adds a rule; the agent’s next write
+is refused as stale; the page says so in plain language, and the history records
+the attempt alongside the rule that caused it.
 
 ![Human intervention](docs/assets/human-intervention.png)
 
-The third one is the moment worth watching: the human adds a rule, the agent’s
-next write is refused as stale, and the page says so in plain language.
+**Search** covers the open task and every other one — including a rejection
+found by its _reason_, and a step found by the content of its evidence
+
+![Search](docs/assets/search.png)
+
+**Light, dark, or whatever the system says**
+
+![Light theme](docs/assets/light-theme.png)
 
 ## The tools
 
@@ -101,6 +111,61 @@ agent must read in order to choose, so each has to pay for itself.
 | `reject_approach`  | **Propose** ruling out an approach, reason mandatory                             |
 | `add_decision`     | The “why”, which every summary loses first                                       |
 | `complete_task`    | Close with a hand-over summary                                                   |
+
+## Credentials the agent can name but not read
+
+An agent often needs to know that a key _exists_ — which one, and what it is
+for — without ever seeing it. The Watch Log holds that reference:
+
+```
+CREDENTIALS — names only, values sealed (1)
+  ${gemini-api-key} — Calls the Gemini API from the ingestion script
+  Write these as ${name}; no tool here returns a value.
+```
+
+The agent writes `${gemini-api-key}` where the value belongs. You wire the real
+one.
+
+![Credentials](docs/assets/credentials.png)
+
+- The value is sealed with **AES-GCM**, under a key derived from a passphrase by
+  **PBKDF2-SHA256, 600 000 iterations**, with a fresh salt and IV per secret.
+  Web Crypto only — no new dependency.
+- The passphrase is **never stored**, and the plaintext is never persisted.
+- Secrets live in a **separate store, outside the task state**. That is what
+  makes the guarantee structural rather than careful: no tool result, no export,
+  and no `resume_task` reply can contain a value, because the task object never
+  holds one. There is a test that calls every tool and asserts it.
+- Revealing a value takes an explicit click **and** the passphrase.
+
+**What this is not.** It is not an audited secret manager, and it does not
+defend against everything:
+
+- Anything you **reveal on screen** can be read by an agent that drives this
+  browser — screenshots and DOM reads see what you see.
+- Any script running on this origin can read the sealed blob. Encryption at rest
+  protects the stored bytes, not a compromised page.
+- For production credentials, use a real secret manager. This is for wiring up a
+  task without pasting a key into a conversation.
+
+## What else is on the page
+
+- **Every task is reachable.** The header lists them all and switches between
+  them; each lives at its own `/t/:id`.
+- **Search** across the open task and the others at once. It matches a rejection
+  by its reason and a step by the content of its evidence, and says which.
+- **History** in words — _“You lifted a rule”_, _“Agent tried to record a step —
+  refused — the task had changed since it was read”_. The audit trail was always
+  complete; this is the screen for it.
+- **Correct anything.** Rename the task, change the next action, reword a rule or
+  a ruled-out approach, record a step you did yourself. All human writes: never
+  refused, always audited.
+- **Archive** what is done, without deleting it. `resume_task` says so, in case
+  an agent arrives on an old link.
+- **Import and export.** Import never overwrites: a task already here at a
+  different version is added as a copy.
+- **Installable and offline.** A manifest and a service worker; verified with the
+  server stopped.
 
 ## Technical guarantees
 
@@ -262,8 +327,10 @@ That also sets the boundaries, and they are real:
   another device or another browser. There is no sync, by design.
 - **The page has to stay reachable.** An agent reads the log through the open
   page; close it and the memory is still on disk, but nothing can read it.
-- **Clearing site data deletes the tasks.** Export first — the export contains
-  full evidence and the complete write log, refusals included.
+- **Clearing site data deletes the tasks — and the sealed credentials.** Export
+  first; the export contains full evidence and the complete write log, refusals
+  included. It deliberately contains **no credential**, sealed or otherwise, so
+  it is not a backup of those.
 - **This is not a universal memory.** It is a memory for _one supervised task_.
 - **Nothing guarantees an agent will call `resume_task`.** The description is
   written to make it the obvious first move, and the measurement suggests it

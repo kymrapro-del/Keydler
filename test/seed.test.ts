@@ -8,18 +8,9 @@ import {
   proposedRejections,
 } from '../src/domain/task'
 
-/**
- * Le cahier de démonstration est un livrable, pas un décor.
- *
- * La vidéo, la mesure et le README s'appuient sur son contenu. S'il dérive,
- * une affirmation publiée devient fausse sans que personne s'en aperçoive —
- * exactement ce que le contrôle avant dépôt interdit.
- */
 describe('cahier de démonstration', () => {
   it('porte trois contraintes en vigueur et deux approches condamnées', () => {
     const task = buildDemoTask()
-    // Ces deux nombres sont cités dans le README : les changer sans changer le
-    // texte publierait un chiffre faux.
     expect(activeConstraints(task)).toHaveLength(3)
     expect(acceptedRejections(task)).toHaveLength(2)
   })
@@ -30,9 +21,6 @@ describe('cahier de démonstration', () => {
     expect(enAttente).toHaveLength(1)
     expect(enAttente[0].source).toBe('agent')
 
-    // Elle se lit — un agent doit pouvoir la peser — mais pas sous l'en-tête
-    // qui condamne. Sans cette séparation, une conjecture d'agent fermerait la
-    // bonne réponse à toutes les conversations suivantes.
     const output = renderTaskState(task)
     expect(output).toContain('PROPOSED BY AN AGENT — NOT binding')
     expect(output).toContain(enAttente[0].approach)
@@ -44,8 +32,6 @@ describe('cahier de démonstration', () => {
     const task = buildDemoTask()
     const sources = activeConstraints(task).map((c) => c.source)
     expect(sources.filter((s) => s === 'human')).toHaveLength(2)
-    // Écrite par un agent, opposable parce qu'un humain l'a endossée : la
-    // provenance reste visible, l'autorité vient du clic.
     expect(sources.filter((s) => s === 'agent')).toHaveLength(1)
     expect(activeConstraints(task).every((c) => c.standing === 'accepted')).toBe(true)
   })
@@ -56,10 +42,6 @@ describe('cahier de démonstration', () => {
 
   it('représente les trois degrés de preuve', () => {
     const counts = evidenceCounts(buildDemoTask())
-    // La distinction prouvé / affirmé ne se voit que si les trois sont là.
-    // « human_verified » en particulier : sans lui, la démonstration ne
-    // montrerait pas la supervision humaine — et c'est le seul degré qu'un
-    // agent ne peut pas atteindre.
     expect(counts.human_verified).toBeGreaterThan(0)
     expect(counts.evidence).toBeGreaterThan(0)
     expect(counts.claimed).toBeGreaterThan(0)
@@ -88,8 +70,6 @@ describe('cahier de démonstration', () => {
     const étape = task.steps.find((s) => s.result.includes('public API unchanged'))
     const diff = étape!.evidence!.content
 
-    // Une contrainte active interdit de toucher à l'API publique. Une ligne
-    // supprimée qui exporte une fonction la violerait, preuve à l'appui.
     const exportsSupprimés = diff.split('\n').filter((l) => /^-\s*export /.test(l))
     expect(exportsSupprimés).toEqual([])
   })
@@ -97,7 +77,6 @@ describe('cahier de démonstration', () => {
   it('est reproductible : deux constructions donnent la même forme', () => {
     const a = buildDemoTask()
     const b = buildDemoTask()
-    // Les identifiants et horodatages diffèrent ; la structure, non.
     expect(b.version).toBe(a.version)
     expect(b.constraints.map((c) => c.rule)).toEqual(a.constraints.map((c) => c.rule))
     expect(b.rejected.map((r) => r.approach)).toEqual(a.rejected.map((r) => r.approach))

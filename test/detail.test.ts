@@ -5,19 +5,6 @@ import { EVIDENCE_PREVIEW, MAX_LIMIT, SECTIONS } from '../src/domain/detail'
 import { TOKEN_BUDGET, estimateTokens } from '../src/domain/render'
 import { call, clearDatabase, currentTask, textOf, writeArgs } from './helpers'
 
-/**
- * Lecture détaillée et paginée.
- *
- * `resume_task` tient sous 400 tokens en COUPANT : une preuve y devient un
- * degré, quarante étapes deviennent cinq lignes, un motif devient une ligne.
- * C'était sans recours — le contenu entier n'existait que dans l'export
- * Markdown, qui ne s'ouvre qu'avec des mains humaines. Un agent qui voulait
- * relire la sortie de test qu'il avait jointe la veille devait la reproduire.
- *
- * Ces cas vérifient les deux moitiés du contrat : le pointeur reste court, et
- * ce qu'il coupe reste atteignable.
- */
-
 const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
 async function cahierChargé(nbÉtapes: number, tailleDePreuve = 40) {
@@ -72,8 +59,6 @@ describe('pagination', () => {
   it('dit explicitement qu’une section est épuisée, plutôt que de rendre une page muette', async () => {
     await cahierChargé(3)
     const page = textOf(await call(readTaskDetailTool, { section: 'steps' }))
-    // Une page vide et une collection épuisée se lisaient pareil : l'agent
-    // devait deviner s'il fallait redemander.
     expect(page).toContain('MORE        none — this is the end of the section')
   })
 
@@ -122,8 +107,6 @@ describe('lecture ciblée', () => {
     const stepId = currentTask().steps[0].id
 
     const page = textOf(await call(readTaskDetailTool, { section: 'steps' }))
-    // Cinq preuves de 8000 caractères feraient vingt-cinq fois le budget du
-    // pointeur : la pagination n'aurait rien borné du tout.
     expect(page.length).toBeLessThan(long.length)
     expect(page).toContain(`request id "${stepId}" for all of it`)
 
@@ -157,7 +140,6 @@ describe('le pointeur reste court, et dit où trouver le reste', () => {
     const résumé = textOf(await call(resumeTaskTool))
     expect(estimateTokens(résumé)).toBeLessThanOrEqual(TOKEN_BUDGET)
 
-    // Et il ne laisse pas croire que ce qu'il montre est tout ce qu'il y a.
     expect(résumé).toContain('FULL DETAIL')
     expect(résumé).toContain('read_task_detail')
 

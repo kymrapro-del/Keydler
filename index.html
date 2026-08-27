@@ -8,13 +8,22 @@
       name="description"
       content="A shared, supervised task memory for you and your AI, exposed to agents through WebMCP."
     />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#131316" media="(prefers-color-scheme: dark)" />
+    <script>
+      // Avant la première peinture : lu ici et non dans le module, faute de
+      // quoi la page s'afficherait une fraction de seconde dans le thème du
+      // système avant de basculer.
+      try {
+        var t = localStorage.getItem('watch-log.theme')
+        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
   </head>
   <body>
-    <!--
-      Région annoncée persistante. Elle vit HORS de #app, que le rendu remplace
-      entièrement : une région détruite puis réinsérée est du DOM neuf pour une
-      aide technique, pas une mutation, et n'annonce donc rien.
-    -->
     <div
       id="annonces"
       class="visually-hidden"

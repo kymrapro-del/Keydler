@@ -3,11 +3,6 @@ import { MEASURES, buildMeasureTask } from '../src/demo/measures'
 import { renderTaskState } from '../src/domain/render'
 import { activeConstraints } from '../src/domain/task'
 
-/**
- * Les cahiers de mesure sont un livrable : le protocole du J6 s'y appuie, et un
- * tiers doit pouvoir rejouer la mesure. S'ils dérivent, le chiffre publié
- * cesse d'être reproductible sans que personne s'en aperçoive.
- */
 describe('cahiers de mesure', () => {
   it('en compte huit, numérotés sans trou', () => {
     expect(MEASURES).toHaveLength(8)
@@ -20,8 +15,6 @@ describe('cahiers de mesure', () => {
       expect(activeConstraints(task)).toHaveLength(1)
       expect(task.rejected).toHaveLength(1)
       expect(task.rejected[0].approach).toBe(spec.condemned)
-      // Un rejet sans motif ne sert à rien, et ici le motif EST la mesure :
-      // c'est la raison locale qu'aucun modèle ne peut déduire.
       expect(task.rejected[0].reason.length).toBeGreaterThan(30)
     }
   })
@@ -37,14 +30,11 @@ describe('cahiers de mesure', () => {
 
   it('ne souffle pas la solution dans la prochaine action', () => {
     for (const spec of MEASURES) {
-      // Si « next » nommait le mécanisme à retenir, la mesure ne mesurerait
-      // que la capacité à recopier une consigne.
       expect(spec.next.toLowerCase()).toContain('choose and implement')
     }
   })
 
   it('rend la provenance de l’approche condamnée', () => {
-    // Sans elle, un veto humain et une conjecture d'agent se lisent pareil.
     const output = renderTaskState(buildMeasureTask(1))
     expect(output).toMatch(/REJECTED — do not retry\n {2}\[human\]/)
   })

@@ -1,12 +1,22 @@
 import { buildMeasureTask } from '../demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from '../export/notebook'
+import { parseExport } from '../export/restore'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
+import { describeHistory } from './history'
+import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
+import { MIN_QUERY, searchTask, searchTasks, type Match } from '../domain/search'
 import {
   acceptedRejections,
   addConstraint,
+  setArchived,
+  editConstraint,
+  editRejection,
+  logStep,
+  renameTask,
+  setNext,
   proposedConstraints,
   proposedRejections,
   rejectApproach,
@@ -19,6 +29,14 @@ import {
 import type { Confidence, Step, TaskState } from '../domain/types'
 import * as store from '../store/taskStore'
 import {
+  addSecret,
+  deleteSecret,
+  listSecretNames,
+  revealSecret,
+  WrongPassphraseError,
+} from '../persistence/vault'
+import type { SecretName } from '../domain/secret'
+import {
   getRegistrationState,
   getWitness,
   onCall,
@@ -27,39 +45,8 @@ import {
   taskPath,
 } from '../webmcp'
 
-/**
- * Le tableau de bord.
- *
- * Ce fichier a d'abord été un banc d'essai : il montrait le mécanisme — l'état
- * de l'enregistrement WebMCP, le compteur d'appels, la sortie brute de
- * `resume_task`. Utile pour développer, illisible pour qui découvre.
- *
- * L'ordre est maintenant celui d'une personne qui arrive sans rien savoir : ce
- * qu'il y a à faire, ce qui est fait, ce qui est interdit. Le mécanisme n'a pas
- * disparu — il est replié sous « Technical details », où il renseigne sans
- * dominer.
- *
- * Le texte visible est en anglais : c'est le produit. Les commentaires restent
- * en français, comme le reste du dépôt.
- *
- * `mount` prend sa racine en paramètre et rend de quoi se démonter : c'est ce
- * qui permet de l'instancier dans un DOM de test, plusieurs fois, sans état
- * résiduel entre deux cas.
- */
-
 let root: HTMLElement | null = null
 
-/* -------------------------------------------------------------------------- */
-/* Saisies en cours                                                            */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Saisies en cours, conservées hors du rendu.
- *
- * La page se redessine à chaque écriture d'agent, et c'est précisément ce qui
- * doit arriver pendant qu'un humain tape : sans ce report, l'agent effacerait
- * la contrainte qu'on est en train de rédiger contre lui.
- */
 const drafts: Record<string, string> = {
   'new-title': '',
   'new-next': '',
@@ -67,15 +54,129 @@ const drafts: Record<string, string> = {
   'new-constraint': '',
   'new-rejection': '',
   'new-rejection-reason': '',
+  'new-secret-name': '',
+  'new-secret-purpose': '',
+  'edit-value': '',
+  'edit-reason': '',
+  'step-action': '',
+  'step-result': '',
+  'step-evidence': '',
+  search: '',
 }
 
-/** Le formulaire de création est-il déployé ? */
 let creating = false
 
-/** Dernier échec d'une action humaine, en langage humain. */
+let credentials: SecretName[] = []
+let revealed: { id: string; value: string } | null = null
+let credentialsFor: string | null = null
+
+let allTasks: TaskState[] = []
+let allTasksFor = ''
+let notice: string | null = null
+let showAllHistory = false
+
+type Editing =
+  | { kind: 'title' }
+  | { kind: 'next' }
+  | { kind: 'constraint'; id: string }
+  | { kind: 'rejection'; id: string }
+
+let editing: Editing | null = null
+let loggingStep = false
+let showArchived = false
+
+function renderThemeToggle(): string {
+  const choice = readTheme()
+  return `<button type="button" id="toggle-theme" class="btn btn--quiet"
+            aria-label="${themeLabel(choice)}. Click to switch.">${themeLabel(choice)}</button>`
+}
+
+function query(): string {
+  return drafts['search'].trim()
+}
+
+function searching(): boolean {
+  return query().length >= MIN_QUERY
+}
+
+function highlight(text: string, q: string): string {
+  const hay = text.toLocaleLowerCase()
+  const needle = q.toLocaleLowerCase()
+  const at = hay.indexOf(needle)
+  if (at < 0) return escapeHtml(text)
+  return `${escapeHtml(text.slice(0, at))}<mark>${escapeHtml(
+    text.slice(at, at + needle.length),
+  )}</mark>${escapeHtml(text.slice(at + needle.length))}`
+}
+
+function startEditing(next: Editing, value: string, reason = ''): void {
+  editing = next
+  loggingStep = false
+  humanError = null
+  drafts['edit-value'] = value
+  drafts['edit-reason'] = reason
+  renderNow()
+  document.querySelector<HTMLInputElement>('#edit-value')?.focus()
+}
+
+function stopEditing(): void {
+  editing = null
+  drafts['edit-value'] = ''
+  drafts['edit-reason'] = ''
+  renderNow()
+}
+
+function editingIs(kind: Editing['kind'], id?: string): boolean {
+  if (!editing || editing.kind !== kind) return false
+  return id === undefined || ('id' in editing && editing.id === id)
+}
+
+function editForm(label: string, second?: string): string {
+  return `<form id="edit-form" class="form form--inline" novalidate>
+      <div class="field">
+        <label for="edit-value">${label}</label>
+        <input id="edit-value" type="text" autocomplete="off" />
+      </div>
+      ${
+        second
+          ? `<div class="field">
+               <label for="edit-reason">${second}</label>
+               <input id="edit-reason" type="text" autocomplete="off" />
+             </div>`
+          : ''
+      }
+      <button type="submit" class="btn btn--primary">Save</button>
+      <button type="button" id="cancel-edit" class="btn">Cancel</button>
+    </form>`
+}
+
+function refreshTaskList(key: string): void {
+  allTasksFor = key
+  void store.allTasks().then(
+    (tasks) => {
+      allTasks = tasks
+      scheduleRender()
+    },
+    () => {
+      allTasks = []
+    },
+  )
+}
+
+function refreshCredentials(taskId: string): void {
+  void listSecretNames(taskId).then(
+    (names) => {
+      credentials = names
+      scheduleRender()
+    },
+    () => {
+      credentials = []
+    },
+  )
+}
+
 let humanError: string | null = null
 
-/** Exécute une action humaine en rendant son échec lisible. */
 function humanAction(
   action: string,
   mutate: Parameters<typeof store.mutate>[0],
@@ -91,16 +192,6 @@ function humanAction(
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/* Vocabulaire                                                                 */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Les trois degrés, dits en anglais courant.
- *
- * « evidence » ne veut pas dire vérifié, et le libellé doit le porter : c'est
- * la distinction que tout le produit défend.
- */
 const CONFIDENCE_LABEL: Record<Confidence, string> = {
   human_verified: 'Verified by you',
   evidence: 'Evidence attached',
@@ -111,15 +202,17 @@ function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many
 }
 
+function noticeBlock(): string {
+  return notice
+    ? `<div class="notice notice--ok" role="status"><p>${escapeHtml(notice)}</p></div>`
+    : ''
+}
+
 function alertBlock(): string {
   return humanError
     ? `<div class="notice notice--error" role="alert"><p>${escapeHtml(humanError)}</p></div>`
     : ''
 }
-
-/* -------------------------------------------------------------------------- */
-/* État vide — la première visite                                              */
-/* -------------------------------------------------------------------------- */
 
 function renderLanding(): string {
   const form = creating
@@ -150,7 +243,10 @@ function renderLanding(): string {
        </div>`
 
   return `<section class="landing">
-      <p class="landing__eyebrow">Watch Log</p>
+      <div class="eyebrow-row">
+        <p class="landing__eyebrow">Watch Log</p>
+        ${renderThemeToggle()}
+      </div>
       <h1 class="landing__headline">Give your AI a memory that survives the conversation.</h1>
       <p class="landing__lede">
         The Watch Log keeps completed work, rules to follow, and mistakes not to
@@ -164,16 +260,6 @@ function renderLanding(): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* Guide après création                                                        */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Montré tant qu'aucun agent n'a rien consigné.
- *
- * Il disparaît de lui-même dès la première étape : à ce moment, la personne a
- * vu que ça marche, et la place vaut mieux au travail qu'à la consigne.
- */
 function renderReadyForAI(task: TaskState): string {
   if (task.steps.length > 0) return ''
   return `<section class="card card--guide" aria-labelledby="guide-title">
@@ -185,10 +271,6 @@ function renderReadyForAI(task: TaskState): string {
       </p>
     </section>`
 }
-
-/* -------------------------------------------------------------------------- */
-/* 1 — NEXT                                                                    */
-/* -------------------------------------------------------------------------- */
 
 function renderNext(task: TaskState): string {
   if (task.status === 'completed') {
@@ -204,22 +286,23 @@ function renderNext(task: TaskState): string {
 
   return `<section class="hero" aria-labelledby="next-title">
       <h2 id="next-title" class="hero__label">Next</h2>
-      <p class="hero__value">${
-        task.next
-          ? escapeHtml(task.next)
-          : '<span class="muted">Not set yet — the agent will decide and record it.</span>'
-      }</p>
+      ${
+        editingIs('next')
+          ? editForm('What happens next')
+          : `<p class="hero__value">${
+              task.next
+                ? escapeHtml(task.next)
+                : '<span class="muted">Not set yet — the agent will decide and record it.</span>'
+            }</p>
+             <div class="actions">
+               <button type="button" id="edit-next" class="btn btn--quiet">Change it</button>
+             </div>`
+      }
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 2 — COMPLETED WORK                                                          */
-/* -------------------------------------------------------------------------- */
-
-/** Nombre de lignes affichées par liste. L'export les contient toutes. */
 const MAX_ROWS = 8
 
-/** Annonce ce qui n'est pas montré, plutôt que de le taire. */
 function remainder(total: number): string {
   const hidden = total - MAX_ROWS
   return hidden > 0
@@ -243,32 +326,61 @@ function renderCompletedWork(task: TaskState): string {
     ? `<ul class="rows">${shown.map(renderStepRow).join('')}</ul>${remainder(task.steps.length)}`
     : `<p class="empty">Nothing recorded yet. Steps appear here as the agent works.</p>`
 
+  const own =
+    task.status !== 'active'
+      ? ''
+      : loggingStep
+        ? `<form id="form-step" class="form" novalidate>
+             <div class="field">
+               <label for="step-action">What you did</label>
+               <input id="step-action" type="text" autocomplete="off"
+                      placeholder="Rewrote the token issuer by hand" />
+             </div>
+             <div class="field">
+               <label for="step-result">What came of it</label>
+               <input id="step-result" type="text" autocomplete="off"
+                      placeholder="Public API unchanged, tests still green" />
+             </div>
+             <div class="field">
+               <label for="step-evidence">Evidence <span class="muted">(optional)</span></label>
+               <input id="step-evidence" type="text" autocomplete="off"
+                      placeholder="Paste the command output, a diff, or a link" />
+             </div>
+             <div class="actions">
+               <button type="submit" class="btn btn--primary">Record it</button>
+               <button type="button" id="cancel-step" class="btn">Cancel</button>
+             </div>
+             <p class="muted">
+               Work you record yourself counts as verified by you — you were there.
+             </p>
+           </form>`
+        : `<div class="actions">
+             <button type="button" id="log-step" class="btn btn--quiet">Record a step yourself</button>
+           </div>`
+
   return `<section class="card" aria-labelledby="work-title">
       <h2 id="work-title" class="card__title">Completed work</h2>
       ${body}
+      ${own}
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 3 — RULES TO FOLLOW                                                         */
-/* -------------------------------------------------------------------------- */
-
 function renderRules(task: TaskState): string {
-  // Seules les règles endossées figurent ici. Une proposition d'agent a sa
-  // propre section : les mêler laisserait un agent poser une règle de la
-  // maison, ce que la restitution ne fait plus mais que l'écran ferait encore.
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
 
   const rows = decided
     .map((c) => {
       const lifted = !c.active || c.standing === 'declined'
+      if (editingIs('constraint', c.id)) return `<li>${editForm('Rule')}</li>`
       return `<li class="row${lifted ? ' row--lifted' : ''}">
         <span class="chip chip--${c.source}">${c.source === 'human' ? 'You' : 'Agent'}</span>
         <span class="row__text">${escapeHtml(c.rule)}</span>
         ${
           c.standing === 'declined'
             ? '<span class="muted">declined</span>'
-            : `<button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}"
+            : `<button type="button" class="btn btn--quiet" data-edit-rule="${escapeHtml(c.id)}"
+                 aria-label="Reword the rule: ${escapeHtml(c.rule)}">Reword</button>
+           <button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}"
                  aria-label="${c.active ? 'Lift' : 'Restore'} the rule: ${escapeHtml(c.rule)}">
              ${c.active ? 'Lift' : 'Restore'}
            </button>`
@@ -299,19 +411,19 @@ function renderRules(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 4 — DON'T RETRY                                                             */
-/* -------------------------------------------------------------------------- */
-
 function renderDontRetry(task: TaskState): string {
   const rows = acceptedRejections(task)
-    .map(
-      (r) => `<li class="row row--danger">
+    .map((r) =>
+      editingIs('rejection', r.id)
+        ? `<li>${editForm('Approach', 'Why it failed')}</li>`
+        : `<li class="row row--danger">
         <span class="chip chip--${r.source}">${r.source === 'human' ? 'You' : 'Agent'}</span>
         <span class="row__text">
           <strong>${escapeHtml(r.approach)}</strong>
           <span class="muted"> — ${escapeHtml(r.reason)}</span>
         </span>
+        <button type="button" class="btn btn--quiet" data-edit-rejection="${escapeHtml(r.id)}"
+                aria-label="Reword: ${escapeHtml(r.approach)}">Reword</button>
       </li>`,
     )
     .join('')
@@ -344,9 +456,181 @@ function renderDontRetry(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 5 — AGENT PROPOSALS                                                         */
-/* -------------------------------------------------------------------------- */
+function renderSearchBox(): string {
+  return `<form class="search" id="form-search" role="search" novalidate>
+      <label class="visually-hidden" for="search">Search this task and the others</label>
+      <input id="search" type="search" autocomplete="off"
+             placeholder="Search rules, work, evidence, other tasks…" />
+      ${searching() ? '<button type="button" id="clear-search" class="btn">Clear</button>' : ''}
+    </form>`
+}
+
+function renderMatch(match: Match, q: string): string {
+  return `<li class="row">
+      <span class="chip chip--evidence">${escapeHtml(match.label)}</span>
+      <span class="row__text">
+        <strong>${highlight(match.text, q)}</strong>
+        ${match.context ? `<span class="muted"> — ${highlight(match.context, q)}</span>` : ''}
+      </span>
+    </li>`
+}
+
+function renderSearchResults(task: TaskState | null): string {
+  const q = query()
+  const here = task ? searchTask(task, q) : []
+  const elsewhere = searchTasks(allTasks, q).filter((t) => t.id !== task?.id)
+
+  const hereBody = here.length
+    ? `<ul class="rows">${here
+        .slice(0, 40)
+        .map((m) => renderMatch(m, q))
+        .join('')}</ul>
+       ${here.length > 40 ? `<p class="muted">${here.length - 40} more not shown — narrow the search.</p>` : ''}`
+    : '<p class="empty">Nothing in this task.</p>'
+
+  const elsewhereBody = elsewhere.length
+    ? `<ul class="rows">${elsewhere
+        .map(
+          (t) => `<li class="row">
+            <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
+              t.archived ? 'archived' : t.status === 'completed' ? 'closed' : 'open'
+            }</span>
+            <span class="row__text">
+              <strong>${highlight(t.title, q)}</strong>
+              ${t.next ? `<span class="muted"> — ${highlight(t.next, q)}</span>` : ''}
+            </span>
+            <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
+          </li>`,
+        )
+        .join('')}</ul>`
+    : '<p class="empty">No other task matches.</p>'
+
+  return `<section class="card" aria-labelledby="search-title">
+      <h2 id="search-title" class="card__title">
+        ${here.length + elsewhere.length} ${plural(here.length + elsewhere.length, 'match', 'matches')} for “${escapeHtml(q)}”
+      </h2>
+      <h3>In this task</h3>
+      ${hereBody}
+      <h3>Other tasks</h3>
+      ${elsewhereBody}
+    </section>`
+}
+
+function renderSwitcher(task: TaskState): string {
+  const others = allTasks.filter((t) => t.id !== task.id && (showArchived || !t.archived))
+  const hidden = allTasks.filter((t) => t.id !== task.id && t.archived).length
+  const rows = others
+    .map(
+      (t) => `<li class="row">
+        <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
+          t.archived ? 'archived' : t.status === 'completed' ? 'closed' : 'open'
+        }</span>
+        <span class="row__text">
+          <strong>${escapeHtml(t.title)}</strong>
+          <span class="muted"> — ${escapeHtml(t.next ?? 'no next action')}</span>
+        </span>
+        <button type="button" class="btn btn--quiet" data-archive="${escapeHtml(t.id)}"
+                data-archived="${t.archived}">${t.archived ? 'Unarchive' : 'Archive'}</button>
+        <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
+      </li>`,
+    )
+    .join('')
+
+  return `<details class="switcher">
+      <summary>${allTasks.length} ${plural(allTasks.length, 'task', 'tasks')} on this device</summary>
+      <div class="switcher__body">
+        ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">This is the only one.</p>'}
+        <div class="actions">
+          <button type="button" id="new-task" class="btn">New task</button>
+          <button type="button" id="import" class="btn">Import a file</button>
+          <button type="button" id="archive-current" class="btn btn--quiet">${
+            task.archived ? 'Bring this task back' : 'Archive this task'
+          }</button>
+          ${
+            hidden > 0
+              ? `<button type="button" id="toggle-archived" class="btn btn--quiet">${
+                  showArchived ? 'Hide archived' : `Show ${hidden} archived`
+                }</button>`
+              : ''
+          }
+          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown" hidden />
+        </div>
+      </div>
+    </details>`
+}
+
+function renderHandoff(task: TaskState): string {
+  if (task.status !== 'active') return ''
+  return `<p class="handoff">
+      <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
+      <span class="muted">Copies this page’s address and “Continue this task.”</span>
+    </p>`
+}
+
+function renderCredentials(task: TaskState): string {
+  const rows = credentials
+    .map((secret) => {
+      const shown =
+        revealed && revealed.id === secret.id
+          ? `<pre data-revealed="${escapeHtml(secret.id)}">${escapeHtml(revealed.value)}</pre>`
+          : ''
+      return `<li class="review">
+        <div class="row">
+          <span class="chip chip--human">sealed</span>
+          <span class="row__text">
+            <code>\${${escapeHtml(secret.name)}}</code>
+            <span class="muted"> — ${escapeHtml(secret.purpose)}</span>
+          </span>
+          <button type="button" class="btn" data-reveal="${escapeHtml(secret.id)}"
+                  aria-label="Reveal the value of ${escapeHtml(secret.name)}">Reveal</button>
+          <button type="button" class="btn btn--danger" data-forget="${escapeHtml(secret.id)}"
+                  aria-label="Delete the credential ${escapeHtml(secret.name)}">Delete</button>
+        </div>
+        ${shown}
+      </li>`
+    })
+    .join('')
+
+  const form =
+    task.status === 'active'
+      ? `<form id="form-secret" class="form" novalidate autocomplete="off">
+           <div class="field">
+             <label for="new-secret-name">Name the agent will use</label>
+             <input id="new-secret-name" type="text" autocomplete="off" placeholder="gemini-api-key" />
+           </div>
+           <div class="field">
+             <label for="new-secret-purpose">What it is for</label>
+             <input id="new-secret-purpose" type="text" autocomplete="off"
+                    placeholder="Calls the Gemini API from the ingestion script" />
+           </div>
+           <div class="field">
+             <label for="new-secret-value">Value</label>
+             <input id="new-secret-value" type="password" autocomplete="new-password" spellcheck="false" />
+           </div>
+           <div class="field">
+             <label for="new-secret-passphrase">Passphrase that seals it</label>
+             <input id="new-secret-passphrase" type="password" autocomplete="new-password" spellcheck="false" />
+           </div>
+           <button type="submit" class="btn">Seal it</button>
+         </form>`
+      : ''
+
+  return `<section class="card" aria-labelledby="credentials-title">
+      <h2 id="credentials-title" class="card__title">Credentials</h2>
+      <p class="muted">
+        The agent sees the <strong>name</strong> and what it is for, never the value.
+        It writes <code>\${name}</code> where the value belongs, and you wire the
+        real one. No tool on this page can return a value.
+      </p>
+      ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">No credentials yet.</p>'}
+      ${form}
+      <p class="muted">
+        Sealed with a passphrase that is never stored, and never written to an
+        export. This is not an audited secret manager — and anything you reveal on
+        screen can be read by an agent that drives this browser.
+      </p>
+    </section>`
+}
 
 function renderProposals(task: TaskState): string {
   const proposals = [
@@ -389,14 +673,7 @@ function renderProposals(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 6 — EVIDENCE TO REVIEW                                                      */
-/* -------------------------------------------------------------------------- */
-
 function renderEvidence(task: TaskState): string {
-  // Les PLUS ANCIENNES d'abord : le clic humain est le seul chemin vers
-  // « verified », et montrer les plus récentes rendait les anciennes
-  // inatteignables tant que les nouvelles n'étaient pas traitées.
   const waiting = task.steps.filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
   if (waiting.length === 0) return ''
 
@@ -426,24 +703,10 @@ function renderEvidence(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 7 — ACTIVITY                                                                */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Le dernier refus, dit en langage humain.
- *
- * Le témoin d'appels sait qu'un appel a été refusé, pas pourquoi. Le journal
- * d'audit, lui, porte le motif — et c'est le motif qui décide de la phrase. Un
- * refus pour état périmé n'est pas une panne : c'est la supervision qui
- * fonctionne, et la page doit le dire ainsi.
- */
 function lastRefusal(task: TaskState): string | null {
   const refused = [...task.audit].reverse().find((e) => e.outcome === 'refused')
   if (!refused) return null
 
-  // Un refus plus ancien que la dernière écriture appliquée est de l'histoire,
-  // pas une alerte : le laisser en place banaliserait la bannière.
   const applied = [...task.audit].reverse().find((e) => e.outcome === 'applied')
   if (applied && applied.at > refused.at) return null
 
@@ -484,9 +747,43 @@ function renderActivity(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* Détails techniques — repliés                                                */
-/* -------------------------------------------------------------------------- */
+const HISTORY_PREVIEW = 12
+
+function renderHistory(task: TaskState): string {
+  const lines = describeHistory(task.audit)
+  const shown = showAllHistory ? lines : lines.slice(0, HISTORY_PREVIEW)
+
+  const rows = shown
+    .map(
+      (line) => `<li class="event${line.refused ? ' event--refused' : ''}">
+        <span class="event__when muted">${new Date(line.at).toLocaleString('en-GB')}</span>
+        <span class="event__what">
+          <strong>${line.who}</strong> ${escapeHtml(line.what)}${
+            line.repeated > 1 ? ` <span class="muted">×${line.repeated}</span>` : ''
+          }
+          ${line.detail ? `<span class="muted"> — ${escapeHtml(line.detail)}</span>` : ''}
+        </span>
+      </li>`,
+    )
+    .join('')
+
+  const more =
+    lines.length > HISTORY_PREVIEW
+      ? `<button type="button" id="toggle-history" class="btn">${
+          showAllHistory ? 'Show recent only' : `Show all ${lines.length} entries`
+        }</button>`
+      : ''
+
+  return `<section class="card" aria-labelledby="history-title">
+      <h2 id="history-title" class="card__title">History</h2>
+      <p class="muted">
+        Everything recorded on this task, newest first — including writes that
+        were refused. The oldest entries are dropped once the log gets long.
+      </p>
+      ${rows ? `<ol class="events">${rows}</ol>` : '<p class="empty">Nothing yet.</p>'}
+      ${more}
+    </section>`
+}
 
 function renderTechnical(task: TaskState | null): string {
   const { phase, availability, toolNames, error, observedTools, lifecycle } = getRegistrationState()
@@ -530,24 +827,38 @@ function renderTechnical(task: TaskState | null): string {
     </details>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* Assemblage                                                                  */
-/* -------------------------------------------------------------------------- */
-
 function renderDashboard(task: TaskState): string {
   return `<header class="page-head">
-      <p class="page-head__eyebrow">Watch Log</p>
-      <h1 tabindex="-1">${escapeHtml(task.title)}</h1>
+      <div class="eyebrow-row">
+        <p class="page-head__eyebrow">Watch Log</p>
+        ${renderThemeToggle()}
+      </div>
+      ${
+        editingIs('title')
+          ? editForm('Task title')
+          : `<div class="page-head__title">
+               <h1 tabindex="-1">${escapeHtml(task.title)}</h1>
+               <button type="button" id="edit-title" class="btn btn--quiet"
+                       aria-label="Rename this task">Rename</button>
+             </div>`
+      }
+      ${renderSwitcher(task)}
+      ${renderSearchBox()}
     </header>
+    ${noticeBlock()}
     ${alertBlock()}
-    ${renderNext(task)}
-    ${renderReadyForAI(task)}
-    ${renderCompletedWork(task)}
-    ${renderRules(task)}
-    ${renderDontRetry(task)}
-    ${renderProposals(task)}
-    ${renderEvidence(task)}
-    ${renderActivity(task)}
+    ${searching() ? renderSearchResults(task) : ''}
+    ${renderHandoff(task)}
+    ${searching() ? '' : renderNext(task)}
+    ${searching() ? '' : renderReadyForAI(task)}
+    ${searching() ? '' : renderCompletedWork(task)}
+    ${searching() ? '' : renderRules(task)}
+    ${searching() ? '' : renderDontRetry(task)}
+    ${searching() ? '' : renderCredentials(task)}
+    ${searching() ? '' : renderProposals(task)}
+    ${searching() ? '' : renderEvidence(task)}
+    ${searching() ? '' : renderActivity(task)}
+    ${searching() ? '' : renderHistory(task)}
     ${renderTechnical(task)}`
 }
 
@@ -563,8 +874,6 @@ function renderBody(): string {
   }
 
   if (status === 'missing') {
-    // L'adresse nomme un cahier qui n'existe pas. En ouvrir un autre à sa place
-    // ferait exactement ce que le lien par adresse existe pour empêcher.
     return `<div class="notice notice--warn" role="alert">
         <p><strong>This task does not exist on this device.</strong></p>
         <p>The address points at <code>${escapeHtml(boundId ?? '')}</code>, which is not here.
@@ -573,12 +882,12 @@ function renderBody(): string {
       ${renderLanding()}`
   }
 
+  // Le formulaire de création prend toute la place, même quand un cahier est
+  // déjà ouvert : sans cela, « New task » ne montrait rien depuis un tableau
+  // de bord, le formulaire ne vivant que dans l'écran d'accueil.
+  if (creating) return renderLanding()
   return task ? renderDashboard(task) : renderLanding()
 }
-
-/* -------------------------------------------------------------------------- */
-/* Câblage                                                                     */
-/* -------------------------------------------------------------------------- */
 
 function bindDrafts(): void {
   for (const id of Object.keys(drafts)) {
@@ -587,9 +896,6 @@ function bindDrafts(): void {
     field.value = drafts[id]
     field.addEventListener('input', () => {
       drafts[id] = field.value
-      // Corriger sa saisie efface le reproche. On retire l'alerte du DOM sans
-      // redessiner : un rendu complet détruirait le champ en cours de frappe,
-      // ce qui interrompt une composition et vide la pile d'annulation.
       if (humanError !== null) {
         humanError = null
         document.querySelector('[role="alert"]')?.remove()
@@ -618,8 +924,6 @@ function bindCreation(): void {
     const next = drafts['new-next'].trim()
     const rule = drafts['new-rule'].trim()
 
-    // Refusé ICI et en langage humain, plutôt que par le navigateur : un
-    // « Please fill out this field » natif ne dit pas pourquoi le champ compte.
     if (!title) {
       humanError = 'Please give the task a title, so a later conversation knows what it is about.'
       renderNow()
@@ -637,8 +941,6 @@ function bindCreation(): void {
     void store
       .createAndOpenTask(title, next)
       .then(() => {
-        // Une règle posée à la création est HUMAINE, donc opposable d'emblée :
-        // c'est le seul geste de cet écran qui contraint réellement l'agent.
         if (!rule) return undefined
         return store
           .mutate((s) => addConstraint(s, { rule, basedOnVersion: null }, 'human'))
@@ -659,20 +961,105 @@ function bindCreation(): void {
   })
 
   document.querySelector('#seed')?.addEventListener('click', () => {
-    // `?mesure=N` charge la tâche de mesure N au lieu du cahier de
-    // démonstration, pour que le protocole de mesure soit rejouable tel quel.
     const n = Number(new URLSearchParams(location.search).get('mesure'))
     void store.openPreparedTask(n ? buildMeasureTask(n) : buildDemoTask())
   })
 }
 
 function bindSupervision(): void {
+  document.querySelector('#edit-title')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (task) startEditing({ kind: 'title' }, task.title)
+  })
+
+  document.querySelector('#edit-next')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (task) startEditing({ kind: 'next' }, task.next ?? '')
+  })
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-edit-rule]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.editRule!
+      const rule = store.currentTask()?.constraints.find((c) => c.id === id)
+      if (rule) startEditing({ kind: 'constraint', id }, rule.rule)
+    })
+  }
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-edit-rejection]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.editRejection!
+      const rejection = store.currentTask()?.rejected.find((r) => r.id === id)
+      if (rejection) startEditing({ kind: 'rejection', id }, rejection.approach, rejection.reason)
+    })
+  }
+
+  document.querySelector('#cancel-edit')?.addEventListener('click', stopEditing)
+
+  document.querySelector<HTMLFormElement>('#edit-form')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const current = editing
+    if (!current) return
+    const value = drafts['edit-value'].trim()
+    const reason = drafts['edit-reason'].trim()
+
+    const mutate: Parameters<typeof store.mutate>[0] =
+      current.kind === 'title'
+        ? (state) => renameTask(state, value)
+        : current.kind === 'next'
+          ? (state) => setNext(state, value)
+          : current.kind === 'constraint'
+            ? (state) => editConstraint(state, current.id, value)
+            : (state) => editRejection(state, current.id, { approach: value, reason })
+
+    humanAction('Saving the change', mutate, stopEditing)
+  })
+
+  document.querySelector('#log-step')?.addEventListener('click', () => {
+    loggingStep = true
+    editing = null
+    humanError = null
+    renderNow()
+    document.querySelector<HTMLInputElement>('#step-action')?.focus()
+  })
+
+  document.querySelector('#cancel-step')?.addEventListener('click', () => {
+    loggingStep = false
+    humanError = null
+    for (const key of ['step-action', 'step-result', 'step-evidence']) drafts[key] = ''
+    renderNow()
+  })
+
+  document.querySelector<HTMLFormElement>('#form-step')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const action = drafts['step-action'].trim()
+    const result = drafts['step-result'].trim()
+    const content = drafts['step-evidence'].trim()
+
+    humanAction(
+      'Recording the step',
+      (state) =>
+        logStep(
+          state,
+          {
+            action,
+            result,
+            evidence: content ? { kind: 'command_output', content } : null,
+            basedOnVersion: null,
+          },
+          'human',
+        ),
+      () => {
+        loggingStep = false
+        for (const key of ['step-action', 'step-result', 'step-evidence']) drafts[key] = ''
+        renderNow()
+      },
+    )
+  })
+
   document.querySelector<HTMLFormElement>('#form-constraint')?.addEventListener('submit', (e) => {
     e.preventDefault()
     const rule = drafts['new-constraint'].trim()
     if (!rule) return
-    // Vidé seulement si la mutation passe : sinon une règle refusée pour
-    // longueur disparaissait de l'écran, et on ne pouvait plus la raccourcir.
     humanAction(
       'Adding the rule',
       (state) => addConstraint(state, { rule, basedOnVersion: null }, 'human'),
@@ -686,9 +1073,6 @@ function bindSupervision(): void {
     e.preventDefault()
     const approach = drafts['new-rejection'].trim()
     const reason = drafts['new-rejection-reason'].trim()
-    // On laisse le domaine refuser un motif vide plutôt que de l'intercepter
-    // ici : une seule règle, un seul endroit où elle est écrite. Un rejet posé
-    // par un humain naît `accepted` — il n'a pas à être endossé ensuite.
     humanAction(
       'Ruling out the approach',
       (state) => rejectApproach(state, { approach, reason, basedOnVersion: null }, 'human'),
@@ -711,8 +1095,6 @@ function bindSupervision(): void {
 
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-verify]')) {
     button.addEventListener('click', () => {
-      // Le contenu RELU est repris du bloc affiché juste sous le bouton, et non
-      // de l'état : c'est ce qui fait de ce paramètre une attestation.
       const shown = button.closest('li')?.querySelector('pre')?.textContent ?? ''
       humanAction('Approving the evidence', (state) =>
         verifyEvidence(state, button.dataset.verify!, shown),
@@ -734,6 +1116,198 @@ function bindSupervision(): void {
     })
   }
 
+  const searchField = document.querySelector<HTMLInputElement>('#search')
+  searchField?.addEventListener('input', () => scheduleRender())
+  searchField?.addEventListener('search', () => scheduleRender())
+  searchField?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return
+    drafts['search'] = ''
+    renderNow()
+  })
+  document.querySelector<HTMLFormElement>('#form-search')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    renderNow()
+  })
+  document.querySelector('#clear-search')?.addEventListener('click', () => {
+    drafts['search'] = ''
+    renderNow()
+    document.querySelector<HTMLInputElement>('#search')?.focus()
+  })
+
+  document.querySelector('#archive-current')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    humanAction(task.archived ? 'Bringing the task back' : 'Archiving the task', (state) =>
+      setArchived(state, !state.archived),
+    )
+  })
+
+  document.querySelector('#toggle-archived')?.addEventListener('click', () => {
+    showArchived = !showArchived
+    renderNow()
+  })
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-archive]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.archive!
+      const wanted = b.dataset.archived !== 'true'
+      humanError = null
+      void store
+        .updateTask(id, (state) => setArchived(state, wanted))
+        .then(
+          () => {
+            allTasksFor = ''
+            scheduleRender()
+          },
+          (error: unknown) => {
+            humanError = humanMessage(error, wanted ? 'Archiving the task' : 'Bringing it back')
+            scheduleRender()
+          },
+        )
+    })
+  }
+
+  document.querySelector('#new-task')?.addEventListener('click', () => {
+    creating = true
+    notice = null
+    humanError = null
+    renderNow()
+    document.querySelector<HTMLInputElement>('#new-title')?.focus()
+  })
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open]')) {
+    button.addEventListener('click', () => {
+      notice = null
+      void store.openTask(button.dataset.open!).catch((error: unknown) => {
+        humanError = humanMessage(error, 'Opening the task')
+        scheduleRender()
+      })
+    })
+  }
+
+  const fileField = document.querySelector<HTMLInputElement>('#import-file')
+  document.querySelector('#import')?.addEventListener('click', () => fileField?.click())
+  fileField?.addEventListener('change', () => {
+    const file = fileField.files?.[0]
+    if (!file) return
+    humanError = null
+    notice = null
+    void file
+      .text()
+      .then((text) => store.importTasks(parseExport(text)))
+      .then(
+        (outcome) => {
+          const parts: string[] = []
+          if (outcome.imported.length) parts.push(`${outcome.imported.length} imported`)
+          if (outcome.copied.length) parts.push(`${outcome.copied.length} added as a copy`)
+          if (outcome.skipped.length) parts.push(`${outcome.skipped.length} already here`)
+          notice = `${parts.join(', ')}. Credentials are never in an export, so none were restored.`
+          allTasksFor = ''
+          scheduleRender()
+        },
+        (error: unknown) => {
+          humanError = humanMessage(error, 'Importing the file')
+          scheduleRender()
+        },
+      )
+      .finally(() => {
+        fileField.value = ''
+      })
+  })
+
+  document.querySelector('#copy-handoff')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    const text = `${location.origin}${taskPath(task.id)}\n\nContinue this task.`
+    humanError = null
+    void navigator.clipboard?.writeText(text).then(
+      () => {
+        notice = 'Copied. Paste it to your agent.'
+        scheduleRender()
+      },
+      () => {
+        humanError = 'The browser refused clipboard access. Copy the address from the bar instead.'
+        scheduleRender()
+      },
+    )
+  })
+
+  document.querySelector<HTMLFormElement>('#form-secret')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const task = store.currentTask()
+    if (!task) return
+
+    const name = drafts['new-secret-name'].trim()
+    const purpose = drafts['new-secret-purpose'].trim()
+    const valueField = document.querySelector<HTMLInputElement>('#new-secret-value')
+    const phraseField = document.querySelector<HTMLInputElement>('#new-secret-passphrase')
+    const value = valueField?.value ?? ''
+    const passphrase = phraseField?.value ?? ''
+
+    humanError = null
+    void addSecret({ taskId: task.id, name, purpose, value, passphrase }).then(
+      () => {
+        if (valueField) valueField.value = ''
+        if (phraseField) phraseField.value = ''
+        drafts['new-secret-name'] = ''
+        drafts['new-secret-purpose'] = ''
+        refreshCredentials(task.id)
+      },
+      (error: unknown) => {
+        humanError = humanMessage(error, 'Sealing the credential')
+        scheduleRender()
+      },
+    )
+  })
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-reveal]')) {
+    button.addEventListener('click', () => {
+      const id = button.dataset.reveal!
+      if (revealed && revealed.id === id) {
+        revealed = null
+        renderNow()
+        return
+      }
+      const passphrase = window.prompt('Passphrase for this credential?')
+      if (!passphrase) return
+      humanError = null
+      void revealSecret(id, passphrase).then(
+        (value) => {
+          revealed = { id, value }
+          renderNow()
+        },
+        (error: unknown) => {
+          revealed = null
+          humanError =
+            error instanceof WrongPassphraseError
+              ? 'That passphrase does not open this credential.'
+              : humanMessage(error, 'Revealing the credential')
+          scheduleRender()
+        },
+      )
+    })
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-forget]')) {
+    button.addEventListener('click', () => {
+      const task = store.currentTask()
+      if (!task) return
+      const id = button.dataset.forget!
+      const secret = credentials.find((c) => c.id === id)
+      if (!window.confirm(`Delete the credential ${secret?.name ?? ''}? This cannot be undone.`)) {
+        return
+      }
+      revealed = null
+      void deleteSecret(id).then(
+        () => refreshCredentials(task.id),
+        (error: unknown) => {
+          humanError = humanMessage(error, 'Deleting the credential')
+          scheduleRender()
+        },
+      )
+    })
+  }
+
   document.querySelector('#reopen')?.addEventListener('click', () => {
     const reason = window.prompt('Why are you reopening this task?')
     if (!reason?.trim()) return
@@ -742,6 +1316,18 @@ function bindSupervision(): void {
 }
 
 function bindTechnical(): void {
+  document.querySelector('#toggle-history')?.addEventListener('click', () => {
+    showAllHistory = !showAllHistory
+    renderNow()
+    document.querySelector<HTMLButtonElement>('#toggle-history')?.focus()
+  })
+
+  document.querySelector('#toggle-theme')?.addEventListener('click', () => {
+    applyTheme(nextTheme(readTheme()))
+    renderNow()
+    document.querySelector<HTMLButtonElement>('#toggle-theme')?.focus()
+  })
+
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
 
   document.querySelector('#export-one')?.addEventListener('click', () => {
@@ -753,8 +1339,6 @@ function bindTechnical(): void {
     void store.allTasks().then(
       (tasks) => download('watch-logs.md', buildFullExport(tasks)),
       (error: unknown) => {
-        // Sans cette branche, un stockage indisponible ne produisait ni fichier,
-        // ni message, et laissait un rejet non géré dans la console.
         humanError = humanMessage(error, 'Exporting the tasks')
         scheduleRender()
       },
@@ -764,7 +1348,6 @@ function bindTechnical(): void {
   document.querySelector('#delete')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (!task) return
-    // Destructif et irréversible : on demande, en nommant ce qui disparaît.
     const sure = window.confirm(
       `Permanently delete “${task.title}” (version ${task.version})?\n\n` +
         'Export it first if you want to keep a copy.',
@@ -778,7 +1361,6 @@ function bindTechnical(): void {
   })
 }
 
-/** Remet un fichier à la personne. Rien ne quitte l'appareil. */
 function download(name: string, content: string): void {
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -788,25 +1370,11 @@ function download(name: string, content: string): void {
   document.body.append(link)
   link.click()
   link.remove()
-  // Révoquée au tour suivant : révoquer dans le même tour que le clic peut
-  // laisser un téléchargement vide sur certains navigateurs.
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
-/* -------------------------------------------------------------------------- */
-/* Annonces et rendu                                                           */
-/* -------------------------------------------------------------------------- */
-
 let lastAnnouncement = ''
 
-/**
- * Annonce un changement dans la région persistante.
- *
- * Les attributs `aria-live` posés sur les nœuds du rendu ne produisaient aucune
- * annonce : `render()` remplace tout le sous-arbre, et une région réinsérée est
- * du DOM neuf, pas une mutation. Seule une région qui survit au rendu est
- * suivie par une aide technique.
- */
 function announce(): void {
   const region = document.querySelector('#annonces')
   if (!region) return
@@ -823,50 +1391,46 @@ function announce(): void {
   region.textContent = sentence
 }
 
-/**
- * Aligne l'adresse de la barre sur le cahier ouvert.
- *
- * `replaceState`, pas `pushState` : ouvrir un cahier n'est pas une navigation
- * qu'on veut pouvoir défaire par la flèche « précédent ». L'adresse est là pour
- * que le cahier soit RETROUVABLE — copiée, elle rouvre cette tâche-là et pas la
- * dernière touchée sur l'appareil.
- */
 function reflectAddress(): void {
   if (typeof history === 'undefined' || typeof history.replaceState !== 'function') return
 
   const { status, boundId } = store.getSnapshot()
 
-  // Tant que le magasin n'a pas tranché, l'adresse est la SOURCE du lien et non
-  // son reflet. Écrire ici effaçait `/t/:id` au premier rendu — synchrone, donc
-  // AVANT que le point d'entrée n'ait lu le chemin — et la page repartait sur
-  // « le dernier cahier touché ».
   if (status === 'loading') return
 
   const wanted = boundId ? taskPath(boundId) : '/'
   if (location.pathname === wanted) return
   try {
     history.replaceState(null, '', `${wanted}${location.search}`)
-  } catch {
-    // Une origine opaque refuse l'écriture de l'historique. L'adresse est un
-    // confort, pas le lien lui-même : celui-ci vit dans le magasin.
-  }
+  } catch {}
 }
 
 function render(): void {
-  // Une frame planifiée avant le démontage s'exécute quand même : sans ce
-  // garde-fou, elle écrivait dans une racine devenue nulle.
   if (!root) return
 
-  // Le champ de saisie est remplacé par le rendu : on note s'il avait le focus
-  // et où était le curseur, pour que l'agent ne coupe pas la parole à l'humain.
+  const openTask = store.currentTask()
+  const listKey = openTask ? `${openTask.id}:${openTask.version}:${store.tasksRevision()}` : ''
+  if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
+  if ((openTask?.id ?? null) !== credentialsFor) {
+    credentialsFor = openTask?.id ?? null
+    credentials = []
+    revealed = null
+    if (openTask) refreshCredentials(openTask.id)
+  }
+
   const active = document.activeElement
   const focused = active instanceof HTMLInputElement && active.id in drafts ? active.id : null
   const caret = focused ? (active as HTMLInputElement).selectionStart : null
 
-  // Le titre est un point d'ancrage : on l'y pose après une création, et une
-  // écriture d'agent survenue juste après ne doit pas le faire retomber sur
-  // `body`. Le rendu remplace le nœud, donc il faut le rétablir explicitement.
   const headingFocused = active !== null && active === root.querySelector('.page-head h1')
+
+  // N'importe quel élément identifié, pas seulement les champs : une écriture
+  // d'agent redessine la page, et sans cela le focus retombait sur `body`
+  // depuis n'importe quel bouton — au clavier, on repart du début de la page.
+  const focusedId =
+    !focused && active instanceof HTMLElement && active.id && root.contains(active)
+      ? active.id
+      : null
 
   root.innerHTML = `<main id="content">${renderBody()}</main>`
 
@@ -881,29 +1445,20 @@ function render(): void {
     if (caret !== null) field?.setSelectionRange(caret, caret)
   } else if (headingFocused) {
     root.querySelector<HTMLElement>('.page-head h1')?.focus()
+  } else if (focusedId) {
+    document.getElementById(focusedId)?.focus()
   }
 
   announce()
   reflectAddress()
 }
 
-/**
- * Rendu groupé.
- *
- * Une écriture d'agent notifie deux fois — une par le magasin, une par le
- * témoin d'appels — et la page se redessinerait deux fois de suite. Sans
- * conséquence sur l'état, mais visible à l'œil pendant une rafale, et deux fois
- * plus d'occasions de perdre le curseur de la personne qui tape.
- */
 let renderScheduled = false
 let pendingFrame: number | null = null
 
 function scheduleRender(): void {
   if (renderScheduled) return
   renderScheduled = true
-  // À la frame, pas à la micro-tâche : les deux notifications d'une écriture
-  // d'agent sont séparées par un `await`, si bien qu'une micro-tâche ne
-  // grouperait rien.
   const schedule =
     typeof requestAnimationFrame === 'function'
       ? requestAnimationFrame
@@ -915,15 +1470,6 @@ function scheduleRender(): void {
   }) as unknown as number
 }
 
-/**
- * Rend tout de suite, et ANNULE la frame en attente.
- *
- * Sans cette annulation, un rendu immédiat était suivi, une frame plus tard, du
- * rendu que le magasin avait planifié : tout le sous-arbre était remplacé et le
- * focus que l'appelant venait de poser disparaissait. C'est ce qui se produisait
- * juste après la création d'une tâche — le moment où l'on a le plus besoin d'un
- * point d'ancrage, et où une aide technique n'annonçait plus rien.
- */
 function renderNow(): void {
   if (pendingFrame !== null) {
     if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(pendingFrame)
@@ -934,10 +1480,6 @@ function renderNow(): void {
   render()
 }
 
-/**
- * Monte la vue sur une racine et s'abonne aux trois sources de changement.
- * Rend une fonction de démontage, pour qu'un test puisse repartir à neuf.
- */
 export function mount(target: HTMLElement): () => void {
   root = target
   for (const key of Object.keys(drafts)) drafts[key] = ''
@@ -945,6 +1487,16 @@ export function mount(target: HTMLElement): () => void {
   humanError = null
   lastAnnouncement = ''
   renderScheduled = false
+  credentials = []
+  revealed = null
+  credentialsFor = null
+  allTasks = []
+  allTasksFor = ''
+  notice = null
+  showAllHistory = false
+  editing = null
+  loggingStep = false
+  showArchived = false
 
   render()
   const subscriptions = [
@@ -965,7 +1517,6 @@ export function mount(target: HTMLElement): () => void {
   }
 }
 
-/** Force un rendu immédiat. Réservé aux tests, qui n'attendent pas la frame. */
 export function __renderNow(): void {
   renderNow()
 }

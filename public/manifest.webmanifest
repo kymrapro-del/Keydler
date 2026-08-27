@@ -1,0 +1,33 @@
+{
+  "name": "Watch Log — a shared memory for you and your AI",
+  "short_name": "Watch Log",
+  "description": "Keeps completed work, rules to follow, and mistakes not to repeat, so a new conversation can continue from the right place.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#131316",
+  "theme_color": "#3d4ec8",
+  "categories": ["productivity", "developer"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

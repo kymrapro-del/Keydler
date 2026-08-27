@@ -1,7 +1,3 @@
-/**
- * Point d'entrée de la couche WebMCP. Importer ce module suffit à enregistrer
- * les outils : c'est le seul effet de bord voulu du démarrage.
- */
 import { registerTools } from './register'
 
 void registerTools()

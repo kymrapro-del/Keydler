@@ -1,26 +1,6 @@
 import { renderTaskState } from '../domain/render'
 import type { TaskState } from '../domain/types'
 
-/**
- * Export d'un cahier.
- *
- * Le protocole de mesure exige que les journaux soient versés au dépôt pour
- * qu'un tiers reproduise. Sans export, ils ne sortent que par une lecture
- * manuelle d'IndexedDB — ce qu'un essai a signalé comme un obstacle réel, et
- * ce qui m'a fait détruire sept cahiers en réinitialisant entre deux essais.
- *
- * Deux formats dans un seul fichier : la restitution compacte en tête, lisible
- * telle quelle, et l'état complet en JSON pour rejouer ou vérifier.
- */
-
-/**
- * Horodatage robuste.
- *
- * `toISOString` lève sur un nombre fini mais hors plage — au-delà de 8,64e15 —
- * et la relecture ne garde que `Number.isFinite`. Un seul enregistrement
- * corrompu faisait donc échouer l'export de TOUS les autres, ce qui ruine
- * exactement la reproductibilité que ce module existe pour offrir.
- */
 function horodatage(at: number): string {
   try {
     return new Date(at).toISOString()
@@ -29,12 +9,6 @@ function horodatage(at: number): string {
   }
 }
 
-/**
- * Clôture de bloc plus longue que la plus longue suite d'accents graves du
- * contenu. Une preuve peut en contenir — un diff, une sortie de commande — et
- * une clôture trop courte laisserait le reste du fichier s'interpréter comme du
- * markdown chez qui vient vérifier une campagne.
- */
 function bloc(contenu: string, langue = ''): string[] {
   const plusLongue = (contenu.match(/`+/g) ?? []).reduce((n, m) => Math.max(n, m.length), 0)
   const clôture = '`'.repeat(Math.max(3, plusLongue + 1))
@@ -54,7 +28,6 @@ function enTete(task: TaskState): string[] {
   ]
 }
 
-/** Le journal d'audit en tableau : qui a écrit quoi, quand, et ce qui a été refusé. */
 function journal(task: TaskState): string[] {
   if (task.audit.length === 0) return []
   return [
@@ -76,7 +49,6 @@ function journal(task: TaskState): string[] {
   ]
 }
 
-/** Les preuves jointes, que la restitution compacte ne montre jamais. */
 function preuves(task: TaskState): string[] {
   const avecPreuve = task.steps.filter((s) => s.evidence !== null)
   if (avecPreuve.length === 0) return []
@@ -123,7 +95,6 @@ export function buildTaskExport(task: TaskState): string {
   ].join('\n')
 }
 
-/** Tous les cahiers d'un appareil, pour récolter une campagne de mesure. */
 export function buildFullExport(tasks: readonly TaskState[]): string {
   if (tasks.length === 0) return '# Aucun cahier sur cet appareil\n'
   return [
@@ -137,7 +108,6 @@ export function buildFullExport(tasks: readonly TaskState[]): string {
   ].join('\n')
 }
 
-/** Nom de fichier stable et triable, sans caractère hasardeux. */
 export function exportFilename(task: TaskState | null): string {
   if (!task) return 'cahiers.md'
   const base = task.title

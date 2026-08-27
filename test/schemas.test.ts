@@ -2,18 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { ALL_TOOLS, READ_TOOLS, WRITE_TOOLS } from '../src/webmcp/tools'
 import { MAX_EVIDENCE_LENGTH, MAX_FIELD_LENGTH } from '../src/domain/validate'
 
-/**
- * Les schémas d'entrée.
- *
- * Un schéma n'est pas de la décoration : c'est la seule partie du contrat que
- * l'agent lit AVANT d'appeler, et donc la seule qui puisse lui éviter un
- * aller-retour. Un schéma lâche déplace tout le travail vers le refus —
- * l'agent essaie, échoue, relit, recommence, et chaque tour coûte un appel de
- * modèle.
- *
- * Ces cas verrouillent trois durcissements, chacun pour une panne distincte.
- */
-
 type Schema = {
   type?: string
   properties?: Record<string, Schema>
@@ -31,7 +19,6 @@ type Schema = {
 const schemaOf = (name: string): Schema =>
   ALL_TOOLS.find((t) => t.name === name)!.inputSchema as Schema
 
-/** Tous les objets d'un schéma, racine comprise. */
 function objets(schema: Schema, chemin = '$'): [string, Schema][] {
   const ici: [string, Schema][] = schema.type === 'object' ? [[chemin, schema]] : []
   const enfants = Object.entries(schema.properties ?? {}).flatMap(([clé, valeur]) =>
@@ -44,24 +31,18 @@ describe('durcissement', () => {
   it('refuse tout champ inconnu, aux racines COMME dans les objets imbriqués', () => {
     for (const tool of ALL_TOOLS) {
       for (const [chemin, objet] of objets(tool.inputSchema as Schema)) {
-        // Sans cela, un champ mal orthographié est accepté puis ignoré :
-        // l'agent croit avoir joint une preuve, le cahier n'en a aucune, et
-        // rien ne le dit. C'est la panne la plus discrète du lot.
         expect(objet.additionalProperties, `${tool.name} ${chemin}`).toBe(false)
       }
     }
   })
 
   it('atteint bien l’objet imbriqué qu’on croit vérifier', () => {
-    // Garde-fou du garde-fou : si `objets` cessait de descendre, le cas
-    // ci-dessus passerait en n'ayant plus rien contrôlé.
     const chemins = objets(schemaOf('log_step')).map(([c]) => c)
     expect(chemins).toContain('$.evidence')
   })
 
   it('déclare les bornes de longueur que le domaine applique', () => {
     const logStep = schemaOf('log_step')
-    // La seule façon d'apprendre qu'un champ plafonne était de le dépasser.
     expect(logStep.properties!.action.maxLength).toBe(MAX_FIELD_LENGTH)
     expect(logStep.properties!.action.minLength).toBe(1)
     expect(logStep.properties!.evidence.properties!.content.maxLength).toBe(MAX_EVIDENCE_LENGTH)
@@ -88,9 +69,6 @@ describe('durcissement', () => {
       expect(schema.required).toContain('mutation_id')
       expect(schema.properties!.based_on_version.type).toBe('integer')
       expect(schema.properties!.based_on_version.minimum).toBe(1)
-      // Le motif exclut l'espace : un identifiant se recopie à l'identique
-      // d'un appel à l'autre, et une espace de fin suffirait à en faire un
-      // autre — donc à créer le doublon qu'il existe pour empêcher.
       expect(schema.properties!.mutation_id.pattern).toBe('^[A-Za-z0-9_.:-]{8,64}$')
     }
   })
@@ -105,8 +83,6 @@ describe('durcissement', () => {
 
   it('n’accepte que l’objet vide là où l’outil ne prend rien', () => {
     const resume = schemaOf('resume_task')
-    // La forme que MCP recommande : `{ type: 'object' }` nu accepterait
-    // n'importe quoi.
     expect(resume).toMatchObject({ type: 'object', properties: {}, additionalProperties: false })
   })
 
@@ -129,9 +105,6 @@ describe('durcissement', () => {
 
 describe('ce que la description doit porter faute d’annotation', () => {
   it('dit le contrat de rejeu, que WebMCP ne sait pas transporter', () => {
-    // WebMCP n'a pas d'`idempotentHint` : sa `ToolAnnotations` ne connaît que
-    // `readOnlyHint` et `untrustedContentHint`. Ce qui n'est pas transporté
-    // doit être écrit là où l'agent le lit.
     for (const tool of WRITE_TOOLS) {
       expect(tool.description, tool.name).toContain('mutation_id')
       const jeton = (tool.inputSchema as Schema).properties!.mutation_id.description!

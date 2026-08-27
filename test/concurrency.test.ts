@@ -6,18 +6,6 @@ import { loadTask } from '../src/persistence/taskRepository'
 import * as store from '../src/store/taskStore'
 import { storeWrite } from './helpers'
 
-/**
- * Écritures concurrentes.
- *
- * Un agent émet volontiers plusieurs appels d'outil en parallèle. Sans
- * sérialisation, deux écritures lisent le même état, produisent chacune la
- * version suivante, et la seconde écrase la première : les deux se croient
- * appliquées, et le numéro de version final ne trahit rien.
- *
- * C'est la panne la plus grave possible pour ce produit, puisqu'elle contredit
- * en silence sa seule promesse. Ces tests l'interdisent.
- */
-
 async function clearDatabase() {
   const db = await getDb()
   const tx = db.transaction(['tasks', 'meta'], 'readwrite')
@@ -50,8 +38,6 @@ describe('écritures concurrentes', () => {
     const appliquées = résultats.filter((r) => r.status === 'fulfilled')
     const refusées = résultats.filter((r) => r.status === 'rejected')
 
-    // Sans sérialisation, les deux se déclareraient appliquées et l'une des
-    // deux étapes disparaîtrait sans laisser de trace.
     expect(appliquées).toHaveLength(1)
     expect(refusées).toHaveLength(1)
     expect((refusées[0] as PromiseRejectedResult).reason).toBeInstanceOf(StaleStateError)
@@ -79,12 +65,9 @@ describe('écritures concurrentes', () => {
     expect(appliquées).toHaveLength(1)
 
     const final = store.currentTask()!
-    // Une seule mutation appliquée, plus sept refus qui n'incrémentent pas.
     expect(final.version).toBe(v + 1)
     expect(final.steps).toHaveLength(1)
 
-    // Aucun refus n'est passé sous silence, mais sept tentatives identiques
-    // tiennent en une entrée comptée plutôt qu'en sept lignes de bruit.
     const refus = final.audit.filter((e) => e.outcome === 'refused')
     expect(refus).toHaveLength(1)
     expect(refus[0].repeated).toBe(7)
@@ -127,7 +110,6 @@ describe('écritures concurrentes', () => {
     )
 
     const final = store.currentTask()!
-    // Autoritaires : les six passent, et chacune incrémente.
     expect(final.constraints).toHaveLength(6)
     expect(final.version).toBe(task.version + 6)
   })

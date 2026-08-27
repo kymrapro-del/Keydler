@@ -6,21 +6,12 @@ import { FutureSchemaError, normalizeTask } from '../src/persistence/normalize'
 import { escapeHtml } from '../src/ui/escape'
 import { listTasks, loadTask, saveTask } from '../src/persistence/taskRepository'
 
-/**
- * Lecture d'enregistrements écrits par une autre version du code.
- *
- * Le schéma a déjà bougé une fois pendant le développement. Un cahier écrit
- * hier ne doit pas faire planter la page aujourd'hui : la donnée est là, elle
- * est simplement incomplète.
- */
-
 async function clear() {
   const db = await getDb()
   const tx = db.transaction(['tasks', 'meta'], 'readwrite')
   await Promise.all([tx.objectStore('tasks').clear(), tx.objectStore('meta').clear(), tx.done])
 }
 
-/** Écrit un enregistrement brut, sans passer par le dépôt. */
 async function écrireBrut(record: unknown) {
   const db = await getDb()
   await db.put('tasks', record as never)
@@ -49,8 +40,6 @@ describe('normalisation à la lecture', () => {
       constraints: [{ id: 'c1', rule: 'Ne pas toucher au schéma' }],
     } as never)
 
-    // En cas de doute on garde la règle : la lever en silence serait la pire
-    // des issues pour un produit qui existe pour imposer des interdits.
     expect(task!.constraints[0].active).toBe(true)
   })
 
@@ -77,16 +66,11 @@ describe('normalisation à la lecture', () => {
   })
 
   it('conserve un identifiant tel quel : c’est la clé primaire', async () => {
-    // Le réduire à la lecture faisait qu'un enregistrement ne correspondait
-    // plus à sa propre clé : `saveTask` cherchait alors une clé inexistante,
-    // sautait la comparaison de version sans erreur, et forkait un second
-    // enregistrement. L'échappement est l'affaire du rendu, pas de la lecture.
     const bizarre = 'x" onload="alert(1)'
     await écrireBrut({ id: bizarre, title: 'Cahier', version: 3, updatedAt: 1 })
 
     const relu = await loadTask(bizarre)
     expect(relu?.id).toBe(bizarre)
-    // Et il reste retrouvable par sa clé, ce qui est tout l'enjeu.
     expect(relu?.version).toBe(3)
   })
 
@@ -97,9 +81,7 @@ describe('normalisation à la lecture', () => {
       steps: [{ id: 's1"><script>', action: 'a', result: 'b' }],
     } as never)
 
-    // Intacts en mémoire…
     expect(task!.steps[0].id).toBe('s1"><script>')
-    // …et inoffensifs une fois interpolés dans un attribut.
     expect(escapeHtml(task!.steps[0].id)).not.toContain('"')
     expect(escapeHtml(task!.steps[0].id)).not.toContain('<')
   })
@@ -107,8 +89,6 @@ describe('normalisation à la lecture', () => {
   it('refuse un enregistrement écrit par une version plus récente', async () => {
     await écrireBrut({ id: 'futur', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
 
-    // Mieux vaut un message clair qu'un cahier tronqué par un code qui ne
-    // comprend pas ce qu'il lit.
     await expect(loadTask('futur')).rejects.toBeInstanceOf(FutureSchemaError)
   })
 
@@ -122,8 +102,6 @@ describe('normalisation à la lecture', () => {
   })
 
   it('répare décisions, rejets et journal d’un enregistrement mutilé', () => {
-    // Ces trois tableaux n'étaient couverts par aucun cas : ce sont pourtant
-    // eux qui portent le « pourquoi » et les interdits, donc l'essentiel.
     const task = normalizeTask({
       id: 'x',
       version: 2,
@@ -132,7 +110,6 @@ describe('normalisation à la lecture', () => {
       audit: [{ id: 'a1', operation: 'log_step', outcome: 'refused', repeated: 3 }, { id: 'a2' }],
     } as never)
 
-    // L'entrée nulle est écartée, pas relayée : le reste du cahier est sauvé.
     expect(task!.decisions).toHaveLength(1)
     expect(task!.decisions[0]).toMatchObject({
       choice: 'Approche C',
@@ -142,9 +119,6 @@ describe('normalisation à la lecture', () => {
     expect(task!.rejected).toHaveLength(1)
     expect(task!.rejected[0]).toMatchObject({ approach: 'JWT B', reason: '', source: 'human' })
     expect(task!.audit[0]).toMatchObject({ outcome: 'refused', repeated: 3 })
-    // Une issue illisible est tenue pour appliquée, pas pour un refus inventé,
-    // et une source illisible retombe sur « agent » : jamais sur « human »,
-    // qui conférerait à tort l'autorité humaine à une conjecture.
     expect(task!.audit[1].outcome).toBe('applied')
     expect(task!.audit[1].actor).toBe('agent')
     expect(task!.audit[1].repeated).toBeUndefined()
@@ -167,7 +141,6 @@ describe('normalisation à la lecture', () => {
 })
 
 describe('migration du schéma v1', () => {
-  /** Un enregistrement tel que la version précédente l'écrivait. */
   function v1(): Record<string, unknown> {
     return {
       id: 'ancien-1',
@@ -200,9 +173,6 @@ describe('migration du schéma v1', () => {
   it('rend à l’humain une autorité qu’on lui avait prise', () => {
     const task = normalizeTask(v1() as never)!
 
-    // Ce qu'un humain avait écrit était déjà autoritaire ; ce qu'un agent avait
-    // écrit ne l'a jamais été légitimement. Le relire comme une proposition
-    // rend une décision à celui qui aurait dû la prendre.
     expect(task.constraints[0].standing).toBe('accepted')
     expect(task.constraints[1].standing).toBe('proposed')
     expect(task.rejected[0].standing).toBe('accepted')
@@ -212,10 +182,6 @@ describe('migration du schéma v1', () => {
   it('rebaptise « machine_verified » sans inventer un clic humain', () => {
     const task = normalizeTask(v1() as never)!
 
-    // L'enregistrement décrivait une preuve jointe et non lue : c'est
-    // exactement « evidence ». Le monter en « human_verified » inventerait une
-    // validation qui n'a jamais eu lieu ; le rétrograder en « claimed »
-    // effacerait une preuve qui, elle, existe bel et bien.
     expect(task.steps[0].confidence).toBe('evidence')
     expect(task.steps[0].evidence?.content).toBe('183 passed')
     expect(task.steps[0].evidence?.verifiedAt).toBeNull()
@@ -223,8 +189,6 @@ describe('migration du schéma v1', () => {
 
   it('donne une mémoire de mutations vide plutôt que de planter dessus', () => {
     const task = normalizeTask(v1() as never)!
-    // Un cahier d'avant repart sans garantie d'idempotence : c'est le
-    // comportement d'avant, pas une régression.
     expect(task.mutations).toEqual([])
   })
 
@@ -260,10 +224,6 @@ describe('migration du schéma v1', () => {
     }
     const task = normalizeTask(stored as never)!
 
-    // L'empreinte est arrivée en v3 : sans elle, on ne peut pas comparer
-    // l'intention d'un réessai à celle de l'appel d'origine. La conserver
-    // reviendrait à garder, pour les cahiers déjà sur disque, le défaut même
-    // qu'elle corrige — rendre la réponse du premier appel à un second travail.
     expect(task.mutations.map((m) => m.id)).toEqual(['m-avec'])
   })
 
