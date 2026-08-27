@@ -9,6 +9,11 @@ import { renderTaskState } from '../domain/render'
 import {
   acceptedRejections,
   addConstraint,
+  editConstraint,
+  editRejection,
+  logStep,
+  renameTask,
+  setNext,
   proposedConstraints,
   proposedRejections,
   rejectApproach,
@@ -48,6 +53,11 @@ const drafts: Record<string, string> = {
   'new-rejection-reason': '',
   'new-secret-name': '',
   'new-secret-purpose': '',
+  'edit-value': '',
+  'edit-reason': '',
+  'step-action': '',
+  'step-result': '',
+  'step-evidence': '',
 }
 
 let creating = false
@@ -60,6 +70,56 @@ let allTasks: TaskState[] = []
 let allTasksFor = -1
 let notice: string | null = null
 let showAllHistory = false
+
+type Editing =
+  | { kind: 'title' }
+  | { kind: 'next' }
+  | { kind: 'constraint'; id: string }
+  | { kind: 'rejection'; id: string }
+
+let editing: Editing | null = null
+let loggingStep = false
+
+function startEditing(next: Editing, value: string, reason = ''): void {
+  editing = next
+  loggingStep = false
+  humanError = null
+  drafts['edit-value'] = value
+  drafts['edit-reason'] = reason
+  renderNow()
+  document.querySelector<HTMLInputElement>('#edit-value')?.focus()
+}
+
+function stopEditing(): void {
+  editing = null
+  drafts['edit-value'] = ''
+  drafts['edit-reason'] = ''
+  renderNow()
+}
+
+function editingIs(kind: Editing['kind'], id?: string): boolean {
+  if (!editing || editing.kind !== kind) return false
+  return id === undefined || ('id' in editing && editing.id === id)
+}
+
+function editForm(label: string, second?: string): string {
+  return `<form id="edit-form" class="form form--inline" novalidate>
+      <div class="field">
+        <label for="edit-value">${label}</label>
+        <input id="edit-value" type="text" autocomplete="off" />
+      </div>
+      ${
+        second
+          ? `<div class="field">
+               <label for="edit-reason">${second}</label>
+               <input id="edit-reason" type="text" autocomplete="off" />
+             </div>`
+          : ''
+      }
+      <button type="submit" class="btn btn--primary">Save</button>
+      <button type="button" id="cancel-edit" class="btn">Cancel</button>
+    </form>`
+}
 
 function refreshTaskList(version: number): void {
   allTasksFor = version
@@ -194,11 +254,18 @@ function renderNext(task: TaskState): string {
 
   return `<section class="hero" aria-labelledby="next-title">
       <h2 id="next-title" class="hero__label">Next</h2>
-      <p class="hero__value">${
-        task.next
-          ? escapeHtml(task.next)
-          : '<span class="muted">Not set yet — the agent will decide and record it.</span>'
-      }</p>
+      ${
+        editingIs('next')
+          ? editForm('What happens next')
+          : `<p class="hero__value">${
+              task.next
+                ? escapeHtml(task.next)
+                : '<span class="muted">Not set yet — the agent will decide and record it.</span>'
+            }</p>
+             <div class="actions">
+               <button type="button" id="edit-next" class="btn btn--quiet">Change it</button>
+             </div>`
+      }
     </section>`
 }
 
@@ -227,9 +294,42 @@ function renderCompletedWork(task: TaskState): string {
     ? `<ul class="rows">${shown.map(renderStepRow).join('')}</ul>${remainder(task.steps.length)}`
     : `<p class="empty">Nothing recorded yet. Steps appear here as the agent works.</p>`
 
+  const own =
+    task.status !== 'active'
+      ? ''
+      : loggingStep
+        ? `<form id="form-step" class="form" novalidate>
+             <div class="field">
+               <label for="step-action">What you did</label>
+               <input id="step-action" type="text" autocomplete="off"
+                      placeholder="Rewrote the token issuer by hand" />
+             </div>
+             <div class="field">
+               <label for="step-result">What came of it</label>
+               <input id="step-result" type="text" autocomplete="off"
+                      placeholder="Public API unchanged, tests still green" />
+             </div>
+             <div class="field">
+               <label for="step-evidence">Evidence <span class="muted">(optional)</span></label>
+               <input id="step-evidence" type="text" autocomplete="off"
+                      placeholder="Paste the command output, a diff, or a link" />
+             </div>
+             <div class="actions">
+               <button type="submit" class="btn btn--primary">Record it</button>
+               <button type="button" id="cancel-step" class="btn">Cancel</button>
+             </div>
+             <p class="muted">
+               Work you record yourself counts as verified by you — you were there.
+             </p>
+           </form>`
+        : `<div class="actions">
+             <button type="button" id="log-step" class="btn btn--quiet">Record a step yourself</button>
+           </div>`
+
   return `<section class="card" aria-labelledby="work-title">
       <h2 id="work-title" class="card__title">Completed work</h2>
       ${body}
+      ${own}
     </section>`
 }
 
@@ -239,13 +339,16 @@ function renderRules(task: TaskState): string {
   const rows = decided
     .map((c) => {
       const lifted = !c.active || c.standing === 'declined'
+      if (editingIs('constraint', c.id)) return `<li>${editForm('Rule')}</li>`
       return `<li class="row${lifted ? ' row--lifted' : ''}">
         <span class="chip chip--${c.source}">${c.source === 'human' ? 'You' : 'Agent'}</span>
         <span class="row__text">${escapeHtml(c.rule)}</span>
         ${
           c.standing === 'declined'
             ? '<span class="muted">declined</span>'
-            : `<button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}"
+            : `<button type="button" class="btn btn--quiet" data-edit-rule="${escapeHtml(c.id)}"
+                 aria-label="Reword the rule: ${escapeHtml(c.rule)}">Reword</button>
+           <button type="button" class="btn" data-toggle="${escapeHtml(c.id)}" data-active="${c.active}"
                  aria-label="${c.active ? 'Lift' : 'Restore'} the rule: ${escapeHtml(c.rule)}">
              ${c.active ? 'Lift' : 'Restore'}
            </button>`
@@ -278,13 +381,17 @@ function renderRules(task: TaskState): string {
 
 function renderDontRetry(task: TaskState): string {
   const rows = acceptedRejections(task)
-    .map(
-      (r) => `<li class="row row--danger">
+    .map((r) =>
+      editingIs('rejection', r.id)
+        ? `<li>${editForm('Approach', 'Why it failed')}</li>`
+        : `<li class="row row--danger">
         <span class="chip chip--${r.source}">${r.source === 'human' ? 'You' : 'Agent'}</span>
         <span class="row__text">
           <strong>${escapeHtml(r.approach)}</strong>
           <span class="muted"> — ${escapeHtml(r.reason)}</span>
         </span>
+        <button type="button" class="btn btn--quiet" data-edit-rejection="${escapeHtml(r.id)}"
+                aria-label="Reword: ${escapeHtml(r.approach)}">Reword</button>
       </li>`,
     )
     .join('')
@@ -616,7 +723,15 @@ function renderTechnical(task: TaskState | null): string {
 function renderDashboard(task: TaskState): string {
   return `<header class="page-head">
       <p class="page-head__eyebrow">Watch Log</p>
-      <h1 tabindex="-1">${escapeHtml(task.title)}</h1>
+      ${
+        editingIs('title')
+          ? editForm('Task title')
+          : `<div class="page-head__title">
+               <h1 tabindex="-1">${escapeHtml(task.title)}</h1>
+               <button type="button" id="edit-title" class="btn btn--quiet"
+                       aria-label="Rename this task">Rename</button>
+             </div>`
+      }
       ${renderSwitcher(task)}
     </header>
     ${noticeBlock()}
@@ -740,6 +855,95 @@ function bindCreation(): void {
 }
 
 function bindSupervision(): void {
+  document.querySelector('#edit-title')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (task) startEditing({ kind: 'title' }, task.title)
+  })
+
+  document.querySelector('#edit-next')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (task) startEditing({ kind: 'next' }, task.next ?? '')
+  })
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-edit-rule]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.editRule!
+      const rule = store.currentTask()?.constraints.find((c) => c.id === id)
+      if (rule) startEditing({ kind: 'constraint', id }, rule.rule)
+    })
+  }
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-edit-rejection]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.editRejection!
+      const rejection = store.currentTask()?.rejected.find((r) => r.id === id)
+      if (rejection) startEditing({ kind: 'rejection', id }, rejection.approach, rejection.reason)
+    })
+  }
+
+  document.querySelector('#cancel-edit')?.addEventListener('click', stopEditing)
+
+  document.querySelector<HTMLFormElement>('#edit-form')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const current = editing
+    if (!current) return
+    const value = drafts['edit-value'].trim()
+    const reason = drafts['edit-reason'].trim()
+
+    const mutate: Parameters<typeof store.mutate>[0] =
+      current.kind === 'title'
+        ? (state) => renameTask(state, value)
+        : current.kind === 'next'
+          ? (state) => setNext(state, value)
+          : current.kind === 'constraint'
+            ? (state) => editConstraint(state, current.id, value)
+            : (state) => editRejection(state, current.id, { approach: value, reason })
+
+    humanAction('Saving the change', mutate, stopEditing)
+  })
+
+  document.querySelector('#log-step')?.addEventListener('click', () => {
+    loggingStep = true
+    editing = null
+    humanError = null
+    renderNow()
+    document.querySelector<HTMLInputElement>('#step-action')?.focus()
+  })
+
+  document.querySelector('#cancel-step')?.addEventListener('click', () => {
+    loggingStep = false
+    humanError = null
+    for (const key of ['step-action', 'step-result', 'step-evidence']) drafts[key] = ''
+    renderNow()
+  })
+
+  document.querySelector<HTMLFormElement>('#form-step')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const action = drafts['step-action'].trim()
+    const result = drafts['step-result'].trim()
+    const content = drafts['step-evidence'].trim()
+
+    humanAction(
+      'Recording the step',
+      (state) =>
+        logStep(
+          state,
+          {
+            action,
+            result,
+            evidence: content ? { kind: 'command_output', content } : null,
+            basedOnVersion: null,
+          },
+          'human',
+        ),
+      () => {
+        loggingStep = false
+        for (const key of ['step-action', 'step-result', 'step-evidence']) drafts[key] = ''
+        renderNow()
+      },
+    )
+  })
+
   document.querySelector<HTMLFormElement>('#form-constraint')?.addEventListener('submit', (e) => {
     e.preventDefault()
     const rule = drafts['new-constraint'].trim()
@@ -1110,6 +1314,8 @@ export function mount(target: HTMLElement): () => void {
   allTasksFor = -1
   notice = null
   showAllHistory = false
+  editing = null
+  loggingStep = false
 
   render()
   const subscriptions = [

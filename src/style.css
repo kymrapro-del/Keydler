@@ -140,6 +140,27 @@ pre {
   outline: none;
 }
 
+.page-head__title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.btn--quiet {
+  padding: var(--sp-1) var(--sp-2);
+  min-height: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--c-text-muted);
+  font-size: 0.8125rem;
+}
+
+.btn--quiet:hover {
+  background: var(--c-surface);
+  color: var(--c-text);
+}
+
 .hero {
   padding: var(--sp-5);
   border: 2px solid var(--c-accent);

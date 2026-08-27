@@ -25,6 +25,9 @@ const BY_HUMAN: Record<string, string> = {
   decline_constraint: 'declined a proposed rule',
   accept_rejection: 'accepted a proposed rejection',
   decline_rejection: 'declined a proposed rejection',
+  rename_task: 'renamed the task',
+  edit_constraint: 'reworded a rule',
+  edit_rejection: 'reworded a ruled-out approach',
 }
 
 const BY_AGENT: Record<string, string> = {
