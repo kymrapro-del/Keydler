@@ -7,6 +7,10 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ['public/sw.js'],
+    languageOptions: { ecmaVersion: 2022, globals: { ...globals.serviceworker } },
+  },
+  {
     files: ['**/*.ts'],
     languageOptions: {
       ecmaVersion: 2022,

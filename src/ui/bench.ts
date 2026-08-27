@@ -3,6 +3,7 @@ import { buildFullExport, buildTaskExport, exportFilename } from '../export/note
 import { parseExport } from '../export/restore'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
+import { describeHistory } from './history'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
 import {
@@ -58,6 +59,7 @@ let credentialsFor: string | null = null
 let allTasks: TaskState[] = []
 let allTasksFor = -1
 let notice: string | null = null
+let showAllHistory = false
 
 function refreshTaskList(version: number): void {
   allTasksFor = version
@@ -531,6 +533,44 @@ function renderActivity(task: TaskState): string {
     </section>`
 }
 
+const HISTORY_PREVIEW = 12
+
+function renderHistory(task: TaskState): string {
+  const lines = describeHistory(task.audit)
+  const shown = showAllHistory ? lines : lines.slice(0, HISTORY_PREVIEW)
+
+  const rows = shown
+    .map(
+      (line) => `<li class="event${line.refused ? ' event--refused' : ''}">
+        <span class="event__when muted">${new Date(line.at).toLocaleString('en-GB')}</span>
+        <span class="event__what">
+          <strong>${line.who}</strong> ${escapeHtml(line.what)}${
+            line.repeated > 1 ? ` <span class="muted">×${line.repeated}</span>` : ''
+          }
+          ${line.detail ? `<span class="muted"> — ${escapeHtml(line.detail)}</span>` : ''}
+        </span>
+      </li>`,
+    )
+    .join('')
+
+  const more =
+    lines.length > HISTORY_PREVIEW
+      ? `<button type="button" id="toggle-history" class="btn">${
+          showAllHistory ? 'Show recent only' : `Show all ${lines.length} entries`
+        }</button>`
+      : ''
+
+  return `<section class="card" aria-labelledby="history-title">
+      <h2 id="history-title" class="card__title">History</h2>
+      <p class="muted">
+        Everything recorded on this task, newest first — including writes that
+        were refused. The oldest entries are dropped once the log gets long.
+      </p>
+      ${rows ? `<ol class="events">${rows}</ol>` : '<p class="empty">Nothing yet.</p>'}
+      ${more}
+    </section>`
+}
+
 function renderTechnical(task: TaskState | null): string {
   const { phase, availability, toolNames, error, observedTools, lifecycle } = getRegistrationState()
 
@@ -591,6 +631,7 @@ function renderDashboard(task: TaskState): string {
     ${renderProposals(task)}
     ${renderEvidence(task)}
     ${renderActivity(task)}
+    ${renderHistory(task)}
     ${renderTechnical(task)}`
 }
 
@@ -908,6 +949,12 @@ function bindSupervision(): void {
 }
 
 function bindTechnical(): void {
+  document.querySelector('#toggle-history')?.addEventListener('click', () => {
+    showAllHistory = !showAllHistory
+    renderNow()
+    document.querySelector<HTMLButtonElement>('#toggle-history')?.focus()
+  })
+
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
 
   document.querySelector('#export-one')?.addEventListener('click', () => {
@@ -1062,6 +1109,7 @@ export function mount(target: HTMLElement): () => void {
   allTasks = []
   allTasksFor = -1
   notice = null
+  showAllHistory = false
 
   render()
   const subscriptions = [
