@@ -25,6 +25,11 @@ const BY_HUMAN: Record<string, string> = {
   decline_constraint: 'declined a proposed rule',
   accept_rejection: 'accepted a proposed rejection',
   decline_rejection: 'declined a proposed rejection',
+  rename_task: 'renamed the task',
+  edit_constraint: 'reworded a rule',
+  edit_rejection: 'reworded a ruled-out approach',
+  archive_task: 'archived the task',
+  unarchive_task: 'brought the task back',
 }
 
 const BY_AGENT: Record<string, string> = {
@@ -33,6 +38,14 @@ const BY_AGENT: Record<string, string> = {
   add_constraint: 'proposed a rule',
   reject_approach: 'proposed ruling out an approach',
   complete_task: 'closed the task',
+}
+
+const ATTEMPTED: Record<string, string> = {
+  log_step: 'record a step',
+  add_decision: 'record a decision',
+  add_constraint: 'propose a rule',
+  reject_approach: 'propose ruling out an approach',
+  complete_task: 'close the task',
 }
 
 export function refusalReason(detail: string): string {
@@ -74,7 +87,7 @@ export function describeEntry(entry: AuditEntry): HistoryLine {
     return {
       at: entry.at,
       who,
-      what: `tried to ${verb} — refused`,
+      what: `tried to ${ATTEMPTED[entry.operation] ?? entry.operation} — refused`,
       detail: refusalReason(entry.detail),
       refused: true,
       repeated,

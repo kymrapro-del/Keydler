@@ -58,6 +58,7 @@ export function createTask(
     version: 1,
     next: optionalText('next', input.next, 400),
     status: 'active',
+    archived: false,
     summary: null,
     constraints: [],
     steps: [],
@@ -500,6 +501,123 @@ export function setRejectionStanding(
       patch: {
         rejected: state.rejected.map((r) => (r.id === rejectionId ? { ...r, standing } : r)),
       },
+    },
+    ctx,
+  )
+}
+
+export function renameTask(state: TaskState, title: unknown, ctx?: MutationContext): TaskState {
+  const next = requireText('title', title, 200)
+  if (next === state.title) {
+    throw new ValidationError('title', 'is already the title of this task.', {
+      code: 'not-proposed',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: 'rename_task',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: `${state.title} → ${next}`,
+      patch: { title: next },
+    },
+    ctx,
+  )
+}
+
+export function editConstraint(
+  state: TaskState,
+  constraintId: string,
+  rule: unknown,
+  ctx?: MutationContext,
+): TaskState {
+  const constraint = state.constraints.find((c) => c.id === constraintId)
+  if (!constraint) {
+    throw new ValidationError('constraintId', `no constraint with id "${constraintId}".`, {
+      code: 'not-found',
+    })
+  }
+
+  const next = requireText('rule', rule)
+  if (next === constraint.rule) {
+    throw new ValidationError('rule', 'is unchanged.', { code: 'not-proposed', retryable: false })
+  }
+
+  return apply(
+    state,
+    {
+      operation: 'edit_constraint',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: `${constraint.rule} → ${next}`,
+      patch: {
+        constraints: state.constraints.map((c) =>
+          c.id === constraintId ? { ...c, rule: next } : c,
+        ),
+      },
+    },
+    ctx,
+  )
+}
+
+export function editRejection(
+  state: TaskState,
+  rejectionId: string,
+  input: { approach: unknown; reason: unknown },
+  ctx?: MutationContext,
+): TaskState {
+  const rejection = state.rejected.find((r) => r.id === rejectionId)
+  if (!rejection) {
+    throw new ValidationError('rejectionId', `no rejected approach with id "${rejectionId}".`, {
+      code: 'not-found',
+    })
+  }
+
+  const approach = requireText('approach', input.approach)
+  const reason = requireText('reason', input.reason)
+  if (approach === rejection.approach && reason === rejection.reason) {
+    throw new ValidationError('approach', 'is unchanged.', {
+      code: 'not-proposed',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: 'edit_rejection',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: approach,
+      patch: {
+        rejected: state.rejected.map((r) =>
+          r.id === rejectionId ? { ...r, approach, reason } : r,
+        ),
+      },
+    },
+    ctx,
+  )
+}
+
+export function setArchived(state: TaskState, archived: boolean, ctx?: MutationContext): TaskState {
+  if (state.archived === archived) {
+    throw new ValidationError('status', archived ? 'is already archived.' : 'is not archived.', {
+      code: 'not-proposed',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: archived ? 'archive_task' : 'unarchive_task',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: state.title,
+      patch: { archived },
     },
     ctx,
   )

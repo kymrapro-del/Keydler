@@ -44,6 +44,19 @@ describe('mise en mots du journal', () => {
     )
   })
 
+  it('met la tentative à l’infinitif, pas au passé', () => {
+    // « tried to recorded a step » : la table des verbes est au passé pour ce
+    // qui a eu lieu, et une tentative refusée n'a précisément pas eu lieu.
+    for (const operation of ['log_step', 'add_constraint', 'reject_approach', 'complete_task']) {
+      const line = describeEntry(entry({ operation, outcome: 'refused', detail: 'stale write' }))
+      expect(line.what, operation).toMatch(/^tried to [a-z]/)
+      expect(line.what, operation).not.toMatch(/tried to \w+ed\b/)
+    }
+    expect(describeEntry(entry({ operation: 'log_step', outcome: 'refused' })).what).toBe(
+      'tried to record a step — refused',
+    )
+  })
+
   it('explique un refus par sa cause, pas par son code', () => {
     const stale = describeEntry(
       entry({ outcome: 'refused', detail: 'stale write on v4, current v6' }),

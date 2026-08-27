@@ -10,7 +10,11 @@ conversation, after any context loss or summarization, and
 whenever a write is refused as stale.
 
 It answers for ONE task, named by TASK ID in the reply. If that id
-is not the task you meant, say so rather than working on it.`
+is not the task you meant, say so rather than working on it.
+
+The reply may list credentials by name. You can refer to one as
+\${name}; no tool here returns a value, and you are not expected to
+know one.`
 
 export const READ_DETAIL_DESCRIPTION = `Read the parts of the task record that resume_task had to cut.
 
