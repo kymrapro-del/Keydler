@@ -8,16 +8,6 @@ import {
 import { escapeHtml } from '../src/ui/escape'
 import { humanMessage, humanReason } from '../src/ui/messages'
 
-/**
- * Ce que lit la personne qui a cliqué.
- *
- * Les messages du domaine sont le contrat de l'AGENT : ils se terminent par
- * « Call resume_task before continuing ». Les montrer bruts à un humain après
- * un clic sur un bouton est la faute que ces reformulations existent pour
- * éviter — et le fait que les deux soient en anglais ne les rend pas
- * interchangeables pour autant.
- */
-
 describe('messages destinés à l’humain', () => {
   it('n’ordonne jamais à une personne d’appeler resume_task', () => {
     const messages = [
@@ -43,7 +33,6 @@ describe('messages destinés à l’humain', () => {
   })
 
   it('nomme l’action qui a échoué', () => {
-    // Sans cela, le message reste ambigu quand plusieurs commandes sont à l'écran.
     const m = humanMessage(
       new ValidationError('rule', 'must not be empty.', { code: 'empty' }),
       'Lifting the rule',
@@ -86,8 +75,6 @@ describe('messages destinés à l’humain', () => {
   })
 
   it('couvre chaque code sans laisser passer le texte de l’agent', () => {
-    // Le domaine ne peut plus ajouter un motif sans que la compilation le
-    // signale ici : c'est ce que le couplage par chaîne ne garantissait pas.
     const codes: ValidationCode[] = [
       'empty',
       'too-long',

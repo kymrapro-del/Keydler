@@ -4,20 +4,6 @@ import * as store from '../src/store/taskStore'
 import { MAX_MUTATION_RECORDS } from '../src/domain/types'
 import { call, clearDatabase, currentTask, mutationId, textOf, writeArgs } from './helpers'
 
-/**
- * Idempotence des écritures.
- *
- * Le besoin n'est pas théorique, et il vient de la spécification elle-même :
- * WebMCP JETTE le résultat d'une exécution annulée. L'écriture a eu lieu, la
- * réponse n'arrive jamais, et l'agent fait la seule chose sensée — il réessaie.
- * Sans mémoire de ce qui a déjà été fait, le cahier compte deux fois le même
- * travail, et le produit qui existe pour empêcher la perte silencieuse se met
- * à produire de la duplication silencieuse.
- *
- * Un `mutation_id` identifie UNE écriture. Deux appels qui le partagent sont le
- * même appel.
- */
-
 const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 const addDecision = ALL_TOOLS.find((t) => t.name === 'add_decision')!
 
@@ -33,20 +19,15 @@ describe('rejeu d’un même appel', () => {
     const args = writeArgs(task, { action: 'Lu le module', result: 'trois entrées' }, id)
 
     const premier = await call(logStep, args)
-    // Exactement les mêmes arguments, y compris la version — qui est désormais
-    // périmée. C'est le réessai naturel d'un agent qui n'a rien reçu.
     const second = await call(logStep, args)
 
     expect(premier.isError).toBeUndefined()
     expect(second.isError).toBeUndefined()
 
-    // Un seul travail consigné, une seule version consommée.
     const final = currentTask()
     expect(final.steps).toHaveLength(1)
     expect(final.version).toBe(task.version + 1)
 
-    // La réponse du premier appel est restituée telle quelle. Ce n'est pas
-    // « une réponse équivalente » : c'est la même chaîne, conservée.
     expect(textOf(second)).toContain(textOf(premier))
     expect(textOf(second)).toContain(`VERSION     ${task.version + 1}`)
   })
@@ -58,8 +39,6 @@ describe('rejeu d’un même appel', () => {
     await call(logStep, args)
     const rejeu = await call(logStep, args)
 
-    // Sans cette ligne, deux réponses identiques se lisent comme deux
-    // écritures réussies, et l'agent conclut qu'il a consigné deux fois.
     expect(textOf(rejeu)).toContain('Replay of an earlier call')
     expect(textOf(rejeu)).toContain('Nothing was written twice')
   })
@@ -69,14 +48,10 @@ describe('rejeu d’un même appel', () => {
     const args = writeArgs(task, { action: 'a', result: 'b' })
     await call(logStep, args)
 
-    // La version a bougé, et une écriture ordinaire sur cette version tombe.
     const ordinaire = await call(logStep, writeArgs(task, { action: 'c', result: 'd' }))
     expect(ordinaire.isError).toBe(true)
     expect(textOf(ordinaire)).toContain('STALE STATE')
 
-    // Le rejeu, lui, aboutit : un réessai porte NÉCESSAIREMENT une version
-    // périmée, puisque l'appel d'origine l'a fait avancer. Contrôler d'abord
-    // rendrait STALE STATE à un agent qui ne demande que sa réponse perdue.
     const rejeu = await call(logStep, args)
     expect(rejeu.isError).toBeUndefined()
     expect(currentTask().steps).toHaveLength(1)
@@ -94,8 +69,6 @@ describe('rejeu d’un même appel', () => {
       mutation_id: mutationId(),
     })
 
-    // Deux jetons, deux intentions : refaire le même geste est légitime, et
-    // dédupliquer sur le contenu effacerait un travail réellement accompli.
     expect(second.isError).toBeUndefined()
     expect(currentTask().steps).toHaveLength(2)
   })
@@ -113,8 +86,6 @@ describe('rejeu d’un même appel', () => {
       mutation_id: id,
     })
 
-    // Rendre la réponse du log_step accuserait réception d'une décision qui
-    // n'a jamais été prise.
     expect(result.isError).toBe(true)
     expect(textOf(result)).toContain('mutation_id')
     expect(textOf(result)).toContain('log_step')
@@ -125,9 +96,6 @@ describe('rejeu d’un même appel', () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
 
-    // Refusée pour version périmée : rien n'a été écrit, donc rien n'est à
-    // mémoriser. Retenir le jeton condamnerait l'agent à ne jamais pouvoir
-    // aboutir avec lui, alors que sa seule faute était la version.
     const refusé = await call(logStep, {
       action: 'a',
       result: 'b',
@@ -147,8 +115,6 @@ describe('rejeu d’un même appel', () => {
     const args = writeArgs(task, { action: 'a', result: 'b' })
     const premier = await call(logStep, args)
 
-    // La page est fermée puis rouverte : la garantie ne peut pas vivre en
-    // mémoire, sinon un rechargement pendant un réessai suffirait à dupliquer.
     store.__resetStore()
     await store.init(task.id)
 
@@ -171,9 +137,6 @@ describe('rejeu d’un même appel', () => {
     expect(final.mutations.length).toBeLessThanOrEqual(MAX_MUTATION_RECORDS)
     expect(final.mutations.some((m) => m.id === premier)).toBe(false)
 
-    // Le jeton le plus ancien est oublié. Un réessai devient alors une
-    // écriture ordinaire — donc refusée pour version périmée, ce qui est un
-    // refus lisible et non une duplication muette.
     const tardif = await call(
       logStep,
       writeArgs(task, { action: 'la toute première', result: 'r' }, premier),
@@ -184,19 +147,6 @@ describe('rejeu d’un même appel', () => {
 })
 
 describe('collision de mutation_id', () => {
-  /**
-   * Un `mutation_id` sans empreinte des arguments ne distingue pas un rejeu
-   * d'une collision.
-   *
-   * Les agents produisent ces jetons ; rien ne garantit qu'ils soient uniques.
-   * Un compteur remis à zéro entre deux conversations, un identifiant dérivé du
-   * numéro d'étape, un modèle qui recopie l'exemple de la description — et deux
-   * travaux DIFFÉRENTS arrivent sous le même jeton. Le second était alors
-   * accueilli par la réponse du premier : jamais écrit, et pourtant accusé
-   * réception. C'est une perte silencieuse, la seule chose que ce produit
-   * promette d'empêcher.
-   */
-
   it('refuse un même jeton porté par des arguments différents, sans rien écrire', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
@@ -215,9 +165,6 @@ describe('collision de mutation_id', () => {
     })
 
     expect(second.isError).toBe(true)
-    // Ni écrit, ni accusé réception : les deux fautes seraient graves, et la
-    // seconde davantage — un agent qui croit son travail consigné ne le
-    // reconsignera pas.
     expect(textOf(second)).not.toContain('OK — log_step recorded')
     expect(textOf(second)).toContain('mutation_id')
     expect(currentTask().steps).toHaveLength(1)
@@ -236,8 +183,6 @@ describe('collision de mutation_id', () => {
       mutation_id: id,
     })
 
-    // Mêmes arguments, sérialisés dans un autre ordre — ce qu'un agent fait
-    // sans y penser d'un appel à l'autre. C'est le MÊME appel.
     const rejeu = await call(logStep, {
       mutation_id: id,
       evidence: { content: '$ npm test', kind: 'command_output' },
@@ -256,7 +201,6 @@ describe('collision de mutation_id', () => {
     const id = mutationId()
 
     await call(logStep, writeArgs(task, { action: 'Lu le module', result: 'ok' }, id))
-    // Le domaine trime : ces deux appels portent la même intention validée.
     const rejeu = await call(logStep, {
       action: '  Lu le module  ',
       result: 'ok',
@@ -286,10 +230,6 @@ describe('collision de mutation_id', () => {
       mutation_id: id,
     })
 
-    // Deux fautes différentes, deux messages différents : l'agent doit savoir
-    // s'il a réutilisé un jeton pour un autre outil ou pour un autre travail.
-    // Les deux nomment l'opération d'ORIGINE, seule information utile pour
-    // retrouver ce que le jeton désigne déjà.
     expect(textOf(autreOpération)).toContain('already used for log_step')
     expect(textOf(autreOpération)).not.toContain('different arguments')
     expect(textOf(autresArguments)).toContain('different arguments')
@@ -312,15 +252,9 @@ describe('collision de mutation_id', () => {
     expect(result.isError).toBe(true)
 
     const après = currentTask()
-    // Rien n'a bougé sinon la trace elle-même.
     expect(après.version).toBe(avant.version)
     expect(après.steps).toHaveLength(1)
 
-    // Et la trace existe. Les contrôles de collision vivaient au-dessus du
-    // try/catch qui la produit : le refus n'atteignait donc ni le journal, ni
-    // l'écran qui le lit. C'est la même faute que pour l'annulation, sur le
-    // refus le plus grave du lot — celui qui dit à un agent que son travail
-    // n'a pas été consigné.
     const dernière = après.audit.at(-1)!
     expect(dernière.outcome).toBe('refused')
     expect(dernière.operation).toBe('log_step')
@@ -355,8 +289,6 @@ describe('collision de mutation_id', () => {
     const avant = currentTask().audit.length
     await call(logStep, args)
 
-    // Un rejeu ne refuse rien et n'écrit rien : lui donner une ligne noierait
-    // les vrais refus dans le bruit d'agents qui réessaient.
     expect(currentTask().audit).toHaveLength(avant)
   })
 
@@ -365,23 +297,16 @@ describe('collision de mutation_id', () => {
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
 
-    // Un enregistrement écrit avant l'empreinte ne permet pas de vérifier que
-    // le réessai porte bien la même intention. Le relire comme un rejeu
-    // valable rendrait la faute ci-dessus indétectable pour les cahiers déjà
-    // sur disque : on l'écarte plutôt.
     const brut = currentTask()
     await store.openPreparedTask({
       ...brut,
       mutations: brut.mutations.map((m) => ({ ...m, fingerprint: undefined })),
     } as unknown as typeof brut)
 
-    // Relu depuis le disque : c'est la lecture défensive qui doit l'écarter.
     store.__resetStore()
     await store.init(task.id)
     expect(currentTask().mutations).toHaveLength(0)
 
-    // La conséquence est bornée et lisible : le réessai redevient une écriture
-    // ordinaire, donc refusée pour version périmée — un refus, pas un doublon.
     const tardif = await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
     expect(tardif.isError).toBe(true)
     expect(textOf(tardif)).toContain('STALE STATE')

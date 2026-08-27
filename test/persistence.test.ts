@@ -4,8 +4,6 @@ import * as store from '../src/store/taskStore'
 import { storeWrite } from './helpers'
 import { loadLastTask, loadTask } from '../src/persistence/taskRepository'
 
-/** La reprise après rechargement (TAL-69) : même état, même version. */
-
 beforeEach(() => {
   store.__resetStore()
 })
@@ -18,7 +16,6 @@ describe('persistance', () => {
     )
     const before = store.currentTask()!
 
-    // Simule un rechargement de page : le magasin repart de zéro.
     store.__resetStore()
     await store.init(created.id)
 

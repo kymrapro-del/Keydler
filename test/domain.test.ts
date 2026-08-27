@@ -16,7 +16,6 @@ import {
 import { estimateTokens, renderTaskState, TOKEN_BUDGET } from '../src/domain/render'
 import type { TaskState } from '../src/domain/types'
 
-/** Contexte déterministe : sans lui, les identifiants et dates polluent les assertions. */
 function ctx(seed = 0) {
   let n = seed
   return {
@@ -92,7 +91,6 @@ describe('invariant de version', () => {
   it('n’oppose jamais de refus à une écriture humaine', () => {
     let task = seedTask()
     task = logStep(task, { action: 'x', result: 'y', basedOnVersion: 1 }, 'agent', ctx(10))
-    // L'humain écrit sans version : c'est ce qui périme celle de l'agent.
     task = addConstraint(
       task,
       { rule: 'Interdit de migrer', basedOnVersion: null },
@@ -142,8 +140,6 @@ describe('degrés de preuve', () => {
 
   it('ignore tout degré déclaré : il est déduit de ce que l’écriture apporte', () => {
     let task = seedTask()
-    // L'agent réclame le degré humain. Il ne l'obtient pas, et il n'obtient
-    // pas non plus mieux que « evidence » : le degré est déduit, jamais reçu.
     task = logStep(
       task,
       {
@@ -172,7 +168,6 @@ describe('degrés de preuve', () => {
       'agent',
       ctx(10),
     )
-    // Un lien atteste d'un changement, pas d'une vérification.
     expect(task.steps[0].confidence).toBe('evidence')
   })
 
@@ -213,8 +208,6 @@ describe('cycle de vie', () => {
   it('refuse de poser une prochaine action sur une tâche close', () => {
     let task = seedTask()
     task = completeTask(task, { summary: 'Terminé.', basedOnVersion: 1 }, 'agent', ctx(10))
-    // Sinon on obtiendrait un état que la restitution n'affiche pas — elle
-    // montre le résumé à la place — et que personne ne reprendrait.
     expect(() => setNext(task, 'encore une chose', ctx(20))).toThrow(ValidationError)
     expect(task.next).toBeNull()
   })
@@ -283,7 +276,6 @@ describe('restitution', () => {
 
     const output = renderTaskState(task)
     expect(estimateTokens(output)).toBeLessThanOrEqual(TOKEN_BUDGET)
-    // Les contraintes ne cèdent jamais la place, même sous contrainte de budget.
     for (let i = 0; i < 6; i++) expect(output).toContain(`Contrainte ${i}`)
   })
 })
@@ -304,9 +296,6 @@ describe('budget de restitution sous pression', () => {
       )
     }
     for (let i = 0; i < nbRejets; i++) {
-      // Humains, donc opposables : ce sont les rejets ENDOSSÉS que la
-      // restitution s'interdit d'escamoter. Une proposition d'agent, elle,
-      // peut céder la place — elle n'impose rien.
       task = rejectApproach(
         task,
         {
@@ -325,8 +314,6 @@ describe('budget de restitution sous pression', () => {
     const task = chargé(30, 10)
     const output = renderTaskState(task)
 
-    // Toutes les approches condamnées restent nommées : en retirer une
-    // reviendrait à lever l'interdit sans le dire.
     for (let i = 0; i < 30; i++) {
       expect(output).toContain(`Approche condamnée numéro ${i}`)
     }
@@ -339,7 +326,6 @@ describe('budget de restitution sous pression', () => {
     const léger = renderTaskState(chargé(2, 2))
     const lourd = renderTaskState(chargé(30, 10))
 
-    // Sous pression, le motif d'un rejet est coupé — mais il est là.
     expect(léger).toContain('détaillé à dessein pour occuper')
     expect(lourd).toContain('Approche condamnée numéro 29')
     expect(lourd).not.toContain(
@@ -363,7 +349,6 @@ describe('budget de restitution sous pression', () => {
       )
     }
     const output = renderTaskState(task)
-    // Sans ce compte, un agent croirait avoir la liste entière.
     expect(output).toMatch(/DECISIONS \(last \d+ of 6\)/)
   })
 

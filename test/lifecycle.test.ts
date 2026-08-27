@@ -4,14 +4,6 @@ import { completeTask, createTask, logStep, reopenTask, verifyEvidence } from '.
 import { renderNoTask, renderTaskState } from '../src/domain/render'
 import type { TaskState } from '../src/domain/types'
 
-/**
- * Cycle de vie d'une tâche.
- *
- * L'humain est autoritaire : cette autorité ne peut pas s'arrêter à la
- * clôture, sinon une décision d'agent devient irréversible et le rapport de
- * force s'inverse — exactement ce que ce produit existe pour empêcher.
- */
-
 function ctx(seed = 0) {
   let n = seed
   return { now: 1_700_000_000_000, newId: () => `id-${n++}` }
@@ -43,7 +35,6 @@ describe('clôture et réouverture', () => {
     const output = renderTaskState(close())
     expect(output).toContain('TASK CLOSED')
     expect(output).toContain('Writes are refused')
-    // Le protocole d'écriture n'a plus de sens ici.
     expect(output).not.toContain('WRITE PROTOCOL')
     expect(output).toContain('SUMMARY')
   })
@@ -84,8 +75,6 @@ describe('clôture et réouverture', () => {
 
   it('laisse valider une preuve même après clôture', () => {
     const closée = close()
-    // La vérification humaine reste légitime après coup : elle n'ajoute pas de
-    // travail, elle en atteste.
     const vérifiée = verifyEvidence(closée, closée.steps[0].id, '183 passed', ctx(30))
     expect(vérifiée.steps[0].confidence).toBe('human_verified')
   })
@@ -94,7 +83,6 @@ describe('clôture et réouverture', () => {
     const output = renderNoTask()
     expect(output).toContain('NO ACTIVE TASK')
     expect(output).toContain('nothing to resume')
-    // L'ancien texte invitait à appeler log_step, qui aurait été refusé.
     expect(output).not.toContain('call\nlog_step')
     expect(output).toContain('call resume_task again')
   })

@@ -4,20 +4,6 @@ import * as store from '../src/store/taskStore'
 import { taskIdFromPath, taskPath } from '../src/webmcp/location'
 import { call, clearDatabase, textOf } from './helpers'
 
-/**
- * Un cahier, une adresse.
- *
- * « Figure dans l'URL : /t/:id » était écrit dans le type depuis le premier
- * jour, et nulle part ailleurs : rien ne construisait cette adresse, rien ne
- * la lisait. `resume_task` rendait « le dernier cahier touché sur cet
- * appareil ».
- *
- * La conséquence n'était pas cosmétique. Deux onglets sur deux tâches
- * suffisaient à ce qu'un agent reçoive l'état d'une tâche qui n'était pas la
- * sienne, sans qu'aucune ligne de la réponse ne l'indique — et il reprenait ce
- * travail-là en croyant reprendre le sien.
- */
-
 beforeEach(async () => {
   store.__resetStore()
   await clearDatabase()
@@ -49,8 +35,6 @@ describe('reprise liée', () => {
     const seconde = await store.createAndOpenTask('Seconde tâche', 'B')
     expect(seconde.id).not.toBe(première.id)
 
-    // Un autre onglet a ouvert — et donc touché en dernier — la seconde. Cet
-    // onglet-ci est lié à la première.
     store.__resetStore()
     await store.init(première.id)
 
@@ -63,8 +47,6 @@ describe('reprise liée', () => {
   it('nomme la tâche dans toute réponse, pour qu’une substitution se voie', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const rendu = textOf(await call(resumeTaskTool))
-    // Sans cette ligne, un agent ne peut pas constater qu'on lui a répondu sur
-    // une autre tâche : le contenu seul ne le trahit pas toujours.
     expect(rendu).toContain(`TASK ID     ${task.id}`)
     expect(resumeTaskTool.description).toContain('TASK ID')
   })
@@ -77,8 +59,6 @@ describe('reprise liée', () => {
     await store.init(première.id)
     await store.deleteCurrentTask()
 
-    // Une autre tâche EXISTE sur l'appareil. La rendre serait la pire réponse
-    // possible : l'agent reprendrait un travail qui n'est pas le sien.
     store.__resetStore()
     await store.init(première.id)
 
@@ -114,9 +94,6 @@ describe('reprise liée', () => {
     store.__resetStore()
     await store.init()
 
-    // Une première visite n'a pas d'adresse : elle reprend le dernier, PUIS
-    // s'y lie. Le comportement d'après est le même que si elle avait été
-    // nommée — c'est le lien qui compte, pas la façon de l'établir.
     expect(store.boundTaskId()).toBe(task.id)
     expect(textOf(await call(resumeTaskTool))).toContain(`TASK ID     ${task.id}`)
   })

@@ -21,25 +21,6 @@ import {
   writeArgs,
 } from './helpers'
 
-/**
- * Politique de cycle de vie des outils.
- *
- * Le désenregistrement dynamique est séduisant — un outil qui ne peut que
- * refuser n'aide pas l'agent à choisir — mais il repose sur une garantie que
- * Chrome ne donne qu'à partir de la 153 : qu'avorter le contrôleur d'un outil
- * ne casse pas une exécution en cours. La cible du concours commence à la 149.
- *
- * Une version antérieure de ce code retenait le retrait d'un tour de boucle,
- * par `setTimeout`. C'était sans valeur : la spécification dit en toutes
- * lettres que l'ordre entre la source de tâches WebMCP et celle des minuteurs
- * ne peut pas être invoqué. Un tour de boucle n'est pas une garantie de
- * livraison, et présenter le contraire aurait été une affirmation qu'aucun
- * test ne peut soutenir.
- *
- * D'où la règle : on ne désenregistre QUE si la capacité est positivement
- * connue. Partout ailleurs, les outils restent posés et refusent proprement.
- */
-
 beforeEach(async () => {
   __resetRegistration()
   store.__resetStore()
@@ -73,8 +54,6 @@ describe('détection de la capacité', () => {
   })
 
   it('reste statique quand la version est inconnue', () => {
-    // jsdom ne publie pas `userAgentData`. C'est le cas « environnement
-    // inconnu », et le défaut doit y être le mode sûr — pas l'inverse.
     resetUserAgentData()
     const cycle = detectLifecycle()
     expect(cycle.mode).toBe('static')
@@ -89,9 +68,6 @@ describe('détection de la capacité', () => {
   })
 
   it('dit sur quoi elle se fonde, puisqu’elle ne peut pas le prouver', () => {
-    // Il n'existe aucune détection de fonctionnalité pour « désenregistrer ne
-    // casse pas une exécution en vol ». C'est un reniflage de version, et le
-    // dire est la moindre des choses.
     pretendChromium(149)
     expect(detectLifecycle().reason).toMatch(/149/)
     resetUserAgentData()
@@ -114,15 +90,12 @@ describe('mode statique — la cible du concours', () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     await store.mutate((s) => completeTask(s, { summary: 'Clos.', basedOnVersion: null }, 'human'))
 
-    // Rechargement : le magasin repart de zéro, le document est neuf.
     store.__resetStore()
     await store.init(task.id)
 
     const fake = installModelContext()
     await registerTools()
 
-    // Aucune écriture ne pourrait aboutir : ne pas les poser du tout est sans
-    // risque, puisque rien n'est encore en vol au premier enregistrement.
     expect(fake.names()).toEqual(['read_task_detail', 'resume_task'])
   })
 
@@ -140,9 +113,6 @@ describe('mode statique — la cible du concours', () => {
     await settle(8)
 
     expect(textOf(résultat)).toContain('OK — complete_task recorded.')
-    // Les sept restent. C'est le prix payé pour qu'aucune réponse ne puisse
-    // être emportée par un retrait : on ne peut pas casser une exécution avec
-    // un contrôleur qu'on n'avorte pas.
     expect(fake.names()).toHaveLength(7)
     expect(getRegistrationState().toolNames).toHaveLength(7)
   })
@@ -160,9 +130,6 @@ describe('mode statique — la cible du concours', () => {
         signal: new AbortController().signal,
       })
 
-    // Un outil qui reste posé doit dire pourquoi il ne sert plus, et le dire
-    // de façon actionnable — sans quoi le prix de la sûreté serait un agent
-    // qui s'acharne.
     expect(refus.isError).toBe(true)
     expect(textOf(refus)).toContain('already completed')
     expect(textOf(refus)).toContain('reopen')
@@ -178,10 +145,6 @@ describe('mode statique — la cible du concours', () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     await settle(4)
 
-    // Poser un outil n'avorte rien : l'ajout est sans danger dans les deux
-    // modes. Sans lui, une page ouverte avant la tâche n'aurait plus aucune
-    // écriture jusqu'au rechargement — le produit serait inutilisable pour la
-    // moitié des parcours.
     expect(fake.names()).toHaveLength(7)
     expect(fake.names()).toContain('log_step')
   })

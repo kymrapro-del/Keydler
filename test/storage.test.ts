@@ -1,15 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { exec, mutationId } from './helpers'
 
-/**
- * Panne de stockage.
- *
- * Le contrôle avant dépôt impose un essai en navigation privée, où IndexedDB
- * peut être restreint. Si la page confond « stockage cassé » et « aucun
- * cahier », un agent conclut qu'il n'y a rien à reprendre — et un juge conclut
- * que le produit ne fait rien.
- */
-
 const loadLastTask = vi.fn()
 const loadTask = vi.fn()
 
@@ -48,7 +39,6 @@ describe('stockage indisponible', () => {
 
     expect(result.isError).toBe(true)
     expect(texte).toContain('STORAGE UNAVAILABLE')
-    // La confusion à éviter à tout prix.
     expect(texte).not.toContain('NO ACTIVE TASK')
     expect(texte).toContain('Do NOT assume there is no task')
   })

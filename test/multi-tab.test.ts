@@ -7,22 +7,12 @@ import * as store from '../src/store/taskStore'
 import { ALL_TOOLS } from '../src/webmcp/tools'
 import { exec, mutationId, storeWrite } from './helpers'
 
-/**
- * Écriture depuis une autre page.
- *
- * La file d'écriture du magasin ne connaît que son propre onglet. Deux onglets
- * ouverts sur le même cahier — cas banal, et probable pendant une démonstration
- * — reproduiraient sans elle la perte silencieuse que la file élimine à
- * l'intérieur d'une page. C'est donc le stockage qui doit arbitrer.
- */
-
 async function clearDatabase() {
   const db = await getDb()
   const tx = db.transaction(['tasks', 'meta'], 'readwrite')
   await Promise.all([tx.objectStore('tasks').clear(), tx.objectStore('meta').clear(), tx.done])
 }
 
-/** Simule un autre onglet : écrit directement sur le disque, hors du magasin. */
 async function autreOnglet(id: string, muter: (s: Parameters<typeof logStep>[0]) => typeof s) {
   const disque = await loadTask(id)
   if (!disque) throw new Error('cahier introuvable')
@@ -42,13 +32,11 @@ describe('conflit entre pages', () => {
       addConstraint(s, { rule: 'posée ailleurs', basedOnVersion: null }, 'human'),
     )
 
-    // Cet onglet croit encore être à jour : sa version est pourtant dépassée.
     await expect(
       store.mutate((s) => addConstraint(s, { rule: 'posée ici', basedOnVersion: null }, 'human')),
     ).rejects.toBeInstanceOf(ConcurrentWriteError)
 
     const disque = await loadTask(task.id)
-    // L'écriture de l'autre page a survécu, la nôtre n'est pas passée.
     expect(disque?.constraints.map((c) => c.rule)).toEqual(['posée ailleurs'])
   })
 
@@ -64,7 +52,6 @@ describe('conflit entre pages', () => {
       store.mutate((s) => addConstraint(s, { rule: 'posée ici', basedOnVersion: null }, 'human')),
     ).rejects.toBeInstanceOf(ConcurrentWriteError)
 
-    // Après le conflit, le magasin porte l'état réel, pas celui qu'il croyait.
     expect(store.currentTask()?.version).toBe(2)
     expect(store.currentTask()?.constraints.map((c) => c.rule)).toEqual(['posée ailleurs'])
   })
@@ -85,7 +72,6 @@ describe('conflit entre pages', () => {
     const texte = result.content[0].text
     expect(texte).toContain('STALE STATE')
     expect(texte).toContain('Call resume_task before continuing.')
-    // Pas de préfixe technique : le message doit se lire comme une consigne.
     expect(texte.startsWith('STALE STATE')).toBe(true)
   })
 
@@ -95,7 +81,7 @@ describe('conflit entre pages', () => {
       addConstraint(s, { rule: 'posée ailleurs', basedOnVersion: null }, 'human'),
     )
 
-    await store.mutate((s) => s).catch(() => undefined) // provoque la resynchro
+    await store.mutate((s) => s).catch(() => undefined)
     const v = store.currentTask()!.version
 
     const après = await store.mutateAsAgent(

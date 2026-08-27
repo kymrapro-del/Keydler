@@ -19,11 +19,6 @@ import {
   writeArgs,
 } from './helpers'
 
-/**
- * Le contrat côté agent (TAL-56, TAL-61) : enregistrement, reprise lisible,
- * refus explicite d'une écriture périmée.
- */
-
 beforeEach(async () => {
   __resetRegistration()
   store.__resetStore()
@@ -50,11 +45,6 @@ describe('inventaire', () => {
   })
 
   it('n’annonce jamais une annotation que WebMCP ne transporte pas', () => {
-    // `dictionary ToolAnnotations { boolean readOnlyHint; boolean
-    // untrustedContentHint; }` — et rien d'autre. Une conversion de
-    // dictionnaire WebIDL ignore EN SILENCE tout membre inconnu : un
-    // `openWorldHint` posé ici n'aurait jamais quitté la page, sans qu'aucune
-    // erreur ne le signale.
     const connues = new Set(['readOnlyHint', 'untrustedContentHint'])
     for (const tool of ALL_TOOLS) {
       for (const clé of Object.keys(tool.annotations ?? {})) {
@@ -66,8 +56,6 @@ describe('inventaire', () => {
   it('marque les lectures en lecture seule et leur contenu comme non fiable', () => {
     for (const tool of READ_TOOLS) {
       expect(tool.annotations?.readOnlyHint).toBe(true)
-      // Ce que ces outils rendent a été écrit par un agent précédent, en texte
-      // libre, et revient dans le contexte d'un autre agent.
       expect(tool.annotations?.untrustedContentHint).toBe(true)
     }
     for (const tool of WRITE_TOOLS) {
@@ -89,8 +77,6 @@ describe('disponibilité', () => {
     const vrai = Object.getOwnPropertyDescriptor(window, 'isSecureContext')
     Object.defineProperty(window, 'isSecureContext', { configurable: true, value: false })
 
-    // Deux problèmes différents, donc deux consignes différentes pour qui
-    // essaie : servir en HTTPS, ou activer un drapeau.
     expect(checkAvailability()).toEqual({ supported: false, reason: 'insecure-context' })
     const state = await registerTools()
     expect(state.phase).toBe('unsupported')
@@ -120,7 +106,6 @@ describe('disponibilité', () => {
     const state = await registerTools()
     expect(state.phase).toBe('registered')
     expect(state.availability).toEqual({ supported: true, surface: 'navigator' })
-    // Sans cahier ouvert, seules les lectures : voir le cycle de vie.
     expect(registered.map((t) => t.name)).toEqual(['resume_task', 'read_task_detail'])
 
     Reflect.deleteProperty(navigator, 'modelContext')
@@ -134,8 +119,6 @@ describe('outils de bout en bout', () => {
     const rendered = textOf(await call(resumeTaskTool))
     expect(rendered).toContain('Refactoriser l’authentification')
     expect(rendered).toContain(`VERSION     ${task.version}`)
-    // L'identifiant est rendu : c'est ce qui permet à un agent de constater
-    // qu'on lui répond bien sur la tâche qu'il croit.
     expect(rendered).toContain(`TASK ID     ${task.id}`)
 
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
@@ -146,14 +129,11 @@ describe('outils de bout en bout', () => {
     expect(ok.isError).toBeUndefined()
     expect(textOf(ok)).toContain('OK — log_step recorded.')
 
-    // L'agent rejoue la même version avec une AUTRE intention : elle a bougé,
-    // l'écriture doit tomber.
     const stale = await call(logStep, writeArgs(task, { action: 'Encore', result: 'raté' }))
     expect(stale.isError).toBe(true)
     expect(textOf(stale)).toContain('STALE STATE')
     expect(textOf(stale)).toContain('Call resume_task before continuing.')
 
-    // Le refus est visible dans le journal, donc à l'écran.
     const current = store.currentTask()!
     expect(current.audit.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
   })
@@ -198,8 +178,6 @@ describe('cycle de vie des outils', () => {
     const fake = installModelContext()
     await registerTools()
 
-    // Un outil qui ne peut que rendre « NO ACTIVE TASK » n'aide pas l'agent à
-    // choisir : il allonge la liste qu'il doit lire pour se décider.
     expect(fake.names()).toEqual(['read_task_detail', 'resume_task'])
     expect(toolsForCurrentState().map((t) => t.name)).toEqual(['resume_task', 'read_task_detail'])
   })
@@ -226,17 +204,9 @@ describe('cycle de vie des outils', () => {
       'resume_task',
     ])
 
-    // Le changement est passé par l'événement de la plateforme, et pas
-    // seulement par la carte que la page tient. C'est le signal que la
-    // spécification prévoit pour qu'un consommateur rafraîchisse sa liste ; ce
-    // que l'agent intégré du navigateur en fait n'est pas observable ici.
     expect(changements.length).toBeGreaterThan(0)
     expect(changements.at(-1)).toContain('log_step')
 
-    // Ce que `getTools()` rend : les outils ENREGISTRÉS, relus depuis la table
-    // du navigateur. C'est une seconde source, pas une preuve que l'agent du
-    // navigateur les a découverts — la spécification réserve `getTools()` aux
-    // agents dans la page.
     const état = await registerTools()
     expect(état.observedTools).not.toBeNull()
     expect(état.observedTools).toContain('log_step')
@@ -252,14 +222,9 @@ describe('cycle de vie des outils', () => {
     const résultat = await call(complete, writeArgs(task, { summary: 'Terminé, rien ne reste.' }))
     await settle(6)
 
-    // Environnement sans version de Chromium lisible : c'est le cas « inconnu »
-    // et le défaut y est le mode sûr. Les sept restent posés — voir
-    // `lifecycle-outils.test.ts` pour la politique et ses deux modes.
     expect(getRegistrationState().lifecycle.mode).toBe('static')
     expect(fake.names()).toHaveLength(7)
 
-    // Ce qui compte pour l'agent tient de toute façon : sa réponse lui parvient,
-    // et la lecture lui dit que la tâche est close.
     expect(textOf(résultat)).toContain('OK — complete_task recorded.')
     expect(textOf(await call(resumeTaskTool))).toContain('TASK CLOSED')
   })
@@ -270,8 +235,6 @@ describe('cycle de vie des outils', () => {
     await registerTools()
 
     const avant = [...fake.attempts]
-    // Le faux rejette un nom déjà pris, comme la spécification l'impose. Si le
-    // module réenregistrait sans désenregistrer, on le verrait ici.
     await store.mutate((s) => ({ ...s, updatedAt: s.updatedAt + 1 }))
     await settle()
 
@@ -286,10 +249,6 @@ describe('cycle de vie des outils', () => {
 
     const état = await registerTools()
 
-    // L'ancienne boucle séquentielle s'arrêtait au premier échec, rendait
-    // « failed » avec zéro outil, et laissait pourtant les premiers bel et
-    // bien enregistrés et joignables : l'écran annonçait zéro pendant qu'un
-    // agent en appelait trois.
     expect(état.phase).toBe('partial')
     expect(état.toolNames).toContain('resume_task')
     expect(état.toolNames).toContain('log_step')
@@ -297,7 +256,6 @@ describe('cycle de vie des outils', () => {
     expect(état.failures.map((f) => f.name)).toEqual(['reject_approach'])
     expect(état.error).toContain('reject_approach')
 
-    // Et ce que le navigateur tient correspond à ce que l'état annonce.
     expect(fake.names()).toEqual([...état.toolNames].sort())
   })
 
@@ -307,9 +265,6 @@ describe('cycle de vie des outils', () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     await registerTools()
 
-    // Un changement de version du cahier ne donne rien à poser de neuf.
-    // Ne compter que les échecs DU TOUR faisait alors repasser la page en
-    // « tout va bien » alors que l'outil restait absent.
     await store.mutate((s) => ({ ...s, updatedAt: s.updatedAt + 1 }))
     await settle()
 
@@ -327,9 +282,6 @@ describe('cycle de vie des outils', () => {
     await registerTools()
     expect(fake.names()).not.toContain('reject_approach')
 
-    // Un refus peut être passager — une permission qui arrive, un document qui
-    // redevient actif. Condamner l'outil pour un échec unique serait sévère et
-    // sans recours : la page ne se réenregistre plus jamais.
     fake.failOn.delete('reject_approach')
     await store.mutate((s) => ({ ...s, updatedAt: s.updatedAt + 1 }))
     await settle()
@@ -343,10 +295,6 @@ describe('cycle de vie des outils', () => {
     const fake = installModelContext()
     await registerTools()
 
-    // Les enregistrements sont retenus en vol : la fenêtre pendant laquelle un
-    // second tour peut démarrer avant que le premier n'ait rempli sa table est
-    // grande ouverte. C'est la situation réelle d'une écriture d'agent suivie
-    // aussitôt d'une correction humaine.
     fake.lent = true
     await store.createAndOpenTask('Une', 'A')
     await store.openPreparedTask({ ...store.currentTask()!, updatedAt: Date.now() + 1 })
@@ -356,9 +304,6 @@ describe('cycle de vie des outils', () => {
     fake.reprendre()
     await settle(8)
 
-    // Deux tours en vol calculeraient tous deux le même « à poser ». La
-    // spécification REJETTE un nom déjà pris : la page se déclarerait alors en
-    // échec sur un outil pourtant bien présent et joignable.
     const doublons = fake.attempts.filter((n, i) => fake.attempts.indexOf(n) !== i)
     expect(doublons).toEqual([])
 
@@ -376,13 +321,10 @@ describe('cycle de vie des outils', () => {
 
     expect(first.phase).toBe('registered')
     expect(second.phase).toBe('registered')
-    // Le mode strict de React monte deux fois : c'est exactement ce cas.
     expect(fake.attempts).toHaveLength(7)
   })
 
   it('rejette un enregistrement dont le signal est déjà avorté', async () => {
-    // La spécification l'exige, et le faux le reproduit. Un module qui poserait
-    // un contrôleur déjà avorté croirait avoir enregistré un outil absent.
     const fake = installModelContext()
     const controller = new AbortController()
     controller.abort()
@@ -419,8 +361,6 @@ describe('annulation', () => {
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     const controller = new AbortController()
 
-    // Une première écriture occupe la file ; la seconde est annulée pendant
-    // qu'elle attend son tour. C'est le cas réel du bouton « stop » d'un agent.
     const première = call(logStep, writeArgs(task, { action: 'première', result: 'ok' }))
     const seconde = call(
       logStep,
@@ -442,14 +382,8 @@ describe('annulation', () => {
 
     const final = store.currentTask()!
     expect(final.steps.map((s) => s.action)).toEqual(['première'])
-    // Une seule écriture appliquée : l'annulation n'a pas fait avancer la
-    // version, et n'a donc pas périmé le travail des autres.
     expect(final.version).toBe(task.version + 1)
 
-    // Et elle est AUDITÉE. Le contrôle d'annulation vivait avant le try/catch
-    // du magasin : le refus ne laissait donc aucune trace, ni au journal, ni à
-    // l'écran qui le lit. Une écriture qui disparaît sans qu'on puisse dire
-    // pourquoi est exactement ce que ce cahier existe pour rendre impossible.
     const dernière = final.audit.at(-1)!
     expect(dernière.outcome).toBe('refused')
     expect(dernière.operation).toBe('log_step')

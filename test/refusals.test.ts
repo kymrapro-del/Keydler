@@ -4,14 +4,6 @@ import * as store from '../src/store/taskStore'
 import { ALL_TOOLS } from '../src/webmcp/tools'
 import { exec, mutationId, storeWrite } from './helpers'
 
-/**
- * Traçabilité des refus.
- *
- * Le produit vend la traçabilité : un refus qui n'apparaît pas au journal est
- * un trou dans cette promesse. Une entrée malformée est rejetée avant même
- * d'atteindre le magasin — c'est exactement le cas qui échappait au compte.
- */
-
 async function clear() {
   const db = await getDb()
   const tx = db.transaction(['tasks', 'meta'], 'readwrite')
@@ -37,7 +29,6 @@ describe('refus consignés', () => {
     const après = store.currentTask()!
     expect(après.audit.length).toBe(avant + 1)
     expect(après.audit.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
-    // Le refus ne fait pas avancer la version.
     expect(après.version).toBe(1)
   })
 
@@ -57,7 +48,6 @@ describe('refus consignés', () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     const avant = store.currentTask()!.audit.length
 
-    // Motif vide : l'erreur naît DANS la mutation, donc déjà tracée.
     const result = await rejectApproach().execute(
       {
         approach: 'JWT B',
@@ -82,8 +72,6 @@ describe('refus consignés', () => {
 
     const texte = result.content[0].text
     expect(texte).toContain('INVALID INPUT')
-    // Sans cela, l'agent dépense un aller-retour de resume_task pour
-    // réapprendre une version qui n'a pas bougé.
     expect(texte).toContain('Nothing was written.')
     expect(texte).toContain(`based_on_version: ${task.version}`)
   })
@@ -103,7 +91,6 @@ describe('refus consignés', () => {
 
     const texte = result.content[0].text
     expect(texte).toContain('STALE STATE')
-    // Là, il FAUT rappeler resume_task : suggérer un simple réessai serait faux.
     expect(texte).not.toContain('Nothing was written.')
     expect(texte).toContain('Call resume_task before continuing.')
   })
@@ -130,7 +117,6 @@ describe('conseil de réessai', () => {
 
     const texte = result.content[0].text
     expect(result.isError).toBe(true)
-    // Réessayer ne marchera jamais : le suggérer inviterait à boucler.
     expect(texte).not.toContain('Retry with based_on_version')
     expect(texte).toContain('Retrying will not help')
     expect(texte).toContain('ask the human to reopen')

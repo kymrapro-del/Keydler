@@ -1,6 +1,3 @@
-// L'enregistrement WebMCP est un effet de bord d'import, volontairement placé
-// avant tout rendu. Il ne dépend d'aucun composant et ne doit jamais en
-// dépendre : le mode strict de React, quand il arrivera, monte deux fois.
 import './webmcp'
 
 import './tokens.css'
@@ -10,39 +7,13 @@ import * as store from './store/taskStore'
 import { mount } from './ui/bench'
 import { currentTaskIdFromLocation } from './webmcp/location'
 
-/**
- * Point d'entrée : monter la vue, puis amorcer l'état.
- *
- * Tout ce qui est testable vit dans `ui/bench.ts` ; ce fichier ne garde que ce
- * qui ne peut pas l'être — l'accrochage au document et la lecture de l'URL.
- */
 const root = document.querySelector<HTMLElement>('#app')
 if (!root) throw new Error('#app introuvable')
 
-// L'adresse est lue AVANT le montage. La vue rend l'adresse quand elle change de
-// cahier, et son premier rendu est synchrone : la lire après revenait à la lire
-// une fois qu'elle avait déjà été réécrite.
 const lié = currentTaskIdFromLocation()
 
 mount(root)
 
-/**
- * L'adresse décide du cahier.
- *
- * `/t/:id` ouvre CE cahier. Sans identifiant, la page reprend le dernier ouvert
- * puis s'y lie, et l'adresse s'aligne. La différence est décisive dès qu'il y a
- * plus d'une tâche sur l'appareil : liée, la page rend la tâche nommée ou dit
- * qu'elle a disparu ; non liée, elle rendait la dernière touchée — y compris
- * celle qu'un autre onglet venait d'écrire.
- *
- * `?mesure=N` charge la tâche de mesure N au chargement de la page.
- *
- * Le protocole du J6 doit être rejouable par une simple URL : un juge ouvre
- * l'adresse et retrouve exactement l'état sur lequel la mesure a été faite,
- * sans manipulation. La tâche n'est reconstruite que si le cahier ouvert n'est
- * pas déjà celle-là, pour qu'un rechargement en cours d'essai ne remette pas
- * le compteur à zéro.
- */
 void (async () => {
   await store.init(lié ?? undefined)
 

@@ -3,32 +3,6 @@ import { MAX_EVIDENCE_LENGTH, MAX_FIELD_LENGTH } from '../domain/validate'
 import { DEFAULT_LIMIT, MAX_LIMIT, SECTIONS } from '../domain/detail'
 import { BASED_ON_VERSION_DESCRIPTION, MUTATION_ID_DESCRIPTION } from './descriptions'
 
-/**
- * Les schémas d'entrée.
- *
- * Un schéma d'outil n'est pas de la décoration : c'est la seule partie du
- * contrat que l'agent lit AVANT d'appeler, et donc la seule qui puisse lui
- * éviter un aller-retour. Un schéma lâche déplace tout le travail vers le
- * refus — l'agent essaie, échoue, relit, recommence, et chaque tour coûte un
- * appel de modèle.
- *
- * Trois durcissements, chacun pour une raison distincte :
- *
- * - `additionalProperties: false`, aux racines COMME dans les objets imbriqués.
- *   Sans lui, un champ mal orthographié est accepté puis ignoré : l'agent croit
- *   avoir joint une preuve, le cahier n'en a aucune, et rien ne le dit. C'est
- *   la panne la plus discrète du lot.
- * - des bornes de longueur qui reprennent EXACTEMENT celles du domaine. Elles
- *   existaient déjà côté validation, mais nulle part côté déclaration : la
- *   seule façon d'apprendre qu'un champ plafonne à 2000 caractères était de le
- *   dépasser.
- * - `minLength: 1` là où le domaine refuse le vide, pour la même raison.
- *
- * Les bornes sont importées, jamais recopiées : deux nombres à tenir d'accord
- * finissent toujours par diverger, et c'est la déclaration qui mentirait.
- */
-
-/** Champ de texte libre, borné comme le domaine le borne. */
 function boundedText(description: string, maxLength: number = MAX_FIELD_LENGTH) {
   return { type: 'string', description, minLength: 1, maxLength } as const
 }
@@ -39,14 +13,6 @@ export const versionProperty = {
   description: BASED_ON_VERSION_DESCRIPTION,
 } as const
 
-/**
- * Le jeton d'idempotence.
- *
- * Le motif exclut l'espace et la ponctuation exotique : un identifiant se
- * recopie à l'identique d'un appel à l'autre, et un espace en fin de chaîne
- * suffirait à en faire un autre — donc à créer le doublon que ce champ existe
- * pour empêcher.
- */
 export const mutationIdProperty = {
   type: 'string',
   minLength: 8,
@@ -74,13 +40,9 @@ const evidenceSchema = {
     },
   },
   required: ['kind', 'content'],
-  // Imbriqué et strict. Une racine stricte ne protège pas ses objets fils :
-  // `{ evidence: { kind, contents } }` passait la racine, puis se faisait
-  // refuser sur un `content` manquant que l'agent croyait avoir fourni.
   additionalProperties: false,
 } as const
 
-/** Racine d'un outil d'écriture : ses champs propres, plus version et jeton. */
 export function writeSchema(
   properties: Record<string, object>,
   required: readonly string[],
@@ -137,13 +99,6 @@ export const COMPLETE_TASK_SCHEMA = writeSchema(
   ['summary'],
 )
 
-/**
- * `resume_task` ne prend rien.
- *
- * `{ type: 'object', additionalProperties: false }` est la forme que MCP
- * recommande pour un outil sans paramètre : elle n'accepte QUE l'objet vide,
- * là où un `{ type: 'object' }` nu accepterait n'importe quoi.
- */
 export const RESUME_TASK_SCHEMA = {
   type: 'object',
   properties: {},
