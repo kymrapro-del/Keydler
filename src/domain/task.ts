@@ -60,6 +60,7 @@ export function createTask(
     title,
     version: 1,
     next: optionalText('next', input.next, 400),
+    goal: null,
     status: 'active',
     archived: false,
     summary: null,
@@ -101,6 +102,7 @@ type AppliedMutation = {
   basedOnVersion: number | null
   detail: string
   targetId?: string
+  previous?: string
   patch: Partial<TaskState>
 }
 
@@ -117,6 +119,7 @@ function apply(state: TaskState, mutation: AppliedMutation, ctx?: MutationContex
     outcome: 'applied',
     detail: mutation.detail,
     ...(mutation.targetId ? { targetId: mutation.targetId } : {}),
+    ...(mutation.previous !== undefined ? { previous: mutation.previous } : {}),
     at: now,
   }
   return {
@@ -320,9 +323,14 @@ export function rejectApproach(
   guardVersion(state, input.basedOnVersion)
   const { now, newId } = resolve(ctx)
 
+  const approach = requireText('approach', input.approach)
+  if (state.rejected.some((r) => r.standing !== 'declined' && sameWords(r.approach, approach))) {
+    refuseRepeat('approach')
+  }
+
   const rejection: Rejection = {
     id: newId(),
-    approach: requireText('approach', input.approach),
+    approach,
     reason: requireText('reason', input.reason),
     source: actor,
     addedAtVersion: state.version + 1,
@@ -353,9 +361,12 @@ export function addConstraint(
   guardVersion(state, input.basedOnVersion)
   const { newId } = resolve(ctx)
 
+  const rule = requireText('rule', input.rule)
+  if (state.constraints.some((c) => c.active && sameWords(c.rule, rule))) refuseRepeat('rule')
+
   const constraint: Constraint = {
     id: newId(),
-    rule: requireText('rule', input.rule),
+    rule,
     source: actor,
     addedAtVersion: state.version + 1,
     active: true,
@@ -592,6 +603,7 @@ export function renameTask(state: TaskState, title: unknown, ctx?: MutationConte
       actor: 'human',
       basedOnVersion: null,
       detail: `${state.title} → ${next}`,
+      previous: state.title,
       patch: { title: next },
     },
     ctx,
@@ -623,6 +635,8 @@ export function editConstraint(
       actor: 'human',
       basedOnVersion: null,
       detail: `${constraint.rule} → ${next}`,
+      previous: constraint.rule,
+      targetId: constraintId,
       patch: {
         constraints: state.constraints.map((c) =>
           c.id === constraintId ? { ...c, rule: next } : c,
@@ -648,6 +662,8 @@ export function editRejection(
 
   const approach = requireText('approach', input.approach)
   const reason = requireText('reason', input.reason)
+  // Pas de garde anti-répétition ici : reformuler un motif en gardant l'approche
+  // est le cas normal, et c'est bien l'entrée existante que l'on corrige.
   if (approach === rejection.approach && reason === rejection.reason) {
     throw new ValidationError('approach', 'is unchanged.', {
       code: 'not-proposed',
@@ -743,6 +759,29 @@ export function reopenTask(state: TaskState, reason: unknown, ctx?: MutationCont
   )
 }
 
+export function setGoal(state: TaskState, goal: unknown, ctx?: MutationContext): TaskState {
+  const value = optionalText('goal', goal, 400)
+  if (value === state.goal) {
+    throw new ValidationError('goal', 'is already what this task says done means.', {
+      code: 'not-proposed',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: 'set_goal',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: value ?? '(cleared)',
+      ...(state.goal === null ? {} : { previous: state.goal }),
+      patch: { goal: value },
+    },
+    ctx,
+  )
+}
+
 export function setNext(state: TaskState, next: unknown, ctx?: MutationContext): TaskState {
   assertActive(state, 'set_next')
   const value = optionalText('next', next, 400)
@@ -753,9 +792,37 @@ export function setNext(state: TaskState, next: unknown, ctx?: MutationContext):
       actor: 'human',
       basedOnVersion: null,
       detail: value ?? '(cleared)',
+      ...(state.next === null ? {} : { previous: state.next }),
       patch: { next: value },
     },
     ctx,
+  )
+}
+
+/**
+ * Comparaison de CHAÎNES, pas de sens : deux formulations différentes du même
+ * interdit passeront toutes les deux. Le message le dit, pour que personne ne
+ * prenne ce garde-fou pour une compréhension.
+ */
+function sameWords(a: string, b: string): boolean {
+  const flatten = (v: string) =>
+    v
+      .toLocaleLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[.,;:!?]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  return flatten(a) === flatten(b)
+}
+
+function refuseRepeat(field: string): never {
+  throw new ValidationError(
+    field,
+    `this is already recorded on the task, word for word, and it already counts. ` +
+      'Nothing was written. Read it back rather than repeating it; a differently ' +
+      'worded version of the same idea would not be caught here.',
+    { code: 'already-recorded', retryable: false },
   )
 }
 
@@ -771,6 +838,9 @@ export function askHuman(
 
   const question = requireText('question', input.question)
   const why = requireText('why', input.why)
+  if (state.questions.some((q) => q.answer === null && sameWords(q.question, question))) {
+    refuseRepeat('question')
+  }
 
   const entry: OpenQuestion = {
     id: newId(),
@@ -891,6 +961,44 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
       }
     }
 
+    case 'rename_task': {
+      if (entry.previous === undefined || state.title === entry.previous) return null
+      const back = entry.previous
+      return {
+        label: `renamed this task to “${state.title}”`,
+        apply: (s, ctx) => renameTask(s, back, ctx),
+      }
+    }
+
+    case 'set_goal': {
+      if (entry.previous === undefined || state.goal === entry.previous) return null
+      const back = entry.previous
+      return {
+        label: `changed what done means to “${state.goal ?? ''}”`,
+        apply: (s, ctx) => setGoal(s, back, ctx),
+      }
+    }
+
+    case 'set_next': {
+      if (entry.previous === undefined || state.next === entry.previous) return null
+      const back = entry.previous
+      return {
+        label: `changed the next action to “${state.next ?? ''}”`,
+        apply: (s, ctx) => setNext(s, back, ctx),
+      }
+    }
+
+    case 'edit_constraint': {
+      if (id === undefined || entry.previous === undefined) return null
+      const constraint = state.constraints.find((c) => c.id === id)
+      if (!constraint || constraint.rule === entry.previous) return null
+      const back = entry.previous
+      return {
+        label: `reworded a rule to “${constraint.rule}”`,
+        apply: (s, ctx) => editConstraint(s, id, back, ctx),
+      }
+    }
+
     case 'dispute_step': {
       if (id === undefined) return null
       const step = state.steps.find((s) => s.id === id)
@@ -933,6 +1041,10 @@ const UNDOABLE_OPERATIONS = new Set([
   'unarchive_task',
   'dispute_step',
   'withdraw_dispute',
+  'rename_task',
+  'set_next',
+  'set_goal',
+  'edit_constraint',
   'undo',
 ])
 
@@ -987,6 +1099,9 @@ export function requestApproval(
 
   const action = requireText('action', input.action)
   const why = requireText('why', input.why)
+  if (state.approvals.some((a) => a.decision === null && sameWords(a.action, action))) {
+    refuseRepeat('action')
+  }
 
   const entry: ApprovalRequest = {
     id: newId(),
@@ -1155,6 +1270,42 @@ export function openQuestions(state: TaskState): OpenQuestion[] {
 
 export function answeredQuestions(state: TaskState): OpenQuestion[] {
   return state.questions.filter((q) => q.answer !== null)
+}
+
+/**
+ * Les règles en vigueur d'un autre cahier, reprises comme des règles humaines :
+ * quelqu'un a choisi de les porter ici, elles engagent donc d'emblée. Rien
+ * d'autre ne suit — ni le travail, ni les rejets, ni le journal.
+ */
+export function copyRulesInto(
+  target: TaskState,
+  source: TaskState,
+  ctx?: MutationContext,
+): TaskState {
+  const { newId } = resolve(ctx)
+  const rules = source.constraints.filter((c) => c.active && c.standing !== 'declined')
+  if (rules.length === 0) return target
+
+  const carried: Constraint[] = rules.map((c) => ({
+    id: newId(),
+    rule: c.rule,
+    source: 'human',
+    addedAtVersion: target.version + 1,
+    active: true,
+    standing: 'accepted',
+  }))
+
+  return apply(
+    target,
+    {
+      operation: 'copy_rules',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: `${carried.length} rule${carried.length === 1 ? '' : 's'} carried over from “${source.title}”`,
+      patch: { constraints: [...target.constraints, ...carried] },
+    },
+    ctx,
+  )
 }
 
 export function activeConstraints(state: TaskState): Constraint[] {

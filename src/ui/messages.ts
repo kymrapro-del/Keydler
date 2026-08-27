@@ -65,6 +65,8 @@ export function humanReason(error: ValidationError): string {
       return 'that proposal has already been decided.'
     case 'already-has-evidence':
       return 'that step already carries evidence. Record a new step rather than replacing it.'
+    case 'already-recorded':
+      return 'that is already on the task, word for word.'
     case 'already-answered':
       return 'that question already has an answer. Reword the question instead of replacing it.'
   }

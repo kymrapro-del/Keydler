@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDemoTask } from '../src/demo/seed'
+import { buildCoreTask as buildDemoTask } from '../src/demo/seed'
 import {
   activeConstraints,
   addConstraint,

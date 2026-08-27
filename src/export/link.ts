@@ -6,9 +6,10 @@ export const FRAGMENT_KEY = 'log='
 /**
  * Une adresse trop longue est tronquée en silence par des messageries et des
  * terminaux. Mieux vaut refuser clairement et renvoyer vers l'export en
- * fichier, qui n'a pas de limite.
+ * fichier, qui n'a pas de limite. La borne laisse passer un cahier ordinaire
+ * même sans CompressionStream — sinon le repli ne servirait à rien.
  */
-export const MAX_LINK_LENGTH = 12_000
+export const MAX_LINK_LENGTH = 16_000
 
 const SAFE = /^[A-Za-z0-9_-]+$/
 

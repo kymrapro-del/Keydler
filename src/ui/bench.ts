@@ -4,17 +4,29 @@ import { parseExport } from '../export/restore'
 import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
-import { describeHistory } from './history'
-import { markSeen, seenVersion } from './seen'
+import { describeEntry, describeHistory } from './history'
+import { historyOf } from '../domain/trail'
+import { needsYou, summariseNeeds } from '../domain/attention'
+import { sinceThen } from '../domain/elapsed'
+import { SHORTCUTS } from './shortcuts'
+import { markSeen, seenVersion } from '../persistence/seen'
+import {
+  askForPersistence,
+  describeStorage,
+  readStorage,
+  UNKNOWN,
+  type StorageState,
+} from '../persistence/durability'
 import { attentionTitle } from './attention'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
-import { MIN_QUERY, searchTask, searchTasks, type Match } from '../domain/search'
+import { MIN_QUERY, searchTask, searchTasks, type Match, type MatchKind } from '../domain/search'
 import {
   acceptedRejections,
   activeConstraints,
   addConstraint,
+  copyRulesInto,
   answerQuestion,
   answeredQuestions,
   decideApproval,
@@ -30,6 +42,7 @@ import {
   editRejection,
   logStep,
   renameTask,
+  setGoal,
   setNext,
   proposedConstraints,
   proposedRejections,
@@ -64,11 +77,13 @@ import {
   type SecretKind,
   type SecretName,
 } from '../domain/secret'
+import { ALL_TOOLS, READ_TOOLS } from '../webmcp/tools'
 import {
   getRegistrationState,
   getWitness,
   onCall,
   onRegistrationChange,
+  recentlyActive,
   resetCalls,
   taskPath,
   taskUrl,
@@ -167,6 +182,7 @@ let linkPending = false
 type Editing =
   | { kind: 'title' }
   | { kind: 'next' }
+  | { kind: 'goal' }
   | { kind: 'constraint'; id: string }
   | { kind: 'rejection'; id: string }
   | { kind: 'secret'; id: string }
@@ -178,6 +194,13 @@ let attachKindChosen = false
 let answering: string | null = null
 let attaching: string | null = null
 let disputing: string | null = null
+let showingShortcuts = false
+let showingTrail: string | null = null
+let storage: StorageState = UNKNOWN
+let storageRead = false
+let online = true
+let carryRules = false
+let searchFilter: MatchKind | 'all' = 'all'
 let showArchived = false
 
 function renderThemeToggle(): string {
@@ -348,6 +371,7 @@ function renderLanding(): string {
            <input id="new-rule" type="text" autocomplete="off"
                   placeholder="Never modify the database schema" />
          </div>
+         ${carryableRules()}
          <div class="actions">
            <button type="submit" class="btn btn--primary">Create task</button>
            <button type="button" id="cancel-create" class="btn">Cancel</button>
@@ -369,7 +393,9 @@ function renderLanding(): string {
         repeat. A new conversation can read it and continue from the right place.
       </p>
       ${alertBlock()}
+      ${renderOffline()}
       ${renderOffer()}
+      ${renderShortcuts()}
       ${form}
       <p class="muted landing__note">
         Everything stays in this browser. No account, no server.
@@ -389,11 +415,32 @@ function renderReadyForAI(task: TaskState): string {
     </section>`
 }
 
+function renderGoal(task: TaskState): string {
+  if (editingIs('goal')) return editForm('What done looks like')
+
+  return `<p class="hero__goal">
+      <strong>Done when:</strong>
+      ${
+        task.goal
+          ? escapeHtml(task.goal)
+          : '<span class="muted">nobody has said yet — an agent reads the next action but not the destination.</span>'
+      }
+      <button type="button" id="edit-goal" class="btn btn--quiet">
+        ${task.goal ? 'Change what done means' : 'Say what done means'}
+      </button>
+    </p>`
+}
+
 function renderNext(task: TaskState): string {
   if (task.status === 'completed') {
     return `<section class="hero hero--done" aria-labelledby="next-title">
         <h2 id="next-title" class="hero__label">Task closed</h2>
         <p class="hero__value">${escapeHtml(task.summary ?? 'No summary was recorded.')}</p>
+        ${
+          task.goal
+            ? `<p class="hero__goal"><strong>Done when:</strong> ${escapeHtml(task.goal)}</p>`
+            : ''
+        }
         <div class="actions">
           <button type="button" id="reopen" class="btn btn--primary">Reopen this task</button>
         </div>
@@ -415,6 +462,7 @@ function renderNext(task: TaskState): string {
                <button type="button" id="edit-next" class="btn btn--quiet">Change it</button>
              </div>`
       }
+      ${renderGoal(task)}
     </section>`
 }
 
@@ -559,6 +607,36 @@ function renderCompletedWork(task: TaskState): string {
     </section>`
 }
 
+function trailButton(task: TaskState, id: string, label: string): string {
+  if (historyOf(task, id).length === 0) return ''
+  return `<button type="button" class="btn btn--quiet" data-trail="${escapeHtml(id)}"
+            aria-expanded="${showingTrail === id}"
+            aria-label="What happened to: ${escapeHtml(label)}">${
+              showingTrail === id ? 'Hide history' : 'History'
+            }</button>`
+}
+
+function renderTrail(task: TaskState, id: string): string {
+  if (showingTrail !== id) return ''
+  const lines = historyOf(task, id).map(describeEntry).reverse()
+  if (lines.length === 0) return ''
+
+  return `<span class="trail">
+      <ul class="events">
+        ${lines
+          .map(
+            (l) => `<li class="event">
+              <span class="event__when">${escapeHtml(new Date(l.at).toLocaleString('en-GB'))}</span>
+              <span class="event__what"><strong>${escapeHtml(l.who)}</strong> ${escapeHtml(l.what)}${
+                l.detail ? ` — ${escapeHtml(l.detail)}` : ''
+              }</span>
+            </li>`,
+          )
+          .join('')}
+      </ul>
+    </span>`
+}
+
 function renderRules(task: TaskState): string {
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
 
@@ -568,7 +646,8 @@ function renderRules(task: TaskState): string {
       if (editingIs('constraint', c.id)) return `<li>${editForm('Rule')}</li>`
       return `<li class="row${lifted ? ' row--lifted' : ''}">
         <span class="chip chip--${c.source}">${c.source === 'human' ? 'You' : 'Agent'}</span>
-        <span class="row__text">${escapeHtml(c.rule)}</span>
+        <span class="row__text">${escapeHtml(c.rule)}${renderTrail(task, c.id)}</span>
+        ${trailButton(task, c.id, c.rule)}
         ${
           c.standing === 'declined'
             ? '<span class="muted">declined</span>'
@@ -669,10 +748,39 @@ function renderMatch(match: Match, q: string): string {
     </li>`
 }
 
+const FILTER_LABEL: Record<MatchKind, string> = {
+  rule: 'Rules',
+  rejection: 'Ruled out',
+  step: 'Steps',
+  evidence: 'Evidence',
+  decision: 'Decisions',
+  question: 'Questions',
+  approval: 'Permissions',
+  history: 'History',
+}
+
+function renderFilters(all: Match[]): string {
+  const present = [...new Set(all.map((m) => m.kind))]
+  if (present.length < 2) return ''
+
+  const button = (kind: MatchKind | 'all', label: string, count: number) =>
+    `<button type="button" class="btn btn--quiet" data-filter="${kind}"
+             aria-pressed="${searchFilter === kind}">${escapeHtml(label)} (${count})</button>`
+
+  return `<div class="actions search__filters">
+      ${button('all', 'All', all.length)}
+      ${present
+        .map((kind) => button(kind, FILTER_LABEL[kind], all.filter((m) => m.kind === kind).length))
+        .join('')}
+    </div>`
+}
+
 function renderSearchResults(task: TaskState | null): string {
   const q = query()
-  const here = task ? searchTask(task, q) : []
-  const elsewhere = searchTasks(allTasks, q).filter((t) => t.id !== task?.id)
+  const found = task ? searchTask(task, q) : []
+  const here = searchFilter === 'all' ? found : found.filter((m) => m.kind === searchFilter)
+  const elsewhere =
+    searchFilter === 'all' ? searchTasks(allTasks, q).filter((t) => t.id !== task?.id) : []
 
   const hereBody = here.length
     ? `<ul class="rows">${here
@@ -703,6 +811,7 @@ function renderSearchResults(task: TaskState | null): string {
       <h2 id="search-title" class="card__title">
         ${here.length + elsewhere.length} ${plural(here.length + elsewhere.length, 'match', 'matches')} for “${escapeHtml(q)}”
       </h2>
+      ${renderFilters(found)}
       <h3>In this task <span class="muted">(${here.length})</span></h3>
       ${hereBody}
       <h3>Other tasks <span class="muted">(${elsewhere.length})</span></h3>
@@ -722,6 +831,11 @@ function renderSwitcher(task: TaskState): string {
         <span class="row__text">
           <strong>${escapeHtml(t.title)}</strong>
           <span class="muted"> — ${escapeHtml(t.next ?? 'no next action')}</span>
+          ${
+            summariseNeeds(needsYou(t))
+              ? `<span class="needs__badge">${escapeHtml(summariseNeeds(needsYou(t))!)}</span>`
+              : ''
+          }
         </span>
         <button type="button" class="btn btn--quiet" data-archive="${escapeHtml(t.id)}"
                 data-archived="${t.archived}">${t.archived ? 'Unarchive' : 'Archive'}</button>
@@ -747,7 +861,8 @@ function renderSwitcher(task: TaskState): string {
                 }</button>`
               : ''
           }
-          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown" hidden />
+          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown"
+                 aria-label="Choose a watch log file to import" hidden />
         </div>
       </div>
     </details>`
@@ -785,6 +900,79 @@ function renderOffer(): string {
         <button type="button" id="decline-link" class="btn">No thanks</button>
       </div>
     </section>`
+}
+
+function renderLastWrite(task: TaskState): string {
+  const when = sinceThen(task.updatedAt)
+  if (when === null) return ''
+  return `<p class="muted page-head__when">Last written ${escapeHtml(when)}.</p>`
+}
+
+function carryableRules(): string {
+  const open = store.currentTask()
+  const rules = open ? activeConstraints(open) : []
+  if (rules.length === 0) return ''
+
+  return `<div class="field field--check">
+      <input id="carry-rules" type="checkbox"${carryRules ? ' checked' : ''} />
+      <label for="carry-rules">
+        Carry over the ${rules.length} ${plural(rules.length, 'rule', 'rules')} from
+        “${escapeHtml(open!.title)}”
+      </label>
+    </div>`
+}
+
+function renderAgentLive(): string {
+  const call = recentlyActive()
+  if (!call) return ''
+  const when = sinceThen(call.at)
+  if (when === null) return ''
+
+  return `<p class="agent-live" role="status">
+      An agent called <code>${escapeHtml(call.tool)}</code> ${escapeHtml(when)}${
+        call.refused ? ' — and it was refused' : ''
+      }.
+    </p>`
+}
+
+function renderOffline(): string {
+  if (online) return ''
+  return `<p class="offline" role="status">
+      <strong>Offline.</strong> Everything here is on this device, so nothing stops —
+      the page and this log both work without a network.
+    </p>`
+}
+
+function renderShortcuts(): string {
+  if (!showingShortcuts) return ''
+  const rows = SHORTCUTS.map(
+    (s) => `<li class="row">
+        <kbd>${escapeHtml(s.key)}</kbd>
+        <span class="row__text">${escapeHtml(s.what)}</span>
+      </li>`,
+  ).join('')
+
+  return `<section id="shortcuts" class="card" aria-labelledby="shortcuts-title">
+      <h2 id="shortcuts-title" class="card__title">Keyboard</h2>
+      <ul class="rows">${rows}</ul>
+      <div class="actions">
+        <button type="button" id="close-shortcuts" class="btn">Close</button>
+      </div>
+    </section>`
+}
+
+function renderNeeds(task: TaskState): string {
+  const needs = needsYou(task)
+  if (needs.length === 0) return ''
+
+  const items = needs
+    .map((n) => `<li><a href="${n.anchor}">${escapeHtml(n.label)}</a></li>`)
+    .join('')
+
+  return `<nav class="needs" aria-label="What needs you">
+      <p class="needs__title">Needs you</p>
+      <ul class="needs__list">${items}</ul>
+    </nav>`
 }
 
 function renderPermission(task: TaskState): string {
@@ -943,6 +1131,7 @@ function renderHandoff(task: TaskState): string {
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
       <button type="button" id="copy-link" class="btn btn--quiet">Copy a link that carries this log</button>
+      <button type="button" id="copy-state" class="btn btn--quiet">Copy the log as text</button>
       ${undoButton}
     </p>`
 }
@@ -1252,6 +1441,31 @@ function renderHistory(task: TaskState): string {
     </section>`
 }
 
+function renderToolInspector(): string {
+  const rows = ALL_TOOLS.map((tool) => {
+    const reads = READ_TOOLS.includes(tool)
+    return `<li class="review" data-tool="${escapeHtml(tool.name)}">
+        <div class="row">
+          <span class="chip chip--${reads ? 'evidence' : 'claimed'}">${reads ? 'reads' : 'writes'}</span>
+          <span class="row__text"><code>${escapeHtml(tool.name)}</code></span>
+        </div>
+        <pre>${escapeHtml(tool.description)}</pre>
+        <pre>${escapeHtml(JSON.stringify(tool.inputSchema, null, 2))}</pre>
+      </li>`
+  }).join('')
+
+  return `<details id="tools" class="technical">
+      <summary>What an agent reads — ${ALL_TOOLS.length} tools, verbatim</summary>
+      <div class="technical__body">
+        <p class="muted">
+          The registered tool objects themselves: the same descriptions and schemas
+          an agent receives through WebMCP, not a summary written for this page.
+        </p>
+        <ul class="rows">${rows}</ul>
+      </div>
+    </details>`
+}
+
 function renderTechnical(task: TaskState | null): string {
   const { phase, availability, toolNames, error, observedTools, lifecycle } = getRegistrationState()
 
@@ -1277,6 +1491,14 @@ function renderTechnical(task: TaskState | null): string {
           observedTools === null ? '(not read)' : escapeHtml(observedTools.join(' · ')) || '(none)'
         }</p>
         <p class="muted">Lifecycle: <strong>${lifecycle.mode}</strong> — ${escapeHtml(lifecycle.reason)}</p>
+        <p class="muted">${escapeHtml(describeStorage(storage))}</p>
+        ${
+          storage.persisted === false
+            ? `<div class="actions">
+                 <button type="button" id="persist" class="btn">Ask the browser to keep this</button>
+               </div>`
+            : ''
+        }
         ${
           task
             ? `<p class="mono">Task ID: ${escapeHtml(task.id)} · version ${task.version}</p>
@@ -1286,6 +1508,7 @@ function renderTechnical(task: TaskState | null): string {
                )}</pre>`
             : ''
         }
+        ${renderToolInspector()}
         <div class="actions">
           <button type="button" id="export-one" class="btn">Export this task</button>
           <button type="button" id="export-all" class="btn">Export all tasks</button>
@@ -1311,6 +1534,8 @@ function renderDashboard(task: TaskState): string {
                        aria-label="Rename this task">Rename</button>
              </div>`
       }
+      ${renderLastWrite(task)}
+      ${renderAgentLive()}
       ${renderSwitcher(task)}
       ${renderSearchBox()}
     </header>
@@ -1318,7 +1543,10 @@ function renderDashboard(task: TaskState): string {
     ${alertBlock()}
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
+    ${renderOffline()}
     ${renderOffer()}
+    ${renderShortcuts()}
+    ${searching() ? '' : renderNeeds(task)}
     ${searching() ? '' : renderPermission(task)}
     ${searching() ? '' : renderAway(task)}
     ${searching() ? '' : renderNext(task)}
@@ -1383,6 +1611,16 @@ function bindDrafts(): void {
 }
 
 function bindCreation(): void {
+  const carryBox = document.querySelector<HTMLInputElement>('#carry-rules')
+  if (carryBox) {
+    carryBox.checked = carryRules
+    for (const event of ['change', 'input']) {
+      carryBox.addEventListener(event, () => {
+        carryRules = carryBox.checked
+      })
+    }
+  }
+
   document.querySelector('#start-create')?.addEventListener('click', () => {
     creating = true
     renderNow()
@@ -1416,8 +1654,15 @@ function bindCreation(): void {
     }
 
     humanError = null
+    // Lu AVANT la création : ouvrir la nouvelle tâche remplace la courante.
+    const source = carryRules ? store.currentTask() : null
+
     void store
       .createAndOpenTask(title, next)
+      .then(() => {
+        if (!source) return undefined
+        return store.mutate((s) => copyRulesInto(s, source)).then(() => undefined)
+      })
       .then(() => {
         if (!rule) return undefined
         return store
@@ -1448,6 +1693,11 @@ function bindSupervision(): void {
   document.querySelector('#edit-title')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (task) startEditing({ kind: 'title' }, task.title)
+  })
+
+  document.querySelector('#edit-goal')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (task) startEditing({ kind: 'goal' }, task.goal ?? '')
   })
 
   document.querySelector('#edit-next')?.addEventListener('click', () => {
@@ -1514,11 +1764,13 @@ function bindSupervision(): void {
     const mutate: Parameters<typeof store.mutate>[0] =
       current.kind === 'title'
         ? (state) => renameTask(state, value)
-        : current.kind === 'next'
-          ? (state) => setNext(state, value)
-          : current.kind === 'constraint'
-            ? (state) => editConstraint(state, current.id, value)
-            : (state) => editRejection(state, current.id, { approach: value, reason })
+        : current.kind === 'goal'
+          ? (state) => setGoal(state, value)
+          : current.kind === 'next'
+            ? (state) => setNext(state, value)
+            : current.kind === 'constraint'
+              ? (state) => editConstraint(state, current.id, value)
+              : (state) => editRejection(state, current.id, { approach: value, reason })
 
     humanAction('Saving the change', mutate, stopEditing)
   })
@@ -1754,6 +2006,15 @@ function bindSupervision(): void {
     )
   })
 
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-trail]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.trail!
+      showingTrail = showingTrail === id ? null : id
+      renderNow()
+      document.querySelector<HTMLButtonElement>(`[data-trail="${id}"]`)?.focus()
+    })
+  }
+
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-toggle]')) {
     button.addEventListener('click', () => {
       const id = button.dataset.toggle!
@@ -1787,8 +2048,19 @@ function bindSupervision(): void {
     })
   }
 
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-filter]')) {
+    b.addEventListener('click', () => {
+      searchFilter = b.dataset.filter as MatchKind | 'all'
+      renderNow()
+    })
+  }
+
   const searchField = document.querySelector<HTMLInputElement>('#search')
-  searchField?.addEventListener('input', () => scheduleRender())
+  searchField?.addEventListener('input', () => {
+    // Un filtre gardé d'une recherche à l'autre fait croire à un résultat vide.
+    searchFilter = 'all'
+    scheduleRender()
+  })
   searchField?.addEventListener('search', () => scheduleRender())
   document.querySelector<HTMLFormElement>('#form-search')?.addEventListener('submit', (e) => {
     e.preventDefault()
@@ -1893,6 +2165,34 @@ function bindSupervision(): void {
     })
   }
 
+  document.querySelector('#persist')?.addEventListener('click', () => {
+    void askForPersistence()
+      .then((granted) => {
+        // Un clic sans effet visible se lit comme un bouton cassé. Chrome
+        // accorde la durabilité sur des critères d'usage, pas sur demande.
+        if (granted === true) {
+          showNotice('The browser will keep this data unless you delete it yourself.')
+        } else if (granted === false) {
+          showNotice(
+            'The browser declined for now. It usually grants this once the page has ' +
+              'been used a few times; asking again later costs nothing.',
+          )
+        } else {
+          showNotice('This browser does not answer that question. Export what matters.')
+        }
+      })
+      .then(() => readStorage())
+      .then((state) => {
+        storage = state
+        scheduleRender()
+      })
+  })
+
+  document.querySelector('#close-shortcuts')?.addEventListener('click', () => {
+    showingShortcuts = false
+    renderNow()
+  })
+
   document.querySelector('#accept-link')?.addEventListener('click', () => {
     const task = offered
     if (!task) return
@@ -1912,6 +2212,30 @@ function bindSupervision(): void {
     offered = null
     clearLinkFragment()
     renderNow()
+  })
+
+  document.querySelector('#copy-state')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    humanError = null
+    // Pour les agents sans WebMCP — l'immense majorité aujourd'hui. Le texte
+    // est celui de resume_task, pas une variante rédigée pour l'écran.
+    const body = [
+      'Read this before doing anything. It is the shared log for the task we are',
+      'continuing; it holds the rules, the work already done, and what was ruled out.',
+      '',
+      renderTaskState(task, { url: taskUrl(task.id), credentials }),
+      '',
+      'Continue this task. Tell me what you are about to do before you do it.',
+    ].join('\n')
+
+    void navigator.clipboard?.writeText(body).then(
+      () => showNotice('Copied. Paste it to any assistant — WebMCP or not.'),
+      (error: unknown) => {
+        humanError = humanMessage(error, 'Copying the log')
+        scheduleRender()
+      },
+    )
   })
 
   document.querySelector('#copy-link')?.addEventListener('click', () => {
@@ -2187,6 +2511,14 @@ function render(): void {
   // digest doit rapporter.
   if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
 
+  if (!storageRead) {
+    storageRead = true
+    void readStorage().then((state) => {
+      storage = state
+      scheduleRender()
+    })
+  }
+
   if (!linkRead) {
     linkRead = true
     const packed = readLinkFragment()
@@ -2293,6 +2625,11 @@ function clearLinkFragment(): void {
   history.replaceState(null, '', `${location.pathname}${location.search}`)
 }
 
+function onNetworkChange(): void {
+  online = navigator.onLine
+  scheduleRender()
+}
+
 function looking(): boolean {
   return typeof document.visibilityState !== 'string' || document.visibilityState === 'visible'
 }
@@ -2309,6 +2646,13 @@ function onVisibilityChange(): void {
 
 function closeOnEscape(event: KeyboardEvent): void {
   if (event.key !== 'Escape' || event.ctrlKey || event.metaKey || event.altKey) return
+
+  if (showingShortcuts) {
+    showingShortcuts = false
+    event.preventDefault()
+    renderNow()
+    return
+  }
 
   if (creating) {
     creating = false
@@ -2354,6 +2698,46 @@ function closeOnEscape(event: KeyboardEvent): void {
   }
 }
 
+function onShortcut(event: KeyboardEvent): void {
+  if (event.ctrlKey || event.metaKey || event.altKey) return
+  if (typingSomewhereElse(event.target)) return
+
+  const act = (run: () => void) => {
+    event.preventDefault()
+    run()
+  }
+
+  switch (event.key) {
+    case '?':
+      return act(() => {
+        showingShortcuts = !showingShortcuts
+        renderNow()
+      })
+    case 's':
+      return act(() => {
+        if (store.currentTask()?.status !== 'active') return
+        loggingStep = true
+        editing = null
+        renderNow()
+        document.querySelector<HTMLInputElement>('#step-action')?.focus()
+      })
+    case 'n':
+      return act(() => {
+        creating = true
+        clearNotice()
+        humanError = null
+        renderNow()
+        document.querySelector<HTMLInputElement>('#new-title')?.focus()
+      })
+    case 'e':
+      return act(() => {
+        const task = store.currentTask()
+        if (!task || task.status !== 'active') return
+        startEditing({ kind: 'next' }, task.next ?? '')
+      })
+  }
+}
+
 function focusSearchOnSlash(event: KeyboardEvent): void {
   if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return
   if (typingSomewhereElse(event.target)) return
@@ -2391,6 +2775,13 @@ export function mount(target: HTMLElement): () => void {
   answering = null
   attaching = null
   disputing = null
+  showingShortcuts = false
+  showingTrail = null
+  storage = UNKNOWN
+  storageRead = false
+  online = typeof navigator.onLine === 'boolean' ? navigator.onLine : true
+  carryRules = false
+  searchFilter = 'all'
   showArchived = false
 
   render()
@@ -2402,12 +2793,18 @@ export function mount(target: HTMLElement): () => void {
 
   document.addEventListener('keydown', focusSearchOnSlash)
   document.addEventListener('keydown', closeOnEscape)
+  document.addEventListener('keydown', onShortcut)
   document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('online', onNetworkChange)
+  window.addEventListener('offline', onNetworkChange)
 
   return () => {
     document.removeEventListener('keydown', focusSearchOnSlash)
     document.removeEventListener('keydown', closeOnEscape)
+    document.removeEventListener('keydown', onShortcut)
     document.removeEventListener('visibilitychange', onVisibilityChange)
+    window.removeEventListener('online', onNetworkChange)
+    window.removeEventListener('offline', onNetworkChange)
     hideRevealed()
     clearNotice()
     for (const off of subscriptions) off()

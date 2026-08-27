@@ -44,6 +44,18 @@ export function getWitness(): WitnessState {
   return { total, refused: refusés, sawRead, blindWrites, recents: [...recents] }
 }
 
+export const RECENT_WINDOW = 10 * 60_000
+
+/**
+ * Un appel observé, pas une présence : rien dans WebMCP ne dit qu'un agent est
+ * « connecté », et l'écran ne doit pas le laisser croire.
+ */
+export function recentlyActive(now: number = Date.now()): Call | null {
+  const last = recents[recents.length - 1]
+  if (!last) return null
+  return now - last.at <= RECENT_WINDOW ? last : null
+}
+
 export function onCall(listener: () => void): () => void {
   listeners.add(listener)
   return () => {
