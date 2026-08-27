@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { getWitness, onCall, recordCall, resetCalls } from '../src/webmcp/witness'
 
-/**
- * Le témoin ne sert qu'à voir un appel se produire, et la page n'en montre
- * qu'une dizaine. Conserver les autres reviendrait à recopier un tableau de
- * plus en plus grand à chaque appel — le défaut déjà corrigé sur le journal
- * d'audit, qu'il n'y avait pas de raison de laisser vivre ici.
- */
 beforeEach(resetCalls)
 
 describe('témoin d’appels', () => {
@@ -16,7 +10,6 @@ describe('témoin d’appels', () => {
     const { total, refused, recents } = getWitness()
     expect(total).toBe(500)
     expect(refused).toBe(100)
-    // Les compteurs sont exacts, la mémoire est bornée.
     expect(recents.length).toBeLessThanOrEqual(20)
   })
 
@@ -41,8 +34,6 @@ describe('témoin d’appels', () => {
     const retenu = getWitness()
     recordCall('b', false)
 
-    // Un appelant qui retient l'objet ne doit pas le voir muter sous lui : les
-    // deux magasins voisins rendent des instantanés stables.
     expect(retenu.recents).toHaveLength(1)
     expect(retenu.total).toBe(1)
     expect(getWitness().recents).toHaveLength(2)

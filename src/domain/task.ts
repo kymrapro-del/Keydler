@@ -21,25 +21,6 @@ import type {
   TaskState,
 } from './types'
 
-/**
- * Mutations pures du cahier de quart (TAL-65, TAL-70, TAL-71).
- *
- * Trois invariants tiennent tout le produit :
- *
- * 1. Toute mutation appliquée incrémente `version`, sans exception.
- * 2. Toute écriture d'agent porte le `basedOnVersion` sur lequel il croit
- *    travailler ; une divergence est refusée, jamais fusionnée.
- * 3. Une écriture humaine est autoritaire : elle ne porte pas de version et
- *    n'est jamais refusée. C'est précisément ce qui périme celle de l'agent.
- * 4. Une règle ou un rejet écrit par un agent est une PROPOSITION. Il n'oppose
- *    rien tant qu'un humain ne l'a pas endossé. Sans cette quatrième règle, un
- *    agent se donne à lui-même — et donne à toutes les conversations suivantes
- *    — des interdits que personne n'a jamais validés.
- *
- * Le journal d'audit est append-only et n'incrémente pas `version` : il décrit
- * ce qui est arrivé au cahier, il n'en fait pas partie.
- */
-
 export type MutationContext = {
   now?: number
   newId?: () => string
@@ -61,7 +42,6 @@ function defaultNewId(): string {
   return `id-${Date.now().toString(36)}-${fallbackCounter.toString(36)}`
 }
 
-/** Identifiant de tâche court, lisible et sûr dans une URL (TAL-68). */
 export function newTaskId(ctx?: MutationContext): string {
   return resolve(ctx).newId().replace(/-/g, '').slice(0, 12)
 }
@@ -102,10 +82,6 @@ export function createTask(
   }
 }
 
-/**
- * Vérifie la version revendiquée. `null` signifie « écriture autoritaire »
- * (humaine) et court-circuite le contrôle.
- */
 function guardVersion(state: TaskState, basedOnVersion: number | null): void {
   if (basedOnVersion === null) return
   if (basedOnVersion !== state.version) {
@@ -121,10 +97,6 @@ type AppliedMutation = {
   patch: Partial<TaskState>
 }
 
-/**
- * Applique une mutation validée : incrémente la version, horodate et journalise.
- * Seul point du domaine autorisé à faire avancer `version`.
- */
 function apply(state: TaskState, mutation: AppliedMutation, ctx?: MutationContext): TaskState {
   const { now, newId } = resolve(ctx)
   const versionAfter = state.version + 1
@@ -148,11 +120,6 @@ function apply(state: TaskState, mutation: AppliedMutation, ctx?: MutationContex
   }
 }
 
-/**
- * Journalise une écriture refusée sans toucher au contenu ni à la version.
- * Appelé par la couche appelante quand une mutation a levé une erreur : c'est
- * ce qui rend le refus visible à l'écran au lieu de le laisser dans la console.
- */
 export function recordRefusal(
   state: TaskState,
   input: {
@@ -178,15 +145,6 @@ export function recordRefusal(
   return { ...state, updatedAt: now, audit: appendAudit(state.audit, entry) }
 }
 
-/**
- * Ajoute une entrée au journal.
- *
- * Deux protections, l'une contre le bruit, l'autre contre la croissance :
- * une tentative refusée à l'identique juste après la précédente est comptée et
- * non empilée — c'est le comportement d'un agent qui insiste sur une version
- * périmée ; et au-delà de la borne, le plus ancien est élagué en laissant une
- * entrée qui dit combien, pour qu'aucune disparition ne soit muette.
- */
 function appendAudit(audit: AuditEntry[], entry: AuditEntry): AuditEntry[] {
   const last = audit[audit.length - 1]
   const identique =
@@ -228,13 +186,6 @@ function appendAudit(audit: AuditEntry[], entry: AuditEntry): AuditEntry[] {
   return [marque, ...suivant.slice(àÉlaguer)]
 }
 
-/**
- * Mémorise une écriture d'agent appliquée sous son `mutation_id`.
- *
- * N'incrémente PAS la version : la mutation a déjà fait avancer le cahier, et
- * sa trace n'est pas un changement de contenu. Comme le journal d'audit, la
- * liste est bornée par le plus ancien.
- */
 export function recordMutation(state: TaskState, record: MutationRecord): TaskState {
   const mutations = [...state.mutations, record]
   return {
@@ -246,7 +197,6 @@ export function recordMutation(state: TaskState, record: MutationRecord): TaskSt
   }
 }
 
-/** Retrouve une écriture déjà appliquée sous ce `mutation_id`, s'il en existe une. */
 export function findMutation(state: TaskState, mutationId: string): MutationRecord | undefined {
   return state.mutations.find((m) => m.id === mutationId)
 }
@@ -261,10 +211,6 @@ function assertActive(state: TaskState, operation: string): void {
     )
   }
 }
-
-/* -------------------------------------------------------------------------- */
-/* Écritures d'agent — toutes soumises au contrôle de version                  */
-/* -------------------------------------------------------------------------- */
 
 export function logStep(
   state: TaskState,
@@ -296,16 +242,6 @@ export function logStep(
     }
   }
 
-  // Le degré n'est jamais déclaré, il est DÉDUIT de ce que l'écriture apporte —
-  // et ce qu'une écriture d'AGENT apporte plafonne à « evidence ».
-  //
-  // Une version antérieure accordait « machine_verified » dès que l'étiquette
-  // jointe valait `command_output` ou `test_report`. Or l'agent choisit
-  // l'étiquette comme il choisit le contenu : rien n'avait été vérifié par une
-  // machine, un texte avait été recopié. Le degré promettait à l'humain une
-  // garantie que le système n'avait jamais obtenue. Il n'existe plus.
-  //
-  // Une écriture humaine, elle, atteste de ce que la personne a sous les yeux.
   const confidence: Confidence =
     evidence === null ? 'claimed' : actor === 'human' ? 'human_verified' : 'evidence'
 
@@ -454,24 +390,6 @@ export function completeTask(
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/* Écritures humaines — autoritaires, jamais refusées (TAL-48)                 */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Valide une preuve d'un clic. C'est le seul chemin vers `human_verified` :
- * aucun agent ne peut s'auto-attribuer ce degré.
- *
- * `reviewedContent` est le contenu que l'appelant AFFICHAIT au moment du clic.
- * Il doit correspondre à celui du cahier, sans quoi la validation est refusée.
- *
- * Ce n'est pas une formalité. Sans lui, « l'humain a validé la preuve » ne veut
- * rien dire de plus que « quelqu'un a cliqué à côté d'un titre » : la file de
- * validation n'affichait que l'action, jamais la preuve, et le clic attestait
- * donc d'un texte que personne n'avait lu. Un appelant ne peut produire ce
- * paramètre qu'en ayant le contenu sous la main, et une régression d'interface
- * qui cesserait de l'afficher casse ici au lieu de valider en aveugle.
- */
 export function verifyEvidence(
   state: TaskState,
   stepId: string,
@@ -519,13 +437,6 @@ export function verifyEvidence(
   )
 }
 
-/**
- * Endosse ou écarte une proposition d'agent. Humain seulement.
- *
- * C'est le seul chemin par lequel une règle ou un rejet écrit par un agent
- * devient opposable. Tant qu'il n'est pas emprunté, la proposition se lit dans
- * le cahier mais n'y impose rien.
- */
 export function setConstraintStanding(
   state: TaskState,
   constraintId: string,
@@ -621,14 +532,6 @@ export function setConstraintActive(
   )
 }
 
-/**
- * Rouvre une tâche close. Humain seulement.
- *
- * Sans ce chemin, une clôture décidée par l'agent serait irréversible et
- * l'humain, censé être autoritaire, se retrouverait à subir la décision d'un
- * agent. Le résumé final est conservé : il devient une trace de ce qui avait
- * été conclu, pas un mensonge à effacer.
- */
 export function reopenTask(state: TaskState, reason: unknown, ctx?: MutationContext): TaskState {
   if (state.status === 'active') {
     throw new ValidationError('status', 'this task is already active.', {
@@ -652,9 +555,6 @@ export function reopenTask(state: TaskState, reason: unknown, ctx?: MutationCont
 }
 
 export function setNext(state: TaskState, next: unknown, ctx?: MutationContext): TaskState {
-  // Une tâche close n'a pas de suite : `complete_task` met `next` à null et la
-  // restitution montre le résumé à sa place. Laisser poser une prochaine action
-  // produirait un état que rien n'affiche et que personne ne reprendrait.
   assertActive(state, 'set_next')
   const value = optionalText('next', next, 400)
   return apply(
@@ -670,36 +570,22 @@ export function setNext(state: TaskState, next: unknown, ctx?: MutationContext):
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/* Lectures dérivées                                                           */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Les règles qui s'imposent réellement : endossées ET non levées.
- *
- * Une proposition d'agent n'en fait pas partie. C'est la différence entre
- * « un agent a écrit qu'il ne fallait pas » et « il ne faut pas ».
- */
 export function activeConstraints(state: TaskState): Constraint[] {
   return state.constraints.filter((c) => c.active && c.standing === 'accepted')
 }
 
-/** Les règles écrites par un agent, en attente d'un humain. */
 export function proposedConstraints(state: TaskState): Constraint[] {
   return state.constraints.filter((c) => c.standing === 'proposed')
 }
 
-/** Les approches réellement condamnées. */
 export function acceptedRejections(state: TaskState): Rejection[] {
   return state.rejected.filter((r) => r.standing === 'accepted')
 }
 
-/** Les approches qu'un agent voudrait condamner, en attente d'un humain. */
 export function proposedRejections(state: TaskState): Rejection[] {
   return state.rejected.filter((r) => r.standing === 'proposed')
 }
 
-/** Ce qu'un humain a explicitement refusé de condamner. */
 export function declinedRejections(state: TaskState): Rejection[] {
   return state.rejected.filter((r) => r.standing === 'declined')
 }
@@ -716,7 +602,6 @@ export function evidenceCounts(state: TaskState): EvidenceCounts {
   return counts
 }
 
-/** Nombre d'étapes appuyées par une preuve, quelle qu'en soit la force. */
 export function provenStepCount(state: TaskState): number {
   return state.steps.filter((s) => s.confidence !== 'claimed').length
 }

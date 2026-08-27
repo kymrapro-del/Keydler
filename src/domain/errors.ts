@@ -1,13 +1,3 @@
-/**
- * Erreurs de domaine. Chaque erreur porte le texte exact rendu à l'agent :
- * c'est la seule surface par laquelle le cahier impose une contrainte.
- */
-
-/**
- * Écriture fondée sur une version dépassée. C'est le seul point du système où
- * une règle est réellement imposée, et ce qui permet à l'humain de modifier
- * l'état sans interrompre l'agent.
- */
 export class StaleStateError extends Error {
   readonly claimedVersion: number
   readonly currentVersion: number
@@ -26,15 +16,6 @@ export class StaleStateError extends Error {
   }
 }
 
-/**
- * Motif structuré d'un refus de validation.
- *
- * Il existe pour que personne n'ait à reconnaître un refus à son texte anglais.
- * L'interface traduisait en effet ces messages par correspondance de chaînes :
- * reformuler « must not be empty. » laissait passer tous les tests et faisait
- * silencieusement retomber l'écran en anglais devant la personne qui avait
- * cliqué. Le code, lui, casse à la compilation.
- */
 export type ValidationCode =
   | 'empty'
   | 'too-long'
@@ -54,18 +35,10 @@ export type ValidationCode =
 
 export type ValidationOptions = {
   code: ValidationCode
-  /**
-   * `false` sépare deux situations que rien d'autre ne distingue : une entrée
-   * mal formée, qu'il suffit de corriger et de renvoyer, et un état du cahier
-   * qui interdit l'opération — où réessayer ne marchera jamais. Conseiller un
-   * réessai dans le second cas inviterait à une boucle infinie.
-   */
   retryable?: boolean
-  /** Borne dépassée, pour un refus `too-long`. */
   max?: number
 }
 
-/** Entrée qui ne respecte pas le contrat d'un outil. */
 export class ValidationError extends Error {
   readonly field: string
   readonly code: ValidationCode
@@ -82,14 +55,6 @@ export class ValidationError extends Error {
   }
 }
 
-/**
- * Le cahier a changé sur le disque depuis qu'on l'a lu.
- *
- * Se produit quand une autre page — un second onglet, une autre fenêtre —
- * écrit entre notre lecture et notre écriture. La file d'écriture en mémoire
- * ne peut rien contre ça : elle ne connaît que son propre onglet. Seul le
- * stockage arbitre.
- */
 export class ConcurrentWriteError extends Error {
   readonly expectedVersion: number
   readonly foundVersion: number
@@ -108,14 +73,6 @@ export class ConcurrentWriteError extends Error {
   }
 }
 
-/**
- * L'agent — ou la personne devant lui — a annulé l'appel avant qu'il n'écrive.
- *
- * WebMCP passe un `AbortSignal` à chaque exécution et JETTE le résultat d'une
- * exécution annulée. Un appel annulé qui écrirait quand même produirait donc
- * une écriture que personne ne voit passer : l'agent ne reçoit rien, réessaie,
- * et le cahier compte deux fois le même travail. On s'arrête avant d'écrire.
- */
 export class CancelledError extends Error {
   constructor(operation: string) {
     super(

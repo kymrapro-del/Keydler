@@ -1,54 +1,10 @@
-/**
- * Adaptateur WebMCP.
- *
- * La spécification a déplacé le getter de `Navigator` vers `Document` dans le
- * brouillon du 27 mai 2026, au motif que les outils appartiennent à une page et
- * non au navigateur ; `navigator.modelContext` est déprécié depuis Chrome 150.
- * On cible `document.modelContext` et on retombe sur l'ancienne forme pour les
- * navigateurs restés en arrière.
- *
- * Toute la connaissance de cette instabilité est enfermée ici. Le reste du code
- * ne voit qu'une interface stable — c'est ce qui rendra la mise à jour indolore
- * quand la spécification bougera encore.
- */
-
-/** Réponse d'outil au format MCP. */
 export type ToolResult = {
   content: Array<{ type: 'text'; text: string }>
   isError?: boolean
 }
 
-/**
- * Les annotations que WebMCP connaît. Il n'y en a que deux.
- *
- * ```webidl
- * dictionary ToolAnnotations {
- *   boolean readOnlyHint = false;
- *   boolean untrustedContentHint = false;
- * };
- * ```
- *
- * Ce type existe pour empêcher une faute qui ne se voyait nulle part : ce code
- * posait aussi `destructiveHint`, `idempotentHint` et `openWorldHint`, repris
- * des annotations d'un serveur MCP. Une conversion de dictionnaire WebIDL
- * IGNORE en silence un membre qu'elle ne connaît pas — aucune erreur, aucun
- * avertissement, et un `openWorldHint: false` qui n'a jamais quitté la page.
- * Trois annotations sur cinq étaient donc décoratives, et la seule façon de
- * s'en apercevoir était de lire l'IDL.
- *
- * Ce que le navigateur ne transporte pas, la description doit le dire : c'est
- * pourquoi l'idempotence des écritures est écrite en toutes lettres dans le
- * texte des outils plutôt que confiée à un `idempotentHint` fantôme.
- */
 export type ToolAnnotations = {
-  /** L'outil ne modifie rien. Un agent peut l'appeler sans conséquence. */
   readOnlyHint?: boolean
-  /**
-   * La sortie de l'outil contient du contenu non fiable, du point de vue de
-   * l'auteur qui l'enregistre. Vrai pour tout ce qui rend le cahier : un agent
-   * précédent y a écrit du texte libre, et ce texte revient dans le contexte
-   * d'un autre agent.
-   */
   untrustedContentHint?: boolean
 }
 
@@ -58,15 +14,9 @@ export type ModelContextTool = {
   description: string
   inputSchema?: object
   annotations?: ToolAnnotations
-  /**
-   * `signal` est REQUIS par la spécification — `dictionary
-   * ToolExecuteCallbackOptions { required AbortSignal signal; }`. Le typer
-   * optionnel invitait à l'ignorer, ce que ce code faisait.
-   */
   execute: (input: Record<string, unknown>, options: { signal: AbortSignal }) => Promise<ToolResult>
 }
 
-/** Ce qu'un agent voit d'un outil enregistré, via `getTools()`. */
 export type RegisteredTool = {
   name: string
   title?: string
@@ -80,7 +30,6 @@ type ModelContextLike = {
     tool: ModelContextTool,
     options?: { signal?: AbortSignal; exposedTo?: string[] },
   ) => Promise<void>
-  /** Présent dès lors que la page peut aussi jouer l'agent. Facultatif ici. */
   getTools?: () => Promise<RegisteredTool[]>
   addEventListener?: (type: string, listener: () => void) => void
   removeEventListener?: (type: string, listener: () => void) => void
@@ -95,7 +44,6 @@ declare global {
   }
 }
 
-/** L'implémentation disponible, ou `null` si le navigateur n'en a aucune. */
 export function getModelContext(): ModelContextLike | null {
   if (typeof document === 'undefined') return null
   const candidate = document.modelContext ?? globalThis.navigator?.modelContext
@@ -106,11 +54,6 @@ export type Availability =
   | { supported: true; surface: 'document' | 'navigator' }
   | { supported: false; reason: 'no-api' | 'insecure-context' }
 
-/**
- * Diagnostic destiné à l'écran. On distingue le contexte non sécurisé du simple
- * défaut d'API : ce sont deux problèmes différents, donc deux consignes
- * différentes pour la personne qui teste.
- */
 export function checkAvailability(): Availability {
   if (typeof document === 'undefined') return { supported: false, reason: 'no-api' }
   if (typeof window !== 'undefined' && window.isSecureContext === false) {
@@ -123,30 +66,12 @@ export function checkAvailability(): Availability {
   return { supported: false, reason: 'no-api' }
 }
 
-/** Emballe une chaîne dans l'enveloppe MCP attendue. */
 export function text(value: string): ToolResult {
   return { content: [{ type: 'text', text: value }] }
 }
 
-/**
- * Emballe un refus. Le message est destiné à être lu par l'agent : il doit
- * porter l'instruction à suivre, pas seulement le constat d'échec.
- */
 export function failure(value: string): ToolResult {
   return { content: [{ type: 'text', text: value }], isError: true }
 }
 
 export type { ModelContextLike }
-
-/*
- * Le jeton d'origin trial n'est PAS posé ici.
- *
- * Une version antérieure l'injectait par script au démarrage. C'était inerte
- * dans tous les cas : `import.meta.env` est figé à la construction, donc quand
- * le jeton existe la balise du build est déjà dans le `<head>` et l'injection
- * s'arrêtait aussitôt ; quand il n'existe pas, il n'y avait rien à poser.
- *
- * Pire, `document.modelContext` est un accesseur dont l'existence se décide à
- * l'analyse du document : un jeton arrivé après coup n'aurait rien débloqué.
- * Il est donc écrit dans le HTML à la construction — voir `vite.config.ts`.
- */

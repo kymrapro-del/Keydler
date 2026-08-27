@@ -7,6 +7,10 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ['public/sw.js'],
+    languageOptions: { ecmaVersion: 2022, globals: { ...globals.serviceworker } },
+  },
+  {
     files: ['**/*.ts'],
     languageOptions: {
       ecmaVersion: 2022,
@@ -14,12 +18,11 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      // Le domaine lève plutôt que de rendre une valeur douteuse : une promesse
-      // dont on ignore l'échec masquerait précisément ce qu'on veut voir.
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       eqeqeq: ['error', 'always', { null: 'ignore' }],
       'prefer-const': 'error',
       'no-var': 'error',
+      'no-empty': ['error', { allowEmptyCatch: true }],
     },
   },
 )

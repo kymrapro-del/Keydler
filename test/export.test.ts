@@ -4,14 +4,9 @@ import { buildDemoTask } from '../src/demo/seed'
 import { buildFullExport, buildTaskExport, exportFilename } from '../src/export/notebook'
 import { completeTask, logStep, recordRefusal } from '../src/domain/task'
 
-/**
- * L'export est ce qui rend une campagne de mesure vérifiable par un tiers :
- * sans lui, les journaux ne sortent que par une lecture manuelle d'IndexedDB.
- */
 describe('export d’un cahier', () => {
   it('montre le contenu des preuves, que la restitution compacte cache', () => {
     const sortie = buildTaskExport(buildDemoTask())
-    // C'est là qu'une affirmation se vérifie — ou se contredit.
     expect(sortie).toContain('## Preuves jointes')
     expect(sortie).toContain('auth suite — 183 passed, 0 failed, 0 skipped')
     expect(sortie).toContain('bench --auth-refresh')
@@ -71,9 +66,6 @@ describe('export d’un cahier', () => {
       {
         action: 'Sortie contenant une clôture de bloc',
         result: 'r',
-        // Une sortie de commande peut parfaitement contenir trois accents
-        // graves. Sans clôture plus longue, tout ce qui suit s'interpréterait
-        // comme du markdown chez qui vient vérifier une campagne.
         evidence: { kind: 'command_output', content: '```\n# Faux titre injecté\n```' },
         basedOnVersion: task.version,
       },
@@ -82,15 +74,11 @@ describe('export d’un cahier', () => {
 
     const sortie = buildTaskExport(task)
 
-    // La preuve est enveloppée d'une clôture plus longue que celle qu'elle
-    // contient : le faux titre reste donc à l'intérieur du bloc, inerte.
     expect(sortie).toContain('````\n```\n# Faux titre injecté\n```\n````')
   })
 
   it('survit à un horodatage hors plage plutôt que d’emporter tout l’export', () => {
     const task = { ...buildMeasureTask(5), updatedAt: 1e20 }
-    // Un seul enregistrement corrompu faisait échouer l'export de tous les
-    // autres, ce qui ruine la reproductibilité que ce module existe pour offrir.
     expect(() => buildTaskExport(task)).not.toThrow()
     expect(buildTaskExport(task)).toContain('horodatage illisible')
   })
@@ -109,7 +97,6 @@ describe('export : cas limites', () => {
     const sortie = buildTaskExport(nu)
     expect(sortie).not.toContain('## Preuves jointes')
     expect(sortie).not.toContain('## Journal des écritures')
-    // L'état complet, lui, est toujours là : c'est ce qui rend l'export rejouable.
     expect(sortie).toContain('## État complet')
   })
 
