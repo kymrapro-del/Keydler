@@ -1,7 +1,12 @@
 import {
   acceptedRejections,
   activeConstraints,
+  answeredQuestions,
+  decidedApprovals,
+  disputedSteps,
+  pendingApprovals,
   evidenceCounts,
+  openQuestions,
   proposedConstraints,
   proposedRejections,
   provenStepCount,
@@ -15,6 +20,7 @@ const CONFIDENCE_TAG: Record<Confidence, string> = {
   human_verified: '[human]   ',
   evidence: '[evidence]',
   claimed: '[claimed] ',
+  disputed: '[DISPUTED]',
 }
 
 export function estimateTokens(text: string): number {
@@ -34,6 +40,10 @@ export type RenderOptions = {
   url?: string | null
   credentials?: readonly SecretName[]
   recentCredentials?: number
+  recentQuestions?: number
+  recentAnswers?: number
+  recentApprovals?: number
+  recentDisputes?: number
 }
 
 const CLIP_FLOOR = 0.4
@@ -43,6 +53,10 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   const recentDecisions = options.recentDecisions ?? 3
   const recentProposals = options.recentProposals ?? 4
   const recentCredentials = options.recentCredentials ?? 5
+  const recentQuestions = options.recentQuestions ?? 5
+  const recentAnswers = options.recentAnswers ?? 3
+  const recentApprovals = options.recentApprovals ?? 3
+  const recentDisputes = options.recentDisputes ?? 3
   const clipScale = options.clipScale ?? 1
   const c = (max: number) => Math.max(24, Math.round(max * clipScale))
 
@@ -74,6 +88,80 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push(
       `NEXT        ${state.next ? clip(state.next, c(200)) : '(not set — decide and log it)'}`,
     )
+  }
+
+  const attente = pendingApprovals(state)
+  if (attente.length > 0) {
+    const shown = attente.slice(0, recentApprovals)
+    lines.push('')
+    lines.push(
+      attente.length > shown.length
+        ? `AWAITING YOUR APPROVAL — the agent is blocked (${shown.length} of ${attente.length})`
+        : `AWAITING YOUR APPROVAL — the agent is blocked (${attente.length})`,
+    )
+    for (const a of shown) {
+      lines.push(`  ${clip(a.action, c(150))}`)
+      lines.push(`     why: ${clip(a.why, c(130))}`)
+    }
+  }
+
+  const tranchées = decidedApprovals(state)
+  if (tranchées.length > 0) {
+    const shown = tranchées.slice(-recentApprovals)
+    lines.push('')
+    lines.push(
+      tranchées.length > shown.length
+        ? `DECIDED BY THE HUMAN (last ${shown.length} of ${tranchées.length})`
+        : 'DECIDED BY THE HUMAN',
+    )
+    for (const a of shown) {
+      lines.push(`  ${a.decision === 'allowed' ? 'ALLOWED' : 'DENIED'}: ${clip(a.action, c(140))}`)
+    }
+  }
+
+  const contestées = disputedSteps(state)
+  if (contestées.length > 0) {
+    const shown = contestées.slice(-recentDisputes)
+    lines.push('')
+    lines.push(
+      contestées.length > shown.length
+        ? `DISPUTED BY THE HUMAN — treat as wrong (${shown.length} of ${contestées.length})`
+        : `DISPUTED BY THE HUMAN — treat as wrong (${contestées.length})`,
+    )
+    for (const s of shown) {
+      lines.push(`  ${clip(s.action, c(120))}`)
+      lines.push(`     they say: ${clip(s.dispute?.reason ?? '', c(140))}`)
+    }
+  }
+
+  const ouvertes = openQuestions(state)
+  if (ouvertes.length > 0) {
+    const shown = ouvertes.slice(0, recentQuestions)
+    lines.push('')
+    lines.push(
+      ouvertes.length > shown.length
+        ? `WAITING ON THE HUMAN — blocked until answered (${shown.length} of ${ouvertes.length})`
+        : `WAITING ON THE HUMAN — blocked until answered (${ouvertes.length})`,
+    )
+    for (const q of shown) {
+      lines.push(`  Q: ${clip(q.question, c(150))}`)
+      lines.push(`     why: ${clip(q.why, c(130))}`)
+    }
+  }
+
+  const répondues = answeredQuestions(state)
+  if (répondues.length > 0) {
+    const shown = répondues.slice(-recentAnswers)
+    lines.push('')
+    lines.push(
+      répondues.length > shown.length
+        ? `ANSWERED BY THE HUMAN (last ${shown.length} of ${répondues.length})`
+        : 'ANSWERED BY THE HUMAN',
+    )
+    for (const q of shown) {
+      lines.push(`  Q: ${clip(q.question, c(120))}`)
+      lines.push(`  A: ${clip(q.answer ?? '', c(150))}`)
+    }
   }
 
   lines.push('')
@@ -151,15 +239,15 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   lines.push('')
   lines.push('FULL DETAIL')
-  lines.push('  read_task_detail returns whole steps, decisions, rejections and')
-  lines.push('  evidence, one page at a time. Nothing above is the complete record.')
+  lines.push('  read_task_detail pages any section of this record in full — its own')
+  lines.push('  schema lists them. Nothing above is the complete record.')
 
   lines.push('')
   if (state.status === 'active') {
     lines.push('WRITE PROTOCOL')
     lines.push(`  Every write must carry based_on_version: ${state.version}`)
     lines.push('  Every write must carry a fresh mutation_id; reuse it verbatim to retry.')
-    lines.push('  A refused write means the human changed this state. Call resume_task again.')
+    lines.push('  A refused write means this state moved: call what_changed, or resume_task.')
   } else {
     lines.push('TASK CLOSED')
     lines.push('  This task is complete. Writes are refused — do not log further work.')
@@ -170,13 +258,24 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   if (estimateTokens(text) <= TOKEN_BUDGET) return text
 
-  if (recentSteps > 2 || recentDecisions > 1 || recentProposals > 1 || recentCredentials > 1) {
+  if (
+    recentSteps > 2 ||
+    recentDecisions > 1 ||
+    recentProposals > 1 ||
+    recentAnswers > 1 ||
+    recentApprovals > 1 ||
+    recentDisputes > 1
+  ) {
     return renderTaskState(state, {
       ...options,
       recentSteps: Math.max(2, recentSteps - 2),
       recentDecisions: Math.max(1, recentDecisions - 1),
       recentProposals: Math.max(1, recentProposals - 1),
-      recentCredentials: Math.max(1, recentCredentials - 1),
+      recentAnswers: Math.max(1, recentAnswers - 1),
+      recentApprovals: Math.max(1, recentApprovals - 1),
+      recentDisputes: Math.max(1, recentDisputes - 1),
+      recentCredentials,
+      recentQuestions,
       clipScale,
     })
   }
@@ -187,8 +286,57 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentSteps,
       recentDecisions,
       recentProposals,
+      recentAnswers,
+      recentApprovals,
+      recentDisputes,
       recentCredentials,
+      recentQuestions,
       clipScale: Math.max(CLIP_FLOOR, clipScale - 0.2),
+    })
+  }
+
+  if (recentSteps > 1) {
+    return renderTaskState(state, {
+      ...options,
+      recentSteps: 1,
+      recentDecisions,
+      recentProposals,
+      recentAnswers,
+      recentApprovals,
+      recentDisputes,
+      recentCredentials,
+      recentQuestions,
+      clipScale,
+    })
+  }
+
+  if (recentCredentials > 1) {
+    return renderTaskState(state, {
+      ...options,
+      recentSteps,
+      recentDecisions,
+      recentProposals,
+      recentAnswers,
+      recentApprovals,
+      recentDisputes,
+      recentQuestions,
+      recentCredentials: Math.max(1, recentCredentials - 1),
+      clipScale,
+    })
+  }
+
+  if (recentQuestions > 1) {
+    return renderTaskState(state, {
+      ...options,
+      recentSteps,
+      recentDecisions,
+      recentProposals,
+      recentAnswers,
+      recentApprovals,
+      recentDisputes,
+      recentCredentials,
+      recentQuestions: Math.max(1, recentQuestions - 1),
+      clipScale,
     })
   }
 

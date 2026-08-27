@@ -30,6 +30,16 @@ const BY_HUMAN: Record<string, string> = {
   edit_rejection: 'reworded a ruled-out approach',
   archive_task: 'archived the task',
   unarchive_task: 'brought the task back',
+  ask_human: 'noted a question',
+  answer_question: 'answered a question',
+  attach_evidence: 'attached evidence to a step',
+  set_next_action: 'changed the next action',
+  undo: 'undid that',
+  allow_action: 'allowed an action',
+  deny_action: 'refused an action',
+  request_approval: 'asked for permission to act',
+  dispute_step: 'disputed a step',
+  withdraw_dispute: 'withdrew a dispute',
 }
 
 const BY_AGENT: Record<string, string> = {
@@ -38,6 +48,11 @@ const BY_AGENT: Record<string, string> = {
   add_constraint: 'proposed a rule',
   reject_approach: 'proposed ruling out an approach',
   complete_task: 'closed the task',
+  ask_human: 'asked you a question',
+  answer_question: 'answered a question',
+  attach_evidence: 'attached evidence to a step',
+  set_next_action: 'changed the next action',
+  request_approval: 'asked for permission to act',
 }
 
 const ATTEMPTED: Record<string, string> = {
@@ -46,6 +61,16 @@ const ATTEMPTED: Record<string, string> = {
   add_constraint: 'propose a rule',
   reject_approach: 'propose ruling out an approach',
   complete_task: 'close the task',
+  ask_human: 'ask you a question',
+  answer_question: 'answer a question',
+  attach_evidence: 'attach evidence to a step',
+  set_next_action: 'change the next action',
+  undo: 'undo that',
+  allow_action: 'allow an action',
+  deny_action: 'refuse an action',
+  request_approval: 'ask for permission to act',
+  dispute_step: 'dispute a step',
+  withdraw_dispute: 'withdraw a dispute',
 }
 
 export function refusalReason(detail: string): string {
@@ -60,6 +85,12 @@ export function refusalReason(detail: string): string {
   if (lower.includes('mutation-id-reused')) return 'the same write id was reused for another tool'
   if (lower.includes('already-completed') || lower.includes('already completed')) {
     return 'the task was already closed'
+  }
+  if (lower.includes('already-has-evidence') || lower.includes('already carries evidence')) {
+    return 'that step already had evidence, which is never overwritten'
+  }
+  if (lower.includes('already-answered') || lower.includes('already been answered')) {
+    return 'that question already had an answer'
   }
   if (lower.includes('invalid input') || lower.includes(':')) return detail
   return detail

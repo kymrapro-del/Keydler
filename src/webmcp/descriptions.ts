@@ -28,7 +28,40 @@ tells you how many entries remain and the offset to continue from.
 To get one entry whole — including evidence that pages truncate —
 pass its id.
 
+The "credentials" section lists every credential the human sealed for
+this task: the name to write as \${name}, and what it is for. It never
+returns a value, and no tool here does.
+
 Read-only: this never changes the task, and needs no version.`
+
+export const SEARCH_TASK_DESCRIPTION = `Search this task's record for a word or phrase.
+
+Call this before trying something, to find out whether it has already
+been tried here and what came of it. It looks through the steps and
+their evidence, the rules, the ruled-out approaches, the decisions,
+and the history of refused writes.
+
+Prefer this to paging read_task_detail when you have a term to look
+for; use read_task_detail afterwards to read a match in full.
+
+Finding nothing does not prove the work was never attempted — the log
+may use other words. Say so rather than concluding it is untried.
+
+Read-only: this never changes the task, and needs no version.`
+
+export const WHAT_CHANGED_DESCRIPTION = `List what has been written to this task since a version you hold.
+
+Call this when a write is refused as stale, and whenever you come back
+to a task you read earlier. It answers the only question that matters
+then — what did the human do while I was working? — for a fraction of
+what a full resume_task costs.
+
+The reply separates what changes what you may do (a rule added or
+lifted, a proposal accepted, a question answered) from what merely
+happened. If the log had to drop older entries, it says so instead of
+looking complete; fall back to resume_task then.
+
+Read-only: this never changes the task.`
 
 export const LOG_STEP_DESCRIPTION = `Record one completed step in the task's watch log, with its evidence.
 
@@ -85,6 +118,68 @@ constraints until a human approves it. A rule the human states is
 binding from the moment they enter it; a rule you infer is not.
 
 Do not use this for one-off notes; use log_step for those.
+
+Requires based_on_version from the most recent resume_task, and a
+mutation_id.`
+
+export const ASK_HUMAN_DESCRIPTION = `Record a question only the human can answer, and why it blocks you.
+
+Call this the moment you hit a decision you cannot make from the code
+or the task record: a business rule, a credential you do not have, a
+choice between two acceptable designs, a measurement you cannot take.
+
+Do NOT guess and carry on. A guess recorded as work is worse than a
+question recorded as a question: the next conversation inherits it as
+fact. Record the question, do the parts that do not depend on it, and
+say plainly what is blocked.
+
+The question stays open in the task until a human answers it, and
+resume_task shows it to every later conversation — so asking it once
+is enough. Read the answers before asking again.
+
+Requires based_on_version from the most recent resume_task, and a
+mutation_id.`
+
+export const ATTACH_EVIDENCE_DESCRIPTION = `Attach evidence to a step you already logged without any.
+
+Call this when proof arrives after the fact — a suite that finished,
+a build that completed, a link that became available. It turns a step
+recorded as merely claimed into one with evidence attached.
+
+It does not mark the step verified: only a human who reads the
+evidence can do that. A step that already carries evidence is refused
+rather than overwritten — record a new step instead.
+
+Requires based_on_version from the most recent resume_task, and a
+mutation_id.`
+
+export const SET_NEXT_ACTION_DESCRIPTION = `Change the single next action, without recording work.
+
+Call this when the next action changes but nothing was completed —
+you learned something that redirects the task, or you are ending a
+conversation and want the next one to start in the right place.
+
+If you also finished a unit of work, use log_step and set its next
+field instead: one call, and the change is tied to what caused it.
+
+Requires based_on_version from the most recent resume_task, and a
+mutation_id.`
+
+export const REQUEST_APPROVAL_DESCRIPTION = `Ask the human for permission to do something outside this log, and
+wait for their answer.
+
+Call this BEFORE an action you cannot undo and they would want a say
+in: running a migration, deploying, deleting data, spending money,
+sending anything to anyone. Describe exactly what you are about to do,
+in the terms they would use to judge it.
+
+This call blocks. A human sees the request on the page and clicks
+allow or deny; you get their decision. If nobody answers within the
+page's window, the call comes back as NO ANSWER.
+
+NO ANSWER IS NOT APPROVAL. Silence means nobody was there — treat it
+exactly as a refusal, say so, and do something else. The request stays
+on the page, so the human still sees it when they return.
 
 Requires based_on_version from the most recent resume_task, and a
 mutation_id.`

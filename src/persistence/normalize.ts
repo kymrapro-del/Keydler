@@ -55,6 +55,14 @@ function normalizeEvidence(v: unknown): TaskState['steps'][number]['evidence'] {
   }
 }
 
+function normalizeDispute(v: unknown): TaskState['steps'][number]['dispute'] {
+  if (!v || typeof v !== 'object') return null
+  const d = v as Record<string, unknown>
+  const reason = asString(d.reason, '')
+  if (reason === '') return null
+  return { reason, at: asNumber(d.at, 0) }
+}
+
 export function normalizeTask(stored: StoredTask | undefined): TaskState | undefined {
   if (!stored || typeof stored !== 'object') return undefined
 
@@ -89,6 +97,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       action: asString(s.action, ''),
       result: asString(s.result, ''),
       evidence: normalizeEvidence(s.evidence),
+      dispute: normalizeDispute(s.dispute),
       confidence: normalizeConfidence(s.confidence),
       basedOnVersion: asNumber(s.basedOnVersion, 1),
       source: s.source === 'human' ? 'human' : 'agent',
@@ -117,6 +126,28 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       }
     }),
 
+    questions: asObjects(stored.questions).map((q) => ({
+      id: asId(q.id),
+      question: asString(q.question, ''),
+      why: asString(q.why, ''),
+      source: q.source === 'human' ? 'human' : 'agent',
+      addedAtVersion: asNumber(q.addedAtVersion, 1),
+      at: asNumber(q.at, now),
+      answer: asNullableString(q.answer),
+      answeredAt: typeof q.answeredAt === 'number' ? q.answeredAt : null,
+    })),
+
+    approvals: asObjects(stored.approvals).map((a) => ({
+      id: asId(a.id),
+      action: asString(a.action, ''),
+      why: asString(a.why, ''),
+      source: a.source === 'human' ? 'human' : 'agent',
+      addedAtVersion: asNumber(a.addedAtVersion, 1),
+      at: asNumber(a.at, now),
+      decision: a.decision === 'allowed' || a.decision === 'denied' ? a.decision : null,
+      decidedAt: typeof a.decidedAt === 'number' ? a.decidedAt : null,
+    })),
+
     audit: asObjects(stored.audit).map((a) => ({
       id: asId(a.id),
       operation: asString(a.operation, 'unknown'),
@@ -126,6 +157,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       basedOnVersion: typeof a.basedOnVersion === 'number' ? a.basedOnVersion : null,
       outcome: a.outcome === 'refused' ? 'refused' : 'applied',
       detail: asString(a.detail, ''),
+      ...(typeof a.targetId === 'string' && a.targetId !== '' ? { targetId: a.targetId } : {}),
       ...(typeof a.repeated === 'number' ? { repeated: a.repeated } : {}),
       at: asNumber(a.at, now),
     })),

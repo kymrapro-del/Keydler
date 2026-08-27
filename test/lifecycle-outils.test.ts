@@ -6,7 +6,7 @@ import {
   registerTools,
 } from '../src/webmcp/register'
 import { DYNAMIC_UNREGISTER_MIN_CHROMIUM } from '../src/webmcp/lifecycle'
-import { ALL_TOOLS, resumeTaskTool } from '../src/webmcp/tools'
+import { ALL_TOOLS, READ_TOOLS, resumeTaskTool } from '../src/webmcp/tools'
 import * as store from '../src/store/taskStore'
 import { completeTask, reopenTask } from '../src/domain/task'
 import {
@@ -83,7 +83,7 @@ describe('mode statique — la cible du concours', () => {
     await registerTools()
 
     expect(getRegistrationState().lifecycle.mode).toBe('static')
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task'])
+    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
   it('pose deux outils au chargement d’une tâche déjà close', async () => {
@@ -96,7 +96,7 @@ describe('mode statique — la cible du concours', () => {
     const fake = installModelContext()
     await registerTools()
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task'])
+    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
   it('ne retire JAMAIS un outil pendant la vie du document', async () => {
@@ -113,8 +113,8 @@ describe('mode statique — la cible du concours', () => {
     await settle(8)
 
     expect(textOf(résultat)).toContain('OK — complete_task recorded.')
-    expect(fake.names()).toHaveLength(7)
-    expect(getRegistrationState().toolNames).toHaveLength(7)
+    expect(fake.names()).toHaveLength(ALL_TOOLS.length)
+    expect(getRegistrationState().toolNames).toHaveLength(ALL_TOOLS.length)
   })
 
   it('laisse les écritures refuser proprement sur une tâche close', async () => {
@@ -140,12 +140,12 @@ describe('mode statique — la cible du concours', () => {
   it('ajoute en revanche les écritures quand une tâche s’ouvre', async () => {
     const fake = installModelContext()
     await registerTools()
-    expect(fake.names()).toHaveLength(2)
+    expect(fake.names()).toHaveLength(READ_TOOLS.length)
 
     await store.createAndOpenTask('Tâche', 'Continuer')
     await settle(4)
 
-    expect(fake.names()).toHaveLength(7)
+    expect(fake.names()).toHaveLength(ALL_TOOLS.length)
     expect(fake.names()).toContain('log_step')
   })
 })
@@ -165,7 +165,7 @@ describe('mode dynamique — Chromium 153 et au-delà', () => {
     )
     await settle(6)
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task'])
+    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
   it('les rend à la réouverture', async () => {
@@ -174,12 +174,12 @@ describe('mode dynamique — Chromium 153 et au-delà', () => {
     await registerTools()
     await store.mutate((s) => completeTask(s, { summary: 'Clos.', basedOnVersion: null }, 'human'))
     await settle(4)
-    expect(fake.names()).toHaveLength(2)
+    expect(fake.names()).toHaveLength(READ_TOOLS.length)
 
     await store.mutate((s) => reopenTask(s, 'Il reste du travail'))
     await settle(4)
 
-    expect(fake.names()).toHaveLength(7)
+    expect(fake.names()).toHaveLength(ALL_TOOLS.length)
     expect(store.currentTask()!.id).toBe(task.id)
   })
 })

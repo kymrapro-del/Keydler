@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildDemoTask } from '../src/demo/seed'
-import { estimateTokens, renderTaskState } from '../src/domain/render'
+import { estimateTokens, renderTaskState, TOKEN_BUDGET } from '../src/domain/render'
 import { buildFullExport, buildTaskExport } from '../src/export/notebook'
 import { addSecret, listSecretNames } from '../src/persistence/vault'
 import { getDb } from '../src/persistence/db'
 import * as store from '../src/store/taskStore'
-import { ALL_TOOLS, resumeTaskTool } from '../src/webmcp/tools'
+import { ALL_TOOLS, readTaskDetailTool, resumeTaskTool } from '../src/webmcp/tools'
 import { __renderNow, mount } from '../src/ui/bench'
 import { call, clearDatabase, textOf } from './helpers'
 
@@ -150,11 +150,14 @@ describe('ce que l’agent reçoit', () => {
         id: `s${i}`,
         name: `service-${i}-api-key`,
         purpose: 'Calls the upstream service from the ingestion worker',
+        kind: 'api_key' as const,
       }))
 
     const deux = estimateTokens(renderTaskState(task, { credentials: creds(2) }))
     const trente = estimateTokens(renderTaskState(task, { credentials: creds(30) }))
-    expect(trente).toBeLessThanOrEqual(deux)
+    // Le coût est borné, pas proportionnel : trente n'ajoutent qu'un compteur.
+    expect(trente).toBeLessThanOrEqual(TOKEN_BUDGET)
+    expect(trente - deux).toBeLessThanOrEqual(5)
 
     // Un NOM n'est jamais tronqué : un agent qui citerait `${service-1-api-k…}`
     // écrirait une référence fausse. Sous pression, on en montre moins, on ne
@@ -162,6 +165,52 @@ describe('ce que l’agent reçoit', () => {
     const rendu = renderTaskState(task, { credentials: creds(30) })
     expect(rendu).toMatch(/CREDENTIALS — names only, values sealed \(\d+ of 30\)/)
     expect(rendu).not.toMatch(/\$\{service-\d+-api-k…/)
+  })
+
+  it('sacrifie le travail ancien avant de cacher un nom d’identifiant', () => {
+    const task = buildDemoTask()
+    const creds = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        id: `s${i}`,
+        name: `service-${i}-api-key`,
+        purpose: 'Calls the upstream service from the ingestion worker',
+        kind: 'api_key' as const,
+      }))
+
+    // Le budget passe d'abord sur le travail ancien, qui se relit page par
+    // page, avant de toucher aux identifiants.
+    const sans = renderTaskState(task)
+    const avec = renderTaskState(task, { credentials: creds(4) })
+
+    // Sans identifiants, le budget tient deux étapes. Avec, il n'en tient plus
+    // qu'une — c'est le travail ancien qui paie, et il se relit page par page.
+    expect(sans).toMatch(/RECENT WORK \(last 2 of 4\)/)
+    expect(avec).toMatch(/RECENT WORK \(last 1 of 4\)/)
+    expect(avec).toContain('${service-0-api-key}')
+    expect(avec).toContain('${service-1-api-key}')
+    expect(estimateTokens(avec)).toBeLessThanOrEqual(TOKEN_BUDGET)
+  })
+
+  it('dit clairement qu’il en cache, plutôt que de paraître complet', () => {
+    const rendu = renderTaskState(buildDemoTask(), {
+      credentials: Array.from({ length: 8 }, (_, i) => ({
+        id: `s${i}`,
+        name: `service-${i}-api-key`,
+        purpose: 'Calls the upstream service from the ingestion worker',
+        kind: 'api_key' as const,
+      })),
+    })
+
+    // Le compte est ce qui compte : « 2 of 8 » dit à l'agent qu'il lui en manque
+    // six. La section où les lire est déclarée par le schéma de
+    // read_task_detail, qui ne peut pas dériver — et n'occupe pas le budget.
+    expect(rendu).toMatch(/CREDENTIALS — names only, values sealed \(\d+ of 8\)/)
+    expect(rendu).toContain('read_task_detail')
+
+    const schema = readTaskDetailTool.inputSchema as {
+      properties: { section: { enum: string[] } }
+    }
+    expect(schema.properties.section.enum).toContain('credentials')
   })
 
   it('rend une restitution sans identifiants identique à avant', async () => {

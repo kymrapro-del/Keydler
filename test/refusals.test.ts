@@ -91,8 +91,14 @@ describe('refus consignés', () => {
 
     const texte = result.content[0].text
     expect(texte).toContain('STALE STATE')
-    expect(texte).not.toContain('Nothing was written.')
-    expect(texte).toContain('Call resume_task before continuing.')
+    // Le rappel « retry with based_on_version » n'a pas de sens ici : la
+    // version que l'agent tenait est précisément celle qui a été refusée.
+    expect(texte).not.toMatch(/Retry with based_on_version/i)
+    // Le refus doit nommer l'outil fait pour ce cas précis, pas seulement la
+    // relecture complète : c'est le chemin le plus fréquent d'un agent.
+    expect(texte).toContain('what_changed')
+    expect(texte).toContain(`since_version: ${task.version}`)
+    expect(texte).toContain('resume_task')
   })
 })
 

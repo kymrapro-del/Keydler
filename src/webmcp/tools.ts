@@ -7,12 +7,20 @@ import {
 import {
   addConstraint,
   addDecision,
+  askHuman,
+  attachEvidence,
+  pendingApprovals,
+  requestApproval,
   completeTask,
   logStep,
   rejectApproach,
   requireVersion,
+  setNext,
 } from '../domain/task'
 import { parseDetailQuery, renderDetail } from '../domain/detail'
+import { MAX_MATCHES, renderSearch } from '../domain/searchResult'
+import { renderChanges } from '../domain/changes'
+import { MIN_QUERY } from '../domain/search'
 import { fingerprintIntent } from '../domain/intent'
 import { renderMissingTask, renderNoTask, renderTaskState } from '../domain/render'
 import type { TaskState } from '../domain/types'
@@ -25,21 +33,35 @@ import { taskUrl } from './location'
 import {
   ADD_CONSTRAINT_SCHEMA,
   ADD_DECISION_SCHEMA,
+  ASK_HUMAN_SCHEMA,
+  ATTACH_EVIDENCE_SCHEMA,
   COMPLETE_TASK_SCHEMA,
   LOG_STEP_SCHEMA,
   READ_DETAIL_SCHEMA,
   REJECT_APPROACH_SCHEMA,
+  REQUEST_APPROVAL_SCHEMA,
   RESUME_TASK_SCHEMA,
+  SEARCH_TASK_SCHEMA,
+  SET_NEXT_ACTION_SCHEMA,
+  WHAT_CHANGED_SCHEMA,
 } from './schemas'
 import {
   ADD_CONSTRAINT_DESCRIPTION,
   ADD_DECISION_DESCRIPTION,
+  ASK_HUMAN_DESCRIPTION,
+  ATTACH_EVIDENCE_DESCRIPTION,
   COMPLETE_TASK_DESCRIPTION,
   LOG_STEP_DESCRIPTION,
   READ_DETAIL_DESCRIPTION,
   REJECT_APPROACH_DESCRIPTION,
+  REQUEST_APPROVAL_DESCRIPTION,
   RESUME_TASK_DESCRIPTION,
+  SEARCH_TASK_DESCRIPTION,
+  SET_NEXT_ACTION_DESCRIPTION,
+  WHAT_CHANGED_DESCRIPTION,
 } from './descriptions'
+
+const EMPTY_CREDENTIALS: SecretName[] = []
 
 function toToolError(error: unknown, retryVersion?: number): ToolResult {
   if (
@@ -74,6 +96,14 @@ function storageError(detail: string): Error {
       '(private browsing and blocked site data are the usual causes).',
     ].join('\n'),
   )
+}
+
+async function credentialNames(taskId: string): Promise<SecretName[]> {
+  try {
+    return await listSecretNames(taskId)
+  } catch {
+    return []
+  }
 }
 
 async function requireTask(): Promise<TaskState> {
@@ -198,13 +228,7 @@ export const resumeTaskTool: ModelContextTool = {
       recordCall('resume_task', false)
       if (!task) return text(renderNoTask())
 
-      let credentials: SecretName[] = []
-      try {
-        credentials = await listSecretNames(task.id)
-      } catch {
-        credentials = []
-      }
-
+      const credentials = await credentialNames(task.id)
       return text(renderTaskState(task, { url: taskUrl(task.id), credentials }))
     } catch (error) {
       recordCall('resume_task', true)
@@ -225,11 +249,93 @@ export const readTaskDetailTool: ModelContextTool = {
 
       const query = parseDetailQuery(input)
       const task = await requireTask()
+      const credentials =
+        query.section === 'credentials' ? await credentialNames(task.id) : EMPTY_CREDENTIALS
 
       recordCall('read_task_detail', false)
-      return text(renderDetail(task, query))
+      return text(renderDetail(task, query, credentials))
     } catch (error) {
       recordCall('read_task_detail', true)
+      return toToolError(error)
+    }
+  },
+}
+
+function requireQuery(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new ValidationError('query', 'expected a string.', { code: 'not-a-string' })
+  }
+  const trimmed = value.trim()
+  if (trimmed.length < MIN_QUERY) {
+    throw new ValidationError('query', `must be at least ${MIN_QUERY} characters.`, {
+      code: 'too-short',
+    })
+  }
+  if (trimmed.length > 200) {
+    throw new ValidationError('query', 'must be at most 200 characters.', {
+      code: 'too-long',
+      max: 200,
+    })
+  }
+  return trimmed
+}
+
+function requireLimit(value: unknown): number {
+  if (value === undefined || value === null) return MAX_MATCHES
+  const parsed = typeof value === 'string' ? Number(value.trim()) : value
+  if (
+    typeof parsed !== 'number' ||
+    !Number.isInteger(parsed) ||
+    parsed < 1 ||
+    parsed > MAX_MATCHES
+  ) {
+    throw new ValidationError('limit', `expected an integer between 1 and ${MAX_MATCHES}.`, {
+      code: 'out-of-range',
+    })
+  }
+  return parsed
+}
+
+export const searchTaskTool: ModelContextTool = {
+  name: 'search_task',
+  title: 'Search this task',
+  description: SEARCH_TASK_DESCRIPTION,
+  inputSchema: SEARCH_TASK_SCHEMA,
+  annotations: { readOnlyHint: true, untrustedContentHint: true },
+  async execute(input, options) {
+    try {
+      if (options?.signal?.aborted) throw new CancelledError('search_task')
+
+      const query = requireQuery(input.query)
+      const limit = requireLimit(input.limit)
+      const task = await requireTask()
+
+      recordCall('search_task', false)
+      return text(renderSearch(task, query, limit))
+    } catch (error) {
+      recordCall('search_task', true)
+      return toToolError(error)
+    }
+  },
+}
+
+export const whatChangedTool: ModelContextTool = {
+  name: 'what_changed',
+  title: 'What changed since I read this',
+  description: WHAT_CHANGED_DESCRIPTION,
+  inputSchema: WHAT_CHANGED_SCHEMA,
+  annotations: { readOnlyHint: true, untrustedContentHint: true },
+  async execute(input, options) {
+    try {
+      if (options?.signal?.aborted) throw new CancelledError('what_changed')
+
+      const since = requireVersion('since_version', input.since_version)
+      const task = await requireTask()
+
+      recordCall('what_changed', false)
+      return text(renderChanges(task, since))
+    } catch (error) {
+      recordCall('what_changed', true)
       return toToolError(error)
     }
   },
@@ -305,6 +411,182 @@ export const addDecisionTool: ModelContextTool = {
   },
 }
 
+export const askHumanTool: ModelContextTool = {
+  name: 'ask_human',
+  title: 'Ask the human a blocking question',
+  description: ASK_HUMAN_DESCRIPTION,
+  inputSchema: ASK_HUMAN_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    return runWrite(askHumanTool, input, options?.signal, (state, basedOnVersion) =>
+      askHuman(state, { question: input.question, why: input.why, basedOnVersion }, 'agent'),
+    )
+  },
+}
+
+export const attachEvidenceTool: ModelContextTool = {
+  name: 'attach_evidence',
+  title: 'Attach evidence to a logged step',
+  description: ATTACH_EVIDENCE_DESCRIPTION,
+  inputSchema: ATTACH_EVIDENCE_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    return runWrite(attachEvidenceTool, input, options?.signal, (state, basedOnVersion) =>
+      attachEvidence(
+        state,
+        {
+          stepId: input.step_id,
+          evidence: (input.evidence ?? {}) as { kind?: unknown; content?: unknown },
+          basedOnVersion,
+        },
+        'agent',
+      ),
+    )
+  },
+}
+
+export const setNextActionTool: ModelContextTool = {
+  name: 'set_next_action',
+  title: 'Change the next action',
+  description: SET_NEXT_ACTION_DESCRIPTION,
+  inputSchema: SET_NEXT_ACTION_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    return runWrite(setNextActionTool, input, options?.signal, (state, basedOnVersion) => {
+      requireVersion('based_on_version', basedOnVersion)
+      return setNext(state, input.next)
+    })
+  },
+}
+
+export const APPROVAL_TIMEOUT = 120_000
+
+let approvalTimeout = APPROVAL_TIMEOUT
+
+export function __setApprovalTimeout(ms: number): void {
+  approvalTimeout = ms
+}
+
+type Decided = { decision: 'allowed' | 'denied'; action: string }
+
+/**
+ * Attendre qu'un humain tranche. C'est le seul endroit du produit où un appel
+ * d'outil bloque : sans page ouverte devant quelqu'un, cette attente n'aurait
+ * aucun sens — et c'est précisément ce que WebMCP rend possible.
+ */
+function waitForDecision(
+  approvalId: string,
+  signal: AbortSignal | undefined,
+): Promise<Decided | null> {
+  return new Promise((resolve) => {
+    let done = false
+
+    const finish = (value: Decided | null) => {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      unsubscribe()
+      signal?.removeEventListener('abort', onAbort)
+      resolve(value)
+    }
+
+    const look = () => {
+      const task = store.currentTask()
+      const found = task?.approvals.find((a) => a.id === approvalId)
+      if (found && found.decision !== null) {
+        finish({ decision: found.decision, action: found.action })
+      }
+    }
+
+    const onAbort = () => finish(null)
+    const timer = setTimeout(() => finish(null), approvalTimeout)
+    const unsubscribe = store.subscribe(look)
+    signal?.addEventListener('abort', onAbort, { once: true })
+
+    if (signal?.aborted) finish(null)
+    else look()
+  })
+}
+
+export const requestApprovalTool: ModelContextTool = {
+  name: 'request_approval',
+  title: 'Ask the human for permission to act',
+  description: REQUEST_APPROVAL_DESCRIPTION,
+  inputSchema: REQUEST_APPROVAL_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    const written = await runWrite(
+      requestApprovalTool,
+      input,
+      options?.signal,
+      (state, basedOnVersion) =>
+        requestApproval(state, { action: input.action, why: input.why, basedOnVersion }, 'agent'),
+    )
+    if (written.isError) return written
+
+    // La PLUS RÉCENTE, jamais la première : deux demandes peuvent porter le même
+    // libellé, et rendre la décision d'hier autoriserait une action que personne
+    // n'a validée.
+    const task = store.currentTask()
+    const matching = (task?.approvals ?? []).filter(
+      (a) => a.action === String(input.action) && a.why === String(input.why),
+    )
+    const mine = matching[matching.length - 1]
+    if (!mine) return written
+
+    if (mine.decision !== null) {
+      return decisionResult(mine.decision, mine.action)
+    }
+
+    if (options?.signal?.aborted) return toToolError(new CancelledError('request_approval'))
+
+    const decided = await waitForDecision(mine.id, options?.signal)
+    if (decided) return decisionResult(decided.decision, decided.action)
+
+    if (options?.signal?.aborted) return toToolError(new CancelledError('request_approval'))
+
+    const stillWaiting = pendingApprovals(store.currentTask() ?? task!).some(
+      (a) => a.id === mine.id,
+    )
+    return failure(
+      [
+        'NO ANSWER',
+        `Nobody decided within ${Math.round(approvalTimeout / 1000)} seconds:`,
+        `  ${mine.action}`,
+        '',
+        'NO ANSWER IS NOT APPROVAL. Nobody was there — treat this exactly as a',
+        'refusal. Do not do it. Say plainly that you asked and got no answer.',
+        stillWaiting
+          ? 'The request is still on the page; the human will see it when they return.'
+          : 'The request has since been decided — call resume_task to read it.',
+      ].join('\n'),
+    )
+  },
+}
+
+function decisionResult(decision: 'allowed' | 'denied', action: string): ToolResult {
+  if (decision === 'allowed') {
+    return text(
+      [
+        'ALLOWED by the human.',
+        `  ${action}`,
+        '',
+        'They allowed exactly this. Do not widen it, and log what you did with',
+        'log_step once it is done.',
+      ].join('\n'),
+    )
+  }
+  return failure(
+    [
+      'DENIED by the human.',
+      `  ${action}`,
+      '',
+      'Do not do it, and do not look for another way to do the same thing.',
+      'Say so, and ask what they would like instead.',
+    ].join('\n'),
+  )
+}
+
 export const completeTaskTool: ModelContextTool = {
   name: 'complete_task',
   title: 'Complete the task',
@@ -318,13 +600,22 @@ export const completeTaskTool: ModelContextTool = {
   },
 }
 
-export const READ_TOOLS: readonly ModelContextTool[] = [resumeTaskTool, readTaskDetailTool] as const
+export const READ_TOOLS: readonly ModelContextTool[] = [
+  resumeTaskTool,
+  whatChangedTool,
+  readTaskDetailTool,
+  searchTaskTool,
+] as const
 
 export const WRITE_TOOLS: readonly ModelContextTool[] = [
   logStepTool,
+  attachEvidenceTool,
+  setNextActionTool,
   addConstraintTool,
   rejectApproachTool,
   addDecisionTool,
+  askHumanTool,
+  requestApprovalTool,
   completeTaskTool,
 ] as const
 
