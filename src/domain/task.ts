@@ -58,6 +58,7 @@ export function createTask(
     version: 1,
     next: optionalText('next', input.next, 400),
     status: 'active',
+    archived: false,
     summary: null,
     constraints: [],
     steps: [],
@@ -596,6 +597,27 @@ export function editRejection(
           r.id === rejectionId ? { ...r, approach, reason } : r,
         ),
       },
+    },
+    ctx,
+  )
+}
+
+export function setArchived(state: TaskState, archived: boolean, ctx?: MutationContext): TaskState {
+  if (state.archived === archived) {
+    throw new ValidationError('status', archived ? 'is already archived.' : 'is not archived.', {
+      code: 'not-proposed',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: archived ? 'archive_task' : 'unarchive_task',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: state.title,
+      patch: { archived },
     },
     ctx,
   )

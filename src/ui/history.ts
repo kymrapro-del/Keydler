@@ -28,6 +28,8 @@ const BY_HUMAN: Record<string, string> = {
   rename_task: 'renamed the task',
   edit_constraint: 'reworded a rule',
   edit_rejection: 'reworded a ruled-out approach',
+  archive_task: 'archived the task',
+  unarchive_task: 'brought the task back',
 }
 
 const BY_AGENT: Record<string, string> = {

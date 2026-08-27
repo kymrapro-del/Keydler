@@ -99,6 +99,7 @@ export type TaskState = {
   version: number
   next: string | null
   status: TaskStatus
+  archived: boolean
   summary: string | null
   constraints: Constraint[]
   steps: Step[]
@@ -110,4 +111,4 @@ export type TaskState = {
   updatedAt: number
 }
 
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4

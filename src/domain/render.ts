@@ -64,7 +64,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   lines.push(`TASK ID     ${state.id}`)
   if (options.url) lines.push(`URL         ${options.url}`)
   lines.push(`VERSION     ${state.version}`)
-  lines.push(`STATUS      ${state.status}`)
+  lines.push(`STATUS      ${state.status}${state.archived ? ' · archived by the human' : ''}`)
   lines.push(
     `PROGRESS    ${state.steps.length} steps logged · ${proven} with evidence attached · ${counts.human_verified} checked by the human`,
   )

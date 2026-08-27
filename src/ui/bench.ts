@@ -6,9 +6,11 @@ import { humanMessage } from './messages'
 import { describeHistory } from './history'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
+import { MIN_QUERY, searchTask, searchTasks, type Match } from '../domain/search'
 import {
   acceptedRejections,
   addConstraint,
+  setArchived,
   editConstraint,
   editRejection,
   logStep,
@@ -58,6 +60,7 @@ const drafts: Record<string, string> = {
   'step-action': '',
   'step-result': '',
   'step-evidence': '',
+  search: '',
 }
 
 let creating = false
@@ -67,7 +70,7 @@ let revealed: { id: string; value: string } | null = null
 let credentialsFor: string | null = null
 
 let allTasks: TaskState[] = []
-let allTasksFor = -1
+let allTasksFor = ''
 let notice: string | null = null
 let showAllHistory = false
 
@@ -79,6 +82,25 @@ type Editing =
 
 let editing: Editing | null = null
 let loggingStep = false
+let showArchived = false
+
+function query(): string {
+  return drafts['search'].trim()
+}
+
+function searching(): boolean {
+  return query().length >= MIN_QUERY
+}
+
+function highlight(text: string, q: string): string {
+  const hay = text.toLocaleLowerCase()
+  const needle = q.toLocaleLowerCase()
+  const at = hay.indexOf(needle)
+  if (at < 0) return escapeHtml(text)
+  return `${escapeHtml(text.slice(0, at))}<mark>${escapeHtml(
+    text.slice(at, at + needle.length),
+  )}</mark>${escapeHtml(text.slice(at + needle.length))}`
+}
 
 function startEditing(next: Editing, value: string, reason = ''): void {
   editing = next
@@ -121,8 +143,8 @@ function editForm(label: string, second?: string): string {
     </form>`
 }
 
-function refreshTaskList(version: number): void {
-  allTasksFor = version
+function refreshTaskList(key: string): void {
+  allTasksFor = key
   void store.allTasks().then(
     (tasks) => {
       allTasks = tasks
@@ -424,16 +446,81 @@ function renderDontRetry(task: TaskState): string {
     </section>`
 }
 
+function renderSearchBox(): string {
+  return `<form class="search" id="form-search" role="search" novalidate>
+      <label class="visually-hidden" for="search">Search this task and the others</label>
+      <input id="search" type="search" autocomplete="off"
+             placeholder="Search rules, work, evidence, other tasks…" />
+      ${searching() ? '<button type="button" id="clear-search" class="btn">Clear</button>' : ''}
+    </form>`
+}
+
+function renderMatch(match: Match, q: string): string {
+  return `<li class="row">
+      <span class="chip chip--evidence">${escapeHtml(match.label)}</span>
+      <span class="row__text">
+        <strong>${highlight(match.text, q)}</strong>
+        ${match.context ? `<span class="muted"> — ${highlight(match.context, q)}</span>` : ''}
+      </span>
+    </li>`
+}
+
+function renderSearchResults(task: TaskState | null): string {
+  const q = query()
+  const here = task ? searchTask(task, q) : []
+  const elsewhere = searchTasks(allTasks, q).filter((t) => t.id !== task?.id)
+
+  const hereBody = here.length
+    ? `<ul class="rows">${here
+        .slice(0, 40)
+        .map((m) => renderMatch(m, q))
+        .join('')}</ul>
+       ${here.length > 40 ? `<p class="muted">${here.length - 40} more not shown — narrow the search.</p>` : ''}`
+    : '<p class="empty">Nothing in this task.</p>'
+
+  const elsewhereBody = elsewhere.length
+    ? `<ul class="rows">${elsewhere
+        .map(
+          (t) => `<li class="row">
+            <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
+              t.archived ? 'archived' : t.status === 'completed' ? 'closed' : 'open'
+            }</span>
+            <span class="row__text">
+              <strong>${highlight(t.title, q)}</strong>
+              ${t.next ? `<span class="muted"> — ${highlight(t.next, q)}</span>` : ''}
+            </span>
+            <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
+          </li>`,
+        )
+        .join('')}</ul>`
+    : '<p class="empty">No other task matches.</p>'
+
+  return `<section class="card" aria-labelledby="search-title">
+      <h2 id="search-title" class="card__title">
+        ${here.length + elsewhere.length} ${plural(here.length + elsewhere.length, 'match', 'matches')} for “${escapeHtml(q)}”
+      </h2>
+      <h3>In this task</h3>
+      ${hereBody}
+      <h3>Other tasks</h3>
+      ${elsewhereBody}
+    </section>`
+}
+
 function renderSwitcher(task: TaskState): string {
-  const others = allTasks.filter((t) => t.id !== task.id)
+  const others = allTasks.filter((t) => t.id !== task.id && (showArchived || !t.archived))
+  const hidden = allTasks.filter((t) => t.id !== task.id && t.archived).length
   const rows = others
     .map(
       (t) => `<li class="row">
-        <span class="chip chip--${t.status === 'completed' ? 'human' : 'evidence'}">${t.status === 'completed' ? 'closed' : 'open'}</span>
+        <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
+          t.archived ? 'archived' : t.status === 'completed' ? 'closed' : 'open'
+        }</span>
         <span class="row__text">
           <strong>${escapeHtml(t.title)}</strong>
           <span class="muted"> — ${escapeHtml(t.next ?? 'no next action')}</span>
         </span>
+        <button type="button" class="btn btn--quiet" data-archive="${escapeHtml(t.id)}"
+                data-archived="${t.archived}">${t.archived ? 'Unarchive' : 'Archive'}</button>
         <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
       </li>`,
     )
@@ -446,6 +533,16 @@ function renderSwitcher(task: TaskState): string {
         <div class="actions">
           <button type="button" id="new-task" class="btn">New task</button>
           <button type="button" id="import" class="btn">Import a file</button>
+          <button type="button" id="archive-current" class="btn btn--quiet">${
+            task.archived ? 'Bring this task back' : 'Archive this task'
+          }</button>
+          ${
+            hidden > 0
+              ? `<button type="button" id="toggle-archived" class="btn btn--quiet">${
+                  showArchived ? 'Hide archived' : `Show ${hidden} archived`
+                }</button>`
+              : ''
+          }
           <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown" hidden />
         </div>
       </div>
@@ -733,20 +830,22 @@ function renderDashboard(task: TaskState): string {
              </div>`
       }
       ${renderSwitcher(task)}
+      ${renderSearchBox()}
     </header>
     ${noticeBlock()}
-    ${renderHandoff(task)}
     ${alertBlock()}
-    ${renderNext(task)}
-    ${renderReadyForAI(task)}
-    ${renderCompletedWork(task)}
-    ${renderRules(task)}
-    ${renderDontRetry(task)}
-    ${renderCredentials(task)}
-    ${renderProposals(task)}
-    ${renderEvidence(task)}
-    ${renderActivity(task)}
-    ${renderHistory(task)}
+    ${searching() ? renderSearchResults(task) : ''}
+    ${renderHandoff(task)}
+    ${searching() ? '' : renderNext(task)}
+    ${searching() ? '' : renderReadyForAI(task)}
+    ${searching() ? '' : renderCompletedWork(task)}
+    ${searching() ? '' : renderRules(task)}
+    ${searching() ? '' : renderDontRetry(task)}
+    ${searching() ? '' : renderCredentials(task)}
+    ${searching() ? '' : renderProposals(task)}
+    ${searching() ? '' : renderEvidence(task)}
+    ${searching() ? '' : renderActivity(task)}
+    ${searching() ? '' : renderHistory(task)}
     ${renderTechnical(task)}`
 }
 
@@ -1004,6 +1103,57 @@ function bindSupervision(): void {
     })
   }
 
+  const searchField = document.querySelector<HTMLInputElement>('#search')
+  searchField?.addEventListener('input', () => scheduleRender())
+  searchField?.addEventListener('search', () => scheduleRender())
+  searchField?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return
+    drafts['search'] = ''
+    renderNow()
+  })
+  document.querySelector<HTMLFormElement>('#form-search')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    renderNow()
+  })
+  document.querySelector('#clear-search')?.addEventListener('click', () => {
+    drafts['search'] = ''
+    renderNow()
+    document.querySelector<HTMLInputElement>('#search')?.focus()
+  })
+
+  document.querySelector('#archive-current')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    humanAction(task.archived ? 'Bringing the task back' : 'Archiving the task', (state) =>
+      setArchived(state, !state.archived),
+    )
+  })
+
+  document.querySelector('#toggle-archived')?.addEventListener('click', () => {
+    showArchived = !showArchived
+    renderNow()
+  })
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-archive]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.archive!
+      const wanted = b.dataset.archived !== 'true'
+      humanError = null
+      void store
+        .updateTask(id, (state) => setArchived(state, wanted))
+        .then(
+          () => {
+            allTasksFor = ''
+            scheduleRender()
+          },
+          (error: unknown) => {
+            humanError = humanMessage(error, wanted ? 'Archiving the task' : 'Bringing it back')
+            scheduleRender()
+          },
+        )
+    })
+  }
+
   document.querySelector('#new-task')?.addEventListener('click', () => {
     creating = true
     notice = null
@@ -1039,7 +1189,7 @@ function bindSupervision(): void {
           if (outcome.copied.length) parts.push(`${outcome.copied.length} added as a copy`)
           if (outcome.skipped.length) parts.push(`${outcome.skipped.length} already here`)
           notice = `${parts.join(', ')}. Credentials are never in an export, so none were restored.`
-          allTasksFor = -1
+          allTasksFor = ''
           scheduleRender()
         },
         (error: unknown) => {
@@ -1240,7 +1390,8 @@ function render(): void {
   if (!root) return
 
   const openTask = store.currentTask()
-  if (openTask && allTasksFor !== openTask.version) refreshTaskList(openTask.version)
+  const listKey = openTask ? `${openTask.id}:${openTask.version}:${store.tasksRevision()}` : ''
+  if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
   if ((openTask?.id ?? null) !== credentialsFor) {
     credentialsFor = openTask?.id ?? null
     credentials = []
@@ -1311,11 +1462,12 @@ export function mount(target: HTMLElement): () => void {
   revealed = null
   credentialsFor = null
   allTasks = []
-  allTasksFor = -1
+  allTasksFor = ''
   notice = null
   showAllHistory = false
   editing = null
   loggingStep = false
+  showArchived = false
 
   render()
   const subscriptions = [

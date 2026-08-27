@@ -26,6 +26,16 @@ type Listener = () => void
 const listeners = new Set<Listener>()
 
 let snapshot: Snapshot = { status: 'loading', task: null, error: null, boundId: null }
+
+let tasksRevisionCounter = 0
+
+export function tasksRevision(): number {
+  return tasksRevisionCounter
+}
+
+function tasksChanged(): void {
+  tasksRevisionCounter += 1
+}
 let initPromise: Promise<void> | null = null
 
 function setSnapshot(next: Snapshot): void {
@@ -95,6 +105,7 @@ export async function importTasks(incoming: readonly TaskState[]): Promise<Impor
 
       if (!existing) {
         await putTask(task)
+        tasksChanged()
         outcome.imported.push(task.title)
         continue
       }
@@ -110,6 +121,7 @@ export async function importTasks(incoming: readonly TaskState[]): Promise<Impor
         title: `${task.title} (imported)`,
       }
       await putTask(copy)
+      tasksChanged()
       outcome.copied.push(copy.title)
     }
 
@@ -122,15 +134,37 @@ export async function importTasks(incoming: readonly TaskState[]): Promise<Impor
   })
 }
 
+export async function updateTask(
+  id: string,
+  fn: (state: TaskState) => TaskState,
+): Promise<TaskState> {
+  return enqueue(async () => {
+    if (snapshot.task && snapshot.task.id === id) {
+      return applyLocked(fn)
+    }
+
+    const current = await loadTask(id)
+    if (!current) throw new Error('NO SUCH TASK\nThat task is not on this device any more.')
+
+    const next = fn(current)
+    await saveTask(next, current.version)
+    tasksChanged()
+    if (snapshot.task) await setLastTaskId(snapshot.task.id)
+    return next
+  })
+}
+
 export async function createAndOpenTask(title: string, next?: string): Promise<TaskState> {
   const task = createTask({ title, next })
   await saveTask(task)
+  tasksChanged()
   setSnapshot({ status: 'ready', task, error: null, boundId: task.id })
   return task
 }
 
 export async function openPreparedTask(task: TaskState): Promise<TaskState> {
   await saveTask(task)
+  tasksChanged()
   setSnapshot({ status: 'ready', task, error: null, boundId: task.id })
   return task
 }
@@ -141,6 +175,7 @@ export async function deleteCurrentTask(): Promise<void> {
 
   await enqueue(async () => {
     await deleteTask(current.id)
+    tasksChanged()
     const suivant = await loadLastTask()
     if (suivant) {
       await setLastTaskId(suivant.id)
@@ -320,6 +355,7 @@ export async function recordAgentRefusal(
 }
 
 export function __resetStore(): void {
+  tasksRevisionCounter = 0
   listeners.clear()
   writeQueue = Promise.resolve()
   snapshot = { status: 'loading', task: null, error: null, boundId: null }
