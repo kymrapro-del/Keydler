@@ -102,6 +102,40 @@ agent must read in order to choose, so each has to pay for itself.
 | `add_decision`     | The “why”, which every summary loses first                                       |
 | `complete_task`    | Close with a hand-over summary                                                   |
 
+## Credentials the agent can name but not read
+
+An agent often needs to know that a key _exists_ — which one, and what it is
+for — without ever seeing it. The Watch Log holds that reference:
+
+```
+CREDENTIALS — names only, values sealed (1)
+  ${gemini-api-key} — Calls the Gemini API from the ingestion script
+  Write these as ${name}; no tool here returns a value.
+```
+
+The agent writes `${gemini-api-key}` where the value belongs. You wire the real
+one.
+
+- The value is sealed with **AES-GCM**, under a key derived from a passphrase by
+  **PBKDF2-SHA256, 600 000 iterations**, with a fresh salt and IV per secret.
+  Web Crypto only — no new dependency.
+- The passphrase is **never stored**, and the plaintext is never persisted.
+- Secrets live in a **separate store, outside the task state**. That is what
+  makes the guarantee structural rather than careful: no tool result, no export,
+  and no `resume_task` reply can contain a value, because the task object never
+  holds one. There is a test that calls every tool and asserts it.
+- Revealing a value takes an explicit click **and** the passphrase.
+
+**What this is not.** It is not an audited secret manager, and it does not
+defend against everything:
+
+- Anything you **reveal on screen** can be read by an agent that drives this
+  browser — screenshots and DOM reads see what you see.
+- Any script running on this origin can read the sealed blob. Encryption at rest
+  protects the stored bytes, not a compromised page.
+- For production credentials, use a real secret manager. This is for wiring up a
+  task without pasting a key into a conversation.
+
 ## Technical guarantees
 
 - **Stale writes are refused, never merged.** Every agent write carries the
@@ -262,8 +296,10 @@ That also sets the boundaries, and they are real:
   another device or another browser. There is no sync, by design.
 - **The page has to stay reachable.** An agent reads the log through the open
   page; close it and the memory is still on disk, but nothing can read it.
-- **Clearing site data deletes the tasks.** Export first — the export contains
-  full evidence and the complete write log, refusals included.
+- **Clearing site data deletes the tasks — and the sealed credentials.** Export
+  first; the export contains full evidence and the complete write log, refusals
+  included. It deliberately contains **no credential**, sealed or otherwise, so
+  it is not a backup of those.
 - **This is not a universal memory.** It is a memory for _one supervised task_.
 - **Nothing guarantees an agent will call `resume_task`.** The description is
   written to make it the obvious first move, and the measurement suggests it

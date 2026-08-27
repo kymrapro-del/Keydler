@@ -19,6 +19,14 @@ import {
 import type { Confidence, Step, TaskState } from '../domain/types'
 import * as store from '../store/taskStore'
 import {
+  addSecret,
+  deleteSecret,
+  listSecretNames,
+  revealSecret,
+  WrongPassphraseError,
+} from '../persistence/vault'
+import type { SecretName } from '../domain/secret'
+import {
   getRegistrationState,
   getWitness,
   onCall,
@@ -27,39 +35,8 @@ import {
   taskPath,
 } from '../webmcp'
 
-/**
- * Le tableau de bord.
- *
- * Ce fichier a d'abord été un banc d'essai : il montrait le mécanisme — l'état
- * de l'enregistrement WebMCP, le compteur d'appels, la sortie brute de
- * `resume_task`. Utile pour développer, illisible pour qui découvre.
- *
- * L'ordre est maintenant celui d'une personne qui arrive sans rien savoir : ce
- * qu'il y a à faire, ce qui est fait, ce qui est interdit. Le mécanisme n'a pas
- * disparu — il est replié sous « Technical details », où il renseigne sans
- * dominer.
- *
- * Le texte visible est en anglais : c'est le produit. Les commentaires restent
- * en français, comme le reste du dépôt.
- *
- * `mount` prend sa racine en paramètre et rend de quoi se démonter : c'est ce
- * qui permet de l'instancier dans un DOM de test, plusieurs fois, sans état
- * résiduel entre deux cas.
- */
-
 let root: HTMLElement | null = null
 
-/* -------------------------------------------------------------------------- */
-/* Saisies en cours                                                            */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Saisies en cours, conservées hors du rendu.
- *
- * La page se redessine à chaque écriture d'agent, et c'est précisément ce qui
- * doit arriver pendant qu'un humain tape : sans ce report, l'agent effacerait
- * la contrainte qu'on est en train de rédiger contre lui.
- */
 const drafts: Record<string, string> = {
   'new-title': '',
   'new-next': '',
@@ -67,15 +44,30 @@ const drafts: Record<string, string> = {
   'new-constraint': '',
   'new-rejection': '',
   'new-rejection-reason': '',
+  'new-secret-name': '',
+  'new-secret-purpose': '',
 }
 
-/** Le formulaire de création est-il déployé ? */
 let creating = false
 
-/** Dernier échec d'une action humaine, en langage humain. */
+let credentials: SecretName[] = []
+let revealed: { id: string; value: string } | null = null
+let credentialsFor: string | null = null
+
+function refreshCredentials(taskId: string): void {
+  void listSecretNames(taskId).then(
+    (names) => {
+      credentials = names
+      scheduleRender()
+    },
+    () => {
+      credentials = []
+    },
+  )
+}
+
 let humanError: string | null = null
 
-/** Exécute une action humaine en rendant son échec lisible. */
 function humanAction(
   action: string,
   mutate: Parameters<typeof store.mutate>[0],
@@ -91,16 +83,6 @@ function humanAction(
   )
 }
 
-/* -------------------------------------------------------------------------- */
-/* Vocabulaire                                                                 */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Les trois degrés, dits en anglais courant.
- *
- * « evidence » ne veut pas dire vérifié, et le libellé doit le porter : c'est
- * la distinction que tout le produit défend.
- */
 const CONFIDENCE_LABEL: Record<Confidence, string> = {
   human_verified: 'Verified by you',
   evidence: 'Evidence attached',
@@ -116,10 +98,6 @@ function alertBlock(): string {
     ? `<div class="notice notice--error" role="alert"><p>${escapeHtml(humanError)}</p></div>`
     : ''
 }
-
-/* -------------------------------------------------------------------------- */
-/* État vide — la première visite                                              */
-/* -------------------------------------------------------------------------- */
 
 function renderLanding(): string {
   const form = creating
@@ -164,16 +142,6 @@ function renderLanding(): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* Guide après création                                                        */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Montré tant qu'aucun agent n'a rien consigné.
- *
- * Il disparaît de lui-même dès la première étape : à ce moment, la personne a
- * vu que ça marche, et la place vaut mieux au travail qu'à la consigne.
- */
 function renderReadyForAI(task: TaskState): string {
   if (task.steps.length > 0) return ''
   return `<section class="card card--guide" aria-labelledby="guide-title">
@@ -185,10 +153,6 @@ function renderReadyForAI(task: TaskState): string {
       </p>
     </section>`
 }
-
-/* -------------------------------------------------------------------------- */
-/* 1 — NEXT                                                                    */
-/* -------------------------------------------------------------------------- */
 
 function renderNext(task: TaskState): string {
   if (task.status === 'completed') {
@@ -212,14 +176,8 @@ function renderNext(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 2 — COMPLETED WORK                                                          */
-/* -------------------------------------------------------------------------- */
-
-/** Nombre de lignes affichées par liste. L'export les contient toutes. */
 const MAX_ROWS = 8
 
-/** Annonce ce qui n'est pas montré, plutôt que de le taire. */
 function remainder(total: number): string {
   const hidden = total - MAX_ROWS
   return hidden > 0
@@ -249,14 +207,7 @@ function renderCompletedWork(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 3 — RULES TO FOLLOW                                                         */
-/* -------------------------------------------------------------------------- */
-
 function renderRules(task: TaskState): string {
-  // Seules les règles endossées figurent ici. Une proposition d'agent a sa
-  // propre section : les mêler laisserait un agent poser une règle de la
-  // maison, ce que la restitution ne fait plus mais que l'écran ferait encore.
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
 
   const rows = decided
@@ -299,10 +250,6 @@ function renderRules(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 4 — DON'T RETRY                                                             */
-/* -------------------------------------------------------------------------- */
-
 function renderDontRetry(task: TaskState): string {
   const rows = acceptedRejections(task)
     .map(
@@ -344,9 +291,70 @@ function renderDontRetry(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 5 — AGENT PROPOSALS                                                         */
-/* -------------------------------------------------------------------------- */
+function renderCredentials(task: TaskState): string {
+  const rows = credentials
+    .map((secret) => {
+      const shown =
+        revealed && revealed.id === secret.id
+          ? `<pre data-revealed="${escapeHtml(secret.id)}">${escapeHtml(revealed.value)}</pre>`
+          : ''
+      return `<li class="review">
+        <div class="row">
+          <span class="chip chip--human">sealed</span>
+          <span class="row__text">
+            <code>\${${escapeHtml(secret.name)}}</code>
+            <span class="muted"> — ${escapeHtml(secret.purpose)}</span>
+          </span>
+          <button type="button" class="btn" data-reveal="${escapeHtml(secret.id)}"
+                  aria-label="Reveal the value of ${escapeHtml(secret.name)}">Reveal</button>
+          <button type="button" class="btn btn--danger" data-forget="${escapeHtml(secret.id)}"
+                  aria-label="Delete the credential ${escapeHtml(secret.name)}">Delete</button>
+        </div>
+        ${shown}
+      </li>`
+    })
+    .join('')
+
+  const form =
+    task.status === 'active'
+      ? `<form id="form-secret" class="form" novalidate autocomplete="off">
+           <div class="field">
+             <label for="new-secret-name">Name the agent will use</label>
+             <input id="new-secret-name" type="text" autocomplete="off" placeholder="gemini-api-key" />
+           </div>
+           <div class="field">
+             <label for="new-secret-purpose">What it is for</label>
+             <input id="new-secret-purpose" type="text" autocomplete="off"
+                    placeholder="Calls the Gemini API from the ingestion script" />
+           </div>
+           <div class="field">
+             <label for="new-secret-value">Value</label>
+             <input id="new-secret-value" type="password" autocomplete="new-password" spellcheck="false" />
+           </div>
+           <div class="field">
+             <label for="new-secret-passphrase">Passphrase that seals it</label>
+             <input id="new-secret-passphrase" type="password" autocomplete="new-password" spellcheck="false" />
+           </div>
+           <button type="submit" class="btn">Seal it</button>
+         </form>`
+      : ''
+
+  return `<section class="card" aria-labelledby="credentials-title">
+      <h2 id="credentials-title" class="card__title">Credentials</h2>
+      <p class="muted">
+        The agent sees the <strong>name</strong> and what it is for, never the value.
+        It writes <code>\${name}</code> where the value belongs, and you wire the
+        real one. No tool on this page can return a value.
+      </p>
+      ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">No credentials yet.</p>'}
+      ${form}
+      <p class="muted">
+        Sealed with a passphrase that is never stored, and never written to an
+        export. This is not an audited secret manager — and anything you reveal on
+        screen can be read by an agent that drives this browser.
+      </p>
+    </section>`
+}
 
 function renderProposals(task: TaskState): string {
   const proposals = [
@@ -389,14 +397,7 @@ function renderProposals(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 6 — EVIDENCE TO REVIEW                                                      */
-/* -------------------------------------------------------------------------- */
-
 function renderEvidence(task: TaskState): string {
-  // Les PLUS ANCIENNES d'abord : le clic humain est le seul chemin vers
-  // « verified », et montrer les plus récentes rendait les anciennes
-  // inatteignables tant que les nouvelles n'étaient pas traitées.
   const waiting = task.steps.filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
   if (waiting.length === 0) return ''
 
@@ -426,24 +427,10 @@ function renderEvidence(task: TaskState): string {
     </section>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* 7 — ACTIVITY                                                                */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Le dernier refus, dit en langage humain.
- *
- * Le témoin d'appels sait qu'un appel a été refusé, pas pourquoi. Le journal
- * d'audit, lui, porte le motif — et c'est le motif qui décide de la phrase. Un
- * refus pour état périmé n'est pas une panne : c'est la supervision qui
- * fonctionne, et la page doit le dire ainsi.
- */
 function lastRefusal(task: TaskState): string | null {
   const refused = [...task.audit].reverse().find((e) => e.outcome === 'refused')
   if (!refused) return null
 
-  // Un refus plus ancien que la dernière écriture appliquée est de l'histoire,
-  // pas une alerte : le laisser en place banaliserait la bannière.
   const applied = [...task.audit].reverse().find((e) => e.outcome === 'applied')
   if (applied && applied.at > refused.at) return null
 
@@ -483,10 +470,6 @@ function renderActivity(task: TaskState): string {
       ${rows ? `<ul class="calls">${rows}</ul>` : '<p class="empty">No agent has called a tool yet.</p>'}
     </section>`
 }
-
-/* -------------------------------------------------------------------------- */
-/* Détails techniques — repliés                                                */
-/* -------------------------------------------------------------------------- */
 
 function renderTechnical(task: TaskState | null): string {
   const { phase, availability, toolNames, error, observedTools, lifecycle } = getRegistrationState()
@@ -530,10 +513,6 @@ function renderTechnical(task: TaskState | null): string {
     </details>`
 }
 
-/* -------------------------------------------------------------------------- */
-/* Assemblage                                                                  */
-/* -------------------------------------------------------------------------- */
-
 function renderDashboard(task: TaskState): string {
   return `<header class="page-head">
       <p class="page-head__eyebrow">Watch Log</p>
@@ -545,6 +524,7 @@ function renderDashboard(task: TaskState): string {
     ${renderCompletedWork(task)}
     ${renderRules(task)}
     ${renderDontRetry(task)}
+    ${renderCredentials(task)}
     ${renderProposals(task)}
     ${renderEvidence(task)}
     ${renderActivity(task)}
@@ -563,8 +543,6 @@ function renderBody(): string {
   }
 
   if (status === 'missing') {
-    // L'adresse nomme un cahier qui n'existe pas. En ouvrir un autre à sa place
-    // ferait exactement ce que le lien par adresse existe pour empêcher.
     return `<div class="notice notice--warn" role="alert">
         <p><strong>This task does not exist on this device.</strong></p>
         <p>The address points at <code>${escapeHtml(boundId ?? '')}</code>, which is not here.
@@ -576,10 +554,6 @@ function renderBody(): string {
   return task ? renderDashboard(task) : renderLanding()
 }
 
-/* -------------------------------------------------------------------------- */
-/* Câblage                                                                     */
-/* -------------------------------------------------------------------------- */
-
 function bindDrafts(): void {
   for (const id of Object.keys(drafts)) {
     const field = document.querySelector<HTMLInputElement>(`#${id}`)
@@ -587,9 +561,6 @@ function bindDrafts(): void {
     field.value = drafts[id]
     field.addEventListener('input', () => {
       drafts[id] = field.value
-      // Corriger sa saisie efface le reproche. On retire l'alerte du DOM sans
-      // redessiner : un rendu complet détruirait le champ en cours de frappe,
-      // ce qui interrompt une composition et vide la pile d'annulation.
       if (humanError !== null) {
         humanError = null
         document.querySelector('[role="alert"]')?.remove()
@@ -618,8 +589,6 @@ function bindCreation(): void {
     const next = drafts['new-next'].trim()
     const rule = drafts['new-rule'].trim()
 
-    // Refusé ICI et en langage humain, plutôt que par le navigateur : un
-    // « Please fill out this field » natif ne dit pas pourquoi le champ compte.
     if (!title) {
       humanError = 'Please give the task a title, so a later conversation knows what it is about.'
       renderNow()
@@ -637,8 +606,6 @@ function bindCreation(): void {
     void store
       .createAndOpenTask(title, next)
       .then(() => {
-        // Une règle posée à la création est HUMAINE, donc opposable d'emblée :
-        // c'est le seul geste de cet écran qui contraint réellement l'agent.
         if (!rule) return undefined
         return store
           .mutate((s) => addConstraint(s, { rule, basedOnVersion: null }, 'human'))
@@ -659,8 +626,6 @@ function bindCreation(): void {
   })
 
   document.querySelector('#seed')?.addEventListener('click', () => {
-    // `?mesure=N` charge la tâche de mesure N au lieu du cahier de
-    // démonstration, pour que le protocole de mesure soit rejouable tel quel.
     const n = Number(new URLSearchParams(location.search).get('mesure'))
     void store.openPreparedTask(n ? buildMeasureTask(n) : buildDemoTask())
   })
@@ -671,8 +636,6 @@ function bindSupervision(): void {
     e.preventDefault()
     const rule = drafts['new-constraint'].trim()
     if (!rule) return
-    // Vidé seulement si la mutation passe : sinon une règle refusée pour
-    // longueur disparaissait de l'écran, et on ne pouvait plus la raccourcir.
     humanAction(
       'Adding the rule',
       (state) => addConstraint(state, { rule, basedOnVersion: null }, 'human'),
@@ -686,9 +649,6 @@ function bindSupervision(): void {
     e.preventDefault()
     const approach = drafts['new-rejection'].trim()
     const reason = drafts['new-rejection-reason'].trim()
-    // On laisse le domaine refuser un motif vide plutôt que de l'intercepter
-    // ici : une seule règle, un seul endroit où elle est écrite. Un rejet posé
-    // par un humain naît `accepted` — il n'a pas à être endossé ensuite.
     humanAction(
       'Ruling out the approach',
       (state) => rejectApproach(state, { approach, reason, basedOnVersion: null }, 'human'),
@@ -711,8 +671,6 @@ function bindSupervision(): void {
 
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-verify]')) {
     button.addEventListener('click', () => {
-      // Le contenu RELU est repris du bloc affiché juste sous le bouton, et non
-      // de l'état : c'est ce qui fait de ce paramètre une attestation.
       const shown = button.closest('li')?.querySelector('pre')?.textContent ?? ''
       humanAction('Approving the evidence', (state) =>
         verifyEvidence(state, button.dataset.verify!, shown),
@@ -730,6 +688,82 @@ function bindSupervision(): void {
         button.dataset.kind === 'constraint'
           ? setConstraintStanding(state, id, standing)
           : setRejectionStanding(state, id, standing),
+      )
+    })
+  }
+
+  document.querySelector<HTMLFormElement>('#form-secret')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const task = store.currentTask()
+    if (!task) return
+
+    const name = drafts['new-secret-name'].trim()
+    const purpose = drafts['new-secret-purpose'].trim()
+    const valueField = document.querySelector<HTMLInputElement>('#new-secret-value')
+    const phraseField = document.querySelector<HTMLInputElement>('#new-secret-passphrase')
+    const value = valueField?.value ?? ''
+    const passphrase = phraseField?.value ?? ''
+
+    humanError = null
+    void addSecret({ taskId: task.id, name, purpose, value, passphrase }).then(
+      () => {
+        if (valueField) valueField.value = ''
+        if (phraseField) phraseField.value = ''
+        drafts['new-secret-name'] = ''
+        drafts['new-secret-purpose'] = ''
+        refreshCredentials(task.id)
+      },
+      (error: unknown) => {
+        humanError = humanMessage(error, 'Sealing the credential')
+        scheduleRender()
+      },
+    )
+  })
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-reveal]')) {
+    button.addEventListener('click', () => {
+      const id = button.dataset.reveal!
+      if (revealed && revealed.id === id) {
+        revealed = null
+        renderNow()
+        return
+      }
+      const passphrase = window.prompt('Passphrase for this credential?')
+      if (!passphrase) return
+      humanError = null
+      void revealSecret(id, passphrase).then(
+        (value) => {
+          revealed = { id, value }
+          renderNow()
+        },
+        (error: unknown) => {
+          revealed = null
+          humanError =
+            error instanceof WrongPassphraseError
+              ? 'That passphrase does not open this credential.'
+              : humanMessage(error, 'Revealing the credential')
+          scheduleRender()
+        },
+      )
+    })
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-forget]')) {
+    button.addEventListener('click', () => {
+      const task = store.currentTask()
+      if (!task) return
+      const id = button.dataset.forget!
+      const secret = credentials.find((c) => c.id === id)
+      if (!window.confirm(`Delete the credential ${secret?.name ?? ''}? This cannot be undone.`)) {
+        return
+      }
+      revealed = null
+      void deleteSecret(id).then(
+        () => refreshCredentials(task.id),
+        (error: unknown) => {
+          humanError = humanMessage(error, 'Deleting the credential')
+          scheduleRender()
+        },
       )
     })
   }
@@ -753,8 +787,6 @@ function bindTechnical(): void {
     void store.allTasks().then(
       (tasks) => download('watch-logs.md', buildFullExport(tasks)),
       (error: unknown) => {
-        // Sans cette branche, un stockage indisponible ne produisait ni fichier,
-        // ni message, et laissait un rejet non géré dans la console.
         humanError = humanMessage(error, 'Exporting the tasks')
         scheduleRender()
       },
@@ -764,7 +796,6 @@ function bindTechnical(): void {
   document.querySelector('#delete')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (!task) return
-    // Destructif et irréversible : on demande, en nommant ce qui disparaît.
     const sure = window.confirm(
       `Permanently delete “${task.title}” (version ${task.version})?\n\n` +
         'Export it first if you want to keep a copy.',
@@ -778,7 +809,6 @@ function bindTechnical(): void {
   })
 }
 
-/** Remet un fichier à la personne. Rien ne quitte l'appareil. */
 function download(name: string, content: string): void {
   const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -788,25 +818,11 @@ function download(name: string, content: string): void {
   document.body.append(link)
   link.click()
   link.remove()
-  // Révoquée au tour suivant : révoquer dans le même tour que le clic peut
-  // laisser un téléchargement vide sur certains navigateurs.
   setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
-/* -------------------------------------------------------------------------- */
-/* Annonces et rendu                                                           */
-/* -------------------------------------------------------------------------- */
-
 let lastAnnouncement = ''
 
-/**
- * Annonce un changement dans la région persistante.
- *
- * Les attributs `aria-live` posés sur les nœuds du rendu ne produisaient aucune
- * annonce : `render()` remplace tout le sous-arbre, et une région réinsérée est
- * du DOM neuf, pas une mutation. Seule une région qui survit au rendu est
- * suivie par une aide technique.
- */
 function announce(): void {
   const region = document.querySelector('#annonces')
   if (!region) return
@@ -823,49 +839,35 @@ function announce(): void {
   region.textContent = sentence
 }
 
-/**
- * Aligne l'adresse de la barre sur le cahier ouvert.
- *
- * `replaceState`, pas `pushState` : ouvrir un cahier n'est pas une navigation
- * qu'on veut pouvoir défaire par la flèche « précédent ». L'adresse est là pour
- * que le cahier soit RETROUVABLE — copiée, elle rouvre cette tâche-là et pas la
- * dernière touchée sur l'appareil.
- */
 function reflectAddress(): void {
   if (typeof history === 'undefined' || typeof history.replaceState !== 'function') return
 
   const { status, boundId } = store.getSnapshot()
 
-  // Tant que le magasin n'a pas tranché, l'adresse est la SOURCE du lien et non
-  // son reflet. Écrire ici effaçait `/t/:id` au premier rendu — synchrone, donc
-  // AVANT que le point d'entrée n'ait lu le chemin — et la page repartait sur
-  // « le dernier cahier touché ».
   if (status === 'loading') return
 
   const wanted = boundId ? taskPath(boundId) : '/'
   if (location.pathname === wanted) return
   try {
     history.replaceState(null, '', `${wanted}${location.search}`)
-  } catch {
-    // Une origine opaque refuse l'écriture de l'historique. L'adresse est un
-    // confort, pas le lien lui-même : celui-ci vit dans le magasin.
-  }
+  } catch {}
 }
 
 function render(): void {
-  // Une frame planifiée avant le démontage s'exécute quand même : sans ce
-  // garde-fou, elle écrivait dans une racine devenue nulle.
   if (!root) return
 
-  // Le champ de saisie est remplacé par le rendu : on note s'il avait le focus
-  // et où était le curseur, pour que l'agent ne coupe pas la parole à l'humain.
+  const openTask = store.currentTask()
+  if ((openTask?.id ?? null) !== credentialsFor) {
+    credentialsFor = openTask?.id ?? null
+    credentials = []
+    revealed = null
+    if (openTask) refreshCredentials(openTask.id)
+  }
+
   const active = document.activeElement
   const focused = active instanceof HTMLInputElement && active.id in drafts ? active.id : null
   const caret = focused ? (active as HTMLInputElement).selectionStart : null
 
-  // Le titre est un point d'ancrage : on l'y pose après une création, et une
-  // écriture d'agent survenue juste après ne doit pas le faire retomber sur
-  // `body`. Le rendu remplace le nœud, donc il faut le rétablir explicitement.
   const headingFocused = active !== null && active === root.querySelector('.page-head h1')
 
   root.innerHTML = `<main id="content">${renderBody()}</main>`
@@ -887,23 +889,12 @@ function render(): void {
   reflectAddress()
 }
 
-/**
- * Rendu groupé.
- *
- * Une écriture d'agent notifie deux fois — une par le magasin, une par le
- * témoin d'appels — et la page se redessinerait deux fois de suite. Sans
- * conséquence sur l'état, mais visible à l'œil pendant une rafale, et deux fois
- * plus d'occasions de perdre le curseur de la personne qui tape.
- */
 let renderScheduled = false
 let pendingFrame: number | null = null
 
 function scheduleRender(): void {
   if (renderScheduled) return
   renderScheduled = true
-  // À la frame, pas à la micro-tâche : les deux notifications d'une écriture
-  // d'agent sont séparées par un `await`, si bien qu'une micro-tâche ne
-  // grouperait rien.
   const schedule =
     typeof requestAnimationFrame === 'function'
       ? requestAnimationFrame
@@ -915,15 +906,6 @@ function scheduleRender(): void {
   }) as unknown as number
 }
 
-/**
- * Rend tout de suite, et ANNULE la frame en attente.
- *
- * Sans cette annulation, un rendu immédiat était suivi, une frame plus tard, du
- * rendu que le magasin avait planifié : tout le sous-arbre était remplacé et le
- * focus que l'appelant venait de poser disparaissait. C'est ce qui se produisait
- * juste après la création d'une tâche — le moment où l'on a le plus besoin d'un
- * point d'ancrage, et où une aide technique n'annonçait plus rien.
- */
 function renderNow(): void {
   if (pendingFrame !== null) {
     if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(pendingFrame)
@@ -934,10 +916,6 @@ function renderNow(): void {
   render()
 }
 
-/**
- * Monte la vue sur une racine et s'abonne aux trois sources de changement.
- * Rend une fonction de démontage, pour qu'un test puisse repartir à neuf.
- */
 export function mount(target: HTMLElement): () => void {
   root = target
   for (const key of Object.keys(drafts)) drafts[key] = ''
@@ -945,6 +923,9 @@ export function mount(target: HTMLElement): () => void {
   humanError = null
   lastAnnouncement = ''
   renderScheduled = false
+  credentials = []
+  revealed = null
+  credentialsFor = null
 
   render()
   const subscriptions = [
@@ -965,7 +946,6 @@ export function mount(target: HTMLElement): () => void {
   }
 }
 
-/** Force un rendu immédiat. Réservé aux tests, qui n'attendent pas la frame. */
 export function __renderNow(): void {
   renderNow()
 }
