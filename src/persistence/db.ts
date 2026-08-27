@@ -68,9 +68,4 @@ export function getDb(): Promise<IDBPDatabase<WatchLogDB>> {
   return dbPromise
 }
 
-/** Réinitialise le handle mémorisé. Réservé aux tests. */
-export function resetDbHandle(): void {
-  dbPromise = null
-}
-
 export type { WatchLogDB }

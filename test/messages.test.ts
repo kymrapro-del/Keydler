@@ -1,22 +1,32 @@
 import { describe, expect, it } from 'vitest'
-import { ConcurrentWriteError, StaleStateError, ValidationError } from '../src/domain/errors'
+import {
+  ConcurrentWriteError,
+  StaleStateError,
+  ValidationError,
+  type ValidationCode,
+} from '../src/domain/errors'
 import { escapeHtml } from '../src/ui/escape'
-import { messageHumain, motifFrancais } from '../src/ui/messages'
+import { humanMessage, humanReason } from '../src/ui/messages'
 
 /**
  * Ce que lit la personne qui a cliqué.
  *
- * Les messages du domaine sont le contrat de l'agent et restent en anglais. Les
- * montrer bruts à un humain — « Call resume_task before continuing » après un
- * clic sur un bouton — est la faute que ces traductions existent pour éviter.
+ * Les messages du domaine sont le contrat de l'AGENT : ils se terminent par
+ * « Call resume_task before continuing ». Les montrer bruts à un humain après
+ * un clic sur un bouton est la faute que ces reformulations existent pour
+ * éviter — et le fait que les deux soient en anglais ne les rend pas
+ * interchangeables pour autant.
  */
 
 describe('messages destinés à l’humain', () => {
   it('n’ordonne jamais à une personne d’appeler resume_task', () => {
     const messages = [
-      messageHumain(new StaleStateError(5, 6), 'Ajout de la contrainte'),
-      messageHumain(new ConcurrentWriteError(5, 6), 'Ajout de la contrainte'),
-      messageHumain(new ValidationError('reason', 'must not be empty.'), 'Condamnation'),
+      humanMessage(new StaleStateError(5, 6), 'Adding the rule'),
+      humanMessage(new ConcurrentWriteError(5, 6), 'Adding the rule'),
+      humanMessage(
+        new ValidationError('reason', 'must not be empty.', { code: 'empty' }),
+        'Ruling out the approach',
+      ),
     ]
     for (const m of messages) {
       expect(m).not.toContain('resume_task')
@@ -26,59 +36,92 @@ describe('messages destinés à l’humain', () => {
   })
 
   it('explique un conflit entre onglets en disant quoi faire', () => {
-    const m = messageHumain(new ConcurrentWriteError(5, 6), 'Ajout de la contrainte')
-    expect(m).toContain('un autre onglet')
+    const m = humanMessage(new ConcurrentWriteError(5, 6), 'Adding the rule')
+    expect(m).toContain('another tab')
     expect(m).toContain('version 6')
-    expect(m).toContain('refaites votre geste')
+    expect(m).toContain('try again')
   })
 
   it('nomme l’action qui a échoué', () => {
     // Sans cela, le message reste ambigu quand plusieurs commandes sont à l'écran.
-    const m = messageHumain(
-      new ValidationError('rule', 'must not be empty.'),
-      'Levée de la contrainte',
+    const m = humanMessage(
+      new ValidationError('rule', 'must not be empty.', { code: 'empty' }),
+      'Lifting the rule',
     )
-    expect(m.startsWith('Levée de la contrainte')).toBe(true)
+    expect(m.startsWith('Lifting the rule')).toBe(true)
   })
 
-  it('traduit les refus qu’une personne peut réellement déclencher', () => {
+  it('reformule les refus qu’une personne peut réellement déclencher', () => {
     const cas: Array<[ValidationError, string]> = [
-      [new ValidationError('reason', 'must not be empty.'), 'le motif ne peut pas être vide.'],
       [
-        new ValidationError('rule', 'must be at most 2000 characters.'),
-        'la règle dépasse 2000 caractères.',
-      ],
-      [new ValidationError('approach', 'expected a string.'), "l'approche doit être du texte."],
-      [
-        new ValidationError('stepId', 'this step carries no evidence to verify.'),
-        'cette étape ne porte aucune preuve à valider.',
+        new ValidationError('reason', 'must not be empty.', { code: 'empty' }),
+        'the reason cannot be empty.',
       ],
       [
-        new ValidationError(
-          'status',
-          'task "X" is already completed; log_step is no longer accepted.',
-          false,
-        ),
-        'cette tâche est close. Rouvrez-la si du travail reste à faire.',
+        new ValidationError('rule', 'must be at most 2000 characters.', {
+          code: 'too-long',
+          max: 2000,
+        }),
+        'the rule is longer than 2000 characters.',
+      ],
+      [
+        new ValidationError('approach', 'expected a string.', { code: 'not-a-string' }),
+        'the approach has to be text.',
+      ],
+      [
+        new ValidationError('stepId', 'this step carries no evidence to verify.', {
+          code: 'no-evidence',
+        }),
+        'that step has no evidence to review.',
+      ],
+      [
+        new ValidationError('status', 'task "X" is already completed.', {
+          code: 'already-completed',
+          retryable: false,
+        }),
+        'this task is closed. Reopen it if there is work left.',
       ],
     ]
-    for (const [erreur, attendu] of cas) expect(motifFrancais(erreur)).toBe(attendu)
+    for (const [erreur, attendu] of cas) expect(humanReason(erreur)).toBe(attendu)
   })
 
-  it('retombe sur le texte d’origine plutôt que d’inventer une phrase', () => {
-    const inconnu = new ValidationError('mystere', 'some brand new rule was broken.')
-    // Mieux vaut un message anglais exact qu'une traduction approximative.
-    expect(motifFrancais(inconnu)).toBe('some brand new rule was broken.')
+  it('couvre chaque code sans laisser passer le texte de l’agent', () => {
+    // Le domaine ne peut plus ajouter un motif sans que la compilation le
+    // signale ici : c'est ce que le couplage par chaîne ne garantissait pas.
+    const codes: ValidationCode[] = [
+      'empty',
+      'too-long',
+      'not-a-string',
+      'bad-enum',
+      'bad-version',
+      'not-found',
+      'no-evidence',
+      'already-active',
+      'already-completed',
+      'out-of-range',
+      'bad-mutation-id',
+      'mutation-id-reused',
+      'mutation-id-collision',
+      'content-not-reviewed',
+      'not-proposed',
+    ]
+    for (const code of codes) {
+      const m = humanReason(new ValidationError('rule', 'raw agent text', { code, max: 10 }))
+      expect(m).not.toContain('raw agent text')
+      expect(m.length).toBeGreaterThan(5)
+    }
   })
 
   it('nomme un champ inconnu sans planter', () => {
-    const m = motifFrancais(new ValidationError('champInedit', 'must not be empty.'))
-    expect(m).toContain('« champInedit »')
+    const m = humanReason(
+      new ValidationError('champInedit', 'must not be empty.', { code: 'empty' }),
+    )
+    expect(m).toContain('“champInedit”')
   })
 
   it('rend une panne de stockage actionnable', () => {
-    const m = messageHumain(new Error('STORAGE UNAVAILABLE\nquota'), 'Ajout')
-    expect(m).toContain('navigation privée')
+    const m = humanMessage(new Error('STORAGE UNAVAILABLE\nquota'), 'Adding')
+    expect(m).toContain('Private browsing')
     expect(m).not.toContain('STORAGE UNAVAILABLE')
   })
 })

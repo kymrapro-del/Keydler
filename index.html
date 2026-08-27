@@ -1,15 +1,27 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cahier de quart</title>
+    <title>Watch Log — a shared memory for you and your AI</title>
     <meta
       name="description"
-      content="Mémoire de tâche persistante et supervisée, exposée aux agents via WebMCP."
+      content="A shared, supervised task memory for you and your AI, exposed to agents through WebMCP."
     />
   </head>
   <body>
+    <!--
+      Région annoncée persistante. Elle vit HORS de #app, que le rendu remplace
+      entièrement : une région détruite puis réinsérée est du DOM neuf pour une
+      aide technique, pas une mutation, et n'annonce donc rien.
+    -->
+    <div
+      id="annonces"
+      class="visually-hidden"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

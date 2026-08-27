@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { StaleStateError, ValidationError } from '../src/domain/errors'
 import {
   addConstraint,
+  addDecision,
   completeTask,
   createTask,
   evidenceCounts,
@@ -139,10 +140,10 @@ describe('degrés de preuve', () => {
     expect(task.steps[0].confidence).toBe('claimed')
   })
 
-  it('ignore tout degré déclaré : il est déduit de la preuve', () => {
+  it('ignore tout degré déclaré : il est déduit de ce que l’écriture apporte', () => {
     let task = seedTask()
-    // L'agent réclame le degré humain, la preuve est une sortie machine :
-    // il obtient « machine_verified », jamais « human_verified ».
+    // L'agent réclame le degré humain. Il ne l'obtient pas, et il n'obtient
+    // pas non plus mieux que « evidence » : le degré est déduit, jamais reçu.
     task = logStep(
       task,
       {
@@ -155,10 +156,10 @@ describe('degrés de preuve', () => {
       'agent',
       ctx(10),
     )
-    expect(task.steps[0].confidence).toBe('machine_verified')
+    expect(task.steps[0].confidence).toBe('evidence')
   })
 
-  it('ne tient pas un lien ou un diff pour une vérification machine', () => {
+  it('ne tient pas un lien ou un diff pour une vérification', () => {
     let task = seedTask()
     task = logStep(
       task,
@@ -166,7 +167,6 @@ describe('degrés de preuve', () => {
         action: 'a',
         result: 'b',
         evidence: { kind: 'url', content: 'https://example.test/build/42' },
-        confidence: 'machine_verified',
         basedOnVersion: 1,
       },
       'agent',
@@ -174,22 +174,6 @@ describe('degrés de preuve', () => {
     )
     // Un lien atteste d'un changement, pas d'une vérification.
     expect(task.steps[0].confidence).toBe('evidence')
-  })
-
-  it('accorde « machine_verified » à la sortie d’une machine', () => {
-    let task = seedTask()
-    task = logStep(
-      task,
-      {
-        action: 'a',
-        result: 'b',
-        evidence: { kind: 'command_output', content: '$ npm test\n183 passed' },
-        basedOnVersion: 1,
-      },
-      'agent',
-      ctx(10),
-    )
-    expect(task.steps[0].confidence).toBe('machine_verified')
   })
 
   it('ne passe en « human_verified » que par la validation humaine', () => {
@@ -201,7 +185,7 @@ describe('degrés de preuve', () => {
       ctx(10),
     )
     const stepId = task.steps[0].id
-    task = verifyEvidence(task, stepId, ctx(20))
+    task = verifyEvidence(task, stepId, '+1 -1', ctx(20))
 
     expect(task.steps[0].confidence).toBe('human_verified')
     expect(task.steps[0].evidence?.verifiedAt).toBe(1_700_000_000_000)
@@ -211,7 +195,7 @@ describe('degrés de preuve', () => {
   it('refuse de valider une étape sans preuve', () => {
     let task = seedTask()
     task = logStep(task, { action: 'a', result: 'b', basedOnVersion: 1 }, 'agent', ctx(10))
-    expect(() => verifyEvidence(task, task.steps[0].id, ctx(20))).toThrow(ValidationError)
+    expect(() => verifyEvidence(task, task.steps[0].id, '', ctx(20))).toThrow(ValidationError)
   })
 })
 
@@ -254,8 +238,8 @@ describe('restitution', () => {
     )
     task = rejectApproach(
       task,
-      { approach: 'JWT variante B', reason: 'casse la rotation', basedOnVersion: 2 },
-      'agent',
+      { approach: 'JWT variante B', reason: 'casse la rotation', basedOnVersion: null },
+      'human',
       ctx(20),
     )
 
@@ -320,14 +304,17 @@ describe('budget de restitution sous pression', () => {
       )
     }
     for (let i = 0; i < nbRejets; i++) {
+      // Humains, donc opposables : ce sont les rejets ENDOSSÉS que la
+      // restitution s'interdit d'escamoter. Une proposition d'agent, elle,
+      // peut céder la place — elle n'impose rien.
       task = rejectApproach(
         task,
         {
           approach: `Approche condamnée numéro ${i}`,
           reason: `Motif ${i}, détaillé à dessein pour occuper de la place dans la restitution`,
-          basedOnVersion: task.version,
+          basedOnVersion: null,
         },
-        'agent',
+        'human',
         ctx(6000 + n++ * 10),
       )
     }
@@ -363,6 +350,21 @@ describe('budget de restitution sous pression', () => {
   it('respecte le budget tant que les contraintes le permettent', () => {
     const task = chargé(4, 3)
     expect(estimateTokens(renderTaskState(task))).toBeLessThanOrEqual(TOKEN_BUDGET)
+  })
+
+  it('annonce combien de décisions sont montrées sur combien', () => {
+    let task = seedTask()
+    for (let i = 0; i < 6; i++) {
+      task = addDecision(
+        task,
+        { choice: `Choix ${i}`, rationale: `Motif ${i}`, basedOnVersion: task.version },
+        'agent',
+        ctx(7000 + i * 10),
+      )
+    }
+    const output = renderTaskState(task)
+    // Sans ce compte, un agent croirait avoir la liste entière.
+    expect(output).toMatch(/DECISIONS \(last \d+ of 6\)/)
   })
 
   it('reste déterministe : deux rendus du même état sont identiques', () => {

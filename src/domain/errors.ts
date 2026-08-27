@@ -27,33 +27,58 @@ export class StaleStateError extends Error {
 }
 
 /**
- * Entrée qui ne respecte pas le contrat d'un outil.
+ * Motif structuré d'un refus de validation.
  *
- * `retryable` sépare deux situations que rien d'autre ne distingue : une
- * entrée mal formée, qu'il suffit de corriger et de renvoyer, et un état du
- * cahier qui interdit l'opération — où réessayer ne marchera jamais. Conseiller
- * un réessai dans le second cas inviterait à une boucle infinie.
+ * Il existe pour que personne n'ait à reconnaître un refus à son texte anglais.
+ * L'interface traduisait en effet ces messages par correspondance de chaînes :
+ * reformuler « must not be empty. » laissait passer tous les tests et faisait
+ * silencieusement retomber l'écran en anglais devant la personne qui avait
+ * cliqué. Le code, lui, casse à la compilation.
  */
+export type ValidationCode =
+  | 'empty'
+  | 'too-long'
+  | 'not-a-string'
+  | 'bad-enum'
+  | 'bad-version'
+  | 'out-of-range'
+  | 'not-found'
+  | 'no-evidence'
+  | 'already-active'
+  | 'already-completed'
+  | 'bad-mutation-id'
+  | 'mutation-id-reused'
+  | 'mutation-id-collision'
+  | 'content-not-reviewed'
+  | 'not-proposed'
+
+export type ValidationOptions = {
+  code: ValidationCode
+  /**
+   * `false` sépare deux situations que rien d'autre ne distingue : une entrée
+   * mal formée, qu'il suffit de corriger et de renvoyer, et un état du cahier
+   * qui interdit l'opération — où réessayer ne marchera jamais. Conseiller un
+   * réessai dans le second cas inviterait à une boucle infinie.
+   */
+  retryable?: boolean
+  /** Borne dépassée, pour un refus `too-long`. */
+  max?: number
+}
+
+/** Entrée qui ne respecte pas le contrat d'un outil. */
 export class ValidationError extends Error {
   readonly field: string
+  readonly code: ValidationCode
   readonly retryable: boolean
+  readonly max: number | null
 
-  constructor(field: string, message: string, retryable = true) {
+  constructor(field: string, message: string, options: ValidationOptions) {
     super(`INVALID INPUT\nField "${field}": ${message}`)
     this.name = 'ValidationError'
     this.field = field
-    this.retryable = retryable
-  }
-}
-
-/** Tâche absente du magasin — lien périmé ou identifiant inventé. */
-export class TaskNotFoundError extends Error {
-  readonly taskId: string
-
-  constructor(taskId: string) {
-    super(`NO SUCH TASK\nNo task with id "${taskId}" exists on this device.`)
-    this.name = 'TaskNotFoundError'
-    this.taskId = taskId
+    this.code = options.code
+    this.retryable = options.retryable ?? true
+    this.max = options.max ?? null
   }
 }
 
@@ -80,5 +105,26 @@ export class ConcurrentWriteError extends Error {
     this.name = 'ConcurrentWriteError'
     this.expectedVersion = expectedVersion
     this.foundVersion = foundVersion
+  }
+}
+
+/**
+ * L'agent — ou la personne devant lui — a annulé l'appel avant qu'il n'écrive.
+ *
+ * WebMCP passe un `AbortSignal` à chaque exécution et JETTE le résultat d'une
+ * exécution annulée. Un appel annulé qui écrirait quand même produirait donc
+ * une écriture que personne ne voit passer : l'agent ne reçoit rien, réessaie,
+ * et le cahier compte deux fois le même travail. On s'arrête avant d'écrire.
+ */
+export class CancelledError extends Error {
+  constructor(operation: string) {
+    super(
+      [
+        'CANCELLED',
+        `The ${operation} call was cancelled before anything was written.`,
+        'Nothing changed. Retry with the same mutation_id if you still want it recorded.',
+      ].join('\n'),
+    )
+    this.name = 'CancelledError'
   }
 }

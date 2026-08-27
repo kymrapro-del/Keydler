@@ -1,4 +1,9 @@
-import { ConcurrentWriteError, StaleStateError, ValidationError } from '../domain/errors'
+import {
+  CancelledError,
+  ConcurrentWriteError,
+  StaleStateError,
+  ValidationError,
+} from '../domain/errors'
 import {
   addConstraint,
   addDecision,
@@ -7,32 +12,49 @@ import {
   rejectApproach,
   requireVersion,
 } from '../domain/task'
-import { renderNoTask, renderTaskState } from '../domain/render'
+import { parseDetailQuery, renderDetail } from '../domain/detail'
+import { fingerprintIntent } from '../domain/intent'
+import { renderMissingTask, renderNoTask, renderTaskState } from '../domain/render'
 import type { TaskState } from '../domain/types'
 import * as store from '../store/taskStore'
 import { failure, text, type ModelContextTool, type ToolResult } from './adapter'
 import { recordCall } from './witness'
+import { taskUrl } from './location'
+import {
+  ADD_CONSTRAINT_SCHEMA,
+  ADD_DECISION_SCHEMA,
+  COMPLETE_TASK_SCHEMA,
+  LOG_STEP_SCHEMA,
+  READ_DETAIL_SCHEMA,
+  REJECT_APPROACH_SCHEMA,
+  RESUME_TASK_SCHEMA,
+} from './schemas'
 import {
   ADD_CONSTRAINT_DESCRIPTION,
   ADD_DECISION_DESCRIPTION,
-  BASED_ON_VERSION_DESCRIPTION,
   COMPLETE_TASK_DESCRIPTION,
   LOG_STEP_DESCRIPTION,
+  READ_DETAIL_DESCRIPTION,
   REJECT_APPROACH_DESCRIPTION,
   RESUME_TASK_DESCRIPTION,
 } from './descriptions'
 
 /**
- * Les six primitives.
+ * Les outils.
  *
- * Six, et pas une de plus : chaque outil supplémentaire dilue la lisibilité de
- * l'ensemble pour l'agent, qui choisit d'autant moins bien qu'il a plus à lire.
+ * Deux en lecture, cinq en écriture. Le compte n'est pas un objectif : chaque
+ * outil dilue la lisibilité de l'ensemble pour l'agent, donc chacun doit se
+ * payer. `read_task_detail` se paie parce que `resume_task` COUPE — il tient
+ * sous 400 tokens en réduisant une preuve à un degré et une tâche entière à
+ * cinq lignes. Sans lui, ce qui est coupé n'existe que dans un export
+ * Markdown, c'est-à-dire nulle part pour un agent.
+ *
+ * Le jeu enregistré dépend de l'état du cahier AU CHARGEMENT, et le retrait en
+ * cours de vie dépend du navigateur : voir `register.ts` et `lifecycle.ts`.
+ * Quel que soit le mode, un outil d'écriture qui reste posé sans pouvoir
+ * aboutir refuse en disant pourquoi — c'est ce qui rend le mode sûr
+ * supportable.
  */
-
-const versionProperty = {
-  type: 'integer',
-  description: BASED_ON_VERSION_DESCRIPTION,
-} as const
 
 /**
  * Convertit une erreur de domaine en réponse lisible par l'agent.
@@ -42,7 +64,11 @@ const versionProperty = {
  * — l'agent doit voir le texte, pas une trace de pile.
  */
 function toToolError(error: unknown, retryVersion?: number): ToolResult {
-  if (error instanceof StaleStateError || error instanceof ConcurrentWriteError) {
+  if (
+    error instanceof StaleStateError ||
+    error instanceof ConcurrentWriteError ||
+    error instanceof CancelledError
+  ) {
     // Ces messages sont déjà écrits pour être lus par un agent : ils portent
     // l'instruction à suivre. Les préfixer d'un ERROR les affaiblirait.
     return failure(error.message)
@@ -83,10 +109,21 @@ function storageError(detail: string): Error {
   )
 }
 
+/**
+ * Charge l'état et exige qu'un cahier soit réellement ouvert.
+ *
+ * Le cas `missing` — la page est liée à un cahier qui n'existe plus — est
+ * distingué du cas « aucun cahier ». Rendre un autre cahier à sa place serait
+ * la pire réponse possible : l'agent reprendrait le travail d'une autre tâche
+ * sans qu'aucune ligne ne l'indique.
+ */
 async function requireTask(): Promise<TaskState> {
   await store.init()
-  const failure = store.storageFailure()
-  if (failure) throw storageError(failure)
+  const panne = store.storageFailure()
+  if (panne) throw storageError(panne)
+
+  const manquante = store.missingTaskId()
+  if (manquante) throw new Error(renderMissingTask(manquante))
 
   const task = store.currentTask()
   if (!task) {
@@ -97,30 +134,100 @@ async function requireTask(): Promise<TaskState> {
   return task
 }
 
+/** La réponse d'une écriture appliquée. Mémorisée telle quelle pour le rejeu. */
+function okText(operation: string, version: number): string {
+  return [
+    `OK — ${operation} recorded.`,
+    `VERSION     ${version}`,
+    'Use this version for your next write.',
+  ].join('\n')
+}
+
 /**
- * Exécute une écriture d'agent de bout en bout : version revendiquée, mutation,
- * persistance, journalisation du refus le cas échéant.
+ * Exige un `mutation_id` utilisable.
+ *
+ * Le motif est celui du schéma. Le revalider ici n'est pas une redondance :
+ * rien n'oblige un client MCP à valider le schéma avant d'appeler, et un jeton
+ * vide ou fantaisiste ferait échouer l'idempotence en silence — c'est-à-dire
+ * exactement le doublon qu'elle existe pour empêcher.
+ */
+function requireMutationId(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new ValidationError('mutation_id', 'expected a string.', { code: 'not-a-string' })
+  }
+  const trimmed = value.trim()
+  if (!/^[A-Za-z0-9_.:-]{8,64}$/.test(trimmed)) {
+    throw new ValidationError(
+      'mutation_id',
+      'expected 8 to 64 characters, using letters, digits, and any of _ . : - (a UUID works).',
+      { code: 'bad-mutation-id' },
+    )
+  }
+  return trimmed
+}
+
+/**
+ * Les arguments qui constituent l'intention, par opposition au protocole.
+ *
+ * La liste est LUE DANS LE SCHÉMA de l'outil, moins `based_on_version` et
+ * `mutation_id`. Recopier les noms à la main aurait créé une seconde
+ * déclaration à tenir d'accord avec la première : un champ ajouté au schéma et
+ * oublié ici serait sorti de l'empreinte en silence, et deux appels qui n'en
+ * diffèrent que par lui se seraient de nouveau confondus.
+ */
+function intentionDe(
+  tool: ModelContextTool,
+  input: Record<string, unknown>,
+): Record<string, unknown> {
+  const propriétés = (tool.inputSchema as { properties?: Record<string, unknown> }).properties ?? {}
+  const intention: Record<string, unknown> = {}
+  for (const clé of Object.keys(propriétés)) {
+    if (clé === 'based_on_version' || clé === 'mutation_id') continue
+    if (clé in input) intention[clé] = input[clé]
+  }
+  return intention
+}
+
+/**
+ * Exécute une écriture d'agent de bout en bout : annulation, version
+ * revendiquée, idempotence, mutation, persistance, journalisation du refus.
  */
 async function runWrite(
-  operation: string,
+  tool: ModelContextTool,
   input: Record<string, unknown>,
+  signal: AbortSignal | undefined,
   mutate: (state: TaskState, basedOnVersion: number) => TaskState,
 ): Promise<ToolResult> {
+  const operation = tool.name
   let atteintLeMagasin = false
   try {
+    // Constatée avant tout travail : inutile de lire le stockage pour un appel
+    // dont personne n'attend plus la réponse.
+    if (signal?.aborted) throw new CancelledError(operation)
+
     await requireTask()
     const basedOnVersion = requireVersion('based_on_version', input.based_on_version)
+    const mutationId = requireMutationId(input.mutation_id)
     atteintLeMagasin = true
-    const next = await store.mutateAsAgent(operation, basedOnVersion, (state) =>
-      mutate(state, basedOnVersion),
-    )
+
+    const outcome = await store.mutateAsAgent({
+      operation,
+      basedOnVersion,
+      mutationId,
+      fingerprint: fingerprintIntent(operation, intentionDe(tool, input)),
+      signal,
+      mutate: (state) => mutate(state, basedOnVersion),
+      render: (next) => okText(operation, next.version),
+    })
+
     recordCall(operation, false)
     return text(
-      [
-        `OK — ${operation} recorded.`,
-        `VERSION     ${next.version}`,
-        'Use this version for your next write.',
-      ].join('\n'),
+      outcome.replayed
+        ? // Le dire plutôt que de le taire : un agent qui reçoit deux fois la
+          // même réponse doit pouvoir distinguer « c'était déjà fait » de
+          // « ça vient d'être fait une seconde fois ».
+          `${outcome.text}\n\n(Replay of an earlier call with this mutation_id. Nothing was written twice.)`
+        : outcome.text,
     )
   } catch (error) {
     recordCall(operation, true)
@@ -137,21 +244,39 @@ async function runWrite(
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Lecture                                                                     */
+/* -------------------------------------------------------------------------- */
+
 export const resumeTaskTool: ModelContextTool = {
   name: 'resume_task',
   title: 'Resume task',
   description: RESUME_TASK_DESCRIPTION,
-  inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-  annotations: { readOnlyHint: true, openWorldHint: false, untrustedContentHint: true },
-  async execute() {
+  inputSchema: RESUME_TASK_SCHEMA,
+  // `untrustedContentHint` : ce que rend cet outil a été écrit par un agent
+  // précédent, dans des champs de texte libre, et revient dans le contexte d'un
+  // autre agent. C'est la définition même d'un contenu non fiable.
+  annotations: { readOnlyHint: true, untrustedContentHint: true },
+  async execute(_input, options) {
     try {
+      if (options?.signal?.aborted) throw new CancelledError('resume_task')
+
       await store.init()
-      const failure = store.storageFailure()
-      if (failure) throw storageError(failure)
+      const panne = store.storageFailure()
+      if (panne) throw storageError(panne)
+
+      // Marqué en erreur, et non rendu comme un état ordinaire : un agent qui
+      // lit « TASK NOT FOUND » dans une réponse réussie a toutes les chances
+      // de continuer quand même.
+      const manquante = store.missingTaskId()
+      if (manquante) {
+        recordCall('resume_task', true)
+        return failure(renderMissingTask(manquante))
+      }
 
       const task = store.currentTask()
       recordCall('resume_task', false)
-      return text(task ? renderTaskState(task) : renderNoTask())
+      return text(task ? renderTaskState(task, { url: taskUrl(task.id) }) : renderNoTask())
     } catch (error) {
       recordCall('resume_task', true)
       return toToolError(error)
@@ -159,36 +284,42 @@ export const resumeTaskTool: ModelContextTool = {
   },
 }
 
+export const readTaskDetailTool: ModelContextTool = {
+  name: 'read_task_detail',
+  title: 'Read task detail',
+  description: READ_DETAIL_DESCRIPTION,
+  inputSchema: READ_DETAIL_SCHEMA,
+  annotations: { readOnlyHint: true, untrustedContentHint: true },
+  async execute(input, options) {
+    try {
+      if (options?.signal?.aborted) throw new CancelledError('read_task_detail')
+
+      // La requête est analysée AVANT le stockage : une section inconnue se
+      // refuse sans qu'on ait à ouvrir la base.
+      const query = parseDetailQuery(input)
+      const task = await requireTask()
+
+      recordCall('read_task_detail', false)
+      return text(renderDetail(task, query))
+    } catch (error) {
+      recordCall('read_task_detail', true)
+      return toToolError(error)
+    }
+  },
+}
+
+/* -------------------------------------------------------------------------- */
+/* Écriture                                                                    */
+/* -------------------------------------------------------------------------- */
+
 export const logStepTool: ModelContextTool = {
   name: 'log_step',
   title: 'Log a completed step',
   description: LOG_STEP_DESCRIPTION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      action: { type: 'string', description: 'What was done, in one line.' },
-      result: { type: 'string', description: 'What came of it, in one line.' },
-      evidence: {
-        type: 'object',
-        description:
-          'Proof of the result. Omit only when you genuinely have none — the step is then recorded as claimed.',
-        properties: {
-          kind: { type: 'string', enum: ['command_output', 'diff', 'url', 'hash', 'test_report'] },
-          content: { type: 'string', description: 'The evidence itself, verbatim.' },
-        },
-        required: ['kind', 'content'],
-      },
-      next: {
-        type: 'string',
-        description: 'The next action, in one sentence. Set it whenever it changes.',
-      },
-      based_on_version: versionProperty,
-    },
-    required: ['action', 'result', 'based_on_version'],
-  },
-  annotations: { readOnlyHint: false, idempotentHint: false },
-  async execute(input) {
-    return runWrite('log_step', input, (state, basedOnVersion) =>
+  inputSchema: LOG_STEP_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    return runWrite(logStepTool, input, options?.signal, (state, basedOnVersion) =>
       logStep(
         state,
         {
@@ -206,22 +337,12 @@ export const logStepTool: ModelContextTool = {
 
 export const addConstraintTool: ModelContextTool = {
   name: 'add_constraint',
-  title: 'Record a constraint',
+  title: 'Propose a constraint',
   description: ADD_CONSTRAINT_DESCRIPTION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      rule: {
-        type: 'string',
-        description: 'The rule, stated so it can be checked against later work.',
-      },
-      based_on_version: versionProperty,
-    },
-    required: ['rule', 'based_on_version'],
-  },
+  inputSchema: ADD_CONSTRAINT_SCHEMA,
   annotations: { readOnlyHint: false },
-  async execute(input) {
-    return runWrite('add_constraint', input, (state, basedOnVersion) =>
+  async execute(input, options) {
+    return runWrite(addConstraintTool, input, options?.signal, (state, basedOnVersion) =>
       addConstraint(state, { rule: input.rule, basedOnVersion }, 'agent'),
     )
   },
@@ -229,20 +350,12 @@ export const addConstraintTool: ModelContextTool = {
 
 export const rejectApproachTool: ModelContextTool = {
   name: 'reject_approach',
-  title: 'Rule out an approach',
+  title: 'Propose ruling out an approach',
   description: REJECT_APPROACH_DESCRIPTION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      approach: { type: 'string', description: 'The approach that must not be retried.' },
-      reason: { type: 'string', description: 'Why it failed. Mandatory.' },
-      based_on_version: versionProperty,
-    },
-    required: ['approach', 'reason', 'based_on_version'],
-  },
+  inputSchema: REJECT_APPROACH_SCHEMA,
   annotations: { readOnlyHint: false },
-  async execute(input) {
-    return runWrite('reject_approach', input, (state, basedOnVersion) =>
+  async execute(input, options) {
+    return runWrite(rejectApproachTool, input, options?.signal, (state, basedOnVersion) =>
       rejectApproach(
         state,
         { approach: input.approach, reason: input.reason, basedOnVersion },
@@ -256,18 +369,10 @@ export const addDecisionTool: ModelContextTool = {
   name: 'add_decision',
   title: 'Record a decision',
   description: ADD_DECISION_DESCRIPTION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      choice: { type: 'string', description: 'What was chosen.' },
-      rationale: { type: 'string', description: 'Why, including what it was chosen over.' },
-      based_on_version: versionProperty,
-    },
-    required: ['choice', 'rationale', 'based_on_version'],
-  },
+  inputSchema: ADD_DECISION_SCHEMA,
   annotations: { readOnlyHint: false },
-  async execute(input) {
-    return runWrite('add_decision', input, (state, basedOnVersion) =>
+  async execute(input, options) {
+    return runWrite(addDecisionTool, input, options?.signal, (state, basedOnVersion) =>
       addDecision(
         state,
         { choice: input.choice, rationale: input.rationale, basedOnVersion },
@@ -281,31 +386,25 @@ export const completeTaskTool: ModelContextTool = {
   name: 'complete_task',
   title: 'Complete the task',
   description: COMPLETE_TASK_DESCRIPTION,
-  inputSchema: {
-    type: 'object',
-    properties: {
-      summary: {
-        type: 'string',
-        description: 'Final hand-over summary, written for someone who was not present.',
-      },
-      based_on_version: versionProperty,
-    },
-    required: ['summary', 'based_on_version'],
-  },
-  annotations: { readOnlyHint: false, destructiveHint: false },
-  async execute(input) {
-    return runWrite('complete_task', input, (state, basedOnVersion) =>
+  inputSchema: COMPLETE_TASK_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    return runWrite(completeTaskTool, input, options?.signal, (state, basedOnVersion) =>
       completeTask(state, { summary: input.summary, basedOnVersion }, 'agent'),
     )
   },
 }
 
-/** L'ordre compte : `resume_task` en tête, c'est celui qu'on veut voir appelé. */
-export const ALL_TOOLS: readonly ModelContextTool[] = [
-  resumeTaskTool,
+/** Toujours enregistrés : ils répondent quel que soit l'état du cahier. */
+export const READ_TOOLS: readonly ModelContextTool[] = [resumeTaskTool, readTaskDetailTool] as const
+
+/** Enregistrés seulement quand une écriture peut aboutir. */
+export const WRITE_TOOLS: readonly ModelContextTool[] = [
   logStepTool,
   addConstraintTool,
   rejectApproachTool,
   addDecisionTool,
   completeTaskTool,
 ] as const
+
+export const ALL_TOOLS: readonly ModelContextTool[] = [...READ_TOOLS, ...WRITE_TOOLS] as const

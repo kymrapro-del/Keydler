@@ -36,6 +36,18 @@ describe('témoin d’appels', () => {
     expect(recents.filter((c) => c.refused)).toHaveLength(1)
   })
 
+  it('rend un instantané, pas son tableau vivant', () => {
+    recordCall('a', false)
+    const retenu = getWitness()
+    recordCall('b', false)
+
+    // Un appelant qui retient l'objet ne doit pas le voir muter sous lui : les
+    // deux magasins voisins rendent des instantanés stables.
+    expect(retenu.recents).toHaveLength(1)
+    expect(retenu.total).toBe(1)
+    expect(getWitness().recents).toHaveLength(2)
+  })
+
   it('remet à zéro compteurs et mémoire', () => {
     for (let i = 0; i < 30; i++) recordCall('x', true)
     resetCalls()

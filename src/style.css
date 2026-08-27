@@ -1,4 +1,15 @@
-/* Mise en page minimale du banc d'essai J1. Toutes les valeurs viennent des jetons. */
+/*
+ * Mise en page du tableau de bord.
+ *
+ * Toutes les valeurs viennent des jetons — aucune couleur, aucun espacement,
+ * aucun rayon n'est codé en dur ici. Réécrire `tokens.css` suffit à changer
+ * l'apparence sans toucher à une ligne de structure.
+ *
+ * La hiérarchie sert une lecture, pas une esthétique : la prochaine action
+ * domine, les règles et les rejets se distinguent d'un coup d'œil, une
+ * proposition d'agent ne peut pas passer pour une règle, et un refus se voit
+ * depuis l'autre bout de la pièce.
+ */
 
 *,
 *::before,
@@ -8,34 +19,34 @@
 
 body {
   margin: 0;
-  padding: var(--sp-6) var(--sp-4);
+  padding: var(--sp-6) var(--sp-4) var(--sp-7);
   background: var(--c-bg);
   color: var(--c-text);
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
 }
 
 main {
-  max-width: var(--measure);
+  max-width: var(--dashboard);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-5);
+  gap: var(--sp-4);
 }
 
 h1 {
   margin: 0;
-  font-size: 1.5rem;
-  line-height: 1.25;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
-h2 {
-  margin: 0 0 var(--sp-2);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-text-muted);
+h3 {
+  margin: var(--sp-4) 0 var(--sp-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 p {
@@ -57,7 +68,7 @@ code {
 }
 
 pre {
-  margin: 0;
+  margin: var(--sp-2) 0 0;
   padding: var(--sp-3);
   background: var(--c-surface);
   border: 1px solid var(--c-border);
@@ -70,88 +81,411 @@ pre {
   word-break: break-word;
 }
 
-.status {
+.muted {
+  color: var(--c-text-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+:focus-visible {
+  outline: 3px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Première visite                                                             */
+/* -------------------------------------------------------------------------- */
+
+.landing {
+  max-width: var(--measure);
+  margin: var(--sp-6) auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.landing__eyebrow,
+.page-head__eyebrow {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+
+.landing__headline {
+  margin: 0;
+  font-size: clamp(1.75rem, 4.5vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.landing__lede {
+  margin: 0;
+  font-size: 1.0625rem;
+  color: var(--c-text-muted);
+}
+
+.landing__note {
+  font-size: 0.875rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* En-tête du tableau de bord                                                  */
+/* -------------------------------------------------------------------------- */
+
+.page-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: var(--sp-2);
+}
+
+.page-head h1:focus {
+  outline: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* La prochaine action — l'élément dominant                                    */
+/* -------------------------------------------------------------------------- */
+
+.hero {
+  padding: var(--sp-5);
+  border: 2px solid var(--c-accent);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+}
+
+.hero__label {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-accent);
+}
+
+.hero__value {
+  margin: 0;
+  font-size: clamp(1.25rem, 3vw, 1.625rem);
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.hero--done {
+  border-color: var(--c-border);
+}
+
+.hero--done .hero__label {
+  color: var(--c-text-muted);
+}
+
+.hero--done .hero__value {
+  font-size: 1.0625rem;
+  font-weight: 500;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cartes                                                                      */
+/* -------------------------------------------------------------------------- */
+
+.card {
   padding: var(--sp-4);
   border: 1px solid var(--c-border);
   border-radius: var(--radius-md);
+  background: var(--c-bg);
+  box-shadow: var(--shadow-card);
 }
 
-.status--ok {
+.card__title {
+  margin: 0 0 var(--sp-3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+
+.card--guide {
   background: var(--c-ok-bg);
   color: var(--c-ok-text);
   border-color: currentColor;
 }
 
-.status--warn {
+.card--guide .card__title,
+.card--guide .muted {
+  color: currentColor;
+  opacity: 0.85;
+}
+
+/* Une proposition d'agent ne doit jamais se lire comme une règle. */
+.card--proposals {
   background: var(--c-warn-bg);
   color: var(--c-warn-text);
   border-color: currentColor;
+  border-style: dashed;
 }
 
-.status--error {
-  background: var(--c-error-bg);
-  color: var(--c-error-text);
-  border-color: currentColor;
+.card--proposals .card__title,
+.card--proposals .muted {
+  color: currentColor;
+  opacity: 0.9;
 }
 
-.status__title {
-  font-weight: 600;
-  margin-bottom: var(--sp-2);
+.quote {
+  margin: var(--sp-2) 0;
+  padding: var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
 }
 
-.witness {
+.empty {
+  margin: 0;
+  color: var(--c-text-muted);
+  font-size: 0.9375rem;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Lignes                                                                      */
+/* -------------------------------------------------------------------------- */
+
+.rows {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.rows:last-child {
+  margin-bottom: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-4);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-md);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
   background: var(--c-surface);
 }
 
-.witness__count {
-  font-family: var(--font-mono);
-  font-size: 2.25rem;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--c-accent);
+.row__text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.witness__label {
+.row--lifted .row__text {
+  text-decoration: line-through;
   color: var(--c-text-muted);
 }
 
-.muted {
+/* Un rejet endossé ferme une porte : il porte donc un repère visuel propre. */
+.row--danger {
+  border-left: 3px solid var(--c-error-text);
+}
+
+.row .btn {
+  flex: none;
+}
+
+.review {
+  padding: var(--sp-2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+}
+
+.review .row {
+  background: transparent;
+  padding: 0 var(--sp-1);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Étiquettes                                                                  */
+/* -------------------------------------------------------------------------- */
+
+.chip {
+  flex: none;
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--c-border);
+  color: var(--c-text);
+}
+
+.chip--human,
+.chip--human_verified {
+  background: var(--c-ok-bg);
+  color: var(--c-ok-text);
+}
+
+.chip--agent,
+.chip--claimed {
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+}
+
+.chip--evidence {
+  background: var(--c-surface);
   color: var(--c-text-muted);
+  border: 1px solid var(--c-border);
 }
 
-:focus-visible {
-  outline: 2px solid var(--c-accent);
-  outline-offset: 2px;
-}
+/* -------------------------------------------------------------------------- */
+/* Boutons                                                                     */
+/* -------------------------------------------------------------------------- */
 
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.001ms !important;
-    animation-duration: 0.001ms !important;
-  }
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
 }
-
-/* Banc d'essai : journal des appels et version en direct. */
 
 .btn {
-  margin-left: auto;
-  padding: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  min-height: 40px;
   border: 1px solid var(--c-border);
   border-radius: var(--radius-sm);
   background: var(--c-bg);
   color: var(--c-text);
+  font: inherit;
+  font-size: 0.9375rem;
   cursor: pointer;
+  transition: background-color 120ms ease;
 }
 
 .btn:hover {
   background: var(--c-surface);
 }
+
+.btn--primary {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: var(--c-bg);
+  font-weight: 600;
+}
+
+.btn--primary:hover {
+  opacity: 0.9;
+  background: var(--c-accent);
+}
+
+.btn--danger {
+  color: var(--c-error-text);
+  border-color: var(--c-error-text);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Formulaires                                                                 */
+/* -------------------------------------------------------------------------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.form--inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+/* Un bouton en colonne se dimensionne à son texte : étiré sur toute la
+   largeur, il se lit comme une zone de dépôt plutôt que comme une commande. */
+.form > .btn {
+  align-self: flex-start;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  flex: 1;
+  min-width: 220px;
+}
+
+.field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.field input {
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+.field input:focus {
+  border-color: var(--c-accent);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Avis                                                                        */
+/* -------------------------------------------------------------------------- */
+
+.notice {
+  padding: var(--sp-4);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+}
+
+.notice--error {
+  background: var(--c-error-bg);
+  color: var(--c-error-text);
+}
+
+.notice--warn {
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+}
+
+/* Un refus pour état périmé est le moment que ce produit existe pour rendre
+   visible : il est donc le contraste le plus fort de la page. */
+.notice--stale {
+  background: var(--c-error-bg);
+  color: var(--c-error-text);
+  border-width: 2px;
+  font-weight: 600;
+  margin-bottom: var(--sp-3);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Journal d'appels                                                            */
+/* -------------------------------------------------------------------------- */
 
 .calls {
   list-style: none;
@@ -169,6 +503,7 @@ pre {
   padding: var(--sp-1) var(--sp-2);
   border-radius: var(--radius-sm);
   background: var(--c-surface);
+  font-size: 0.875rem;
 }
 
 .call--refused {
@@ -177,161 +512,89 @@ pre {
   font-weight: 600;
 }
 
-.version {
-  font-family: var(--font-mono);
-  font-size: 1.75rem;
-  color: var(--c-accent);
-}
+/* -------------------------------------------------------------------------- */
+/* Détails techniques                                                          */
+/* -------------------------------------------------------------------------- */
 
-.mono {
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-}
-
-footer {
-  margin-top: var(--sp-6);
-  padding-top: var(--sp-4);
-  border-top: 1px solid var(--c-border);
-  font-size: 0.8125rem;
-}
-
-/* Surface de supervision humaine. Toutes les valeurs viennent des jetons. */
-
-.supervision {
-  padding: var(--sp-4);
+.technical {
   border: 1px solid var(--c-border);
   border-radius: var(--radius-md);
+  background: var(--c-bg);
 }
 
-.regles {
-  list-style: none;
-  margin: 0 0 var(--sp-3);
-  padding: 0;
+.technical > summary {
+  padding: var(--sp-3) var(--sp-4);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--c-text-muted);
+  list-style-position: inside;
+}
+
+.technical > summary:hover {
+  color: var(--c-text);
+}
+
+.technical__body {
+  padding: 0 var(--sp-4) var(--sp-4);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.regle {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2);
-  border-radius: var(--radius-sm);
-  background: var(--c-surface);
-}
-
-.regle__texte {
-  flex: 1;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.regle--levee .regle__texte {
-  text-decoration: line-through;
-  color: var(--c-text-muted);
-}
-
-.regle .btn {
-  margin-left: 0;
-  flex: none;
-}
-
-.chip {
-  flex: none;
-  padding: 1px var(--sp-2);
-  border-radius: var(--radius-sm);
-  font-size: 0.6875rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  background: var(--c-border);
-  color: var(--c-text);
-}
-
-.chip--human {
-  background: var(--c-ok-bg);
-  color: var(--c-ok-text);
-}
-
-.chip--agent,
-.chip--claimed {
-  background: var(--c-warn-bg);
-  color: var(--c-warn-text);
-}
-
-.chip--machine_verified,
-.chip--human_verified,
-.chip--evidence {
-  background: var(--c-surface);
-  color: var(--c-text-muted);
-}
-
-.saisie {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
   gap: var(--sp-2);
 }
 
-.saisie label {
-  flex-basis: 100%;
-  font-size: 0.8125rem;
-  color: var(--c-text-muted);
+.technical__body .actions {
+  margin-top: var(--sp-2);
 }
 
-.saisie input {
-  flex: 1;
-  min-width: 220px;
-  min-height: 40px;
-  padding: var(--sp-2) var(--sp-3);
-  background: var(--c-bg);
-  color: var(--c-text);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-sm);
-}
+/* -------------------------------------------------------------------------- */
+/* Accessibilité                                                               */
+/* -------------------------------------------------------------------------- */
 
-.saisie input:focus {
-  border-color: var(--c-accent);
-}
-
-.saisie .btn {
-  margin-left: 0;
-}
-
-.exports {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-}
-
-.exports .btn {
-  margin-left: 0;
-}
-
-/* Lien d'évitement : premier arrêt de tabulation, visible dès qu'il est atteint. */
-.skip-link {
+.visually-hidden {
   position: absolute;
-  left: -9999px;
-  top: var(--sp-2);
-  z-index: 10;
-  padding: var(--sp-2) var(--sp-3);
-  background: var(--c-accent);
-  color: var(--c-bg);
-  border-radius: var(--radius-sm);
-  text-decoration: none;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
-.skip-link:focus {
-  left: var(--sp-4);
-}
+/* -------------------------------------------------------------------------- */
+/* Écrans étroits                                                              */
+/* -------------------------------------------------------------------------- */
 
-:focus-visible {
-  outline: 2px solid var(--c-accent);
-  outline-offset: 2px;
-}
+@media (max-width: 560px) {
+  body {
+    padding: var(--sp-4) var(--sp-3) var(--sp-6);
+  }
 
-.status--info {
-  background: var(--c-surface);
-  color: var(--c-text);
-  border-color: var(--c-border);
+  .hero {
+    padding: var(--sp-4);
+  }
+
+  /* Les lignes passent en colonne : un bouton de 40px et un texte long ne
+     tiennent pas côte à côte sans écraser l'un des deux. */
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .row .btn {
+    flex: 1 1 auto;
+  }
+
+  .form--inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form > .btn {
+    align-self: stretch;
+  }
+
+  .actions .btn {
+    flex: 1 1 auto;
+  }
 }

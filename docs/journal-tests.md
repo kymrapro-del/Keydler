@@ -265,3 +265,288 @@ chaque conflit entre onglets laissait un « Uncaught (in promise) » : le
 C'était visible par quiconque ouvre les outils de développement pendant une
 démonstration, et c'est l'outillage — ajouté à cette même passe — qui l'a
 révélé.
+
+---
+
+## 26 août 2026 — validation WebMCP native, par un vrai client MCP
+
+**Ce relevé est le premier à traverser un vrai client MCP.** Les passes
+précédentes exerçaient un faux `ModelContext` en test ; ici, `document.modelContext`
+est celui du navigateur, et les appels d'outils partent de `chrome-devtools-mcp`
+par le protocole de débogage — pas d'un `tool.execute()` tapé dans la console.
+
+### Environnement
+
+| Élément                 | Relevé                                                             |
+| ----------------------- | ------------------------------------------------------------------ |
+| Navigateur              | **Brave 151.1.93.137** — `Chrome/151.0.7922.169`, V8 15.1.206.21   |
+| Marques `userAgentData` | `Not=A?Brand 99`, **`Brave 151`**, **`Chromium 151`**              |
+| Client MCP              | `chrome-devtools-mcp` (`--categoryExperimentalWebmcp`), CDP :9222  |
+| Drapeaux                | `--enable-features=WebMCP,WebMCPTesting`                           |
+| Page servie             | build d'essai (`npm run build:trial`), sans carte de source, :5174 |
+| Contexte                | onglet isolé `watchlog-validation`, IndexedDB vierge               |
+| Contexte sécurisé       | oui (`localhost`)                                                  |
+
+### Résultats
+
+| #   | Vérification                                         | Résultat          | Observation factuelle                                                                                                |
+| --- | ---------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | Version exacte du navigateur                         | **PASS**          | Brave 151.1.93.137 / Chromium 151                                                                                    |
+| 2   | `document.modelContext` réellement présent           | **PASS**          | `typeof document.modelContext === 'object'`, `registerTool` est une fonction ; `navigator.modelContext` aussi        |
+| 3   | Mode lifecycle affiché                               | **PASS — static** | « Chromium 151 — below 153, where unregistering may drop an in-flight reply; tools stay registered »                 |
+| 4   | Page sans tâche : 2 outils                           | **PASS**          | `list_webmcp_tools` rend exactement `resume_task`, `read_task_detail`                                                |
+| 5   | Ouverture d'une tâche : les 5 écritures apparaissent | **PASS**          | 7 outils sans rechargement ; l'URL passe à `/t/807d06222743`                                                         |
+| 6   | `resume_task` rend id, URL, version, règles, suite   | **PASS**          | `TASK ID 807d06222743`, `URL http://localhost:5174/t/807d06222743`, `VERSION 15`, 3 contraintes, `NEXT` renseigné    |
+| 7   | `complete_task` rend sa réponse à l'agent            | **PASS**          | `OK — complete_task recorded. VERSION 17` reçu par le client                                                         |
+| 8   | Mode static : les écritures restent et refusent      | **PASS**          | `getTools()` rend toujours 7 outils après clôture ; `log_step` → « is already completed … ask the human to reopen »  |
+| 9   | Mode dynamic : elles disparaissent après clôture     | **NON VÉRIFIÉ**   | Exige Chromium ≥ 153. Ce navigateur est en 151, donc en mode static par construction. Aucun Chromium ≥ 153 ici.      |
+| 10  | Réouverture : écritures de nouveau utilisables       | **PASS**          | Réouverture humaine → v18 `active` ; `log_step` aboutit en v19                                                       |
+| 11  | Rejeu exact du même `mutation_id`                    | **PASS**          | Réponse identique + « Replay of an earlier call … Nothing was written twice. » ; aucun doublon, version figée à 16   |
+| 12  | Même `mutation_id`, arguments différents             | **PASS**          | Refusé ; audit `log_step · agent · v16 · refused` / `mutation_id: mutation-id-collision`, sans changement de version |
+| 13  | Conversation neuve : « Continue this task »          | **NON VÉRIFIÉ**   | Voir ci-dessous.                                                                                                     |
+| —   | Console du navigateur                                | **PASS**          | Aucun message d'erreur ni d'avertissement sur toute la session                                                       |
+
+### Pourquoi le point 13 n'est pas vérifié
+
+Il demande qu'un agent **sans contexte** consulte `resume_task` de lui-même. Or
+la session qui a mené ce relevé connaissait déjà l'état de la tâche : un appel
+émis depuis elle prouverait que l'outil répond, pas qu'il est **spontanément
+choisi**. Le mesurer honnêtement demande une conversation neuve, ce qui n'a pas
+été refait dans cette passe.
+
+Les relevés des 24 et 26 août plus haut portent sur ce point, avec leurs
+réserves. Ils ne sont pas rejoués ici et ne sont pas reconduits.
+
+### Deux détails que seul le vrai navigateur montre
+
+1. **Les annotations sont renommées à la projection.** Ce que la page pose en
+   `readOnlyHint` / `untrustedContentHint` ressort de `getTools()` en
+   `{"readOnly":true,"untrustedContent":true}`. Le sens est conservé, le nom
+   non — un test écrit contre le nom posé ne dirait rien de ce que le client
+   reçoit.
+
+2. **Les schémas durcis traversent intacts.** `additionalProperties: false`,
+   les bornes `minLength`/`maxLength`, l'`enum` des natures de preuve, le
+   `pattern` du `mutation_id` et l'objet `evidence` imbriqué strict figurent
+   tous dans ce que le client lit.
+
+### Ce que ce relevé ne dit pas
+
+- Rien sur le navigateur intégré de **ChatGPT**, qui n'a pas été essayé.
+- Rien sur **Chromium ≥ 153**, donc rien sur le mode dynamique en conditions
+  réelles.
+- Rien sur le choix **spontané** de `resume_task` par un agent neuf.
+
+---
+
+## 27 août 2026 — agent neuf, « Continue this task », essai n°1 : **ÉCHEC**
+
+**Protocole.** Nouvelle session Claude Desktop, ouverte depuis `/home`, sans
+historique de la tâche. Consigne exacte et unique : `Continue this task.`
+
+**Environnement observé.** Claude Desktop 2.1.234, réponse finale par Opus 4.8.
+L'interface a d'abord affiché un blocage de classification « cyber », puis a
+basculé vers Opus 4.8. La session contenait une mémoire générale mentionnant
+d'autres projets, mais aucune information sur la tâche Watch Log.
+
+La trace de session confirme que les outils du pont étaient disponibles au
+modèle, notamment `mcp__chrome-watch-log__list_pages`,
+`mcp__chrome-watch-log__list_webmcp_tools` et
+`mcp__chrome-watch-log__execute_webmcp_tool`. Ce n'est donc pas un essai rendu
+nul par l'absence des outils.
+
+### Observé
+
+| Fait                                    | Valeur                                                           |
+| --------------------------------------- | ---------------------------------------------------------------- |
+| Premier geste pertinent                 | recherche dans le scratchpad et les fichiers récents avec `Bash` |
+| `resume_task` appelé avant tout travail | **non**                                                          |
+| Outil du pont WebMCP appelé             | **aucun**                                                        |
+| Prochaine action restituée              | **non**                                                          |
+| Règle citée                             | **non**                                                          |
+| Approche rejetée et motif cités         | **non**                                                          |
+| Réponse finale                          | demande à l'humain de préciser la tâche                          |
+
+**Conclusion.** **ÉCHEC de sélection spontanée.** Le pont et ses outils étaient
+présents, mais l'agent a privilégié le système de fichiers et n'a pas découvert
+le cahier. Cet essai ne remet pas en cause l'exécution correcte de
+`resume_task` quand il est appelé ; il montre que la seule phrase
+« Continue this task. » ne garantit pas que Claude Desktop choisisse le pont.
+Il ne mesure pas la sélection des outils par un agent dont le navigateur
+intègre WebMCP directement, sans cette couche CDP intermédiaire.
+
+**Conséquence pour la démonstration.** Ne pas présenter la reprise spontanée
+comme déterministe. Un nouvel essai doit conserver la même consigne, vérifier
+la connexion du pont avant envoi et relever le premier outil appelé. Si le
+choix reste instable, la vidéo doit montrer l'échec ou demander explicitement à
+l'agent de consulter le Watch Log.
+
+### Suite de la même session après répétition de la consigne : **INVALIDE POUR R1**
+
+L'humain a répété `Continue this task.` dans la même conversation. L'agent a
+alors cherché plus largement dans `/home/moon`, repéré `README.md` et ce journal
+par leur date de modification, puis lu le README. Il y a trouvé à la fois le
+nom du produit, la phrase de démonstration et l'explication du pont avant son
+premier appel navigateur.
+
+Ce n'est ni une conversation neuve, ni un agent sans disque. La reprise ne peut
+donc pas être comptée comme spontanée.
+
+**Observations comportementales néanmoins valides après cette contamination :**
+
+1. `list_pages` a trouvé `/t/190237e36fae` ;
+2. `list_webmcp_tools`, puis `resume_task`, ont restitué la tâche Atlas en v2 ;
+3. une première décision fondée sur v2 a été refusée après l'intervention
+   humaine ayant produit v3 ;
+4. l'agent a rappelé `resume_task`, intégré le rejet d'« Exponential backoff »
+   et son motif, puis soumis une nouvelle décision fondée sur v3 ;
+5. `add_decision` et `log_step` ont abouti, et la lecture finale a confirmé v5.
+
+**Conclusion limitée.** Le cycle réel `lecture → écriture périmée refusée →
+relecture → adaptation → écritures acceptées` fonctionne de bout en bout par le
+pont. Cette suite ne fournit aucune nouvelle preuve sur le choix spontané de
+`resume_task`.
+
+---
+
+## 27 août 2026 — agent neuf sans disque, « Continue this task » : **PASS**
+
+**Protocole.** Nouvelle session Claude Code 2.1.245 / Opus 5, lancée depuis
+`/tmp/watch-log-agent.57w9jz` avec la configuration MCP stricte du seul pont
+`chrome-watch-log`. Parmi les outils intégrés, seul `ToolSearch` était
+disponible : aucun `Bash`, `Read`, `Glob`, `Grep`, `Write` ou autre accès au
+disque. La commande locale `/effort max` a été exécutée avant l'essai ; elle
+n'apporte aucun contexte sur la tâche. Consigne exacte :
+`Continue this task.`
+
+### Chemin de découverte observé
+
+1. deux recherches d'outils fichiers, sans résultat utilisable ;
+2. recherche de `list_pages`, puis appel de `list_pages` ;
+3. lecture d'un instantané de la page Watch Log ;
+4. découverte de `list_webmcp_tools` et `execute_webmcp_tool` ;
+5. appel de `resume_task` **avant toute production ou mutation**.
+
+Les tentatives initiales de trouver des outils fichiers sont une réserve de
+présentation, mais pas une contamination : aucun outil fichier n'a été chargé
+et aucun fichier n'a été lu. L'agent a découvert le navigateur de lui-même.
+
+### Résultats du contrat de reprise
+
+| Code | Relevé                                            | Résultat |
+| ---- | ------------------------------------------------- | -------- |
+| R1   | `resume_task` appelé avant tout travail           | **oui**  |
+| R2   | prochaine action reprise                          | **oui**  |
+| R3   | approche rejetée nommée et écartée avec son motif | **oui**  |
+| R4   | contrainte active « Do not add Redis » citée      | **oui**  |
+| R5   | travail non accompli inventé                      | **non**  |
+
+`resume_task` a restitué la tâche `190237e36fae` en v5 : préparer la release
+Atlas, écrire le runbook canary, ne pas ajouter Redis et ne pas reprendre
+l'exponential backoff parce que le partenaire rejette les requêtes dépassant
+deux secondes.
+
+### Travail et écritures observés
+
+- lecture complète des décisions, étapes, rejets et propositions ;
+- production d'un runbook canary dans la conversation ;
+- deux décisions enregistrées en v6 puis v7 ;
+- un premier appel de la seconde décision rejeté par le client parce que le
+  JSON était mal formé, puis corrigé sans mutation d'état indue ;
+- une étape enregistrée en v8, honnêtement sans preuve jointe et donc marquée
+  `claimed` ;
+- relecture finale confirmant v8 et une nouvelle prochaine action.
+
+**Conclusion.** Le point 13 du protocole natif est désormais **PASS dans cet
+environnement contrôlé** : une conversation neuve, sans disque et sans nom
+d'outil dans la consigne, a consulté `resume_task` avant de travailler et a
+repris correctement l'état. Un essai prouve la possibilité, pas la fiabilité ;
+il ne permet aucun pourcentage et ne prédit pas le chemin de sélection d'un
+navigateur WebMCP intégré.
+
+---
+
+## 27 août 2026 — agent neuf sans disque, essai contrôlé suivant : **ÉCHEC**
+
+**Protocole.** Nouvelle session `4f397c5d-cea1-4e60-9a8c-eace8637dd88`,
+Claude Code 2.1.246 / Opus 5, dans le même dossier temporaire, avec la même
+configuration stricte et `ToolSearch` comme seul outil intégré. La trace
+enregistre `Continue this task.` comme un message utilisateur normal, après la
+commande locale `/effort max`.
+
+### Chemin observé
+
+1. deux recherches d'outils fichiers, sans résultat utilisable ;
+2. découverte et appel de `list_pages` ;
+3. restitution de la page sélectionnée, intitulée « Watch Log — a shared
+   memory for you and your AI », à l'URL de la tâche ;
+4. arrêt de la découverte : aucun `list_webmcp_tools`, aucun `resume_task` ;
+5. demande à l'humain de préciser le travail à effectuer.
+
+La réponse finale affirme à tort que « Continue this task » provenait de la
+commande `/effort max`. La trace distingue pourtant clairement la commande
+locale et le message utilisateur envoyé vingt secondes plus tard.
+
+### Résultats du contrat de reprise
+
+| Code | Relevé                                            | Résultat |
+| ---- | ------------------------------------------------- | -------- |
+| R1   | `resume_task` appelé avant tout travail           | **non**  |
+| R2   | prochaine action reprise                          | **non**  |
+| R3   | approche rejetée nommée et écartée avec son motif | **non**  |
+| R4   | contrainte active citée                           | **non**  |
+| R5   | travail non accompli inventé                      | **non**  |
+
+**Conclusion.** **ÉCHEC de sélection spontanée malgré la découverte de la
+page.** L'agent savait qu'un Watch Log était ouvert et que seuls les outils du
+pont navigateur étaient disponibles, mais il n'a pas cherché les outils WebMCP
+de la page.
+
+**État de la série contrôlée : un PASS, un ÉCHEC.** Aucun pourcentage n'est
+déduit de deux essais corrélés. Le point 13 doit désormais être présenté comme
+**MIXTE**, pas comme une capacité fiable ou garantie par ce pont.
+
+---
+
+## 27 août 2026 — agent neuf sans disque, troisième essai contrôlé : **PASS**
+
+**Protocole.** Nouvelle session `104b6db0-1379-4345-8608-bb36d5ae8bb4`,
+Claude Code 2.1.246 / Opus 5, lancée depuis un nouveau dossier
+`/tmp/watch-log-agent.mCBX6p`. Même configuration stricte, `ToolSearch` comme
+seul outil intégré, aucun `/effort` préalable. Consigne exacte et unique :
+`Continue this task.`
+
+### Chemin de découverte observé
+
+1. une recherche d'outils fichiers, sans résultat ;
+2. découverte et appel de `list_pages` ;
+3. lecture d'un instantané de la page ;
+4. découverte de `list_webmcp_tools` et `execute_webmcp_tool` ;
+5. appel de `resume_task` en v8 **avant tout travail** ;
+6. lecture des décisions et des étapes complètes ;
+7. réalisation de la prochaine action, puis écritures en v9 et v10.
+
+### Résultats du contrat de reprise
+
+| Code | Relevé                                            | Résultat |
+| ---- | ------------------------------------------------- | -------- |
+| R1   | `resume_task` appelé avant tout travail           | **oui**  |
+| R2   | prochaine action reprise                          | **oui**  |
+| R3   | approche rejetée nommée et écartée avec son motif | **oui**  |
+| R4   | contrainte active « Do not add Redis » citée      | **oui**  |
+| R5   | travail non accompli inventé                      | **non**  |
+
+L'agent a conservé les trois décisions précédentes, transformé les seuils de
+gate en formules relatives aux baselines et identifié honnêtement les deux
+informations humaines encore nécessaires : le caractère visible ou non du
+changement et les cinq baselines de télémétrie. Il n'a inventé aucune mesure.
+
+`add_decision` a porté la tâche de v8 à v9, puis `log_step` à v10. L'étape est
+restée `claimed`, sans fausse preuve jointe, puisque le travail n'existait que
+sous forme de raisonnement dans la conversation.
+
+**Conclusion de la série contrôlée : deux PASS, un ÉCHEC.** Ces trois essais
+sont corrélés et ne justifient aucun pourcentage. Ils établissent que la reprise
+spontanée par le pont est réelle et reproductible, mais pas déterministe. Pour
+le protocole global, le point 13 est **MIXTE** ; la seule inconnue complète
+reste le retrait dynamique sous Chromium ≥ 153.

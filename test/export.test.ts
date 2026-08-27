@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildMeasureTask } from '../src/demo/measures'
 import { buildDemoTask } from '../src/demo/seed'
 import { buildFullExport, buildTaskExport, exportFilename } from '../src/export/notebook'
-import { logStep, recordRefusal } from '../src/domain/task'
+import { completeTask, logStep, recordRefusal } from '../src/domain/task'
 
 /**
  * L'export est ce qui rend une campagne de mesure vérifiable par un tiers :
@@ -64,10 +64,72 @@ describe('export d’un cahier', () => {
     expect(buildFullExport([])).toContain('Aucun cahier')
   })
 
+  it('ne laisse pas une preuve refermer le bloc qui la contient', () => {
+    let task = buildMeasureTask(4)
+    task = logStep(
+      task,
+      {
+        action: 'Sortie contenant une clôture de bloc',
+        result: 'r',
+        // Une sortie de commande peut parfaitement contenir trois accents
+        // graves. Sans clôture plus longue, tout ce qui suit s'interpréterait
+        // comme du markdown chez qui vient vérifier une campagne.
+        evidence: { kind: 'command_output', content: '```\n# Faux titre injecté\n```' },
+        basedOnVersion: task.version,
+      },
+      'agent',
+    )
+
+    const sortie = buildTaskExport(task)
+
+    // La preuve est enveloppée d'une clôture plus longue que celle qu'elle
+    // contient : le faux titre reste donc à l'intérieur du bloc, inerte.
+    expect(sortie).toContain('````\n```\n# Faux titre injecté\n```\n````')
+  })
+
+  it('survit à un horodatage hors plage plutôt que d’emporter tout l’export', () => {
+    const task = { ...buildMeasureTask(5), updatedAt: 1e20 }
+    // Un seul enregistrement corrompu faisait échouer l'export de tous les
+    // autres, ce qui ruine la reproductibilité que ce module existe pour offrir.
+    expect(() => buildTaskExport(task)).not.toThrow()
+    expect(buildTaskExport(task)).toContain('horodatage illisible')
+  })
+
   it('donne un nom de fichier stable et sans caractère hasardeux', () => {
     const task = buildMeasureTask(5)
     const nom = exportFilename(task)
     expect(nom).toMatch(/^cahier-[a-z0-9-]+-v\d+\.md$/)
     expect(exportFilename(task)).toBe(nom)
+  })
+})
+
+describe('export : cas limites', () => {
+  it('omet les sections vides plutôt que d’afficher des titres creux', () => {
+    const nu = { ...buildMeasureTask(1), steps: [], audit: [], decisions: [] }
+    const sortie = buildTaskExport(nu)
+    expect(sortie).not.toContain('## Preuves jointes')
+    expect(sortie).not.toContain('## Journal des écritures')
+    // L'état complet, lui, est toujours là : c'est ce qui rend l'export rejouable.
+    expect(sortie).toContain('## État complet')
+  })
+
+  it('rend le résumé final d’une tâche close', () => {
+    const task = completeTask(
+      buildMeasureTask(2),
+      { summary: 'Approche retenue et livrée.', basedOnVersion: buildMeasureTask(2).version },
+      'agent',
+    )
+    const sortie = buildTaskExport(task)
+    expect(sortie).toContain('- État : completed')
+    expect(sortie).toContain('Approche retenue et livrée.')
+  })
+
+  it('marque une preuve validée par un humain, et une autre non', () => {
+    let task = buildDemoTask()
+    const sortie = buildTaskExport(task)
+    expect(sortie).toContain('- Validée : non')
+    expect(sortie).toMatch(/- Validée : \d{4}-/)
+    task = { ...task, steps: [] }
+    expect(buildTaskExport(task)).not.toContain('- Validée :')
   })
 })

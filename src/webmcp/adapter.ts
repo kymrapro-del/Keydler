@@ -18,26 +18,72 @@ export type ToolResult = {
   isError?: boolean
 }
 
+/**
+ * Les annotations que WebMCP connaît. Il n'y en a que deux.
+ *
+ * ```webidl
+ * dictionary ToolAnnotations {
+ *   boolean readOnlyHint = false;
+ *   boolean untrustedContentHint = false;
+ * };
+ * ```
+ *
+ * Ce type existe pour empêcher une faute qui ne se voyait nulle part : ce code
+ * posait aussi `destructiveHint`, `idempotentHint` et `openWorldHint`, repris
+ * des annotations d'un serveur MCP. Une conversion de dictionnaire WebIDL
+ * IGNORE en silence un membre qu'elle ne connaît pas — aucune erreur, aucun
+ * avertissement, et un `openWorldHint: false` qui n'a jamais quitté la page.
+ * Trois annotations sur cinq étaient donc décoratives, et la seule façon de
+ * s'en apercevoir était de lire l'IDL.
+ *
+ * Ce que le navigateur ne transporte pas, la description doit le dire : c'est
+ * pourquoi l'idempotence des écritures est écrite en toutes lettres dans le
+ * texte des outils plutôt que confiée à un `idempotentHint` fantôme.
+ */
+export type ToolAnnotations = {
+  /** L'outil ne modifie rien. Un agent peut l'appeler sans conséquence. */
+  readOnlyHint?: boolean
+  /**
+   * La sortie de l'outil contient du contenu non fiable, du point de vue de
+   * l'auteur qui l'enregistre. Vrai pour tout ce qui rend le cahier : un agent
+   * précédent y a écrit du texte libre, et ce texte revient dans le contexte
+   * d'un autre agent.
+   */
+  untrustedContentHint?: boolean
+}
+
 export type ModelContextTool = {
   name: string
   title?: string
   description: string
   inputSchema?: object
-  annotations?: {
-    readOnlyHint?: boolean
-    destructiveHint?: boolean
-    idempotentHint?: boolean
-    openWorldHint?: boolean
-    untrustedContentHint?: boolean
-  }
-  execute: (
-    input: Record<string, unknown>,
-    options: { signal?: AbortSignal },
-  ) => Promise<ToolResult>
+  annotations?: ToolAnnotations
+  /**
+   * `signal` est REQUIS par la spécification — `dictionary
+   * ToolExecuteCallbackOptions { required AbortSignal signal; }`. Le typer
+   * optionnel invitait à l'ignorer, ce que ce code faisait.
+   */
+  execute: (input: Record<string, unknown>, options: { signal: AbortSignal }) => Promise<ToolResult>
+}
+
+/** Ce qu'un agent voit d'un outil enregistré, via `getTools()`. */
+export type RegisteredTool = {
+  name: string
+  title?: string
+  description: string
+  inputSchema?: object
+  annotations?: ToolAnnotations
 }
 
 type ModelContextLike = {
-  registerTool: (tool: ModelContextTool, options?: { signal?: AbortSignal }) => Promise<void>
+  registerTool: (
+    tool: ModelContextTool,
+    options?: { signal?: AbortSignal; exposedTo?: string[] },
+  ) => Promise<void>
+  /** Présent dès lors que la page peut aussi jouer l'agent. Facultatif ici. */
+  getTools?: () => Promise<RegisteredTool[]>
+  addEventListener?: (type: string, listener: () => void) => void
+  removeEventListener?: (type: string, listener: () => void) => void
 }
 
 declare global {
@@ -90,16 +136,17 @@ export function failure(value: string): ToolResult {
   return { content: [{ type: 'text', text: value }], isError: true }
 }
 
-/**
- * Pose le jeton d'origin trial par script. Chrome accepte un `<meta>` ajouté
- * dynamiquement, ce qui évite de committer dans `index.html` un jeton lié à une
- * seule origine — chaque déploiement a la sienne.
+export type { ModelContextLike }
+
+/*
+ * Le jeton d'origin trial n'est PAS posé ici.
+ *
+ * Une version antérieure l'injectait par script au démarrage. C'était inerte
+ * dans tous les cas : `import.meta.env` est figé à la construction, donc quand
+ * le jeton existe la balise du build est déjà dans le `<head>` et l'injection
+ * s'arrêtait aussitôt ; quand il n'existe pas, il n'y avait rien à poser.
+ *
+ * Pire, `document.modelContext` est un accesseur dont l'existence se décide à
+ * l'analyse du document : un jeton arrivé après coup n'aurait rien débloqué.
+ * Il est donc écrit dans le HTML à la construction — voir `vite.config.ts`.
  */
-export function installOriginTrialToken(token: string | undefined): void {
-  if (!token || typeof document === 'undefined') return
-  if (document.querySelector('meta[http-equiv="origin-trial"]')) return
-  const meta = document.createElement('meta')
-  meta.httpEquiv = 'origin-trial'
-  meta.content = token
-  document.head.prepend(meta)
-}
