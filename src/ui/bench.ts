@@ -4,6 +4,7 @@ import { parseExport } from '../export/restore'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeHistory } from './history'
+import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
 import { MIN_QUERY, searchTask, searchTasks, type Match } from '../domain/search'
@@ -83,6 +84,12 @@ type Editing =
 let editing: Editing | null = null
 let loggingStep = false
 let showArchived = false
+
+function renderThemeToggle(): string {
+  const choice = readTheme()
+  return `<button type="button" id="toggle-theme" class="btn btn--quiet"
+            aria-label="${themeLabel(choice)}. Click to switch.">${themeLabel(choice)}</button>`
+}
 
 function query(): string {
   return drafts['search'].trim()
@@ -236,7 +243,10 @@ function renderLanding(): string {
        </div>`
 
   return `<section class="landing">
-      <p class="landing__eyebrow">Watch Log</p>
+      <div class="eyebrow-row">
+        <p class="landing__eyebrow">Watch Log</p>
+        ${renderThemeToggle()}
+      </div>
       <h1 class="landing__headline">Give your AI a memory that survives the conversation.</h1>
       <p class="landing__lede">
         The Watch Log keeps completed work, rules to follow, and mistakes not to
@@ -819,7 +829,10 @@ function renderTechnical(task: TaskState | null): string {
 
 function renderDashboard(task: TaskState): string {
   return `<header class="page-head">
-      <p class="page-head__eyebrow">Watch Log</p>
+      <div class="eyebrow-row">
+        <p class="page-head__eyebrow">Watch Log</p>
+        ${renderThemeToggle()}
+      </div>
       ${
         editingIs('title')
           ? editForm('Task title')
@@ -1309,6 +1322,12 @@ function bindTechnical(): void {
     document.querySelector<HTMLButtonElement>('#toggle-history')?.focus()
   })
 
+  document.querySelector('#toggle-theme')?.addEventListener('click', () => {
+    applyTheme(nextTheme(readTheme()))
+    renderNow()
+    document.querySelector<HTMLButtonElement>('#toggle-theme')?.focus()
+  })
+
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
 
   document.querySelector('#export-one')?.addEventListener('click', () => {
@@ -1405,6 +1424,14 @@ function render(): void {
 
   const headingFocused = active !== null && active === root.querySelector('.page-head h1')
 
+  // N'importe quel élément identifié, pas seulement les champs : une écriture
+  // d'agent redessine la page, et sans cela le focus retombait sur `body`
+  // depuis n'importe quel bouton — au clavier, on repart du début de la page.
+  const focusedId =
+    !focused && active instanceof HTMLElement && active.id && root.contains(active)
+      ? active.id
+      : null
+
   root.innerHTML = `<main id="content">${renderBody()}</main>`
 
   bindDrafts()
@@ -1418,6 +1445,8 @@ function render(): void {
     if (caret !== null) field?.setSelectionRange(caret, caret)
   } else if (headingFocused) {
     root.querySelector<HTMLElement>('.page-head h1')?.focus()
+  } else if (focusedId) {
+    document.getElementById(focusedId)?.focus()
   }
 
   announce()

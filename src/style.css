@@ -136,6 +136,13 @@ pre {
   margin-bottom: var(--sp-2);
 }
 
+.eyebrow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
 .page-head h1:focus {
   outline: none;
 }
@@ -544,5 +551,127 @@ pre {
 
   .actions .btn {
     flex: 1 1 auto;
+  }
+}
+
+.switcher > summary {
+  display: inline-block;
+  padding: var(--sp-1) var(--sp-2);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--c-text-muted);
+  border-radius: var(--radius-sm);
+}
+
+.switcher > summary:hover {
+  color: var(--c-text);
+  background: var(--c-surface);
+}
+
+.switcher__body {
+  margin-top: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  background: var(--c-bg);
+}
+
+.handoff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin: 0;
+}
+
+.notice--ok {
+  background: var(--c-ok-bg);
+  color: var(--c-ok-text);
+}
+
+.search {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  margin-top: var(--sp-2);
+}
+
+.search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+}
+
+.search input:focus {
+  border-color: var(--c-accent);
+}
+
+mark {
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.events {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.event {
+  display: flex;
+  gap: var(--sp-3);
+  padding: var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  border-left: 3px solid transparent;
+}
+
+.event:nth-child(odd) {
+  background: var(--c-surface);
+}
+
+.event__when {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.event__what {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event--refused {
+  border-left-color: var(--c-error-text);
+  background: var(--c-error-bg);
+  color: var(--c-error-text);
+}
+
+.event--refused .muted {
+  color: currentColor;
+  opacity: 0.8;
+}
+
+@media (max-width: 560px) {
+  .event {
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+
+  .search {
+    flex-wrap: wrap;
   }
 }

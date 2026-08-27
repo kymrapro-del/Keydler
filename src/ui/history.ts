@@ -40,6 +40,14 @@ const BY_AGENT: Record<string, string> = {
   complete_task: 'closed the task',
 }
 
+const ATTEMPTED: Record<string, string> = {
+  log_step: 'record a step',
+  add_decision: 'record a decision',
+  add_constraint: 'propose a rule',
+  reject_approach: 'propose ruling out an approach',
+  complete_task: 'close the task',
+}
+
 export function refusalReason(detail: string): string {
   const lower = detail.toLowerCase()
   if (lower.includes('stale') || lower.includes('another page')) {
@@ -79,7 +87,7 @@ export function describeEntry(entry: AuditEntry): HistoryLine {
     return {
       at: entry.at,
       who,
-      what: `tried to ${verb} — refused`,
+      what: `tried to ${ATTEMPTED[entry.operation] ?? entry.operation} — refused`,
       detail: refusalReason(entry.detail),
       refused: true,
       repeated,
