@@ -31,6 +31,11 @@ export async function saveTask(state: TaskState, expectedVersion?: number): Prom
   ])
 }
 
+export async function putTask(state: TaskState): Promise<void> {
+  const db = await getDb()
+  await db.put('tasks', toStored(state))
+}
+
 export async function deleteTask(id: string): Promise<void> {
   const db = await getDb()
   await db.delete('tasks', id)

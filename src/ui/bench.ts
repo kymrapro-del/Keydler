@@ -1,5 +1,6 @@
 import { buildMeasureTask } from '../demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from '../export/notebook'
+import { parseExport } from '../export/restore'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { buildDemoTask } from '../demo/seed'
@@ -54,6 +55,23 @@ let credentials: SecretName[] = []
 let revealed: { id: string; value: string } | null = null
 let credentialsFor: string | null = null
 
+let allTasks: TaskState[] = []
+let allTasksFor = -1
+let notice: string | null = null
+
+function refreshTaskList(version: number): void {
+  allTasksFor = version
+  void store.allTasks().then(
+    (tasks) => {
+      allTasks = tasks
+      scheduleRender()
+    },
+    () => {
+      allTasks = []
+    },
+  )
+}
+
 function refreshCredentials(taskId: string): void {
   void listSecretNames(taskId).then(
     (names) => {
@@ -91,6 +109,12 @@ const CONFIDENCE_LABEL: Record<Confidence, string> = {
 
 function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many
+}
+
+function noticeBlock(): string {
+  return notice
+    ? `<div class="notice notice--ok" role="status"><p>${escapeHtml(notice)}</p></div>`
+    : ''
 }
 
 function alertBlock(): string {
@@ -289,6 +313,42 @@ function renderDontRetry(task: TaskState): string {
       ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">Nothing ruled out yet.</p>'}
       ${form}
     </section>`
+}
+
+function renderSwitcher(task: TaskState): string {
+  const others = allTasks.filter((t) => t.id !== task.id)
+  const rows = others
+    .map(
+      (t) => `<li class="row">
+        <span class="chip chip--${t.status === 'completed' ? 'human' : 'evidence'}">${t.status === 'completed' ? 'closed' : 'open'}</span>
+        <span class="row__text">
+          <strong>${escapeHtml(t.title)}</strong>
+          <span class="muted"> — ${escapeHtml(t.next ?? 'no next action')}</span>
+        </span>
+        <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
+      </li>`,
+    )
+    .join('')
+
+  return `<details class="switcher">
+      <summary>${allTasks.length} ${plural(allTasks.length, 'task', 'tasks')} on this device</summary>
+      <div class="switcher__body">
+        ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">This is the only one.</p>'}
+        <div class="actions">
+          <button type="button" id="new-task" class="btn">New task</button>
+          <button type="button" id="import" class="btn">Import a file</button>
+          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown" hidden />
+        </div>
+      </div>
+    </details>`
+}
+
+function renderHandoff(task: TaskState): string {
+  if (task.status !== 'active') return ''
+  return `<p class="handoff">
+      <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
+      <span class="muted">Copies this page’s address and “Continue this task.”</span>
+    </p>`
 }
 
 function renderCredentials(task: TaskState): string {
@@ -517,7 +577,10 @@ function renderDashboard(task: TaskState): string {
   return `<header class="page-head">
       <p class="page-head__eyebrow">Watch Log</p>
       <h1 tabindex="-1">${escapeHtml(task.title)}</h1>
+      ${renderSwitcher(task)}
     </header>
+    ${noticeBlock()}
+    ${renderHandoff(task)}
     ${alertBlock()}
     ${renderNext(task)}
     ${renderReadyForAI(task)}
@@ -551,6 +614,10 @@ function renderBody(): string {
       ${renderLanding()}`
   }
 
+  // Le formulaire de création prend toute la place, même quand un cahier est
+  // déjà ouvert : sans cela, « New task » ne montrait rien depuis un tableau
+  // de bord, le formulaire ne vivant que dans l'écran d'accueil.
+  if (creating) return renderLanding()
   return task ? renderDashboard(task) : renderLanding()
 }
 
@@ -691,6 +758,71 @@ function bindSupervision(): void {
       )
     })
   }
+
+  document.querySelector('#new-task')?.addEventListener('click', () => {
+    creating = true
+    notice = null
+    humanError = null
+    renderNow()
+    document.querySelector<HTMLInputElement>('#new-title')?.focus()
+  })
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open]')) {
+    button.addEventListener('click', () => {
+      notice = null
+      void store.openTask(button.dataset.open!).catch((error: unknown) => {
+        humanError = humanMessage(error, 'Opening the task')
+        scheduleRender()
+      })
+    })
+  }
+
+  const fileField = document.querySelector<HTMLInputElement>('#import-file')
+  document.querySelector('#import')?.addEventListener('click', () => fileField?.click())
+  fileField?.addEventListener('change', () => {
+    const file = fileField.files?.[0]
+    if (!file) return
+    humanError = null
+    notice = null
+    void file
+      .text()
+      .then((text) => store.importTasks(parseExport(text)))
+      .then(
+        (outcome) => {
+          const parts: string[] = []
+          if (outcome.imported.length) parts.push(`${outcome.imported.length} imported`)
+          if (outcome.copied.length) parts.push(`${outcome.copied.length} added as a copy`)
+          if (outcome.skipped.length) parts.push(`${outcome.skipped.length} already here`)
+          notice = `${parts.join(', ')}. Credentials are never in an export, so none were restored.`
+          allTasksFor = -1
+          scheduleRender()
+        },
+        (error: unknown) => {
+          humanError = humanMessage(error, 'Importing the file')
+          scheduleRender()
+        },
+      )
+      .finally(() => {
+        fileField.value = ''
+      })
+  })
+
+  document.querySelector('#copy-handoff')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    const text = `${location.origin}${taskPath(task.id)}\n\nContinue this task.`
+    humanError = null
+    void navigator.clipboard?.writeText(text).then(
+      () => {
+        notice = 'Copied. Paste it to your agent.'
+        scheduleRender()
+      },
+      () => {
+        humanError = 'The browser refused clipboard access. Copy the address from the bar instead.'
+        scheduleRender()
+      },
+    )
+  })
 
   document.querySelector<HTMLFormElement>('#form-secret')?.addEventListener('submit', (e) => {
     e.preventDefault()
@@ -857,6 +989,7 @@ function render(): void {
   if (!root) return
 
   const openTask = store.currentTask()
+  if (openTask && allTasksFor !== openTask.version) refreshTaskList(openTask.version)
   if ((openTask?.id ?? null) !== credentialsFor) {
     credentialsFor = openTask?.id ?? null
     credentials = []
@@ -926,6 +1059,9 @@ export function mount(target: HTMLElement): () => void {
   credentials = []
   revealed = null
   credentialsFor = null
+  allTasks = []
+  allTasksFor = -1
+  notice = null
 
   render()
   const subscriptions = [

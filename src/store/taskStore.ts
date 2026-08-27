@@ -1,12 +1,13 @@
 import { ConcurrentWriteError, StaleStateError, ValidationError } from '../domain/errors'
 import { CancelledError } from '../domain/errors'
-import { createTask, findMutation, recordMutation, recordRefusal } from '../domain/task'
+import { createTask, findMutation, newTaskId, recordMutation, recordRefusal } from '../domain/task'
 import type { Actor, TaskState } from '../domain/types'
 import {
   deleteTask,
   listTasks,
   loadLastTask,
   loadTask,
+  putTask,
   saveTask,
   setLastTaskId,
 } from '../persistence/taskRepository'
@@ -71,6 +72,54 @@ export async function init(taskId?: string): Promise<void> {
     })
   }
   return initPromise
+}
+
+export async function openTask(id: string): Promise<void> {
+  if (id === snapshot.boundId && snapshot.status === 'ready') return
+  initPromise = null
+  await init(id)
+}
+
+export type ImportOutcome = {
+  imported: string[]
+  copied: string[]
+  skipped: string[]
+}
+
+export async function importTasks(incoming: readonly TaskState[]): Promise<ImportOutcome> {
+  return enqueue(async () => {
+    const outcome: ImportOutcome = { imported: [], copied: [], skipped: [] }
+
+    for (const task of incoming) {
+      const existing = await loadTask(task.id)
+
+      if (!existing) {
+        await putTask(task)
+        outcome.imported.push(task.title)
+        continue
+      }
+
+      if (existing.version === task.version && existing.updatedAt === task.updatedAt) {
+        outcome.skipped.push(task.title)
+        continue
+      }
+
+      const copy: TaskState = {
+        ...task,
+        id: newTaskId(),
+        title: `${task.title} (imported)`,
+      }
+      await putTask(copy)
+      outcome.copied.push(copy.title)
+    }
+
+    if (snapshot.task) {
+      const fresh = await loadTask(snapshot.task.id)
+      if (fresh) setSnapshot({ status: 'ready', task: fresh, error: null, boundId: fresh.id })
+    }
+
+    return outcome
+  })
 }
 
 export async function createAndOpenTask(title: string, next?: string): Promise<TaskState> {
