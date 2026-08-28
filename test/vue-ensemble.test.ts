@@ -1,0 +1,147 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildCoreTask } from '../src/demo/seed'
+import { askHuman, requestApproval } from '../src/domain/task'
+import { needsYou, summariseNeeds } from '../src/domain/attention'
+import { recentlyActive } from '../src/webmcp/witness'
+import { recordCall, resetCalls } from '../src/webmcp/witness'
+import * as store from '../src/store/taskStore'
+import { __renderNow, mount } from '../src/ui/bench'
+import { clearDatabase, waitUntil } from './helpers'
+
+describe('résumer ce qui attend, en peu de mots', () => {
+  it('ne dit rien quand rien n’attend', () => {
+    expect(summariseNeeds([])).toBeNull()
+  })
+
+  it('nomme la seule chose à faire', () => {
+    const task = askHuman(
+      buildCoreTask(),
+      { question: 'q?', why: 'w', basedOnVersion: null },
+      'agent',
+    )
+    const résumé = summariseNeeds(needsYou({ ...task, steps: [], constraints: [], rejected: [] }))
+    expect(résumé).toContain('1 question')
+  })
+
+  it('compte le reste plutôt que de tout énumérer', () => {
+    const task = buildCoreTask()
+    const résumé = summariseNeeds(needsYou(task))!
+    // Une liste complète dans une pastille de sélecteur ne se lit pas.
+    expect(résumé).toMatch(/\+\d+ more|and \d+ more/)
+    expect(résumé.length).toBeLessThan(60)
+  })
+
+  it('met en tête ce qui bloque un agent', () => {
+    const task = requestApproval(
+      askHuman(buildCoreTask(), { question: 'q?', why: 'w', basedOnVersion: null }, 'agent'),
+      { action: 'a', why: 'w', basedOnVersion: null },
+      'agent',
+    )
+    expect(summariseNeeds(needsYou(task))!).toMatch(/^1 agent is blocked/)
+  })
+})
+
+describe('un agent vient-il d’écrire ?', () => {
+  beforeEach(resetCalls)
+  afterEach(() => {
+    vi.useRealTimers()
+    resetCalls()
+  })
+
+  it('ne prétend rien quand aucun outil n’a été appelé', () => {
+    expect(recentlyActive()).toBeNull()
+  })
+
+  it('rapporte le dernier appel, et son ancienneté', () => {
+    recordCall('log_step', false)
+    const seen = recentlyActive()!
+    expect(seen.tool).toBe('log_step')
+    expect(seen.at).toBeTypeOf('number')
+  })
+
+  it('se tait quand le dernier appel est vieux', () => {
+    vi.useFakeTimers()
+    recordCall('log_step', false)
+    vi.advanceTimersByTime(20 * 60_000)
+    expect(recentlyActive()).toBeNull()
+  })
+
+  it('ne dit pas qu’un agent est connecté : seulement qu’il a appelé', () => {
+    recordCall('resume_task', false)
+    expect(recentlyActive()!.tool).toBe('resume_task')
+  })
+})
+
+describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
+  let root: HTMLElement
+  let unmount: () => void
+
+  async function settled(turns = 10) {
+    for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
+    __renderNow()
+  }
+
+  const switcher = () => root.querySelector('.switcher')
+
+  beforeEach(async () => {
+    resetCalls()
+    store.__resetStore()
+    await clearDatabase()
+    await store.init()
+    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    root = document.querySelector<HTMLElement>('#app')!
+    unmount = mount(root)
+
+    const bloquée = requestApproval(
+      { ...buildCoreTask(), title: 'Migration work' },
+      { action: 'Drop the table', why: 'irreversible', basedOnVersion: null },
+      'agent',
+    )
+    await store.openPreparedTask(bloquée)
+    await store.createAndOpenTask('Quiet task', 'Nothing pending')
+    await settled()
+  })
+
+  afterEach(() => {
+    unmount()
+    resetCalls()
+    history.replaceState(null, '', '/')
+  })
+
+  it('signale la tâche bloquée depuis celle qu’on regarde', async () => {
+    await waitUntil(() => !!switcher()?.textContent?.includes('Migration work'), 'la liste', 3000)
+    __renderNow()
+
+    const ligne = [...switcher()!.querySelectorAll('li')].find((li) =>
+      li.textContent!.includes('Migration work'),
+    )!
+    // Le titre ne contient pas le mot : c'est bien la pastille qui parle.
+    const badge = ligne.querySelector('.needs__badge')!
+    expect(badge).not.toBeNull()
+    expect(badge.textContent).toMatch(/blocked/i)
+  })
+
+  it('ne colle pas de pastille à une tâche qui n’attend rien', async () => {
+    await store.createAndOpenTask('Third task', 'x')
+    await waitUntil(() => !!switcher()?.textContent?.includes('Quiet task'), 'la liste', 3000)
+    __renderNow()
+
+    const ligne = [...switcher()!.querySelectorAll('li')].find((li) =>
+      li.textContent!.includes('Quiet task'),
+    )!
+    expect(ligne.querySelector('.needs__badge')).toBeNull()
+  })
+
+  it('dit dans l’en-tête qu’un agent vient d’appeler un outil', async () => {
+    expect(root.querySelector('.agent-live')).toBeNull()
+
+    recordCall('log_step', false)
+    await settled()
+
+    const live = root.querySelector('.agent-live')!
+    expect(live).not.toBeNull()
+    expect(live.textContent).toContain('log_step')
+    // On rapporte un appel observé, pas une présence supposée.
+    expect(live.textContent!.toLowerCase()).not.toContain('connected')
+  })
+})

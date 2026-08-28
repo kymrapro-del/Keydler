@@ -822,3 +822,20 @@ kbd {
   border-top: 1px solid var(--c-border);
   font-size: 0.9375rem;
 }
+
+.needs__badge {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: 0.05em 0.5em;
+  border-radius: var(--radius-sm);
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.agent-live {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.875rem;
+  color: var(--c-accent);
+}

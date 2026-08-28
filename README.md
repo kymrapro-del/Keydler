@@ -213,8 +213,15 @@ defend against everything:
 
 ## What else is on the page
 
-- **Every task is reachable.** The header lists them all and switches between
-  them; each lives at its own `/t/:id`.
+- **Every task is reachable**, and the list says which of them need you. The
+  header lists them all and switches between them; each lives at its own
+  `/t/:id`, and each carries a badge naming what is unresolved — _“1 agent is
+  blocked on your decision +3 more”_ — so “which one is waiting on me?” is a
+  glance, not five clicks.
+- **An agent just called a tool.** When one has, the header says which tool and
+  how long ago. It reports a call the page observed, never a connection: nothing
+  in WebMCP tells a page an agent is present, and the wording does not pretend
+  otherwise.
 - **Search** across the open task and the others at once, from the box or by
   pressing `/`. It matches a rejection by its reason and a step by the content of
   its evidence, and says which. Agents get the same search as `search_task`.

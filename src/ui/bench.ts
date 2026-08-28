@@ -5,7 +5,7 @@ import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeHistory } from './history'
-import { needsYou } from '../domain/attention'
+import { needsYou, summariseNeeds } from '../domain/attention'
 import { sinceThen } from '../domain/elapsed'
 import { SHORTCUTS } from './shortcuts'
 import { markSeen, seenVersion } from '../persistence/seen'
@@ -82,6 +82,7 @@ import {
   getWitness,
   onCall,
   onRegistrationChange,
+  recentlyActive,
   resetCalls,
   taskPath,
   taskUrl,
@@ -797,6 +798,11 @@ function renderSwitcher(task: TaskState): string {
         <span class="row__text">
           <strong>${escapeHtml(t.title)}</strong>
           <span class="muted"> — ${escapeHtml(t.next ?? 'no next action')}</span>
+          ${
+            summariseNeeds(needsYou(t))
+              ? `<span class="needs__badge">${escapeHtml(summariseNeeds(needsYou(t))!)}</span>`
+              : ''
+          }
         </span>
         <button type="button" class="btn btn--quiet" data-archive="${escapeHtml(t.id)}"
                 data-archived="${t.archived}">${t.archived ? 'Unarchive' : 'Archive'}</button>
@@ -881,6 +887,19 @@ function carryableRules(): string {
         “${escapeHtml(open!.title)}”
       </label>
     </div>`
+}
+
+function renderAgentLive(): string {
+  const call = recentlyActive()
+  if (!call) return ''
+  const when = sinceThen(call.at)
+  if (when === null) return ''
+
+  return `<p class="agent-live" role="status">
+      An agent called <code>${escapeHtml(call.tool)}</code> ${escapeHtml(when)}${
+        call.refused ? ' — and it was refused' : ''
+      }.
+    </p>`
 }
 
 function renderOffline(): string {
@@ -1483,6 +1502,7 @@ function renderDashboard(task: TaskState): string {
              </div>`
       }
       ${renderLastWrite(task)}
+      ${renderAgentLive()}
       ${renderSwitcher(task)}
       ${renderSearchBox()}
     </header>

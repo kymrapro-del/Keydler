@@ -992,3 +992,32 @@ pour qu'un champ vidé à la main veuille dire « rien » — a rendu
 d'espaces, alors que son schéma déclare `minLength: 1`. Un test existant l'a
 attrapé. L'outil valide maintenant strictement ; l'humain garde le droit de
 vider le champ.
+
+## 28 août 2026 — vue d'ensemble, et un appel d'outil qui se voit
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Deux questions qu'on ne pouvait pas poser au produit.**
+
+1. « Laquelle de mes tâches est bloquée ? » demandait d'ouvrir chacune. Le
+   sélecteur porte désormais, par tâche, un résumé de ce qui attend — relevé
+   dans le navigateur : `1 proposal to accept or decline +3 more`. Le résumé
+   nomme ce qui coûte le plus de rater et compte le reste ; une énumération
+   complète dans une pastille ne se lit pas.
+2. « Un agent travaille-t-il en ce moment ? » Après un appel réel de
+   `search_task`, l'en-tête affiche : `An agent called search_task just now.`
+   Le libellé rapporte **un appel observé**, jamais une présence : rien dans
+   WebMCP ne dit à une page qu'un agent est là, et un test interdit le mot
+   « connected ».
+
+**Un test qui passait pour la mauvaise raison.** Le premier jet vérifiait qu'une
+ligne du sélecteur contenait « blocked » — sur une tâche intitulée « Blocked
+task ». C'était le titre qui satisfaisait l'assertion, pas la pastille. Tâche
+renommée, assertion portée sur l'élément.
+
+**Un test intermittent, traqué plutôt que toléré.** « condamne une approche,
+marquée humaine » échouait en suite complète environ une fois sur deux : il
+attendait un nombre fixe de tours de boucle au lieu de l'écriture. Quatre autres
+endroits du même fichier avaient le même motif ; trois attendent un **refus**,
+où il n'y a rien à attendre, et sont restés tels quels. Cinq exécutions
+complètes consécutives vertes depuis.
