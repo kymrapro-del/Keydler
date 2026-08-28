@@ -387,7 +387,10 @@ the same length, what is known and left alone.
   description and 1.5K per tool output — past those, agents hit their own
   guardrails. Ten of the thirteen descriptions were over, and one parameter was
   more than twice the limit, repeated on nine tools. A test now holds all four
-  bounds, including a floor, so nothing is trimmed into silence to fit.
+  bounds, including a floor, so nothing is trimmed into silence to fit. Read
+  back through `getTools()` in Brave 151: 16, 499 and 146 against limits of 30,
+  500 and 150. The briefing is the one that does not fit — 1528 characters,
+  1.9% over — and that overage is written down rather than shaved off.
 - **One task, one address.** A task lives at `/t/:id`. A page bound to that
   address returns that task or says it is gone; it never substitutes “whatever
   was touched last on this device”.

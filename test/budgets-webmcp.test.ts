@@ -27,9 +27,13 @@ const MAX_PARAM_DESCRIPTION = 150
  * une restitution ordinaire et coûtait un nom d'identifiant à l'écran.
  *
  * C'est donc la borne du produit qui est tenue ici, exprimée dans l'unité de
- * Chrome, et l'écart est écrit plutôt que maquillé. Les restitutions réelles
- * mesurent 1501 et 1484 caractères : la recommandation est tenue à un
- * caractère près, sans l'avoir visée.
+ * Chrome, et l'écart est écrit plutôt que maquillé.
+ *
+ * La mesure se fait AVEC l'adresse de la tâche, parce que l'outil la passe
+ * toujours : sans elle on mesurait 1484 caractères pour une restitution qui en
+ * fait 1528 une fois appelée — un test qui se rassurait sur autre chose que ce
+ * qui part. Relevé dans Brave 151, par `execute_webmcp_tool` : 1528, soit
+ * 1,9 % au-dessus de la recommandation et dans le budget du produit.
  */
 const MAX_OUTPUT = 1_600
 
@@ -84,14 +88,16 @@ describe('les budgets de caractères que Chrome recommande', () => {
 
   it('rend une restitution ordinaire dans le budget du produit', () => {
     // `resume_task` est la sortie la plus lourde du lot, et la seule qui
-    // approche la borne.
+    // approche la borne. On mesure ce que l'outil envoie vraiment : avec
+    // l'adresse de la tâche, que `resume_task` passe à chaque appel.
     for (const [nom, task] of [
       ['core', buildCoreTask()],
       ['demo', buildDemoTask()],
     ] as const) {
-      expect(renderTaskState(task).length, nom).toBeLessThanOrEqual(MAX_OUTPUT)
-      // Et de fait à portée de la recommandation de Chrome, sans l'avoir visée.
-      expect(renderTaskState(task).length, nom).toBeLessThan(1_550)
+      const envoyé = renderTaskState(task, { url: `http://localhost:5173/t/${task.id}` })
+      expect(envoyé.length, nom).toBeLessThanOrEqual(MAX_OUTPUT)
+      // Et à portée de la recommandation de Chrome, sans l'avoir visée.
+      expect(envoyé.length, nom).toBeLessThan(1_560)
     }
   })
 })

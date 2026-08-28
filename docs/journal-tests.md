@@ -1167,10 +1167,35 @@ mais parce que la phrase enjambait un retour à la ligne du gabarit : les
 nouvelles épreuves comparent donc sur un texte à espaces normalisés, comme le
 lit un agent.
 
-**Ce qui n'a PAS été vérifié en navigateur.** Le panneau de cette session
-n'expose pas `document.modelContext` ; je n'ai donc pas pu relire les
-descriptions telles qu'un agent les reçoit. Ce que la garde mesure, ce sont les
-objets `ALL_TOOLS` eux-mêmes — exactement ceux passés à `registerTool` — ce qui
-rend l'écart improbable, mais ce n'est pas la même chose que de l'avoir vu. La
-page, elle, a été rechargée dans Chrome : la restitution s'y termine bien sur le
-bloc WRITE PROTOCOL entier, et le nouveau libellé de FULL DETAIL est en place.
+**Vérifié en navigateur, finalement.** J'avais écrit ne pas pouvoir le faire :
+le panneau de cette session n'expose pas `document.modelContext`, et pour cause
+— il tourne sur Chromium 148 (Electron), alors que WebMCP demande 149 et plus.
+Brave 151 est installé sur le poste, et le README documente la commande.
+Lancé sur un profil jetable avec `--enable-features=WebMCP,WebMCPTesting`,
+`document.modelContext` est bien un objet et les treize outils s'enregistrent
+dès qu'une tâche est ouverte — quatre seulement avant, ce qui est le
+comportement attendu : les outils suivent l'état.
+
+Relevé tel qu'un agent le reçoit, par `getTools()` :
+
+| Budget                        | Recommandé | Mesuré |
+| ----------------------------- | ---------- | ------ |
+| Nom d'outil                   | 30         | 16     |
+| Description d'outil           | 500        | 499    |
+| Description de paramètre (46) | 150        | 146    |
+
+Aucun dépassement. Les quatre outils de lecture portent bien
+`untrustedContentHint`.
+
+**Et une erreur dans ma propre garde, trouvée par cette vérification.** J'avais
+mesuré la sortie de `resume_task` par `renderTaskState(task)` sans options, soit
+1484 caractères. Appelé pour de vrai par `execute_webmcp_tool`, il en rend
+**1528** : l'outil passe toujours l'adresse de la tâche, que ma mesure omettait.
+Le test se rassurait donc sur autre chose que ce qui part. Corrigé — il mesure
+maintenant avec l'adresse.
+
+La position réelle est donc : 1528 caractères, soit **1,9 % au-dessus** de la
+recommandation de Chrome et à l'intérieur du budget du produit (400 tokens,
+1600 caractères). Écrit plutôt que rattrapé en rognant de la prose pour tomber
+sur un chiffre rond — c'est le même arbitrage que le `TOKEN_BUDGET` à 375, et
+il se tranche pareil.
