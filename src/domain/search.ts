@@ -1,3 +1,4 @@
+import { fold } from './text'
 import type { TaskState } from './types'
 
 export const MIN_QUERY = 2
@@ -21,26 +22,8 @@ export type TaskHit = {
   where: 'title' | 'next'
 }
 
-/**
- * La recherche relit TOUT le cahier à chaque frappe, et le repli des accents
- * en était l'essentiel du coût : `normalize('NFD')` puis `\p{Diacritic}` sur
- * chaque champ. Or une sortie de commande, un diff, une URL ou une empreinte
- * ne sortent jamais de l'ASCII, et une chaîne ASCII n'a rien à replier.
- *
- * Mesuré sur 60 000 champs : 23,9 ms → 5,3 ms. Le prix est de 13 % sur un
- * texte entièrement accentué, où le test échoue à chaque fois ; c'est le sens
- * de l'échange, et il penche du bon côté pour ce que ce produit contient.
- */
-const NON_ASCII = /[\u0080-\uFFFF]/
-
-function normalise(value: string): string {
-  const lower = value.toLocaleLowerCase()
-  if (!NON_ASCII.test(lower)) return lower
-  return lower.normalize('NFD').replace(/\p{Diacritic}/gu, '')
-}
-
 export function matches(haystack: string, query: string): boolean {
-  return normalise(haystack).includes(normalise(query))
+  return fold(haystack).includes(fold(query))
 }
 
 /**
@@ -48,8 +31,8 @@ export function matches(haystack: string, query: string): boolean {
  * chargé, `matches` la repliait des dizaines de milliers de fois par frappe.
  */
 function seeker(query: string): (haystack: string) => boolean {
-  const needle = normalise(query)
-  return (haystack) => normalise(haystack).includes(needle)
+  const needle = fold(query)
+  return (haystack) => fold(haystack).includes(needle)
 }
 
 export function searchTasks(tasks: readonly TaskState[], query: string): TaskHit[] {
@@ -134,11 +117,11 @@ export function searchTask(task: TaskState, query: string): Match[] {
     })
   }
 
-  const alreadyShown = new Set(found.map((m) => normalise(m.text)))
+  const alreadyShown = new Set(found.map((m) => fold(m.text)))
 
   for (const entry of task.audit) {
     if (!hit(entry.detail)) continue
-    if (entry.outcome !== 'refused' && alreadyShown.has(normalise(entry.detail))) continue
+    if (entry.outcome !== 'refused' && alreadyShown.has(fold(entry.detail))) continue
     found.push({
       kind: 'history',
       label: entry.outcome === 'refused' ? 'History, refused' : 'History',

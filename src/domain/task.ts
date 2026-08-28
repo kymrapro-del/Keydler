@@ -1,4 +1,5 @@
 import { StaleStateError, ValidationError } from './errors'
+import { fold } from './text'
 import {
   optionalText,
   requireEvidenceContent,
@@ -324,7 +325,12 @@ export function rejectApproach(
   const { now, newId } = resolve(ctx)
 
   const approach = requireText('approach', input.approach)
-  if (state.rejected.some((r) => r.standing !== 'declined' && sameWords(r.approach, approach))) {
+  if (
+    repeats(
+      state.rejected.filter((r) => r.standing !== 'declined').map((r) => r.approach),
+      approach,
+    )
+  ) {
     refuseRepeat('approach')
   }
 
@@ -362,7 +368,14 @@ export function addConstraint(
   const { newId } = resolve(ctx)
 
   const rule = requireText('rule', input.rule)
-  if (state.constraints.some((c) => c.active && sameWords(c.rule, rule))) refuseRepeat('rule')
+  if (
+    repeats(
+      state.constraints.filter((c) => c.active).map((c) => c.rule),
+      rule,
+    )
+  ) {
+    refuseRepeat('rule')
+  }
 
   const constraint: Constraint = {
     id: newId(),
@@ -807,16 +820,23 @@ export function setNext(state: TaskState, next: unknown, ctx?: MutationContext):
  * interdit passeront toutes les deux. Le message le dit, pour que personne ne
  * prenne ce garde-fou pour une compréhension.
  */
-function sameWords(a: string, b: string): boolean {
-  const flatten = (v: string) =>
-    v
-      .toLocaleLowerCase()
-      .normalize('NFD')
-      .replace(/\p{Diacritic}/gu, '')
-      .replace(/[.,;:!?]+$/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-  return flatten(a) === flatten(b)
+function wordsOf(value: string): string {
+  return fold(value)
+    .replace(/[.,;:!?]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * La garde compare la nouveauté à TOUT ce qui est déjà posé. Replier la
+ * nouveauté une fois par comparaison la repliait autant de fois qu'il y a
+ * d'entrées : mesuré, ajouter une règle passait de 0,051 ms à 100 règles à
+ * 1,789 ms à 2000. Le balayage reste linéaire — c'est la question posée —
+ * mais il ne refait plus le même travail à chaque pas.
+ */
+function repeats(existing: readonly string[], candidate: string): boolean {
+  const words = wordsOf(candidate)
+  return existing.some((e) => wordsOf(e) === words)
 }
 
 function refuseRepeat(field: string): never {
@@ -841,7 +861,12 @@ export function askHuman(
 
   const question = requireText('question', input.question)
   const why = requireText('why', input.why)
-  if (state.questions.some((q) => q.answer === null && sameWords(q.question, question))) {
+  if (
+    repeats(
+      state.questions.filter((q) => q.answer === null).map((q) => q.question),
+      question,
+    )
+  ) {
     refuseRepeat('question')
   }
 
@@ -1104,7 +1129,12 @@ export function requestApproval(
 
   const action = requireText('action', input.action)
   const why = requireText('why', input.why)
-  if (state.approvals.some((a) => a.decision === null && sameWords(a.action, action))) {
+  if (
+    repeats(
+      state.approvals.filter((a) => a.decision === null).map((a) => a.action),
+      action,
+    )
+  ) {
     refuseRepeat('action')
   }
 

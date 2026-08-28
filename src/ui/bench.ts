@@ -885,25 +885,24 @@ function renderSwitcher(task: TaskState): string {
   const others = allTasks.filter((t) => t.id !== task.id && (showArchived || !t.archived))
   const hidden = allTasks.filter((t) => t.id !== task.id && t.archived).length
   const rows = others
-    .map(
-      (t) => `<li class="row">
+    .map((t) => {
+      // `needsYou` balaie toutes les étapes du cahier : l'appeler une fois
+      // pour tester et une fois pour afficher le faisait deux fois par ligne.
+      const badge = summariseNeeds(needsYou(t))
+      return `<li class="row">
         <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
           t.archived ? 'archived' : t.status === 'completed' ? 'closed' : 'open'
         }</span>
         <span class="row__text">
           <strong>${escapeHtml(t.title)}</strong>
           <span class="muted"> — ${escapeHtml(t.next ?? 'no next action')}</span>
-          ${
-            summariseNeeds(needsYou(t))
-              ? `<span class="needs__badge">${escapeHtml(summariseNeeds(needsYou(t))!)}</span>`
-              : ''
-          }
+          ${badge ? `<span class="needs__badge">${escapeHtml(badge)}</span>` : ''}
         </span>
         <button type="button" class="btn btn--quiet" data-archive="${escapeHtml(t.id)}"
                 data-archived="${t.archived}">${t.archived ? 'Unarchive' : 'Archive'}</button>
         <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
-      </li>`,
-    )
+      </li>`
+    })
     .join('')
 
   return `<details class="switcher">
@@ -2649,7 +2648,24 @@ function render(): void {
       ? active.id
       : null
 
-  root.innerHTML = `<main id="content">${renderBody()}</main>`
+  const html = `<main id="content">${renderBody()}</main>`
+
+  // Trois sources réveillent le rendu — le magasin, les appels d'outil, les
+  // (dés)enregistrements — et beaucoup ne changent rien à l'écran. Mesuré sur
+  // la suite d'interface : 30 % des rendus produisaient un HTML identique au
+  // précédent, et payaient quand même la reconstruction du DOM, le
+  // rattachement de tous les écouteurs et la valse du focus.
+  //
+  // La comparaison coûte un parcours de chaîne ; ce qu'elle évite coûte bien
+  // davantage. Et elle épargne au passage la sélection en cours.
+  if (html === painted) {
+    announce()
+    reflectAddress()
+    return
+  }
+  painted = html
+
+  root.innerHTML = html
 
   bindDrafts()
   bindCreation()
@@ -2672,6 +2688,10 @@ function render(): void {
 
 let renderScheduled = false
 let pendingFrame: number | null = null
+
+// Ce qui est actuellement à l'écran. Remis à zéro au montage : sur une racine
+// neuve, croire qu'elle porte déjà ce HTML laisserait la page blanche.
+let painted: string | null = null
 
 function scheduleRender(): void {
   if (renderScheduled) return
@@ -2849,6 +2869,7 @@ export function mount(target: HTMLElement): () => void {
   clearNotice()
   showAllHistory = false
   expanded.clear()
+  painted = null
   awaySince = null
   awayFor = null
   offered = null

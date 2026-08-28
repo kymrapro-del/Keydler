@@ -204,3 +204,67 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
     expect(text()).toContain('Show all 30 requests')
   })
 })
+
+/**
+ * Le rendu est réveillé par le magasin, par les appels d'outil et par les
+ * enregistrements ; beaucoup de ces réveils ne changent rien. Mesuré sur la
+ * suite d'interface : 30 % des rendus produisaient un HTML identique.
+ */
+describe('ne redessine pas ce qui n’a pas changé', () => {
+  it('garde les mêmes nœuds quand rien ne bouge', async () => {
+    await open({ constraints: rules(3) })
+    const avant = card('rules-title')
+
+    __renderNow()
+    __renderNow()
+
+    // Le même objet DOM, pas seulement le même texte : c'est la preuve que
+    // rien n'a été reconstruit.
+    expect(card('rules-title')).toBe(avant)
+  })
+
+  it('redessine dès que l’état change vraiment', async () => {
+    await open({ constraints: rules(3) })
+    const avant = card('rules-title')
+
+    await store.mutate((s) => ({ ...s, version: s.version + 1, constraints: rules(4) }))
+    __renderNow()
+
+    expect(card('rules-title')).not.toBe(avant)
+    expect(cardText('rules-title')).toContain('shard 3')
+  })
+
+  it('peint une racine neuve, même si l’état est resté le même', async () => {
+    // Le piège de l'optimisation : se souvenir du HTML déjà peint sans
+    // remarquer que la racine, elle, a été remplacée — et laisser une page
+    // blanche.
+    await open({ constraints: rules(3) })
+    const attendu = root.innerHTML
+    expect(attendu).not.toBe('')
+
+    unmount()
+    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    root = document.querySelector<HTMLElement>('#app')!
+    unmount = mount(root)
+    __renderNow()
+
+    expect(root.innerHTML).not.toBe('')
+    expect(cardText('rules-title')).toContain('shard 0')
+  })
+
+  it('ne fait pas perdre le curseur dans un champ pendant un rendu à vide', async () => {
+    await open({ constraints: rules(3) })
+    const champ = root.querySelector<HTMLInputElement>('#new-constraint')!
+    champ.value = 'Never deploy on a Friday'
+    champ.dispatchEvent(new Event('input', { bubbles: true }))
+    __renderNow()
+
+    root.querySelector<HTMLInputElement>('#new-constraint')!.focus()
+    root.querySelector<HTMLInputElement>('#new-constraint')!.setSelectionRange(6, 6)
+    __renderNow()
+
+    const après = root.querySelector<HTMLInputElement>('#new-constraint')!
+    expect(document.activeElement).toBe(après)
+    expect(après.selectionStart).toBe(6)
+  })
+})
