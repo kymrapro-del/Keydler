@@ -1382,3 +1382,41 @@ Message rendu : « That link does not carry a readable watch log. »
 `navigator.storage.persisted()` vaut `false` sur ce profil ; 0,54 Mo utilisés
 sur 2 Go de quota. La page propose « Ask the browser to keep this » quand ce
 n'est pas accordé, ce qui est le comportement attendu.
+
+## 28 août 2026 — export, import, et la suppression d'un cahier
+
+**Poste.** Brave 151. Le téléchargement est intercepté en enveloppant
+`URL.createObjectURL`, l'import en construisant un `File` et un `DataTransfer` —
+donc par les mêmes chemins que l'utilisateur.
+
+### L'export
+
+34 828 octets de Markdown, un seul bloc JSON. Il porte bien la charge
+d'injection écrite plus tôt (c'est le contenu du cahier, il doit y être), et
+**ni la valeur du secret ni même son nom**. Cohérent avec le lien partageable,
+et pour la même raison structurelle.
+
+### L'import, ses deux branches
+
+| Fichier                              | Résultat                                                 |
+| ------------------------------------ | -------------------------------------------------------- |
+| Identique à ce qui est ici           | « 1 already here. » — rien n'est dupliqué                |
+| Même identifiant, version différente | une COPIE, titrée « … (imported) », identifiant distinct |
+
+Dans les deux cas l'original reste intact, et aucun secret ne revient par le
+fichier.
+
+### La suppression d'un cahier emporte ses identifiants scellés
+
+C'était le défaut le plus grave du premier audit — `deleteSecretsForTask`
+n'était jamais appelé, et un identifiant scellé survivait au cahier qui le
+portait. Corrigé alors, jamais vérifié en navigateur jusqu'ici.
+
+Relevé dans IndexedDB, de part et d'autre de la suppression :
+
+|       | `tasks`                        | `secrets`                         |
+| ----- | ------------------------------ | --------------------------------- |
+| Avant | `289687a53a75`, `a36c38ba83a6` | `gemini-api-key` → `a36c38ba83a6` |
+| Après | `289687a53a75`                 | _(vide)_                          |
+
+Le cahier part, le secret part avec lui, et l'autre cahier n'est pas touché.
