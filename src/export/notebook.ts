@@ -53,6 +53,28 @@ function questions(task: TaskState): string[] {
   ]
 }
 
+function autorisations(task: TaskState): string[] {
+  if (task.approvals.length === 0) return []
+
+  const blocs = task.approvals.flatMap((a) => [
+    `### ${a.action}`,
+    '',
+    `- Asked by: ${a.source} at v${a.addedAtVersion}`,
+    `- Why it needed a human: ${a.why}`,
+    `- Decision: ${a.decision === null ? '**never decided — nobody answered**' : a.decision}`,
+    ...(a.decidedAt === null ? [] : [`- Decided: ${horodatage(a.decidedAt)}`]),
+    '',
+  ])
+
+  return [
+    '## Permission asked',
+    '',
+    'What an agent stopped to ask before acting, and what was decided.',
+    '',
+    ...blocs,
+  ]
+}
+
 function journal(task: TaskState): string[] {
   if (task.audit.length === 0) return []
   return [
@@ -82,6 +104,7 @@ function preuves(task: TaskState): string[] {
     `### ${s.action}`,
     '',
     `- Confidence: \`${s.confidence}\``,
+    ...(s.dispute ? [`- **DISPUTED by the human:** ${s.dispute.reason}`] : []),
     `- Evidence kind: \`${s.evidence!.kind}\``,
     `- Checked by a human: ${s.evidence!.verifiedAt ? horodatage(s.evidence!.verifiedAt) : 'no'}`,
     '',
@@ -113,6 +136,7 @@ export function buildTaskExport(task: TaskState): string {
     '',
     ...preuves(task),
     ...questions(task),
+    ...autorisations(task),
     ...journal(task),
     '## Full state',
     '',

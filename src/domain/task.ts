@@ -320,9 +320,14 @@ export function rejectApproach(
   guardVersion(state, input.basedOnVersion)
   const { now, newId } = resolve(ctx)
 
+  const approach = requireText('approach', input.approach)
+  if (state.rejected.some((r) => r.standing !== 'declined' && sameWords(r.approach, approach))) {
+    refuseRepeat('approach')
+  }
+
   const rejection: Rejection = {
     id: newId(),
-    approach: requireText('approach', input.approach),
+    approach,
     reason: requireText('reason', input.reason),
     source: actor,
     addedAtVersion: state.version + 1,
@@ -353,9 +358,12 @@ export function addConstraint(
   guardVersion(state, input.basedOnVersion)
   const { newId } = resolve(ctx)
 
+  const rule = requireText('rule', input.rule)
+  if (state.constraints.some((c) => c.active && sameWords(c.rule, rule))) refuseRepeat('rule')
+
   const constraint: Constraint = {
     id: newId(),
-    rule: requireText('rule', input.rule),
+    rule,
     source: actor,
     addedAtVersion: state.version + 1,
     active: true,
@@ -648,6 +656,8 @@ export function editRejection(
 
   const approach = requireText('approach', input.approach)
   const reason = requireText('reason', input.reason)
+  // Pas de garde anti-répétition ici : reformuler un motif en gardant l'approche
+  // est le cas normal, et c'est bien l'entrée existante que l'on corrige.
   if (approach === rejection.approach && reason === rejection.reason) {
     throw new ValidationError('approach', 'is unchanged.', {
       code: 'not-proposed',
@@ -759,6 +769,33 @@ export function setNext(state: TaskState, next: unknown, ctx?: MutationContext):
   )
 }
 
+/**
+ * Comparaison de CHAÎNES, pas de sens : deux formulations différentes du même
+ * interdit passeront toutes les deux. Le message le dit, pour que personne ne
+ * prenne ce garde-fou pour une compréhension.
+ */
+function sameWords(a: string, b: string): boolean {
+  const flatten = (v: string) =>
+    v
+      .toLocaleLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[.,;:!?]+$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  return flatten(a) === flatten(b)
+}
+
+function refuseRepeat(field: string): never {
+  throw new ValidationError(
+    field,
+    `this is already recorded on the task, word for word, and it already counts. ` +
+      'Nothing was written. Read it back rather than repeating it; a differently ' +
+      'worded version of the same idea would not be caught here.',
+    { code: 'already-recorded', retryable: false },
+  )
+}
+
 export function askHuman(
   state: TaskState,
   input: { question: unknown; why: unknown; basedOnVersion: number | null },
@@ -771,6 +808,9 @@ export function askHuman(
 
   const question = requireText('question', input.question)
   const why = requireText('why', input.why)
+  if (state.questions.some((q) => q.answer === null && sameWords(q.question, question))) {
+    refuseRepeat('question')
+  }
 
   const entry: OpenQuestion = {
     id: newId(),
@@ -987,6 +1027,9 @@ export function requestApproval(
 
   const action = requireText('action', input.action)
   const why = requireText('why', input.why)
+  if (state.approvals.some((a) => a.decision === null && sameWords(a.action, action))) {
+    refuseRepeat('action')
+  }
 
   const entry: ApprovalRequest = {
     id: newId(),

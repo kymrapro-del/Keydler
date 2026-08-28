@@ -862,3 +862,35 @@ rien.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — ne pas répéter, et ne pas clore en silence
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Observé par la vraie surface WebMCP.**
+
+- `add_constraint` avec `"  never modify the DATABASE schema.  "` sur un cahier
+  qui porte déjà « Never modify the database schema » : **refusé**, rien
+  écrit. La casse, les espaces et le point final sont ignorés.
+- `complete_task` : réussit, puis énumère ce qui n'a jamais été tranché —
+  `1 proposal nobody accepted or declined`, `2 steps still claimed with no
+evidence`, `1 step the human says is wrong` — avec la consigne de le dire dans
+  la passation plutôt que de laisser croire que tout a été réglé.
+
+**Un point d'honnêteté.** Le garde-fou compare des **chaînes**, pas des sens :
+deux formulations différentes du même interdit passeront toutes les deux. Le
+message de refus le dit en toutes lettres, pour que personne ne prenne cette
+comparaison pour une compréhension.
+
+**Défaut trouvé pendant l'écriture.** La garde s'était glissée dans
+`editRejection` : reformuler le motif d'un rejet en gardant son approche — le
+cas le plus normal — était refusé. Deux tests de non-régression l'avaient
+attrapé ; la garde n'est plus que sur les créations.
+
+**Lacune comblée au passage.** L'export ne portait ni les demandes
+d'autorisation ni les contestations, alors qu'il portait déjà les questions.
+Même famille d'oubli que les fois précédentes, désormais couverte par un test
+par section.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

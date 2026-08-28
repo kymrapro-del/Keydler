@@ -268,6 +268,15 @@ defend against everything:
   while you are typing.
 - **Print it.** A print stylesheet drops the buttons and the dark ground, so
   `Cmd+P` gives a hand-over sheet that reads on paper.
+- **No repeating what is already written.** An agent proposing a rule, a
+  rejection, a question or a request word for word identical to one already on
+  the task is refused, and told so — it compares strings, not meanings, and the
+  message says exactly that. It keeps the log from filling with duplicates the
+  human then has to decline one by one.
+- **Closing is not settling.** `complete_task` succeeds, then lists what was
+  never resolved — questions nobody answered, proposals nobody decided, steps
+  still claimed, steps you called wrong — and tells the agent to say so in its
+  hand-over rather than imply it was all handled.
 - **The tab calls you.** When something is waiting on you and the tab is in the
   background, its title carries the count — the same signal every chat app uses,
   and it costs no permission prompt.

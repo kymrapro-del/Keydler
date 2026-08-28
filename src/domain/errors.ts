@@ -37,6 +37,7 @@ export type ValidationCode =
   | 'not-proposed'
   | 'already-answered'
   | 'already-has-evidence'
+  | 'already-recorded'
 
 export type ValidationOptions = {
   code: ValidationCode
