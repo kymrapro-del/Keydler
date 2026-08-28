@@ -1,6 +1,7 @@
 import { buildMeasureTask } from '../demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from '../export/notebook'
 import { parseExport } from '../export/restore'
+import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeHistory } from './history'
@@ -12,6 +13,7 @@ import { renderTaskState } from '../domain/render'
 import { MIN_QUERY, searchTask, searchTasks, type Match } from '../domain/search'
 import {
   acceptedRejections,
+  activeConstraints,
   addConstraint,
   answerQuestion,
   answeredQuestions,
@@ -158,6 +160,9 @@ function showNotice(message: string): void {
 let showAllHistory = false
 let awaySince: number | null = null
 let awayFor: string | null = null
+let offered: TaskState | null = null
+let linkRead = false
+let linkPending = false
 
 type Editing =
   | { kind: 'title' }
@@ -364,6 +369,7 @@ function renderLanding(): string {
         repeat. A new conversation can read it and continue from the right place.
       </p>
       ${alertBlock()}
+      ${renderOffer()}
       ${form}
       <p class="muted landing__note">
         Everything stays in this browser. No account, no server.
@@ -747,6 +753,40 @@ function renderSwitcher(task: TaskState): string {
     </details>`
 }
 
+function renderOffer(): string {
+  if (!offered) return ''
+  const counts = [
+    `${offered.steps.length} ${plural(offered.steps.length, 'step', 'steps')}`,
+    `${activeConstraints(offered).length} ${plural(activeConstraints(offered).length, 'rule', 'rules')}`,
+    `v${offered.version}`,
+  ].join(' · ')
+
+  return `<section class="card card--away" aria-labelledby="offer-title">
+      <h2 id="offer-title" class="card__title">A shared watch log</h2>
+      <p class="muted">
+        Somebody sent you this link, and the whole log travelled inside it — no
+        server saw it. Nothing has been written here yet.
+      </p>
+      <ul class="rows">
+        <li class="row">
+          <span class="chip chip--human">shared</span>
+          <span class="row__text">
+            <strong>${escapeHtml(offered.title)}</strong>
+            <span class="muted"> — ${escapeHtml(counts)}</span>
+          </span>
+        </li>
+      </ul>
+      <p class="muted">
+        Taking it makes a <strong>copy on this device</strong>. It does not stay in
+        step with theirs: from then on, the two are separate logs.
+      </p>
+      <div class="actions">
+        <button type="button" id="accept-link" class="btn btn--primary">Take a copy</button>
+        <button type="button" id="decline-link" class="btn">No thanks</button>
+      </div>
+    </section>`
+}
+
 function renderPermission(task: TaskState): string {
   const waiting = pendingApprovals(task)
   if (waiting.length === 0) return ''
@@ -902,6 +942,7 @@ function renderHandoff(task: TaskState): string {
   return `<p class="handoff">
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
+      <button type="button" id="copy-link" class="btn btn--quiet">Copy a link that carries this log</button>
       ${undoButton}
     </p>`
 }
@@ -1277,6 +1318,7 @@ function renderDashboard(task: TaskState): string {
     ${alertBlock()}
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
+    ${renderOffer()}
     ${searching() ? '' : renderPermission(task)}
     ${searching() ? '' : renderAway(task)}
     ${searching() ? '' : renderNext(task)}
@@ -1305,12 +1347,17 @@ function renderBody(): string {
   }
 
   if (status === 'missing') {
-    return `<div class="notice notice--warn" role="alert">
-        <p><strong>This task does not exist on this device.</strong></p>
-        <p>The address points at <code>${escapeHtml(boundId ?? '')}</code>, which is not here.
-           No other task has been opened in its place.</p>
-      </div>
-      ${renderLanding()}`
+    // Quand un lien porte le cahier, dire « il n'existe pas ici » en même temps
+    // qu'on propose de le prendre est une contradiction à l'écran.
+    const alarm =
+      offered || linkPending
+        ? ''
+        : `<div class="notice notice--warn" role="alert">
+             <p><strong>This task does not exist on this device.</strong></p>
+             <p>The address points at <code>${escapeHtml(boundId ?? '')}</code>, which is not here.
+                No other task has been opened in its place.</p>
+           </div>`
+    return `${alarm}${renderLanding()}`
   }
 
   // Le formulaire de création prend toute la place, même quand un cahier est
@@ -1846,6 +1893,47 @@ function bindSupervision(): void {
     })
   }
 
+  document.querySelector('#accept-link')?.addEventListener('click', () => {
+    const task = offered
+    if (!task) return
+    offered = null
+    clearLinkFragment()
+    humanError = null
+    void store.importTasks([task]).then(
+      () => store.openTask(task.id).catch(() => undefined),
+      (error: unknown) => {
+        humanError = humanMessage(error, 'Taking that copy')
+        scheduleRender()
+      },
+    )
+  })
+
+  document.querySelector('#decline-link')?.addEventListener('click', () => {
+    offered = null
+    clearLinkFragment()
+    renderNow()
+  })
+
+  document.querySelector('#copy-link')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    humanError = null
+    void packTask(task)
+      .then((packed) =>
+        navigator.clipboard?.writeText(linkFor(location.origin, taskPath(task.id), packed)),
+      )
+      .then(
+        () =>
+          showNotice(
+            'Link copied. It carries the whole log; the person you send it to gets a copy.',
+          ),
+        (error: unknown) => {
+          humanError = humanMessage(error, 'Building that link')
+          scheduleRender()
+        },
+      )
+  })
+
   document.querySelector('#seen')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (!task) return
@@ -2099,6 +2187,27 @@ function render(): void {
   // digest doit rapporter.
   if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
 
+  if (!linkRead) {
+    linkRead = true
+    const packed = readLinkFragment()
+    if (packed) {
+      linkPending = true
+      void unpackTask(packed).then(
+        (task) => {
+          linkPending = false
+          offered = task
+          scheduleRender()
+        },
+        (error: unknown) => {
+          linkPending = false
+          humanError = humanMessage(error, 'Reading that link')
+          clearLinkFragment()
+          scheduleRender()
+        },
+      )
+    }
+  }
+
   const waiting = openTask ? pendingApprovals(openTask).length + openQuestions(openTask).length : 0
   document.title = attentionTitle(document.title, waiting, looking())
 
@@ -2177,6 +2286,11 @@ function typingSomewhereElse(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   if (target.isContentEditable) return true
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+}
+
+function clearLinkFragment(): void {
+  if (typeof history === 'undefined') return
+  history.replaceState(null, '', `${location.pathname}${location.search}`)
 }
 
 function looking(): boolean {
@@ -2269,6 +2383,9 @@ export function mount(target: HTMLElement): () => void {
   showAllHistory = false
   awaySince = null
   awayFor = null
+  offered = null
+  linkRead = false
+  linkPending = false
   editing = null
   loggingStep = false
   answering = null

@@ -789,3 +789,37 @@ l'énumération du schéma à `SECTIONS`.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — un cahier qui voyage dans un lien
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`.
+
+Un jury demandera : « j'envoie le lien à un collègue, il voit quoi ? » Jusqu'ici,
+une page vide. Le cahier voyage maintenant **dans le fragment de l'adresse**,
+que les navigateurs n'envoient jamais au serveur.
+
+**Observé.**
+
+- « Copy a link that carries this log » sur le cahier de démonstration :
+  **2 833 caractères**, marqueur `z` et signature gzip présents — la compression
+  passe bien par `CompressionStream`, sans aucune dépendance.
+- Cahier supprimé de l'appareil, puis ouverture du lien : la carte **A shared
+  watch log** annonce le titre, `4 steps · 3 rules · v15`, et dit que prendre
+  le cahier en fait **une copie qui ne restera pas en phase**.
+- Rien n'est écrit avant le clic. « Take a copy » importe et ouvre le cahier ;
+  la charge disparaît de l'adresse pour qu'un rechargement ne repropose pas.
+
+**Défaut trouvé.** À la réception, le bandeau « This task does not exist on this
+device » s'affichait **au-dessus de l'offre** : deux messages qui se
+contredisent à l'écran, dont l'un affole pour rien. Le bandeau est supprimé tant
+qu'un lien est en cours de lecture, et revient si l'on refuse — un test couvre
+les deux sens.
+
+**Note de méthode.** Une première tentative a semblé échouer : `location.href`
+vers la même adresse ne change que le fragment et **ne recharge pas la page**,
+donc l'ancien bundle tournait encore. Relevé ici pour ne pas reprendre ce
+faux négatif pour un défaut.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

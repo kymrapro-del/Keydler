@@ -82,6 +82,12 @@ and the whole history
 
 ![Active task](docs/assets/active-task.png)
 
+**Send the whole log in a link.** No server sees it — the log rides in the URL
+fragment, which browsers never transmit. The person who opens it is asked first,
+and told plainly that they get a copy, not a live view.
+
+![A shared watch log](docs/assets/shared-link.png)
+
 **The agent asks permission, and waits.** `request_approval` blocks until a human
 clicks. This is the one thing a page can do that a server cannot: there is
 somebody at the other end.
@@ -223,6 +229,13 @@ defend against everything:
   an agent arrives on an old link.
 - **Import and export.** Import never overwrites: a task already here at a
   different version is added as a copy.
+- **A link that carries the log.** “Copy a link that carries this log” packs the
+  whole task — gzipped through `CompressionStream`, no dependency — into the URL
+  fragment. Fragments are never sent to a server, so the log goes from your
+  browser to theirs and touches nothing in between. Opening it asks before
+  writing anything, and says it is a copy that will not stay in step. A log too
+  big for a link is refused with the size, and points at the file export, which
+  has no limit.
 - **Installable and offline.** A manifest and a service worker; verified with the
   server stopped.
 - **Did the agent read before writing?** The page counts it, from the calls it
