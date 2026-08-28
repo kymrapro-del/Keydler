@@ -7,7 +7,9 @@ export class StaleStateError extends Error {
       [
         'STALE STATE',
         `You are attempting to log work based on task state v${claimedVersion}.`,
-        `Current state is v${currentVersion}. Call resume_task before continuing.`,
+        `Current state is v${currentVersion}. No write took place.`,
+        `Call what_changed with since_version: ${claimedVersion} to see only what moved,`,
+        'or resume_task for the whole state. Then retry with the version it gives you.',
       ].join('\n'),
     )
     this.name = 'StaleStateError'
@@ -19,6 +21,7 @@ export class StaleStateError extends Error {
 export type ValidationCode =
   | 'empty'
   | 'too-long'
+  | 'too-short'
   | 'not-a-string'
   | 'bad-enum'
   | 'bad-version'
@@ -32,6 +35,8 @@ export type ValidationCode =
   | 'mutation-id-collision'
   | 'content-not-reviewed'
   | 'not-proposed'
+  | 'already-answered'
+  | 'already-has-evidence'
 
 export type ValidationOptions = {
   code: ValidationCode
@@ -64,7 +69,9 @@ export class ConcurrentWriteError extends Error {
       [
         'STALE STATE',
         `You are attempting to write against task state v${expectedVersion}.`,
-        `Another page has since written v${foundVersion}. Call resume_task before continuing.`,
+        `Another page has since written v${foundVersion}. No write took place.`,
+        `Call what_changed with since_version: ${expectedVersion} to see what that page did,`,
+        'or resume_task for the whole state.',
       ].join('\n'),
     )
     this.name = 'ConcurrentWriteError'

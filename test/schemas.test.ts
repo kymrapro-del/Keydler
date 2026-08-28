@@ -126,3 +126,22 @@ describe('ce que la description doit porter faute d’annotation', () => {
     expect(logStep.description).toContain('not as verified')
   })
 })
+
+describe('les descriptions livrées', () => {
+  it('n’ont laissé aucune interpolation vider une référence', () => {
+    // `${name}` dans un gabarit TypeScript s'évalue silencieusement : la
+    // variable globale `name` vaut '' dans un navigateur, et l'agent reçoit
+    // « write as , and what it is for ». Rien ne plante.
+    for (const tool of ALL_TOOLS) {
+      expect(tool.description, tool.name).not.toMatch(/\bas ,|\{\}|as\s+,/)
+      expect(tool.description, tool.name).not.toMatch(/ {2,},/)
+    }
+  })
+
+  it('écrit la syntaxe de référence en toutes lettres là où elle est citée', () => {
+    for (const tool of ALL_TOOLS) {
+      if (!/refer to one as|write as/.test(tool.description)) continue
+      expect(tool.description, tool.name).toContain('${name}')
+    }
+  })
+})

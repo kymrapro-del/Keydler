@@ -4,6 +4,7 @@ import { parseExport } from '../export/restore'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeHistory } from './history'
+import { markSeen, seenVersion } from './seen'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
@@ -11,6 +12,12 @@ import { MIN_QUERY, searchTask, searchTasks, type Match } from '../domain/search
 import {
   acceptedRejections,
   addConstraint,
+  answerQuestion,
+  answeredQuestions,
+  undoLastSupervision,
+  undoable,
+  attachEvidence,
+  openQuestions,
   setArchived,
   editConstraint,
   editRejection,
@@ -26,16 +33,30 @@ import {
   setRejectionStanding,
   verifyEvidence,
 } from '../domain/task'
-import type { Confidence, Step, TaskState } from '../domain/types'
+import {
+  EVIDENCE_KINDS,
+  type Confidence,
+  type EvidenceKind,
+  type Step,
+  type TaskState,
+} from '../domain/types'
+import { evidenceKindLabel, guessEvidenceKind } from '../domain/evidence'
 import * as store from '../store/taskStore'
 import {
   addSecret,
   deleteSecret,
+  editSecret,
   listSecretNames,
   revealSecret,
   WrongPassphraseError,
 } from '../persistence/vault'
-import type { SecretName } from '../domain/secret'
+import {
+  MULTILINE_KINDS,
+  SECRET_KINDS,
+  secretKindLabel,
+  type SecretKind,
+  type SecretName,
+} from '../domain/secret'
 import {
   getRegistrationState,
   getWitness,
@@ -43,11 +64,12 @@ import {
   onRegistrationChange,
   resetCalls,
   taskPath,
+  taskUrl,
 } from '../webmcp'
 
 let root: HTMLElement | null = null
 
-const drafts: Record<string, string> = {
+const DEFAULT_DRAFTS: Record<string, string> = {
   'new-title': '',
   'new-next': '',
   'new-rule': '',
@@ -61,28 +83,89 @@ const drafts: Record<string, string> = {
   'step-action': '',
   'step-result': '',
   'step-evidence': '',
+  'step-kind': 'command_output',
+  'attach-content': '',
+  'attach-kind': 'command_output',
+  'answer-text': '',
+  'new-secret-kind': 'api_key',
+  'edit-secret-kind': 'other',
   search: '',
+}
+
+const drafts: Record<string, string> = { ...DEFAULT_DRAFTS }
+
+function resetDrafts(): void {
+  for (const key of Object.keys(drafts)) drafts[key] = DEFAULT_DRAFTS[key]
 }
 
 let creating = false
 
 let credentials: SecretName[] = []
 let revealed: { id: string; value: string } | null = null
+let revealTimer: ReturnType<typeof setTimeout> | null = null
+
+export const REVEAL_TTL = 45_000
+
+function hideRevealed(): void {
+  revealed = null
+  if (revealTimer !== null) {
+    clearTimeout(revealTimer)
+    revealTimer = null
+  }
+}
+
+function hideRevealedLater(): void {
+  if (revealTimer !== null) clearTimeout(revealTimer)
+  revealTimer = setTimeout(() => {
+    revealTimer = null
+    revealed = null
+    renderNow()
+  }, REVEAL_TTL)
+}
 let credentialsFor: string | null = null
 
 let allTasks: TaskState[] = []
 let allTasksFor = ''
 let notice: string | null = null
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
+
+export const NOTICE_TTL = 8_000
+
+function clearNotice(): void {
+  notice = null
+  if (noticeTimer !== null) {
+    clearTimeout(noticeTimer)
+    noticeTimer = null
+  }
+}
+
+function showNotice(message: string): void {
+  notice = message
+  if (noticeTimer !== null) clearTimeout(noticeTimer)
+  noticeTimer = setTimeout(() => {
+    noticeTimer = null
+    notice = null
+    renderNow()
+  }, NOTICE_TTL)
+  scheduleRender()
+}
 let showAllHistory = false
+let awaySince: number | null = null
+let awayFor: string | null = null
 
 type Editing =
   | { kind: 'title' }
   | { kind: 'next' }
   | { kind: 'constraint'; id: string }
   | { kind: 'rejection'; id: string }
+  | { kind: 'secret'; id: string }
 
 let editing: Editing | null = null
 let loggingStep = false
+let kindChosen = false
+let attachKindChosen = false
+let answering: string | null = null
+let attaching: string | null = null
 let showArchived = false
 
 function renderThemeToggle(): string {
@@ -100,13 +183,21 @@ function searching(): boolean {
 }
 
 function highlight(text: string, q: string): string {
-  const hay = text.toLocaleLowerCase()
   const needle = q.toLocaleLowerCase()
-  const at = hay.indexOf(needle)
-  if (at < 0) return escapeHtml(text)
-  return `${escapeHtml(text.slice(0, at))}<mark>${escapeHtml(
-    text.slice(at, at + needle.length),
-  )}</mark>${escapeHtml(text.slice(at + needle.length))}`
+  if (needle.length === 0) return escapeHtml(text)
+
+  const hay = text.toLocaleLowerCase()
+  const parts: string[] = []
+  let from = 0
+
+  for (let at = hay.indexOf(needle); at >= 0; at = hay.indexOf(needle, at + needle.length)) {
+    parts.push(escapeHtml(text.slice(from, at)))
+    parts.push(`<mark>${escapeHtml(text.slice(at, at + needle.length))}</mark>`)
+    from = at + needle.length
+  }
+
+  parts.push(escapeHtml(text.slice(from)))
+  return parts.join('')
 }
 
 function startEditing(next: Editing, value: string, reason = ''): void {
@@ -124,6 +215,18 @@ function stopEditing(): void {
   drafts['edit-value'] = ''
   drafts['edit-reason'] = ''
   renderNow()
+}
+
+function chosenEvidenceKind(content: string): EvidenceKind {
+  const draft = drafts['step-kind'] as EvidenceKind
+  return EVIDENCE_KINDS.includes(draft) ? draft : guessEvidenceKind(content)
+}
+
+function resetStepDraft(): void {
+  for (const key of ['step-action', 'step-result', 'step-evidence', 'step-kind']) {
+    drafts[key] = DEFAULT_DRAFTS[key]
+  }
+  kindChosen = false
 }
 
 function editingIs(kind: Editing['kind'], id?: string): boolean {
@@ -310,20 +413,54 @@ function remainder(total: number): string {
     : ''
 }
 
-function renderStepRow(step: Step): string {
+function renderStepRow(step: Step, active: boolean): string {
+  if (attaching === step.id) {
+    return `<li class="review">
+        <p class="row__text"><strong>${escapeHtml(step.action)}</strong></p>
+        <form id="form-attach" class="form" novalidate>
+          <div class="field">
+            <label for="attach-content">The evidence, pasted whole</label>
+            <textarea id="attach-content" rows="5" autocomplete="off" spellcheck="false"
+                      placeholder="Command output, a diff, a test report, a link"></textarea>
+          </div>
+          <div class="field">
+            <label for="attach-kind">What that evidence is</label>
+            <select id="attach-kind">
+              ${EVIDENCE_KINDS.map(
+                (kind) => `<option value="${kind}">${escapeHtml(evidenceKindLabel(kind))}</option>`,
+              ).join('')}
+            </select>
+          </div>
+          <div class="actions">
+            <button type="submit" class="btn btn--primary">Attach it</button>
+            <button type="button" id="cancel-attach" class="btn">Cancel</button>
+          </div>
+          <p class="muted">You read it, so it counts as verified by you.</p>
+        </form>
+      </li>`
+  }
+
   return `<li class="row">
       <span class="chip chip--${step.confidence}">${CONFIDENCE_LABEL[step.confidence]}</span>
       <span class="row__text">
         <strong>${escapeHtml(step.action)}</strong>
         <span class="muted"> — ${escapeHtml(step.result)}</span>
       </span>
+      ${
+        active && step.evidence === null
+          ? `<button type="button" class="btn btn--quiet" data-attach="${escapeHtml(step.id)}"
+                     aria-label="Attach evidence to: ${escapeHtml(step.action)}">Attach evidence</button>`
+          : ''
+      }
     </li>`
 }
 
 function renderCompletedWork(task: TaskState): string {
   const shown = task.steps.slice(-MAX_ROWS).reverse()
   const body = shown.length
-    ? `<ul class="rows">${shown.map(renderStepRow).join('')}</ul>${remainder(task.steps.length)}`
+    ? `<ul class="rows">${shown
+        .map((step) => renderStepRow(step, task.status === 'active'))
+        .join('')}</ul>${remainder(task.steps.length)}`
     : `<p class="empty">Nothing recorded yet. Steps appear here as the agent works.</p>`
 
   const own =
@@ -343,8 +480,17 @@ function renderCompletedWork(task: TaskState): string {
              </div>
              <div class="field">
                <label for="step-evidence">Evidence <span class="muted">(optional)</span></label>
-               <input id="step-evidence" type="text" autocomplete="off"
-                      placeholder="Paste the command output, a diff, or a link" />
+               <textarea id="step-evidence" rows="5" autocomplete="off" spellcheck="false"
+                         placeholder="Paste the command output, a diff, or a link"></textarea>
+             </div>
+             <div class="field">
+               <label for="step-kind">What that evidence is</label>
+               <select id="step-kind">
+                 ${EVIDENCE_KINDS.map(
+                   (kind) =>
+                     `<option value="${kind}">${escapeHtml(evidenceKindLabel(kind))}</option>`,
+                 ).join('')}
+               </select>
              </div>
              <div class="actions">
                <button type="submit" class="btn btn--primary">Record it</button>
@@ -509,9 +655,9 @@ function renderSearchResults(task: TaskState | null): string {
       <h2 id="search-title" class="card__title">
         ${here.length + elsewhere.length} ${plural(here.length + elsewhere.length, 'match', 'matches')} for “${escapeHtml(q)}”
       </h2>
-      <h3>In this task</h3>
+      <h3>In this task <span class="muted">(${here.length})</span></h3>
       ${hereBody}
-      <h3>Other tasks</h3>
+      <h3>Other tasks <span class="muted">(${elsewhere.length})</span></h3>
       ${elsewhereBody}
     </section>`
 }
@@ -559,12 +705,155 @@ function renderSwitcher(task: TaskState): string {
     </details>`
 }
 
+function renderAway(task: TaskState): string {
+  const since = awaySince
+  if (since === null || since >= task.version) return ''
+
+  const lines = describeHistory(task.audit.filter((e) => e.versionAfter > since))
+  if (lines.length === 0) return ''
+
+  const shown = lines.slice(0, 8)
+  const rows = shown
+    .map(
+      (l) => `<li class="row">
+          <span class="chip chip--${l.who === 'You' ? 'human' : 'agent'}">${escapeHtml(l.who)}</span>
+          <span class="row__text">
+            <strong>${escapeHtml(l.what)}</strong>
+            ${l.detail ? `<span class="muted"> — ${escapeHtml(l.detail)}</span>` : ''}
+          </span>
+        </li>`,
+    )
+    .join('')
+
+  return `<section class="card card--away" aria-labelledby="away-title">
+      <h2 id="away-title" class="card__title">While you were away</h2>
+      <p class="muted">
+        ${lines.length} ${plural(lines.length, 'write', 'writes')} since you last had this
+        page open, at v${since}.
+      </p>
+      <ul class="rows">${rows}</ul>
+      ${
+        lines.length > shown.length
+          ? `<p class="muted">${lines.length - shown.length} older still, in the history below.</p>`
+          : ''
+      }
+      <div class="actions">
+        <button type="button" id="seen" class="btn btn--primary">Got it</button>
+      </div>
+    </section>`
+}
+
+function renderWaiting(task: TaskState): string {
+  const open = openQuestions(task)
+  const answered = answeredQuestions(task)
+  if (open.length === 0 && answered.length === 0) return ''
+
+  const openRows = open
+    .map((q) => {
+      if (answering === q.id) {
+        return `<li class="review">
+            <p class="row__text"><strong>${escapeHtml(q.question)}</strong></p>
+            <form id="form-answer" class="form" novalidate>
+              <div class="field">
+                <label for="answer-text">Your answer</label>
+                <textarea id="answer-text" rows="3" autocomplete="off"
+                          placeholder="Answer in your own words — the next conversation reads this"></textarea>
+              </div>
+              <div class="actions">
+                <button type="submit" class="btn btn--primary">Answer it</button>
+                <button type="button" id="cancel-answer" class="btn">Cancel</button>
+              </div>
+            </form>
+          </li>`
+      }
+      return `<li class="review">
+          <div class="row">
+            <span class="chip chip--agent">asked by ${q.source === 'human' ? 'you' : 'an agent'}</span>
+            <span class="row__text">
+              <strong>${escapeHtml(q.question)}</strong>
+              <span class="muted"> — ${escapeHtml(q.why)}</span>
+            </span>
+            ${
+              task.status === 'active'
+                ? `<button type="button" class="btn btn--primary" data-answer="${escapeHtml(q.id)}"
+                           aria-label="Answer: ${escapeHtml(q.question)}">Answer</button>`
+                : ''
+            }
+          </div>
+        </li>`
+    })
+    .join('')
+
+  const answeredRows = answered
+    .slice(-3)
+    .map(
+      (q) => `<li class="row">
+          <span class="chip chip--human">answered</span>
+          <span class="row__text">
+            <strong>${escapeHtml(q.question)}</strong>
+            <span class="muted"> — ${escapeHtml(q.answer ?? '')}</span>
+          </span>
+        </li>`,
+    )
+    .join('')
+
+  return `<section class="card${open.length > 0 ? ' card--waiting' : ''}" aria-labelledby="waiting-title">
+      <h2 id="waiting-title" class="card__title">Waiting on you</h2>
+      ${
+        open.length > 0
+          ? `<p class="muted">
+               An agent stopped rather than guess. Every later conversation sees these
+               until you answer.
+             </p>
+             <ul class="rows">${openRows}</ul>`
+          : ''
+      }
+      ${answeredRows ? `<h3>Already answered</h3><ul class="rows">${answeredRows}</ul>` : ''}
+    </section>`
+}
+
 function renderHandoff(task: TaskState): string {
-  if (task.status !== 'active') return ''
+  const undo = undoable(task)
+  const undoButton = undo
+    ? `<button type="button" id="undo" class="btn btn--quiet"
+               aria-label="Undo: you ${escapeHtml(undo)}">Undo that</button>
+       <span class="muted">You ${escapeHtml(undo)}.</span>`
+    : ''
+
+  if (task.status !== 'active') {
+    return undoButton ? `<p class="handoff">${undoButton}</p>` : ''
+  }
+
   return `<p class="handoff">
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
+      ${undoButton}
     </p>`
+}
+
+const KIND_HINTS: Record<SecretKind, { name: string; purpose: string }> = {
+  api_key: { name: 'gemini-api-key', purpose: 'Calls the Gemini API from the ingestion script' },
+  token: { name: 'github-token', purpose: 'Opens pull requests on the release repository' },
+  password: { name: 'smtp-password', purpose: 'Sends the nightly report over SMTP' },
+  database_url: { name: 'staging-db-url', purpose: 'Read-only replica used by the migration run' },
+  webhook_url: { name: 'slack-webhook', purpose: 'Posts build results to the team channel' },
+  private_key: { name: 'deploy-signing-key', purpose: 'Signs the deploy bundle' },
+  certificate: { name: 'client-cert', purpose: 'Authenticates to the partner API over mTLS' },
+  other: { name: 'shared-secret', purpose: 'What this is for, in one line' },
+}
+
+function kindHints(kind: SecretKind): { name: string; purpose: string } {
+  return KIND_HINTS[kind]
+}
+
+function newSecretKind(): SecretKind {
+  const draft = drafts['new-secret-kind'] as SecretKind
+  return SECRET_KINDS.includes(draft) ? draft : 'api_key'
+}
+
+function editSecretKind(): SecretKind {
+  const draft = drafts['edit-secret-kind'] as SecretKind
+  return SECRET_KINDS.includes(draft) ? draft : 'other'
 }
 
 function renderCredentials(task: TaskState): string {
@@ -572,15 +861,36 @@ function renderCredentials(task: TaskState): string {
     .map((secret) => {
       const shown =
         revealed && revealed.id === secret.id
-          ? `<pre data-revealed="${escapeHtml(secret.id)}">${escapeHtml(revealed.value)}</pre>`
+          ? `<pre data-revealed="${escapeHtml(secret.id)}">${escapeHtml(revealed.value)}</pre>
+             <p class="muted">Hidden again in under a minute.</p>`
           : ''
+
+      if (editingIs('secret', secret.id)) {
+        return `<li class="review">
+            <div class="field">
+              <label for="edit-secret-kind">What kind of secret</label>
+              <select id="edit-secret-kind">
+                ${SECRET_KINDS.map(
+                  (kind) =>
+                    `<option value="${kind}"${kind === editSecretKind() ? ' selected' : ''}>${escapeHtml(
+                      secretKindLabel(kind),
+                    )}</option>`,
+                ).join('')}
+              </select>
+            </div>
+            ${editForm('Name the agent will use', 'What it is for')}
+          </li>`
+      }
+
       return `<li class="review">
         <div class="row">
-          <span class="chip chip--human">sealed</span>
+          <span class="chip chip--human">${escapeHtml(secretKindLabel(secret.kind))}</span>
           <span class="row__text">
             <code>\${${escapeHtml(secret.name)}}</code>
             <span class="muted"> — ${escapeHtml(secret.purpose)}</span>
           </span>
+          <button type="button" class="btn btn--quiet" data-edit-secret="${escapeHtml(secret.id)}"
+                  aria-label="Correct the name or purpose of ${escapeHtml(secret.name)}">Correct</button>
           <button type="button" class="btn" data-reveal="${escapeHtml(secret.id)}"
                   aria-label="Reveal the value of ${escapeHtml(secret.name)}">Reveal</button>
           <button type="button" class="btn btn--danger" data-forget="${escapeHtml(secret.id)}"
@@ -595,17 +905,31 @@ function renderCredentials(task: TaskState): string {
     task.status === 'active'
       ? `<form id="form-secret" class="form" novalidate autocomplete="off">
            <div class="field">
+             <label for="new-secret-kind">What kind of secret</label>
+             <select id="new-secret-kind">
+               ${SECRET_KINDS.map(
+                 (kind) => `<option value="${kind}">${escapeHtml(secretKindLabel(kind))}</option>`,
+               ).join('')}
+             </select>
+           </div>
+           <div class="field">
              <label for="new-secret-name">Name the agent will use</label>
-             <input id="new-secret-name" type="text" autocomplete="off" placeholder="gemini-api-key" />
+             <input id="new-secret-name" type="text" autocomplete="off"
+                    placeholder="${escapeHtml(kindHints(newSecretKind()).name)}" />
            </div>
            <div class="field">
              <label for="new-secret-purpose">What it is for</label>
              <input id="new-secret-purpose" type="text" autocomplete="off"
-                    placeholder="Calls the Gemini API from the ingestion script" />
+                    placeholder="${escapeHtml(kindHints(newSecretKind()).purpose)}" />
            </div>
            <div class="field">
              <label for="new-secret-value">Value</label>
-             <input id="new-secret-value" type="password" autocomplete="new-password" spellcheck="false" />
+             ${
+               MULTILINE_KINDS.includes(newSecretKind())
+                 ? `<textarea id="new-secret-value" rows="5" autocomplete="off" spellcheck="false"
+                              placeholder="Paste it whole, every line"></textarea>`
+                 : `<input id="new-secret-value" type="password" autocomplete="new-password" spellcheck="false" />`
+             }
            </div>
            <div class="field">
              <label for="new-secret-passphrase">Passphrase that seals it</label>
@@ -723,8 +1047,27 @@ function lastRefusal(task: TaskState): string | null {
   return `An agent write was refused (${refused.operation}). Nothing changed.`
 }
 
+function readBeforeWrite(total: number, blindWrites: number, sawRead: boolean): string {
+  if (total === 0) return ''
+
+  if (blindWrites > 0) {
+    return `<p class="notice notice--stale" role="status">
+        ${blindWrites} ${plural(blindWrites, 'write', 'writes')} arrived
+        <strong>without reading this page first</strong>. That agent was working from
+        its own memory, not from this log — check what it recorded.
+      </p>`
+  }
+
+  if (!sawRead) return ''
+
+  return `<p class="muted">
+      Every write so far arrived <strong>after reading this page</strong>. Counted
+      since this page loaded, from the calls below.
+    </p>`
+}
+
 function renderActivity(task: TaskState): string {
-  const { total, refused, recents } = getWitness()
+  const { total, refused, recents, blindWrites, sawRead } = getWitness()
   const alert = lastRefusal(task)
 
   const rows = [...recents]
@@ -743,6 +1086,7 @@ function renderActivity(task: TaskState): string {
       <h2 id="activity-title" class="card__title">Activity</h2>
       ${alert ? `<div class="notice notice--stale" role="status"><p>${escapeHtml(alert)}</p></div>` : ''}
       <p class="muted">${total} tool ${plural(total, 'call', 'calls')} so far, ${refused} refused.</p>
+      ${readBeforeWrite(total, blindWrites, sawRead)}
       ${rows ? `<ul class="calls">${rows}</ul>` : '<p class="empty">No agent has called a tool yet.</p>'}
     </section>`
 }
@@ -814,7 +1158,9 @@ function renderTechnical(task: TaskState | null): string {
           task
             ? `<p class="mono">Task ID: ${escapeHtml(task.id)} · version ${task.version}</p>
                <h3>What <code>resume_task</code> returns</h3>
-               <pre>${escapeHtml(renderTaskState(task))}</pre>`
+               <pre>${escapeHtml(
+                 renderTaskState(task, { url: taskUrl(task.id), credentials }),
+               )}</pre>`
             : ''
         }
         <div class="actions">
@@ -849,7 +1195,9 @@ function renderDashboard(task: TaskState): string {
     ${alertBlock()}
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
+    ${searching() ? '' : renderAway(task)}
     ${searching() ? '' : renderNext(task)}
+    ${searching() ? '' : renderWaiting(task)}
     ${searching() ? '' : renderReadyForAI(task)}
     ${searching() ? '' : renderCompletedWork(task)}
     ${searching() ? '' : renderRules(task)}
@@ -949,7 +1297,7 @@ function bindCreation(): void {
       .then(
         () => {
           creating = false
-          for (const key of Object.keys(drafts)) drafts[key] = ''
+          resetDrafts()
           renderNow()
           document.querySelector<HTMLElement>('.page-head h1')?.focus()
         },
@@ -993,6 +1341,16 @@ function bindSupervision(): void {
     })
   }
 
+  const editKind = document.querySelector<HTMLSelectElement>('#edit-secret-kind')
+  if (editKind) {
+    editKind.value = editSecretKind()
+    for (const event of ['input', 'change']) {
+      editKind.addEventListener(event, () => {
+        drafts['edit-secret-kind'] = editKind.value
+      })
+    }
+  }
+
   document.querySelector('#cancel-edit')?.addEventListener('click', stopEditing)
 
   document.querySelector<HTMLFormElement>('#edit-form')?.addEventListener('submit', (e) => {
@@ -1001,6 +1359,27 @@ function bindSupervision(): void {
     if (!current) return
     const value = drafts['edit-value'].trim()
     const reason = drafts['edit-reason'].trim()
+
+    if (current.kind === 'secret') {
+      const task = store.currentTask()
+      if (!task) return
+      humanError = null
+      void editSecret(current.id, {
+        name: value,
+        purpose: reason,
+        kind: editSecretKind(),
+      }).then(
+        () => {
+          stopEditing()
+          refreshCredentials(task.id)
+        },
+        (error: unknown) => {
+          humanError = humanMessage(error, 'Correcting the credential')
+          scheduleRender()
+        },
+      )
+      return
+    }
 
     const mutate: Parameters<typeof store.mutate>[0] =
       current.kind === 'title'
@@ -1014,6 +1393,106 @@ function bindSupervision(): void {
     humanAction('Saving the change', mutate, stopEditing)
   })
 
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-answer]')) {
+    b.addEventListener('click', () => {
+      answering = b.dataset.answer!
+      attaching = null
+      editing = null
+      humanError = null
+      drafts['answer-text'] = ''
+      renderNow()
+      document.querySelector<HTMLTextAreaElement>('#answer-text')?.focus()
+    })
+  }
+
+  document.querySelector('#cancel-answer')?.addEventListener('click', () => {
+    answering = null
+    drafts['answer-text'] = ''
+    renderNow()
+  })
+
+  document.querySelector<HTMLFormElement>('#form-answer')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const id = answering
+    const answer = drafts['answer-text'].trim()
+    if (!id || !answer) return
+
+    humanAction(
+      'Answering the question',
+      (state) => answerQuestion(state, id, answer),
+      () => {
+        answering = null
+        drafts['answer-text'] = ''
+        renderNow()
+      },
+    )
+  })
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-attach]')) {
+    b.addEventListener('click', () => {
+      attaching = b.dataset.attach!
+      answering = null
+      editing = null
+      loggingStep = false
+      humanError = null
+      drafts['attach-content'] = ''
+      drafts['attach-kind'] = 'command_output'
+      attachKindChosen = false
+      renderNow()
+      document.querySelector<HTMLTextAreaElement>('#attach-content')?.focus()
+    })
+  }
+
+  document.querySelector('#cancel-attach')?.addEventListener('click', () => {
+    attaching = null
+    drafts['attach-content'] = ''
+    renderNow()
+  })
+
+  const attachKind = document.querySelector<HTMLSelectElement>('#attach-kind')
+  if (attachKind) {
+    attachKind.value = drafts['attach-kind']
+    for (const event of ['input', 'change']) {
+      attachKind.addEventListener(event, () => {
+        attachKindChosen = true
+        drafts['attach-kind'] = attachKind.value
+      })
+    }
+    document.querySelector('#attach-content')?.addEventListener('input', () => {
+      if (attachKindChosen) return
+      const guessed = guessEvidenceKind(drafts['attach-content'])
+      drafts['attach-kind'] = guessed
+      attachKind.value = guessed
+    })
+  }
+
+  document.querySelector<HTMLFormElement>('#form-attach')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const stepId = attaching
+    const content = drafts['attach-content'].trim()
+    if (!stepId || !content) return
+    const kind = EVIDENCE_KINDS.includes(drafts['attach-kind'] as EvidenceKind)
+      ? (drafts['attach-kind'] as EvidenceKind)
+      : guessEvidenceKind(content)
+
+    humanAction(
+      'Attaching the evidence',
+      (state) =>
+        attachEvidence(
+          state,
+          { stepId, evidence: { kind, content }, basedOnVersion: null },
+          'human',
+        ),
+      () => {
+        attaching = null
+        drafts['attach-content'] = ''
+        drafts['attach-kind'] = 'command_output'
+        attachKindChosen = false
+        renderNow()
+      },
+    )
+  })
+
   document.querySelector('#log-step')?.addEventListener('click', () => {
     loggingStep = true
     editing = null
@@ -1025,15 +1504,33 @@ function bindSupervision(): void {
   document.querySelector('#cancel-step')?.addEventListener('click', () => {
     loggingStep = false
     humanError = null
-    for (const key of ['step-action', 'step-result', 'step-evidence']) drafts[key] = ''
+    resetStepDraft()
     renderNow()
   })
+
+  const kindField = document.querySelector<HTMLSelectElement>('#step-kind')
+  if (kindField) {
+    kindField.value = drafts['step-kind']
+    for (const event of ['input', 'change']) {
+      kindField.addEventListener(event, () => {
+        kindChosen = true
+        drafts['step-kind'] = kindField.value
+      })
+    }
+    document.querySelector('#step-evidence')?.addEventListener('input', () => {
+      if (kindChosen) return
+      const guessed = guessEvidenceKind(drafts['step-evidence'])
+      drafts['step-kind'] = guessed
+      kindField.value = guessed
+    })
+  }
 
   document.querySelector<HTMLFormElement>('#form-step')?.addEventListener('submit', (e) => {
     e.preventDefault()
     const action = drafts['step-action'].trim()
     const result = drafts['step-result'].trim()
     const content = drafts['step-evidence'].trim()
+    const kind = chosenEvidenceKind(content)
 
     humanAction(
       'Recording the step',
@@ -1043,14 +1540,14 @@ function bindSupervision(): void {
           {
             action,
             result,
-            evidence: content ? { kind: 'command_output', content } : null,
+            evidence: content ? { kind, content } : null,
             basedOnVersion: null,
           },
           'human',
         ),
       () => {
         loggingStep = false
-        for (const key of ['step-action', 'step-result', 'step-evidence']) drafts[key] = ''
+        resetStepDraft()
         renderNow()
       },
     )
@@ -1119,11 +1616,6 @@ function bindSupervision(): void {
   const searchField = document.querySelector<HTMLInputElement>('#search')
   searchField?.addEventListener('input', () => scheduleRender())
   searchField?.addEventListener('search', () => scheduleRender())
-  searchField?.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return
-    drafts['search'] = ''
-    renderNow()
-  })
   document.querySelector<HTMLFormElement>('#form-search')?.addEventListener('submit', (e) => {
     e.preventDefault()
     renderNow()
@@ -1169,7 +1661,7 @@ function bindSupervision(): void {
 
   document.querySelector('#new-task')?.addEventListener('click', () => {
     creating = true
-    notice = null
+    clearNotice()
     humanError = null
     renderNow()
     document.querySelector<HTMLInputElement>('#new-title')?.focus()
@@ -1177,7 +1669,7 @@ function bindSupervision(): void {
 
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open]')) {
     button.addEventListener('click', () => {
-      notice = null
+      clearNotice()
       void store.openTask(button.dataset.open!).catch((error: unknown) => {
         humanError = humanMessage(error, 'Opening the task')
         scheduleRender()
@@ -1191,7 +1683,7 @@ function bindSupervision(): void {
     const file = fileField.files?.[0]
     if (!file) return
     humanError = null
-    notice = null
+    clearNotice()
     void file
       .text()
       .then((text) => store.importTasks(parseExport(text)))
@@ -1201,7 +1693,9 @@ function bindSupervision(): void {
           if (outcome.imported.length) parts.push(`${outcome.imported.length} imported`)
           if (outcome.copied.length) parts.push(`${outcome.copied.length} added as a copy`)
           if (outcome.skipped.length) parts.push(`${outcome.skipped.length} already here`)
-          notice = `${parts.join(', ')}. Credentials are never in an export, so none were restored.`
+          showNotice(
+            `${parts.join(', ')}. Credentials are never in an export, so none were restored.`,
+          )
           allTasksFor = ''
           scheduleRender()
         },
@@ -1215,6 +1709,18 @@ function bindSupervision(): void {
       })
   })
 
+  document.querySelector('#seen')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    markSeen(task.id, task.version)
+    awaySince = null
+    renderNow()
+  })
+
+  document.querySelector('#undo')?.addEventListener('click', () => {
+    humanAction('Undoing that', (state) => undoLastSupervision(state))
+  })
+
   document.querySelector('#copy-handoff')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (!task) return
@@ -1222,8 +1728,7 @@ function bindSupervision(): void {
     humanError = null
     void navigator.clipboard?.writeText(text).then(
       () => {
-        notice = 'Copied. Paste it to your agent.'
-        scheduleRender()
+        showNotice('Copied. Paste it to your agent.')
       },
       () => {
         humanError = 'The browser refused clipboard access. Copy the address from the bar instead.'
@@ -1232,6 +1737,18 @@ function bindSupervision(): void {
     )
   })
 
+  const secretKind = document.querySelector<HTMLSelectElement>('#new-secret-kind')
+  if (secretKind) {
+    secretKind.value = newSecretKind()
+    for (const event of ['input', 'change']) {
+      secretKind.addEventListener(event, () => {
+        drafts['new-secret-kind'] = secretKind.value
+        renderNow()
+        document.querySelector<HTMLSelectElement>('#new-secret-kind')?.focus()
+      })
+    }
+  }
+
   document.querySelector<HTMLFormElement>('#form-secret')?.addEventListener('submit', (e) => {
     e.preventDefault()
     const task = store.currentTask()
@@ -1239,18 +1756,28 @@ function bindSupervision(): void {
 
     const name = drafts['new-secret-name'].trim()
     const purpose = drafts['new-secret-purpose'].trim()
-    const valueField = document.querySelector<HTMLInputElement>('#new-secret-value')
+    const valueField = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+      '#new-secret-value',
+    )
     const phraseField = document.querySelector<HTMLInputElement>('#new-secret-passphrase')
     const value = valueField?.value ?? ''
     const passphrase = phraseField?.value ?? ''
 
     humanError = null
-    void addSecret({ taskId: task.id, name, purpose, value, passphrase }).then(
+    void addSecret({
+      taskId: task.id,
+      name,
+      purpose,
+      kind: newSecretKind(),
+      value,
+      passphrase,
+    }).then(
       () => {
         if (valueField) valueField.value = ''
         if (phraseField) phraseField.value = ''
         drafts['new-secret-name'] = ''
         drafts['new-secret-purpose'] = ''
+        drafts['new-secret-kind'] = DEFAULT_DRAFTS['new-secret-kind']
         refreshCredentials(task.id)
       },
       (error: unknown) => {
@@ -1260,11 +1787,21 @@ function bindSupervision(): void {
     )
   })
 
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-edit-secret]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.editSecret!
+      const secret = credentials.find((c) => c.id === id)
+      if (!secret) return
+      drafts['edit-secret-kind'] = secret.kind
+      startEditing({ kind: 'secret', id }, secret.name, secret.purpose)
+    })
+  }
+
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-reveal]')) {
     button.addEventListener('click', () => {
       const id = button.dataset.reveal!
       if (revealed && revealed.id === id) {
-        revealed = null
+        hideRevealed()
         renderNow()
         return
       }
@@ -1275,9 +1812,10 @@ function bindSupervision(): void {
         (value) => {
           revealed = { id, value }
           renderNow()
+          hideRevealedLater()
         },
         (error: unknown) => {
-          revealed = null
+          hideRevealed()
           humanError =
             error instanceof WrongPassphraseError
               ? 'That passphrase does not open this credential.'
@@ -1297,7 +1835,7 @@ function bindSupervision(): void {
       if (!window.confirm(`Delete the credential ${secret?.name ?? ''}? This cannot be undone.`)) {
         return
       }
-      revealed = null
+      hideRevealed()
       void deleteSecret(id).then(
         () => refreshCredentials(task.id),
         (error: unknown) => {
@@ -1409,6 +1947,21 @@ function render(): void {
   if (!root) return
 
   const openTask = store.currentTask()
+
+  if (openTask && awayFor !== openTask.id) {
+    awayFor = openTask.id
+    // La première ouverture d'un cahier n'est pas une absence : on note la
+    // version courante sans rien annoncer.
+    const known = seenVersion(openTask.id)
+    awaySince = known === null ? null : known
+    if (known === null) markSeen(openTask.id, openTask.version)
+  }
+
+  // On ne marque « vu » que si l'onglet est réellement à l'écran. Un onglet en
+  // arrière-plan pendant qu'un agent travaille est exactement l'absence que ce
+  // digest doit rapporter.
+  if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
+
   const listKey = openTask ? `${openTask.id}:${openTask.version}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
   if ((openTask?.id ?? null) !== credentialsFor) {
@@ -1480,22 +2033,99 @@ function renderNow(): void {
   render()
 }
 
+function typingSomewhereElse(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.isContentEditable) return true
+  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+}
+
+function looking(): boolean {
+  return typeof document.visibilityState !== 'string' || document.visibilityState === 'visible'
+}
+
+function onVisibilityChange(): void {
+  if (!looking()) return
+  const task = store.currentTask()
+  if (task && awaySince === null) {
+    const known = seenVersion(task.id)
+    if (known !== null && known < task.version) awaySince = known
+  }
+  scheduleRender()
+}
+
+function closeOnEscape(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || event.ctrlKey || event.metaKey || event.altKey) return
+
+  if (creating) {
+    creating = false
+    humanError = null
+    event.preventDefault()
+    renderNow()
+    document.querySelector<HTMLButtonElement>('#new-task')?.focus()
+    return
+  }
+
+  // La recherche masque le tableau de bord : un formulaire resté ouvert
+  // dessous est invisible. On ferme ce qui est à l'écran, pas ce qui est en
+  // mémoire.
+  if (searching()) {
+    drafts['search'] = ''
+    event.preventDefault()
+    renderNow()
+    document.querySelector<HTMLInputElement>('#search')?.focus()
+    return
+  }
+
+  const openForm = editing !== null || loggingStep || answering !== null || attaching !== null
+  if (openForm) {
+    editing = null
+    loggingStep = false
+    answering = null
+    attaching = null
+    humanError = null
+    drafts['edit-value'] = ''
+    drafts['edit-reason'] = ''
+    drafts['answer-text'] = ''
+    resetStepDraft()
+    drafts['attach-content'] = ''
+    event.preventDefault()
+    renderNow()
+  }
+}
+
+function focusSearchOnSlash(event: KeyboardEvent): void {
+  if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return
+  if (typingSomewhereElse(event.target)) return
+
+  const field = document.querySelector<HTMLInputElement>('#search')
+  if (!field) return
+  event.preventDefault()
+  field.focus()
+  field.select()
+}
+
 export function mount(target: HTMLElement): () => void {
   root = target
-  for (const key of Object.keys(drafts)) drafts[key] = ''
+  resetDrafts()
+  kindChosen = false
+  attachKindChosen = false
   creating = false
   humanError = null
   lastAnnouncement = ''
   renderScheduled = false
   credentials = []
-  revealed = null
+  hideRevealed()
   credentialsFor = null
   allTasks = []
   allTasksFor = ''
-  notice = null
+  clearNotice()
   showAllHistory = false
+  awaySince = null
+  awayFor = null
   editing = null
   loggingStep = false
+  answering = null
+  attaching = null
   showArchived = false
 
   render()
@@ -1505,7 +2135,16 @@ export function mount(target: HTMLElement): () => void {
     store.subscribe(scheduleRender),
   ]
 
+  document.addEventListener('keydown', focusSearchOnSlash)
+  document.addEventListener('keydown', closeOnEscape)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+
   return () => {
+    document.removeEventListener('keydown', focusSearchOnSlash)
+    document.removeEventListener('keydown', closeOnEscape)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+    hideRevealed()
+    clearNotice()
     for (const off of subscriptions) off()
     if (pendingFrame !== null) {
       if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(pendingFrame)

@@ -4,7 +4,6 @@ const FIELDS: Record<string, string> = {
   rule: 'the rule',
   approach: 'the approach',
   reason: 'the reason',
-  next: 'the next action',
   title: 'the task title',
   summary: 'the summary',
   stepId: 'that step',
@@ -13,6 +12,19 @@ const FIELDS: Record<string, string> = {
   reviewedContent: 'the evidence shown',
   mutation_id: 'the write id',
   status: 'this task',
+  question: 'the question',
+  why: 'the reason it blocks you',
+  answer: 'your answer',
+  questionId: 'that question',
+  step_id: 'that step',
+  next: 'the next action',
+  name: 'the credential name',
+  purpose: 'what the credential is for',
+  kind: 'the kind',
+  value: 'the value',
+  passphrase: 'the passphrase',
+  query: 'the search term',
+  limit: 'the number of results',
 }
 
 export function humanReason(error: ValidationError): string {
@@ -23,6 +35,8 @@ export function humanReason(error: ValidationError): string {
       return `${field} cannot be empty.`
     case 'too-long':
       return `${field} is longer than ${error.max ?? 0} characters.`
+    case 'too-short':
+      return `${field} is too short.`
     case 'not-a-string':
       return `${field} has to be text.`
     case 'bad-version':
@@ -49,6 +63,10 @@ export function humanReason(error: ValidationError): string {
       return 'the evidence on screen no longer matches the one on file — read it again before approving.'
     case 'not-proposed':
       return 'that proposal has already been decided.'
+    case 'already-has-evidence':
+      return 'that step already carries evidence. Record a new step rather than replacing it.'
+    case 'already-answered':
+      return 'that question already has an answer. Reword the question instead of replacing it.'
   }
 }
 

@@ -550,3 +550,172 @@ sont corrélés et ne justifient aucun pourcentage. Ils établissent que la repr
 spontanée par le pont est réelle et reproductible, mais pas déterministe. Pour
 le protocole global, le point 13 est **MIXTE** ; la seule inconnue complète
 reste le retrait dynamique sous Chromium ≥ 153.
+
+## 28 août 2026 — `search_task`, huitième outil, contrôlé dans le navigateur
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, Linux, `--enable-features=WebMCP,WebMCPTesting`,
+build de production servi sur `http://localhost:5174`, pilotage par
+`chrome-devtools-mcp`.
+
+**Observé.**
+
+- `list_webmcp_tools` renvoie **huit** outils. `search_task` y figure avec
+  `annotations={"readOnly":true,"untrustedContent":true}` et le schéma attendu
+  (`query` requis, `minLength: 2`, `limit` borné à 12).
+- `search_task { query: "issuer" }` : `MATCHES 1 shown of 1 found`, l'étape
+  restituée avec son résultat, et la section à relire (`steps`) nommée.
+- `search_task { query: "gemini" }` sur un cahier portant deux identifiants
+  nommés `gemini-api-key` : **`NO MATCH`**. La recherche ne traverse pas le
+  coffre — ni les noms, ni a fortiori les valeurs.
+- `read_task_detail { section: "steps" }` après une étape consignée à la main
+  avec un rapport de tests collé : `evidence kind: test_report`, retours à la
+  ligne conservés.
+
+**Défauts trouvés par cette passe, tous dans le navigateur et non par les tests
+jsdom.**
+
+1. Le champ de preuve du formulaire humain était un `<input type="text">` :
+   coller une sortie de commande ou un diff en écrasait les retours à la ligne.
+2. La nature de la preuve était figée à `command_output` : un diff collé était
+   annoncé à l'agent comme une sortie de commande, par `read_task_detail`.
+3. Deux identifiants pouvaient porter le même nom, ce qui rend `${nom}`
+   ambigu — la seule chose que l'agent reçoit.
+4. Le message de succès (« Copied. Paste it to your agent. ») ne s'effaçait
+   jamais : il affirmait encore, dix minutes plus tard, qu'une action venait
+   d'avoir lieu.
+5. `mount()` remettait **tous** les brouillons à la chaîne vide, y compris celui
+   qui portait une valeur par défaut, ce qui rendait une écriture invalide.
+
+Chacun a été reproduit par un test rouge avant correction. Les quatre premiers
+sont vérifiés à nouveau dans le navigateur après correctif.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste, comme lors des passes précédentes.
+
+## 28 août 2026 — onze outils, et un canal de l'agent vers l'humain
+
+**Poste.** Même configuration : Brave 151.1.93.137 / Chromium 151, build de
+production sur `http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+
+**Observé.**
+
+- `list_webmcp_tools` renvoie **onze** outils. Les trois nouveaux —
+  `ask_human`, `attach_evidence`, `set_next_action` — portent les schémas
+  attendus et `readOnly: false`.
+- Boucle complète de `ask_human` : l'outil ouvre la question (v15 → v16), la
+  carte « Waiting on you » apparaît entre NEXT et le travail, la réponse saisie
+  sur la page ferme la question (v17), et `resume_task` restitue
+  `ANSWERED BY THE HUMAN` avec la réponse. C'est la première fois qu'un agent
+  peut laisser autre chose qu'une proposition à l'humain.
+- `attach_evidence` sur une étape restée `claimed` : preuve jointe, retours à la
+  ligne conservés, `confidence` passée à `evidence` — jamais à `human_verified`.
+  Un second appel sur la même étape est **refusé**, la première preuve intacte.
+- `set_next_action` change NEXT sans créer d'étape.
+- Coffre : une clé PEM de trois lignes scellée puis révélée **octet pour
+  octet**, annoncée « Private key ». Les identifiants scellés avant l'existence
+  des natures se lisent « Other » et se reclassent depuis la page.
+
+**Défauts trouvés par cette passe.**
+
+1. `${name}` écrit dans un gabarit TypeScript de `descriptions.ts` était
+   **interpolé par JavaScript** : la variable globale `name` vaut la chaîne vide
+   dans un navigateur, et tous les agents recevaient « the name to write as ,
+   and what it is for ». Rien ne plantait. Un test compare désormais chaque
+   description livrée à ce motif.
+2. La classe `card--waiting` échappait au garde-fou CSS : l'extraction ignorait
+   tout attribut `class` contenant un `$`, donc toute classe écrite à côté d'une
+   interpolation. Le garde-fou lit maintenant les marqueurs BEM où qu'ils
+   soient écrits — et il a trouvé la classe manquante.
+3. Le sélecteur de nature du formulaire de correction n'était relié à rien :
+   reclasser un identifiant gardait silencieusement l'ancienne nature.
+4. Un test de tableau de bord passait seul et échouait en suite complète : il
+   attendait un nombre fixe de tours de boucle au lieu d'attendre l'écriture.
+   Trois exécutions complètes consécutives depuis le correctif, toutes vertes.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.
+
+## 28 août 2026 — douze outils, et le témoin qui répond à la question du produit
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+
+**Observé.**
+
+- `what_changed` sur une tâche que l'humain a modifiée pendant le travail de
+  l'agent : trois écritures depuis v15, séparées en **CHANGES WHAT YOU MAY DO**
+  (règle ajoutée, règle levée) et **ALSO HAPPENED** (étape d'un autre agent).
+  Réponse mesurée à ~90 jetons, contre ~400 pour `resume_task`.
+- Le refus d'état périmé nomme désormais la sortie exacte :
+  `Call what_changed with since_version: 15`. Vérifié dans le navigateur.
+- Témoin : une écriture arrivée sans lecture préalable est signalée en clair
+  (« 1 write arrived without reading this page first »). Après un `resume_task`
+  suivi d'un `log_step`, la page dit « Every write so far arrived after reading
+  this page ». Les deux états relevés sur le vrai navigateur.
+- Échap ferme ce qui est à l'écran ; le surlignage marque les quatre
+  occurrences d'un même terme dans une règle, et non la première seule.
+
+**Défauts trouvés par cette passe.**
+
+1. Le témoin comptait une écriture **refusée** comme une écriture arrivée sans
+   lecture, et invitait à « vérifier ce qu'elle a consigné » — alors qu'un refus
+   n'a rien consigné. Seules les écritures abouties sont comptées.
+2. Le panneau technique s'intitule « What `resume_task` returns » mais rendait
+   l'état **sans l'URL ni les identifiants** : il montrait autre chose que ce que
+   l'agent reçoit. Le test compare maintenant le panneau à la sortie réelle de
+   l'outil.
+3. Le contrôle d'exécution des versions acceptait `0` alors que tous les schémas
+   déclarent `minimum: 1`. Les deux sont alignés.
+4. Les quatre opérations ajoutées au lot précédent n'avaient pas de verbe dans
+   l'historique, ni d'étiquette de champ dans les messages d'erreur : l'écran
+   affichait `ask_human` et « le champ “questionId” ».
+5. La recherche ne couvrait ni les questions ni les réponses — c'est-à-dire
+   souvent la seule trace d'une décision humaine.
+6. Une ligne de plus dans WRITE PROTOCOL faisait sortir `resume_task` du budget
+   de 400 jetons et coûtait un nom d'identifiant à chaque appel. Condensée.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.
+
+## 28 août 2026 — annuler une décision, et le digest d'absence
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+
+**Observé.**
+
+- Aucun bouton **Annuler** sur un cahier fraîchement ouvert. Après avoir levé
+  une règle, il apparaît et se nomme :
+  `Undo: you lifted the rule “Never modify the database schema”`. Un clic
+  rétablit la règle et le bouton disparaît.
+- `what_changed` rend l'annulation en phrase, du côté agent :
+  `v17 The human undid their own last decision: lifted the rule “…”`, rangée
+  sous **CHANGES WHAT YOU MAY DO** — rétablir une règle change bien ce que
+  l'agent a le droit de faire.
+- Digest d'absence : onglet passé à `hidden`, écriture d'un agent par WebMCP,
+  retour sur l'onglet. La carte **While you were away** apparaît en tête :
+  « 1 write since you last had this page open, at v17 ». Le bouton **Got it**
+  la referme et elle ne revient pas.
+
+**Décisions de conception prises pendant cette passe.**
+
+1. L'annulation ne remonte **jamais au-delà d'une écriture d'agent**, et
+   seulement tant que la décision est encore en vigueur. Sans cela, ouvrir un
+   cahier de la semaine dernière aurait proposé de révoquer une décision
+   ancienne d'un clic, et annuler deux fois aurait rejoué la même action à
+   l'envers.
+2. La page ne se marque « vue » que si l'onglet est **réellement à l'écran**.
+   Sans cette condition le digest ne se serait jamais déclenché : un onglet en
+   arrière-plan continue de rendre à chaque écriture d'agent.
+3. `AuditEntry` porte désormais `targetId` — sans lui, une entrée ne pouvait pas
+   désigner ce qu'elle avait touché, et l'inversion aurait dû relire le texte
+   de la règle dans le détail. Schéma passé à v6, normalisation en place pour
+   les cahiers écrits avant.
+
+**Défaut trouvé.** `undo` n'avait de verbe ni dans l'historique de la page ni
+dans `what_changed` : l'écran affichait « ran undo ». Même classe d'oubli que
+lors du lot précédent ; le test couvre maintenant les opérations réservées à
+l'humain.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

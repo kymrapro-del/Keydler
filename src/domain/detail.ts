@@ -1,5 +1,14 @@
 import { ValidationError } from './errors'
-import type { AuditEntry, Constraint, Decision, Rejection, Step, TaskState } from './types'
+import { referenceSyntax, secretKindLabel, type SecretName } from './secret'
+import type {
+  AuditEntry,
+  Constraint,
+  Decision,
+  OpenQuestion,
+  Rejection,
+  Step,
+  TaskState,
+} from './types'
 
 export const SECTIONS = [
   'steps',
@@ -7,6 +16,8 @@ export const SECTIONS = [
   'rejections',
   'constraints',
   'proposals',
+  'credentials',
+  'questions',
   'audit',
 ] as const
 
@@ -123,6 +134,24 @@ function renderConstraint(c: Constraint): string[] {
   ]
 }
 
+function renderQuestion(q: OpenQuestion): string[] {
+  return [
+    `- id: ${q.id}`,
+    `  standing: ${q.answer === null ? 'open — nobody has answered' : 'answered'} · asked by ${q.source} at v${q.addedAtVersion}`,
+    `  question: ${q.question}`,
+    `  why it matters: ${q.why}`,
+    ...(q.answer === null ? [] : [`  answer: ${q.answer}`]),
+  ]
+}
+
+function renderCredential(secret: SecretName): string[] {
+  return [
+    `- ${referenceSyntax(secret.name)}`,
+    `  kind: ${secretKindLabel(secret.kind)}`,
+    `  for: ${secret.purpose}`,
+  ]
+}
+
 function renderAudit(a: AuditEntry): string[] {
   const versions =
     a.versionBefore === a.versionAfter
@@ -134,7 +163,7 @@ function renderAudit(a: AuditEntry): string[] {
 
 type Entry = { id: string; lines: (full: boolean) => string[] }
 
-function collect(state: TaskState, section: Section): Entry[] {
+function collect(state: TaskState, section: Section, credentials: readonly SecretName[]): Entry[] {
   switch (section) {
     case 'steps':
       return state.steps.map((s) => ({ id: s.id, lines: (full) => renderStep(s, full) }))
@@ -153,13 +182,21 @@ function collect(state: TaskState, section: Section): Entry[] {
           .filter((r) => r.standing === 'proposed')
           .map((r) => ({ id: r.id, lines: () => renderRejection(r) })),
       ]
+    case 'credentials':
+      return credentials.map((c) => ({ id: c.id, lines: () => renderCredential(c) }))
+    case 'questions':
+      return state.questions.map((q) => ({ id: q.id, lines: () => renderQuestion(q) }))
     case 'audit':
       return state.audit.map((a) => ({ id: a.id, lines: () => renderAudit(a) }))
   }
 }
 
-export function renderDetail(state: TaskState, query: Required<DetailQuery>): string {
-  const entries = collect(state, query.section)
+export function renderDetail(
+  state: TaskState,
+  query: Required<DetailQuery>,
+  credentials: readonly SecretName[] = [],
+): string {
+  const entries = collect(state, query.section, credentials)
 
   if (query.id !== null) {
     const found = entries.find((e) => e.id === query.id)
@@ -207,5 +244,10 @@ export function renderDetail(state: TaskState, query: Required<DetailQuery>): st
     ].join('\n')
   }
 
-  return [...header, ...page.flatMap((e) => e.lines(false))].join('\n')
+  const footer =
+    query.section === 'credentials'
+      ? ['', 'Write these as ${name}; no tool here returns a value.']
+      : []
+
+  return [...header, ...page.flatMap((e) => e.lines(false)), ...footer].join('\n')
 }

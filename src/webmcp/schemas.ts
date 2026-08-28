@@ -1,6 +1,8 @@
 import { EVIDENCE_KINDS } from '../domain/types'
 import { MAX_EVIDENCE_LENGTH, MAX_FIELD_LENGTH } from '../domain/validate'
 import { DEFAULT_LIMIT, MAX_LIMIT, SECTIONS } from '../domain/detail'
+import { MIN_QUERY } from '../domain/search'
+import { MAX_MATCHES } from '../domain/searchResult'
 import { BASED_ON_VERSION_DESCRIPTION, MUTATION_ID_DESCRIPTION } from './descriptions'
 
 function boundedText(description: string, maxLength: number = MAX_FIELD_LENGTH) {
@@ -59,6 +61,43 @@ export function writeSchema(
   }
 }
 
+export const SEARCH_TASK_SCHEMA = {
+  type: 'object',
+  properties: {
+    query: {
+      type: 'string',
+      minLength: MIN_QUERY,
+      maxLength: 200,
+      description:
+        'The word or phrase to look for. Accents and case are ignored. ' +
+        'One term works better than a sentence.',
+    },
+    limit: {
+      type: 'integer',
+      minimum: 1,
+      maximum: MAX_MATCHES,
+      description: `How many matches to return. Defaults to ${MAX_MATCHES}.`,
+    },
+  },
+  required: ['query'],
+  additionalProperties: false,
+} as const
+
+export const WHAT_CHANGED_SCHEMA = {
+  type: 'object',
+  properties: {
+    since_version: {
+      type: 'integer',
+      minimum: 1,
+      description:
+        'The version you last read, from resume_task or from the reply to your last write. ' +
+        'Everything written after it is listed.',
+    },
+  },
+  required: ['since_version'],
+  additionalProperties: false,
+} as const
+
 export const LOG_STEP_SCHEMA = writeSchema(
   {
     action: boundedText('What was done, in one line.'),
@@ -92,6 +131,32 @@ export const ADD_DECISION_SCHEMA = writeSchema(
   ['choice', 'rationale'],
 )
 
+export const ASK_HUMAN_SCHEMA = writeSchema(
+  {
+    question: boundedText('The question, asked so a human can answer it in one line.', 600),
+    why: boundedText('What it blocks, and why you cannot settle it yourself.', 600),
+  },
+  ['question', 'why'],
+)
+
+export const ATTACH_EVIDENCE_SCHEMA = writeSchema(
+  {
+    step_id: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 200,
+      description: 'The id of the step, taken from read_task_detail on the "steps" section.',
+    },
+    evidence: evidenceSchema,
+  },
+  ['step_id', 'evidence'],
+)
+
+export const SET_NEXT_ACTION_SCHEMA = writeSchema(
+  { next: boundedText('The next action, in one sentence.', 400) },
+  ['next'],
+)
+
 export const COMPLETE_TASK_SCHEMA = writeSchema(
   {
     summary: boundedText('Final hand-over summary, written for someone who was not present.', 4000),
@@ -112,7 +177,7 @@ export const READ_DETAIL_SCHEMA = {
       type: 'string',
       enum: [...SECTIONS],
       description:
-        'Which part of the record to read. "proposals" holds agent-written rules and rejections that no human has approved.',
+        'Which part of the record to read. "proposals" holds agent-written rules and rejections that no human has approved. "credentials" lists sealed credentials by name, never by value.',
     },
     offset: {
       type: 'integer',

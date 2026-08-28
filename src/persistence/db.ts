@@ -42,7 +42,7 @@ export function getDb(): Promise<IDBPDatabase<WatchLogDB>> {
 
       blocked() {
         console.warn(
-          '[cahier-de-quart] Mise à jour du stockage bloquée : un autre onglet tient encore l’ancienne version. Fermez-le puis rechargez.',
+          '[watch-log] Storage upgrade blocked: another tab still holds the older version. Close it, then reload.',
         )
       },
 

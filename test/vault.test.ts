@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   addSecret,
+  editSecret,
+  DuplicateSecretNameError,
   deleteSecret,
   deleteSecretsForTask,
   listSecretNames,
@@ -10,7 +12,7 @@ import {
   WrongPassphraseError,
 } from '../src/persistence/vault'
 import { ValidationError } from '../src/domain/errors'
-import { MAX_SECRET_VALUE_LENGTH, referenceSyntax } from '../src/domain/secret'
+import { MAX_SECRET_VALUE_LENGTH, referenceSyntax, SECRET_KINDS } from '../src/domain/secret'
 import { getDb } from '../src/persistence/db'
 
 async function clearVault() {
@@ -71,6 +73,7 @@ describe('coffre', () => {
     expect(created).toEqual({
       id: expect.any(String),
       name: 'gemini-api-key',
+      kind: 'other',
       purpose: 'Calls the Gemini API from the ingestion script',
     })
     expect(JSON.stringify(created)).not.toContain('AIzaSyD-real-looking-key-value')
@@ -189,5 +192,124 @@ describe('validation', () => {
 describe('syntaxe de référence', () => {
   it('donne à l’agent la forme exacte à écrire', () => {
     expect(referenceSyntax('gemini-api-key')).toBe('${gemini-api-key}')
+  })
+})
+
+describe('un nom, un identifiant', () => {
+  const base = {
+    taskId: 'task-unique',
+    purpose: 'Gemini calls',
+    value: 'AIzaSy-first',
+    passphrase: 'correct horse battery',
+  }
+
+  it('refuse un second identifiant qui porterait le même nom', async () => {
+    await addSecret({ ...base, name: 'gemini-api-key' })
+
+    // ${gemini-api-key} est la seule chose que l'agent reçoit. Deux entrées de
+    // ce nom rendent la référence ambiguë : il ne peut plus désigner une valeur.
+    await expect(
+      addSecret({ ...base, name: 'gemini-api-key', value: 'AIzaSy-second' }),
+    ).rejects.toBeInstanceOf(DuplicateSecretNameError)
+
+    expect((await listSecretNames(base.taskId)).length).toBe(1)
+  })
+
+  it('compare les noms sans tenir compte de la casse', async () => {
+    await addSecret({ ...base, name: 'gemini-api-key' })
+    await expect(addSecret({ ...base, name: 'GEMINI-API-KEY' })).rejects.toBeInstanceOf(
+      DuplicateSecretNameError,
+    )
+  })
+
+  it('laisse le même nom vivre dans un autre cahier', async () => {
+    await addSecret({ ...base, name: 'gemini-api-key' })
+    await addSecret({ ...base, taskId: 'another-task', name: 'gemini-api-key' })
+    expect((await listSecretNames('another-task')).length).toBe(1)
+  })
+
+  it('dit qu’une phrase est trop courte, pas trop longue', async () => {
+    const error = await addSecret({ ...base, name: 'k', passphrase: 'short' }).catch((e) => e)
+    expect(error).toBeInstanceOf(ValidationError)
+    expect((error as ValidationError).code).toBe('too-short')
+  })
+})
+
+describe('toute nature de secret, pas seulement une clé d’API', () => {
+  const PEM = `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDExampleNotReal
+b25lIGxpbmUgdHdvIGxpbmUgdGhyZWUgbGluZSBmb3VyIGxpbmUgZml2ZSBsaW5l
+-----END PRIVATE KEY-----`
+
+  const base = {
+    taskId: 'task-kinds',
+    purpose: 'Signs the deploy bundle',
+    passphrase: 'correct horse battery',
+  }
+
+  it('accepte chaque nature déclarée, et refuse une nature inventée', async () => {
+    for (const kind of SECRET_KINDS) {
+      const named = await addSecret({
+        ...base,
+        taskId: `task-${kind}`,
+        name: `key-${kind}`,
+        kind,
+        value: 'some-value',
+      })
+      expect(named.kind, kind).toBe(kind)
+    }
+
+    await expect(
+      addSecret({ ...base, name: 'k', kind: 'nuclear-codes', value: 'x' }),
+    ).rejects.toBeInstanceOf(ValidationError)
+  })
+
+  it('conserve une valeur sur plusieurs lignes, octet pour octet', async () => {
+    const { id } = await addSecret({
+      ...base,
+      name: 'deploy-signing-key',
+      kind: 'private_key',
+      value: PEM,
+    })
+
+    // Une clé PEM tronquée à sa première ligne est inutilisable, et rien ne le
+    // signalerait avant l'usage.
+    expect(await revealSecret(id, base.passphrase)).toBe(PEM)
+  })
+
+  it('accepte une valeur bien plus longue qu’une clé d’API', async () => {
+    const long = 'x'.repeat(MAX_SECRET_VALUE_LENGTH)
+    const { id } = await addSecret({ ...base, name: 'big', kind: 'certificate', value: long })
+    expect((await revealSecret(id, base.passphrase)).length).toBe(MAX_SECRET_VALUE_LENGTH)
+
+    await expect(
+      addSecret({ ...base, name: 'bigger', kind: 'certificate', value: `${long}x` }),
+    ).rejects.toBeInstanceOf(ValidationError)
+  })
+
+  it('vaut « other » pour un identifiant scellé avant que les natures existent', async () => {
+    const db = await getDb()
+    await db.put('secrets', {
+      id: 'legacy-1',
+      taskId: 'task-legacy',
+      name: 'old-key',
+      purpose: 'Sealed before kinds existed',
+      sealed: { ciphertext: 'x', iv: 'y', salt: 'z', iterations: 600_000 },
+      at: 1,
+    } as never)
+
+    const [named] = await listSecretNames('task-legacy')
+    expect(named.kind).toBe('other')
+  })
+
+  it('garde la nature quand on corrige le nom ou l’usage', async () => {
+    const { id } = await addSecret({
+      ...base,
+      name: 'webhook',
+      kind: 'webhook_url',
+      value: 'https://example.test/hook',
+    })
+    const edited = await editSecret(id, { name: 'slack-webhook', purpose: 'Posts build results' })
+    expect(edited.kind).toBe('webhook_url')
   })
 })

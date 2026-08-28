@@ -32,8 +32,8 @@ export function optionalText(
 
 export function requireVersion(field: string, value: unknown): number {
   const parsed = typeof value === 'string' ? Number(value.trim()) : value
-  if (typeof parsed !== 'number' || !Number.isInteger(parsed) || parsed < 0) {
-    throw new ValidationError(field, 'expected a non-negative integer version number.', {
+  if (typeof parsed !== 'number' || !Number.isInteger(parsed) || parsed < 1) {
+    throw new ValidationError(field, 'expected a version number of 1 or more.', {
       code: 'bad-version',
     })
   }

@@ -675,3 +675,17 @@ mark {
     flex-wrap: wrap;
   }
 }
+
+.card--waiting {
+  border-color: var(--c-accent);
+  border-width: 2px;
+}
+
+.card--waiting .card__title {
+  color: var(--c-accent);
+}
+
+.card--away {
+  border-color: var(--c-accent);
+  border-style: dashed;
+}

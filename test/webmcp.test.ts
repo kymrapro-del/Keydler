@@ -32,16 +32,24 @@ afterEach(() => {
 })
 
 describe('inventaire', () => {
-  it('expose deux outils de lecture et cinq d’écriture', () => {
-    expect(READ_TOOLS.map((t) => t.name)).toEqual(['resume_task', 'read_task_detail'])
+  it('expose quatre outils de lecture et huit d’écriture', () => {
+    expect(READ_TOOLS.map((t) => t.name)).toEqual([
+      'resume_task',
+      'what_changed',
+      'read_task_detail',
+      'search_task',
+    ])
     expect(WRITE_TOOLS.map((t) => t.name)).toEqual([
       'log_step',
+      'attach_evidence',
+      'set_next_action',
       'add_constraint',
       'reject_approach',
       'add_decision',
+      'ask_human',
       'complete_task',
     ])
-    expect(ALL_TOOLS).toHaveLength(7)
+    expect(ALL_TOOLS).toHaveLength(12)
   })
 
   it('n’annonce jamais une annotation que WebMCP ne transporte pas', () => {
@@ -106,7 +114,12 @@ describe('disponibilité', () => {
     const state = await registerTools()
     expect(state.phase).toBe('registered')
     expect(state.availability).toEqual({ supported: true, surface: 'navigator' })
-    expect(registered.map((t) => t.name)).toEqual(['resume_task', 'read_task_detail'])
+    expect(registered.map((t) => t.name)).toEqual([
+      'resume_task',
+      'what_changed',
+      'read_task_detail',
+      'search_task',
+    ])
 
     Reflect.deleteProperty(navigator, 'modelContext')
   })
@@ -132,7 +145,8 @@ describe('outils de bout en bout', () => {
     const stale = await call(logStep, writeArgs(task, { action: 'Encore', result: 'raté' }))
     expect(stale.isError).toBe(true)
     expect(textOf(stale)).toContain('STALE STATE')
-    expect(textOf(stale)).toContain('Call resume_task before continuing.')
+    expect(textOf(stale)).toContain('what_changed')
+    expect(textOf(stale)).toContain('resume_task')
 
     const current = store.currentTask()!
     expect(current.audit.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
@@ -178,8 +192,13 @@ describe('cycle de vie des outils', () => {
     const fake = installModelContext()
     await registerTools()
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task'])
-    expect(toolsForCurrentState().map((t) => t.name)).toEqual(['resume_task', 'read_task_detail'])
+    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
+    expect(toolsForCurrentState().map((t) => t.name)).toEqual([
+      'resume_task',
+      'what_changed',
+      'read_task_detail',
+      'search_task',
+    ])
   })
 
   it('expose les écritures dès qu’une tâche est ouverte, et émet toolchange', async () => {
@@ -197,11 +216,16 @@ describe('cycle de vie des outils', () => {
     expect(fake.names()).toEqual([
       'add_constraint',
       'add_decision',
+      'ask_human',
+      'attach_evidence',
       'complete_task',
       'log_step',
       'read_task_detail',
       'reject_approach',
       'resume_task',
+      'search_task',
+      'set_next_action',
+      'what_changed',
     ])
 
     expect(changements.length).toBeGreaterThan(0)
@@ -223,7 +247,7 @@ describe('cycle de vie des outils', () => {
     await settle(6)
 
     expect(getRegistrationState().lifecycle.mode).toBe('static')
-    expect(fake.names()).toHaveLength(7)
+    expect(fake.names()).toHaveLength(ALL_TOOLS.length)
 
     expect(textOf(résultat)).toContain('OK — complete_task recorded.')
     expect(textOf(await call(resumeTaskTool))).toContain('TASK CLOSED')
@@ -321,7 +345,7 @@ describe('cycle de vie des outils', () => {
 
     expect(first.phase).toBe('registered')
     expect(second.phase).toBe('registered')
-    expect(fake.attempts).toHaveLength(7)
+    expect(fake.attempts).toHaveLength(ALL_TOOLS.length)
   })
 
   it('rejette un enregistrement dont le signal est déjà avorté', async () => {

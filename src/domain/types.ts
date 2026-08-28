@@ -67,6 +67,17 @@ export type Rejection = {
   at: number
 }
 
+export type OpenQuestion = {
+  id: string
+  question: string
+  why: string
+  source: Actor
+  addedAtVersion: number
+  at: number
+  answer: string | null
+  answeredAt: number | null
+}
+
 export type AuditEntry = {
   id: string
   operation: string
@@ -76,6 +87,7 @@ export type AuditEntry = {
   basedOnVersion: number | null
   outcome: 'applied' | 'refused'
   detail: string
+  targetId?: string
   repeated?: number
   at: number
 }
@@ -105,10 +117,11 @@ export type TaskState = {
   steps: Step[]
   decisions: Decision[]
   rejected: Rejection[]
+  questions: OpenQuestion[]
   audit: AuditEntry[]
   mutations: MutationRecord[]
   createdAt: number
   updatedAt: number
 }
 
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 6

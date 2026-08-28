@@ -121,6 +121,11 @@ Point at three things at once:
 - the `log_step` line marked **refused**;
 - the new rule, now sitting in **Rules to follow**, tagged **You**.
 
+**Activity** also states, from the calls it observed, whether every write so far
+arrived after a read. It is the product's central claim, reported as counted
+data rather than asserted — and it will say the opposite if the opposite
+happens.
+
 > “I did not stop the agent, and I did not restart the conversation. I changed
 > the rules underneath it — and its next write bounced.”
 
@@ -132,10 +137,31 @@ This is the beat the whole product exists for. Give it time.
 
 **On screen:** the conversation.
 
-The agent calls `resume_task` again, finds the new rule, and adjusts its
-proposal to fit it — a shorter window, or a different expiry strategy.
+The refusal names the way back: `what_changed` with the version the agent was
+holding. It calls it, and gets only the delta — the rule you just added, filed
+under **CHANGES WHAT YOU MAY DO**, separated from anything merely informational.
+Then it adjusts its proposal to fit — a shorter window, or a different expiry
+strategy.
 
-> “It did not need to be told what changed. It asked.”
+> “It did not need to be told what changed. It asked — and it read a few lines,
+> not the whole log.”
+
+If the agent calls `resume_task` instead, that is fine and still correct; say so
+rather than retaking. Both paths work, and one is cheaper.
+
+---
+
+## Optional beat · When it does not know, it asks
+
+Only if the conversation reaches a genuine unknown — do not manufacture one.
+
+The agent calls `ask_human` instead of guessing. On the page, **Waiting on you**
+appears between the next action and the work, with the reason it is blocked.
+Answer it in the box. The question closes, and the answer is now part of what
+every later conversation reads.
+
+> “It stopped rather than guess. That is a decision I get to make, and the next
+> conversation inherits my answer instead of its assumption.”
 
 ---
 

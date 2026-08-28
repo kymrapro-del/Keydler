@@ -10,16 +10,34 @@ import {
   proposedRejections,
 } from '../src/domain/task'
 import * as store from '../src/store/taskStore'
-import { __renderNow, mount } from '../src/ui/bench'
+import { __renderNow, mount, NOTICE_TTL } from '../src/ui/bench'
 import { resetCalls } from '../src/webmcp/witness'
 import { __resetRegistration, registerTools } from '../src/webmcp/register'
-import { clearDatabase, installModelContext, mutationId, removeModelContext } from './helpers'
+import { ALL_TOOLS } from '../src/webmcp/tools'
+import {
+  clearDatabase,
+  installModelContext,
+  mutationId,
+  removeModelContext,
+  textOf,
+  waitUntil,
+} from './helpers'
 
 let root: HTMLElement
 let unmount: () => void
 
+/**
+ * Attendre un nombre fixe de tours suffisait à vide et échouait en suite
+ * complète : la file d'écriture passe par IndexedDB, dont la latence dépend de
+ * la charge. On attend l'effet, pas un délai.
+ */
 async function settled(turns = 4) {
   for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
+  __renderNow()
+}
+
+async function written(before: number) {
+  await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'l’écriture à être appliquée')
   __renderNow()
 }
 
@@ -288,9 +306,17 @@ describe('tableau de bord', () => {
     expect(body).toContain('resume_task')
   })
 
-  it('garde le rendu brut de resume_task sous les détails', async () => {
+  it('montre exactement ce que resume_task renvoie, pas une version voisine', async () => {
+    // Le panneau s'intitule « What resume_task returns ». S'il rendait l'état
+    // sans l'URL ni les identifiants, il montrerait autre chose que ce que
+    // l'agent reçoit — dans un produit dont toute la valeur est l'honnêteté.
+    const resume = ALL_TOOLS.find((t) => t.name === 'resume_task')!
+    const attendu = textOf(await resume.execute({}, { signal: new AbortController().signal }))
+    await settled()
+
     const pre = root.querySelector('details.technical pre')!
-    expect(pre.textContent).toBe(renderTaskState(store.currentTask()!))
+    expect(pre.textContent).toBe(attendu)
+    expect(pre.textContent).toContain('URL')
   })
 
   it('ajoute une règle humaine, immédiatement opposable', async () => {
@@ -306,13 +332,15 @@ describe('tableau de bord', () => {
 
   it('lève puis rétablit une règle, et la restitution suit', async () => {
     const rule = activeConstraints(store.currentTask()!)[0].rule
-    root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
-    await settled()
 
+    let before = store.currentTask()!.version
+    root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
+    await written(before)
     expect(renderTaskState(store.currentTask()!)).not.toContain(rule)
 
+    before = store.currentTask()!.version
     root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
-    await settled()
+    await written(before)
     expect(renderTaskState(store.currentTask()!)).toContain(rule)
   })
 
@@ -448,5 +476,52 @@ describe('détails techniques', () => {
 
     __resetRegistration()
     removeModelContext()
+  })
+})
+
+describe('un message de succès ne s’installe pas', () => {
+  let root: HTMLElement
+  let unmount: () => void
+
+  async function settled(turns = 8) {
+    for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
+    __renderNow()
+  }
+
+  beforeEach(async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    store.__resetStore()
+    await clearDatabase()
+    await store.init()
+    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    root = document.querySelector<HTMLElement>('#app')!
+    unmount = mount(root)
+    await store.createAndOpenTask('Ship the issuer', 'Read the spec')
+    await settled()
+  })
+
+  afterEach(() => {
+    unmount()
+    vi.useRealTimers()
+    history.replaceState(null, '', '/')
+  })
+
+  it('s’efface tout seul, au lieu de prétendre indéfiniment que l’on vient de copier', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.resolve() },
+    })
+
+    root.querySelector<HTMLButtonElement>('#copy-handoff')!.click()
+    await waitUntil(() => !!root.querySelector('.notice--ok'), 'le message de copie')
+    __renderNow()
+    expect(root.querySelector('.notice--ok')!.textContent).toContain('Copied')
+
+    await vi.advanceTimersByTimeAsync(NOTICE_TTL + 1000)
+    __renderNow()
+
+    // Un message qui reste affirme, une minute plus tard, qu'une action vient
+    // d'avoir lieu. Il faut le lire comme faux.
+    expect(root.querySelector('.notice--ok')).toBeNull()
   })
 })

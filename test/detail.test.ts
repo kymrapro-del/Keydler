@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ALL_TOOLS, readTaskDetailTool, resumeTaskTool } from '../src/webmcp/tools'
 import * as store from '../src/store/taskStore'
-import { EVIDENCE_PREVIEW, MAX_LIMIT, SECTIONS } from '../src/domain/detail'
+import { EVIDENCE_PREVIEW, MAX_LIMIT, SECTIONS, renderDetail } from '../src/domain/detail'
+import { buildDemoTask } from '../src/demo/seed'
 import { TOKEN_BUDGET, estimateTokens } from '../src/domain/render'
 import { call, clearDatabase, currentTask, textOf, writeArgs } from './helpers'
 
@@ -159,5 +160,49 @@ describe('le pointeur reste court, et dit où trouver le reste', () => {
     expect(après.version).toBe(avant.version)
     expect(après.audit).toHaveLength(avant.audit.length)
     expect(readTaskDetailTool.annotations?.readOnlyHint).toBe(true)
+  })
+})
+
+describe('section credentials', () => {
+  const names = (n: number) =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `s${i}`,
+      name: `service-${i}-api-key`,
+      purpose: 'Calls the upstream service from the ingestion worker',
+      kind: 'api_key' as const,
+    }))
+
+  it('rend la liste complète des noms, page par page', () => {
+    const rendu = renderDetail(
+      buildDemoTask(),
+      { section: 'credentials', offset: 0, limit: 5, id: null },
+      names(8),
+    )
+    expect(rendu).toContain('SECTION     credentials')
+    expect(rendu).toContain('${service-0-api-key}')
+    expect(rendu).toContain('${service-4-api-key}')
+    expect(rendu).not.toContain('${service-5-api-key}')
+    expect(rendu).toMatch(/MORE\s+3 left — call again with offset: 5/)
+  })
+
+  it('ne porte que la projection publique : jamais une valeur, jamais un scellé', () => {
+    const rendu = renderDetail(
+      buildDemoTask(),
+      { section: 'credentials', offset: 0, limit: 20, id: null },
+      names(3),
+    )
+    for (const mot of ['ciphertext', 'salt', 'iv', 'iterations', 'sealed:']) {
+      expect(rendu, mot).not.toContain(mot)
+    }
+    expect(rendu).toContain('no tool here returns a value')
+  })
+
+  it('dit qu’il n’y en a aucun, sans laisser croire à une panne', () => {
+    const rendu = renderDetail(
+      buildDemoTask(),
+      { section: 'credentials', offset: 0, limit: 5, id: null },
+      [],
+    )
+    expect(rendu).toContain('empty')
   })
 })

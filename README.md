@@ -82,11 +82,28 @@ and the whole history
 
 ![Active task](docs/assets/active-task.png)
 
+**An agent stops rather than guess.** Its question sits between the next action
+and the work, with the reason it is blocked. Your answer goes back into
+`resume_task`, so the next conversation reads it instead of guessing again. Note
+the claimed step offering **Attach evidence** — proof often arrives later.
+
+![Waiting on you](docs/assets/waiting-on-you.png)
+
 **A human interrupts, mid-work.** The human adds a rule; the agent’s next write
 is refused as stale; the page says so in plain language, and the history records
 the attempt alongside the rule that caused it.
 
 ![Human intervention](docs/assets/human-intervention.png)
+
+**You come back, and the page tells you what happened.** It counts the tab as
+away when it is hidden, so switching to your agent and back is enough
+
+![While you were away](docs/assets/while-you-were-away.png)
+
+**Did the agent read before writing?** Counted from the calls the page observed,
+not asserted
+
+![Activity](docs/assets/activity.png)
 
 **Search** covers the open task and every other one — including a rejection
 found by its _reason_, and a step found by the content of its evidence
@@ -99,32 +116,41 @@ found by its _reason_, and a step found by the content of its evidence
 
 ## The tools
 
-Two read, five write. The count is not a goal — each tool dilutes the list an
+Four read, eight write. The count is not a goal — each tool dilutes the list an
 agent must read in order to choose, so each has to pay for itself.
 
 | Tool               | Role                                                                             |
 | ------------------ | -------------------------------------------------------------------------------- |
 | `resume_task`      | The canonical state, under 400 tokens: id, version, rules, rejections, next step |
-| `read_task_detail` | Paginated detail — whole evidence, whole reasons, older work                     |
+| `what_changed`     | What was written since the version you hold — the cheap answer to a stale write  |
+| `read_task_detail` | Paginated detail — whole evidence, whole reasons, older work, credential names   |
+| `search_task`      | “Have we already tried this?” — one term across steps, evidence, rules, refusals |
 | `log_step`         | Record a completed step and its evidence                                         |
 | `add_constraint`   | **Propose** a rule                                                               |
 | `reject_approach`  | **Propose** ruling out an approach, reason mandatory                             |
 | `add_decision`     | The “why”, which every summary loses first                                       |
+| `ask_human`        | Record a blocking question instead of guessing — the next conversation sees it   |
+| `attach_evidence`  | Proof that arrived after the step was logged                                     |
+| `set_next_action`  | Redirect the task without inventing a step to hang it on                         |
 | `complete_task`    | Close with a hand-over summary                                                   |
 
 ## Credentials the agent can name but not read
 
-An agent often needs to know that a key _exists_ — which one, and what it is
-for — without ever seeing it. The Watch Log holds that reference:
+An agent often needs to know that a secret _exists_ — which one, and what it is
+for — without ever seeing it. Any secret, not just an API key: tokens,
+passwords, connection strings, webhook URLs, private keys, certificates. The
+Watch Log holds the reference:
 
 ```
-CREDENTIALS — names only, values sealed (1)
+CREDENTIALS — names only, values sealed (2)
   ${gemini-api-key} — Calls the Gemini API from the ingestion script
+  ${deploy-signing-key} — Signs the deploy bundle
   Write these as ${name}; no tool here returns a value.
 ```
 
-The agent writes `${gemini-api-key}` where the value belongs. You wire the real
-one.
+The agent writes `${deploy-signing-key}` where the value belongs. You wire the
+real one. `read_task_detail` on the `credentials` section lists every name with
+its kind, so a summary that had to cut the list never loses one.
 
 ![Credentials](docs/assets/credentials.png)
 
@@ -136,7 +162,13 @@ one.
   makes the guarantee structural rather than careful: no tool result, no export,
   and no `resume_task` reply can contain a value, because the task object never
   holds one. There is a test that calls every tool and asserts it.
-- Revealing a value takes an explicit click **and** the passphrase.
+- Revealing a value takes an explicit click **and** the passphrase, and it hides
+  itself again after 45 seconds.
+- A **private key or certificate spans several lines**, so the field becomes a
+  textarea for those kinds — an `<input>` would silently keep only the first
+  line, and nothing would say so until the key was used.
+- Two credentials cannot share a name: `${name}` is all the agent gets, and two
+  of them would make the reference ambiguous.
 
 **What this is not.** It is not an audited secret manager, and it does not
 defend against everything:
@@ -152,20 +184,44 @@ defend against everything:
 
 - **Every task is reachable.** The header lists them all and switches between
   them; each lives at its own `/t/:id`.
-- **Search** across the open task and the others at once. It matches a rejection
-  by its reason and a step by the content of its evidence, and says which.
+- **Search** across the open task and the others at once, from the box or by
+  pressing `/`. It matches a rejection by its reason and a step by the content of
+  its evidence, and says which. Agents get the same search as `search_task`.
 - **History** in words — _“You lifted a rule”_, _“Agent tried to record a step —
   refused — the task had changed since it was read”_. The audit trail was always
   complete; this is the screen for it.
 - **Correct anything.** Rename the task, change the next action, reword a rule or
-  a ruled-out approach, record a step you did yourself. All human writes: never
-  refused, always audited.
+  a ruled-out approach, rename a credential or fix what it is for. All human
+  writes: never refused, always audited.
+- **Record a step you did yourself**, with evidence pasted whole — several lines,
+  a diff, a test report. You say what the evidence _is_; the page guesses and you
+  correct it, so a diff is never filed as command output. You can also attach
+  evidence later to a step that was only claimed.
+- **Answer what the agent is waiting on.** When an agent stops rather than guess,
+  its question sits at the top of the page with the reason it is blocked. Your
+  answer goes back into `resume_task`, so the next conversation reads it.
 - **Archive** what is done, without deleting it. `resume_task` says so, in case
   an agent arrives on an old link.
 - **Import and export.** Import never overwrites: a task already here at a
   different version is added as a copy.
 - **Installable and offline.** A manifest and a service worker; verified with the
   server stopped.
+- **Did the agent read before writing?** The page counts it, from the calls it
+  actually observed. Every write after a read says so; a write that arrived
+  before any read is called out — that agent was working from its own memory,
+  not from this log. It is the product's central claim, reported as observed
+  data rather than asserted.
+- **Escape closes whatever is open**, and `/` reaches search. One thing closes at
+  a time, and it is always the thing on screen.
+- **While you were away.** Come back to the page and it lists what was written
+  since you last had it in front of you — the human-side mirror of
+  `what_changed`. A hidden tab counts as away, so switching to your agent and
+  back is enough to trigger it.
+- **Undo that.** Lifting a rule, accepting a proposal, archiving a task are all
+  one click, so all three are one click back. It undoes only your own last
+  decision, only while that decision is still in force, and never reaches past
+  an agent's work. Nothing is erased: the undo is a write of its own, and both
+  it and what it reversed stay in the history.
 
 ## Technical guarantees
 
@@ -340,14 +396,14 @@ That also sets the boundaries, and they are real:
 
 ## Project layout
 
-| Path              | What lives there                                                        |
-| ----------------- | ----------------------------------------------------------------------- |
-| `src/domain`      | Pure task model and mutations — no DOM, no storage, no WebMCP           |
-| `src/store`       | The single in-memory source of truth, and the write queue               |
-| `src/persistence` | IndexedDB, with defensive reads and schema migration                    |
-| `src/webmcp`      | API adapter, schemas, descriptions, seven tools, registration lifecycle |
-| `src/ui`          | The dashboard                                                           |
-| `docs`            | Protocols, test journal, measurement, demo script                       |
+| Path              | What lives there                                                         |
+| ----------------- | ------------------------------------------------------------------------ |
+| `src/domain`      | Pure task model and mutations — no DOM, no storage, no WebMCP            |
+| `src/store`       | The single in-memory source of truth, and the write queue                |
+| `src/persistence` | IndexedDB, with defensive reads and schema migration                     |
+| `src/webmcp`      | API adapter, schemas, descriptions, twelve tools, registration lifecycle |
+| `src/ui`          | The dashboard                                                            |
+| `docs`            | Protocols, test journal, measurement, demo script                        |
 
 Internal documents and code comments are in French; the product is in English.
 
