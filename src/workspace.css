@@ -1,0 +1,562 @@
+/* Private workspace scaffold — Material Design 3 only. */
+
+.workspace-shell {
+  width: min(calc(100% - 48px), 1440px);
+  margin: var(--sp-5) auto var(--sp-7);
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+.workspace-nav {
+  position: sticky;
+  top: 88px;
+  min-height: calc(100dvh - 112px);
+  padding: var(--sp-5) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  /* Navigation rail M3 : conteneur surface-container, indicateur actif
+     secondary-container (m3.material.io/components/navigation-rail/specs). */
+  background: var(--md-sys-color-surface-container);
+  --state-layer-base: var(--md-sys-color-surface-container);
+}
+
+.workspace-nav__heading {
+  padding: 0 var(--sp-3) var(--sp-4);
+}
+
+.workspace-nav__heading > span,
+.workspace-nav__storage > span:last-child,
+.workspace-nav__storage small {
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  text-transform: none;
+}
+
+.workspace-nav__heading strong {
+  display: block;
+  margin: var(--sp-1) 0 var(--sp-3);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+}
+
+.workspace-nav__links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.workspace-nav__link {
+  min-height: 56px;
+  padding: 0 var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  text-decoration: none;
+  transition: background-color var(--md-sys-motion-duration-short4)
+    var(--md-sys-motion-easing-standard);
+}
+
+.workspace-nav__link > span {
+  min-width: 24px;
+  color: inherit;
+  font-family: var(--md-sys-typescale-label-small-font);
+  font-size: var(--md-sys-typescale-label-small-size);
+}
+
+.workspace-nav__link:hover {
+  background: color-mix(
+    in srgb,
+    currentColor calc(var(--md-sys-state-hover-state-layer-opacity) * 100%),
+    var(--state-layer-base)
+  );
+}
+
+.workspace-nav__link--active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  --state-layer-base: var(--md-sys-color-secondary-container);
+}
+
+.workspace-nav__storage {
+  margin-top: auto;
+  padding: var(--sp-4) var(--sp-3) 0;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-2);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.workspace-nav__storage > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.workspace-nav__storage strong {
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+}
+
+.status-dot--local {
+  background: var(--md-custom-color-verified);
+}
+
+.workspace-content {
+  min-width: 0;
+}
+
+.prototype-section,
+.memory-detail {
+  scroll-margin-top: 88px;
+}
+
+.workspace-overview {
+  margin-bottom: var(--sp-6);
+  padding: clamp(24px, 4vw, 48px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: var(--sp-5);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-low);
+  --state-layer-base: var(--md-sys-color-surface-container-low);
+}
+
+.workspace-overview__intro h1 {
+  max-width: 700px;
+  margin: 0 0 var(--sp-3);
+  font-family: var(--md-sys-typescale-display-small-font);
+  font-size: var(--md-sys-typescale-display-small-size);
+  font-weight: var(--md-sys-typescale-display-small-weight);
+  line-height: var(--md-sys-typescale-display-small-line-height);
+  letter-spacing: var(--md-sys-typescale-display-small-tracking);
+}
+
+.workspace-overview__intro > p:not(.section-heading__eyebrow) {
+  max-width: 620px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.workspace-overview__intro .actions {
+  margin-top: var(--sp-5);
+}
+
+.workspace-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.metric-card {
+  min-height: 132px;
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: var(--md-sys-shape-corner-medium);
+  /* Imbriqué dans .workspace-overview (surface-container-low) : le niveau
+     suivant de la hiérarchie de surface, pas une couleur de marque. */
+  background: var(--md-sys-color-surface-container);
+}
+
+.metric-card > span,
+.metric-card small {
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+}
+
+.metric-card strong {
+  font-family: var(--md-sys-typescale-headline-large-font);
+  font-size: var(--md-sys-typescale-headline-large-size);
+  font-weight: var(--md-sys-typescale-headline-large-weight);
+  line-height: var(--md-sys-typescale-headline-large-line-height);
+}
+
+.memory-summary {
+  grid-column: 1 / -1;
+  min-height: 120px;
+  padding: var(--sp-5);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-4);
+  border-radius: var(--md-sys-shape-corner-medium);
+  /* Le seul primary-container de cet écran est le bloc « Next » du cahier
+     ouvert plus bas sur la même page (voir .hero dans style.css). Ce résumé
+     reste au niveau de surface imbriqué. */
+  background: var(--md-sys-color-surface-container);
+}
+
+.memory-summary__main {
+  min-width: 0;
+}
+
+.memory-summary__status,
+.connector-state,
+.security-card__state {
+  min-height: 32px;
+  padding: 6px var(--sp-3);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  text-transform: none;
+}
+
+.memory-summary h2 {
+  margin: 0 0 var(--sp-1);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
+}
+
+.memory-summary p {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.memory-summary__meta {
+  display: grid;
+  justify-items: end;
+  gap: var(--sp-1);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.memory-summary__meta a,
+.connection-explainer a {
+  color: var(--md-sys-color-primary);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  text-decoration: none;
+}
+
+.memory-detail {
+  margin-bottom: var(--sp-7);
+  padding: clamp(24px, 4vw, 40px);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-low);
+  --state-layer-base: var(--md-sys-color-surface-container-low);
+}
+
+.prototype-section {
+  margin-bottom: var(--sp-7);
+  padding: clamp(24px, 4vw, 40px);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-low);
+  --state-layer-base: var(--md-sys-color-surface-container-low);
+}
+
+.prototype-heading {
+  margin-bottom: var(--sp-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.prototype-heading h2 {
+  margin: 0;
+  font-family: var(--md-sys-typescale-headline-small-font);
+  font-size: var(--md-sys-typescale-headline-small-size);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+}
+
+.prototype-heading__copy {
+  max-width: 760px;
+  margin-bottom: var(--sp-5);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.connector-grid,
+.security-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.connector-card,
+.security-card {
+  min-height: 260px;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--md-sys-shape-corner-medium);
+  /* Imbriquées dans .prototype-section (surface-container-low) : le niveau
+     suivant de la hiérarchie de surface. Aucune de ces cartes ne porte plus
+     primary-container — cette teinte reste réservée au bloc « Next ». */
+  background: var(--md-sys-color-surface-container);
+  --state-layer-base: var(--md-sys-color-surface-container);
+}
+
+.connector-card:last-child:nth-last-child(1):nth-child(odd) {
+  grid-column: 1 / -1;
+  min-height: 220px;
+}
+
+.connector-card__top {
+  margin-bottom: var(--sp-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.connector-mark,
+.connection-explainer__mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+}
+
+.connector-card h3,
+.security-card h3 {
+  margin-bottom: var(--sp-2);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
+}
+
+.connector-card p,
+.security-card p {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.connector-card .btn,
+.security-card .btn {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
+.btn--tonal {
+  --btn-base: var(--md-sys-color-secondary-container);
+  --btn-fg: var(--md-sys-color-on-secondary-container);
+}
+
+/*
+ * Seule variante plate AU REPOS : un bouton « text » est la touche la moins
+ * appuyée de la hiérarchie — texte, contour, tonal, primary. Lui donner un
+ * relief visible au repos aurait effacé cette hiérarchie. `--btn-base` reste
+ * la couleur de surface ambiante (dégradé quasi invisible contre la page) et
+ * `box-shadow: none` annule le liseré et le creux tant que rien ne se passe.
+ *
+ * `.btn:hover`/`.btn:active`, définis sur `.btn` dans style.css, ont une
+ * spécificité plus haute que cette règle et reprennent la main normalement
+ * au survol et à l'appui : le relief n'apparaît qu'à l'interaction, jamais
+ * au repos. C'est voulu, pas une fuite de spécificité.
+ */
+.btn--text {
+  --btn-base: var(--md-sys-color-surface);
+  --btn-fg: var(--md-sys-color-primary);
+  min-width: auto;
+  padding-inline: var(--sp-3);
+  box-shadow: none;
+}
+
+.connection-explainer {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-4);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.connection-explainer p {
+  margin: var(--sp-1) 0 0;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.connection-explainer p {
+  color: inherit;
+}
+
+.security-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.security-card {
+  min-height: 220px;
+}
+
+.security-card--actual .mono {
+  color: inherit;
+}
+
+.security-card--actual .security-card__state {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.security-card__detail {
+  margin-top: auto;
+}
+
+.preview-feedback {
+  margin-bottom: var(--sp-5);
+  padding: var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.preview-feedback__mark {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  flex: none;
+  place-items: center;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-secondary);
+  color: var(--md-sys-color-on-secondary);
+  font-weight: 500;
+}
+
+.preview-feedback p {
+  flex: 1;
+  margin: 0;
+}
+
+.product-footer {
+  min-height: 72px;
+  padding-top: var(--sp-5);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+@media (max-width: 1040px) {
+  .workspace-shell {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .workspace-overview {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 840px) {
+  .workspace-shell {
+    width: calc(100% - 32px);
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-nav {
+    position: sticky;
+    z-index: 8;
+    top: 64px;
+    min-height: 64px;
+    padding: var(--sp-2);
+    display: block;
+    overflow-x: auto;
+    border-radius: var(--md-sys-shape-corner-large);
+  }
+
+  .workspace-nav__heading,
+  .workspace-nav__storage {
+    display: none;
+  }
+
+  .workspace-nav__links {
+    flex-direction: row;
+    width: max-content;
+  }
+
+  .workspace-nav__link {
+    min-height: 48px;
+  }
+
+  .connector-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .top-app-bar {
+    padding-inline: var(--sp-4);
+  }
+
+  .top-app-bar__status .version-pill {
+    display: none;
+  }
+
+  .workspace-shell {
+    margin-top: var(--sp-4);
+    gap: var(--sp-4);
+  }
+
+  .workspace-overview,
+  .prototype-section {
+    padding: var(--sp-5);
+  }
+
+  .workspace-metrics,
+  .security-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-summary,
+  .connection-explainer {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-summary__meta {
+    justify-items: start;
+  }
+
+  .prototype-heading,
+  .product-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-shell *,
+  .workspace-shell *::before,
+  .workspace-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

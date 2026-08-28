@@ -1,0 +1,1342 @@
+/* Public surface — Material Design 3 only. */
+
+/*
+ * Pas de fond ici : c'est le point qui fait tout marcher.
+ *
+ * `html`/`body` gardent leur fond opaque `--md-sys-color-surface` (défini dans
+ * style.css, partagé avec le tableau de bord) — c'est voulu, ce fond de page
+ * reste le filet de sécurité si `.silk-background` échoue à démarrer (pas de
+ * WebGL, contexte refusé). Mais le fond de LA RACINE d'une page se peint
+ * toujours en dessous de tout, y compris d'un enfant en `z-index: -1` — c'est
+ * `.marketing-site` qui, en répétant ce même fond sur sa propre boîte, masquait
+ * le canevas. Le retirer ici laisse le fond racine faire son travail de filet
+ * pendant que le canevas se voit dans les interstices : autour de la bannière,
+ * entre les sections, dans les marges — jamais SOUS un texte ou une carte, qui
+ * gardent chacun leur propre fond opaque.
+ */
+.marketing-site {
+  /*
+   * `body` peint SON PROPRE fond (`style.css`, partagé avec le tableau de
+   * bord — volontairement pas touché ici). Un enfant en `position: fixed;
+   * z-index: -1` sans ancêtre isolé rejoint le contexte d'empilement RACINE,
+   * où `body` — boîte normale, z-index auto — peint par-dessus lui : constaté
+   * avec `elementsFromPoint`, le canevas ressortait sous `body` dans l'ordre
+   * de peinture, entièrement invisible. `isolation: isolate` crée un nouveau
+   * contexte d'empilement SANS toucher au positionnement (contrairement à
+   * `transform`, qui aurait aussi changé le bloc conteneur du canevas fixe) :
+   * `.marketing-site` peint désormais comme une seule unité, au-dessus du
+   * fond de `body`, et c'est À L'INTÉRIEUR de cette unité que le canevas
+   * repasse sous la nav, la bannière et les sections.
+   */
+  isolation: isolate;
+  min-height: 100dvh;
+  color: var(--md-sys-color-on-surface);
+  /*
+   * Les objets du semis débordent de la bannière, et la bannière n'a que 32px
+   * de marge de chaque côté : sans cette coupe, un objet qui déborde de 56px
+   * sortait du viewport et faisait apparaître une barre de défilement
+   * horizontale sur toute la page.
+   *
+   * `clip` et non `hidden` : `hidden` crée un conteneur de défilement, ce qui
+   * casserait le `position: sticky` de la barre de navigation juste au-dessus.
+   * `clip` coupe sans rien rendre défilable.
+   */
+  overflow-x: clip;
+}
+
+/*
+ * Le canevas Silk — plein viewport, sous tout le reste.
+ *
+ * `position: fixed` place la boîte par rapport au viewport, pas à
+ * `.marketing-site` : peu importe où cet hôte vit dans le flux, il couvre
+ * toujours tout l'écran. `z-index: -1` le fait peindre sous le contenu
+ * normal de la page (nav, bannière, cartes — aucun n'a de z-index propre) tout
+ * en restant AU-DESSUS du fond racine `html`/`body`, qui se peint toujours en
+ * premier quel que soit le z-index en jeu. `pointer-events: none` : l'agitation
+ * du bruit ne doit jamais voler un clic à ce qu'il y a devant.
+ */
+.silk-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.silk-background canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .silk-background {
+    /*
+     * `silkBackground.ts` gèle déjà `uTime` sous ce média — mais un contexte
+     * WebGL qui existe encore consomme le GPU même immobile. L'éteindre ici
+     * retire la carte du rendu plutôt que de la geler à l'écran.
+     */
+    display: none;
+  }
+}
+
+/*
+ * -----------------------------------------------------------------------
+ * Nav flottante en pilule — d'après une référence fournie (barre blanche
+ * arrondie, onglet actif sur fond de couleur avec pastille de compte,
+ * bouton flèche séparé à droite).
+ * -----------------------------------------------------------------------
+ *
+ * Trois pièces distinctes, pas une seule barre : `.marketing-nav__pill`
+ * (marque + liens), `.marketing-nav__external`, et le bouton « Sign in »
+ * flottent chacun sur leur propre surface — exactement ce que montre la
+ * référence, où le bouton flèche est visuellement détaché de la barre
+ * principale plutôt que soudé à son bord.
+ */
+.marketing-nav {
+  position: sticky;
+  z-index: 10;
+  top: var(--sp-3);
+  padding: 0 max(16px, calc((100vw - 1200px) / 2));
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.marketing-nav__pill {
+  min-height: 56px;
+  margin-right: auto;
+  padding: 0 var(--sp-2) 0 var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-lowest);
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+.marketing-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-title-medium-tracking);
+  text-decoration: none;
+}
+
+.marketing-nav__links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.marketing-nav__links a {
+  position: relative;
+  min-height: 40px;
+  padding: 10px var(--sp-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  text-decoration: none;
+  transition:
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.marketing-nav__links a:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, var(--md-sys-color-surface));
+}
+
+/*
+ * L'onglet actif — posé par `src/ui/navSpy.ts` pendant le défilement, jamais
+ * fixé à la main : sur une page à ancres, ce que la référence montre comme un
+ * état statique est en vrai une réponse à ce que la personne regarde.
+ */
+.marketing-nav__links a.is-active {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.marketing-nav__links a.is-active:hover {
+  background: color-mix(
+    in srgb,
+    var(--md-sys-color-on-primary-container) 8%,
+    var(--md-sys-color-primary-container)
+  );
+}
+
+/*
+ * La pastille de compte — un chiffre RÉEL (le nombre d'outils WebMCP
+ * enregistrés à l'instant présent, voir `renderLanding()`), pas une valeur de
+ * maquette. `inverse-surface`/`inverse-on-surface` : la paire M3 conçue pour
+ * un badge qui doit rester lisible quelle que soit la couleur du fond sur
+ * lequel il flotte, actif ou non.
+ */
+.marketing-nav__badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.marketing-nav__external {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-sys-elevation-level2);
+  transition:
+    background-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+    color var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.marketing-nav__external:hover {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.marketing-nav__signin {
+  flex: none;
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+/*
+ * La bannière est L'écran d'accueil, pas une colonne à côté d'autre chose.
+ *
+ * Cette section portait une grille à deux colonnes — bannière à gauche, console
+ * WebMCP à droite — qui écrasait la bannière à ~520px et la faisait lire comme
+ * une carte parmi d'autres. La maquette Figma est un bloc pleine largeur de
+ * 1262×521. La console a été retirée et la section ne contient plus que le
+ * hero, sans habillage ni padding propre : le dégradé va bord à bord.
+ */
+.landing--product {
+  width: min(calc(100% - 48px), 1200px);
+  max-width: 1200px;
+  /*
+   * La marge haute doit dépasser le débordement du cube, pas juste « aérer ».
+   *
+   * Le cube remonte de 46% de sa hauteur au-dessus de la bannière, soit 67px à
+   * sa taille maximale. Avec 24px de marge, son sommet arrivait 43px À
+   * L'INTÉRIEUR de la bande de la barre de navigation — qui est collante, en
+   * z-index 10 et sur fond opaque : elle le repeignait, et le cube semblait
+   * coupé net par une ligne horizontale.
+   *
+   * 88px laissent 21px de dégagement sous la nav au cas maximal. Changer la
+   * taille du cube ou son `translate` impose de revérifier ce nombre.
+   */
+  margin: clamp(48px, 7vw, 88px) auto var(--sp-6);
+  padding: 0;
+  background: none;
+}
+
+.landing__copy {
+  max-width: none;
+  min-height: min(521px, calc(100dvh - 160px));
+  padding: clamp(32px, 5vw, 72px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: var(--md-sys-shape-corner-extra-large);
+}
+
+/* La colonne de texte garde une mesure lisible même si le bloc est large. */
+.brand-hero__content > * {
+  max-width: 720px;
+}
+
+.landing__copy .landing__headline,
+.landing__copy .landing__eyebrow,
+.landing__copy .landing__lede {
+  color: inherit;
+}
+
+/*
+ * -----------------------------------------------------------------------
+ * Bannière de marque — composant réutilisable de la feuille de marque.
+ * -----------------------------------------------------------------------
+ *
+ * Fond `--brand-gradient`, un semis de trois objets 3D qui débordent du
+ * bloc, un mot surligné dans le titre. Pas spécifique à la landing : toute
+ * section qui pose `.brand-hero` sur un conteneur hérite du traitement.
+ *
+ * Le texte est blanc — pas un rôle M3 (`on-primary` n'est blanc que par
+ * coïncidence de la teinte source actuelle, rien ne le garantit), mais la
+ * valeur littérale que la maquette impose pour ce fond précis. Seuls
+ * `--brand-gradient` et `--brand-highlight`/`--brand-on-highlight` sont des
+ * jetons ; le blanc du texte est une décision de composant, documentée ici.
+ */
+.brand-hero {
+  position: relative;
+  overflow: visible;
+  isolation: isolate;
+  background: var(--brand-gradient);
+  color: #fff;
+  /* Base du state layer des boutons outlined/text imbriqués ici (voir le
+     même mécanisme sur .card/.hero dans style.css) : le scrim M3 est la
+     seule teinte non arbitraire disponible pour un fond qui n'est pas une
+     surface plate. */
+  --state-layer-base: var(--md-sys-color-scrim);
+}
+
+.brand-hero .btn:not(.btn--primary) {
+  border-color: rgb(255 255 255 / 60%);
+  color: #fff;
+}
+
+/*
+ * Un `<section class="marketing-section brand-hero">` (voir `#free`) porte
+ * DEUX fonds concurrents de même spécificité (une seule classe chacun) :
+ * `.marketing-section` (surface-container-low, plus bas dans ce fichier) et
+ * `.brand-hero` (le dégradé, ci-dessus). Le dernier déclaré gagne la cascade
+ * — `.marketing-section` arrivait après et écrasait systématiquement le
+ * dégradé par un vert plat. Un sélecteur à deux classes a une spécificité
+ * plus haute que chacun des deux pris seul : ce fond gagne, sans dépendre de
+ * l'ordre des règles ni d'un identifiant propre à une seule section.
+ */
+.marketing-section.brand-hero {
+  background: var(--brand-gradient);
+}
+
+/*
+ * Voile de lisibilité — sur la BANNIÈRE, pas sur son contenu.
+ *
+ * Posé sur `.brand-hero__content`, il était en retrait du padding du panneau :
+ * il n'atteignait aucun bord et dessinait un rectangle sombre visible, avec ses
+ * propres coins arrondis, au milieu du dégradé. Il couvre maintenant tout le
+ * panneau.
+ *
+ * Et il est DIRECTIONNEL. Un aplat noir uniforme garantissait le contraste mais
+ * éteignait le dégradé, qui fait la moitié de l'effet de la maquette. Le voile
+ * est donc dense là où le texte commence (haut-gauche) et nul à l'opposé, où
+ * ne vivent que les objets 3D — la lisibilité est assurée sans payer le vert.
+ */
+.brand-hero::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    137deg,
+    color-mix(in srgb, var(--md-sys-color-scrim) 45%, transparent) 0%,
+    color-mix(in srgb, var(--md-sys-color-scrim) 30%, transparent) 45%,
+    transparent 85%
+  );
+}
+
+.brand-hero__content {
+  position: relative;
+  z-index: 2;
+  border-radius: inherit;
+}
+
+.brand-hero__decor {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.brand-hero__shape {
+  position: absolute;
+  z-index: 0;
+  /* `height: auto` : les attributs width/height du <img> fixent le ratio
+     intrinsèque pour éviter un saut de mise en page au chargement, mais sans
+     cette règle la hauteur restait figée à l'attribut HTML pendant que
+     `width` rétrécissait au clamp() ci-dessous — l'image s'écrasait au lieu
+     de se mettre à l'échelle. */
+  height: auto;
+  filter: drop-shadow(0 8px 16px color-mix(in srgb, var(--md-sys-color-shadow) 25%, transparent));
+}
+
+/*
+ * Chaque forme déborde d'un coin du bloc — c'est le débordement qui produit
+ * l'effet de semis, pas un ornement posé à l'intérieur.
+ *
+ * Le cube reprend le coin haut-gauche de la maquette Figma (où il chevauchait
+ * le « G » de « Give ») mais décalé plus haut : mesuré dans le navigateur,
+ * l'eyebrow commence à ~40px du coin du panneau et le cube culmine à ~65px
+ * au-dessus du bord du panneau (top: -16% d'une hauteur de bannière courante)
+ * — sa base reste donc au-dessus du texte, jamais dessus. Cylindre et gemme
+ * débordent en bas, une fois toute la colonne de texte passée.
+ */
+/*
+ * Le débordement est exprimé en pourcentage de L'OBJET, via `translate`, et
+ * jamais en pourcentage de la bannière.
+ *
+ * Avec `top: -16%`, le décalage valait -85px sur une bannière de 530px alors
+ * que le cube n'en mesure que 56 de haut : l'objet sortait entièrement du
+ * cadre et flottait au-dessus, détaché. Un `translate(-38%, -38%)` déborde
+ * toujours d'un peu plus d'un tiers de l'objet, quelle que soit sa taille et
+ * quelle que soit la hauteur du panneau. C'est ce chevauchement partiel qui
+ * fait lire le bloc comme une fenêtre plutôt que comme une boîte.
+ */
+.brand-hero__shape--cube {
+  top: 0;
+  left: 0;
+  width: clamp(72px, 13%, 148px);
+  transform: translate(-38%, -46%);
+}
+
+.brand-hero__shape--cylinder {
+  bottom: 0;
+  left: 0;
+  width: clamp(64px, 11%, 124px);
+  transform: translate(-42%, 40%);
+}
+
+.brand-hero__shape--gem {
+  right: 0;
+  bottom: 0;
+  width: clamp(76px, 14%, 156px);
+  transform: translate(34%, 36%);
+}
+
+.brand-hero__highlight {
+  padding: 0 0.25em;
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  background: var(--brand-highlight);
+  color: var(--brand-on-highlight);
+  font-style: normal;
+  /*
+   * La maquette capitalise le mot surligné (« NOT », pas « not »). On le
+   * fait ici plutôt que dans le HTML : le texte visible reste « not » dans
+   * le DOM, ce que test/bench.test.ts vérifie mot pour mot dans la phrase
+   * complète — seul le rendu change.
+   */
+  text-transform: uppercase;
+}
+
+@media (max-width: 600px) {
+  .brand-hero__shape {
+    display: none;
+  }
+}
+
+/*
+ * -----------------------------------------------------------------------
+ * « Why WebMCP » — trois cartes pleine largeur, empilées.
+ * -----------------------------------------------------------------------
+ *
+ * Maquette Figma : trois blocs de 1197×405, dégradé de marque, texte blanc,
+ * grande icône pâle à droite. Remplace une grille de trois colonnes étroites
+ * où chaque carte tenait le texte sur cinq lignes de six mots.
+ *
+ * Les proportions de la maquette sont transposées en ratios, pas recopiées en
+ * pixels : 68px de titre sur une carte de 1197 de large, c'est 5.7% de la
+ * largeur — d'où les `clamp()` ci-dessous, qui tiennent le même rapport à
+ * toutes les tailles d'écran au lieu de figer une valeur de bureau.
+ */
+/*
+ * La section n'a ni fond ni padding : dans la maquette, les cartes SONT la
+ * section — elles font 1197 de large, soit la pleine mesure du contenu. Les
+ * envelopper dans le panneau `surface-container-low` des autres sections leur
+ * retirait 128px et cassait le rapport titre/largeur de la maquette.
+ */
+#how-it-works {
+  padding: 0;
+  background: none;
+}
+
+/*
+ * Le titre est borné en mesure, pas étiré sur les 1200px de la section.
+ *
+ * Deux raisons, dans cet ordre : une ligne de titre de 1200px est illisible —
+ * l'œil perd le début de la ligne suivante ; et le personnage est ancré en
+ * haut à droite des cartes, donc il empiétait de 61px sur la boîte du titre.
+ * Borner la mesure règle les deux d'un coup, sans déplacer le personnage.
+ */
+#how-it-works {
+  text-align: center;
+}
+
+/*
+ * Plus grand et centré : à `headline-large` (32px, hérité de
+ * `.marketing-section h2`), l'effet de particules passait inaperçu sur un
+ * fond aussi agité que le canevas Silk — trop de bruit, pas assez de texte
+ * pour s'en détacher. `clamp()` garde une borne basse raisonnable sur mobile.
+ */
+#how-it-works > h2 {
+  max-width: 22ch;
+  margin-inline: auto;
+  font-size: clamp(2.25rem, 6vw, 4rem);
+  line-height: 1.15;
+}
+
+/*
+ * Une gouttière est RÉSERVÉE à droite des cartes.
+ *
+ * Le personnage se tient dehors, debout à droite de la bordure, et seul son
+ * bras la touche. Il lui faut donc de la place hors de la carte — pas les
+ * ~110px que laisse un bloc de 1200 centré dans une fenêtre de 1425, où il
+ * serait rogné par le bord de l'écran.
+ *
+ * Les cartes rétrécissent plutôt que la section : la gouttière reste alignée
+ * sur la grille de la page, et les trois cartes gardent la même largeur —
+ * une seule qui serait plus courte que les autres se lirait comme un défaut.
+ */
+.reason-stack {
+  /* `#how-it-works` centre son en-tête ; sans ce reset, le `text-align`
+     descendrait aussi dans les cartes, où le contenu se lit mieux aligné à
+     gauche. */
+  text-align: left;
+  margin-top: clamp(24px, 3vw, 48px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/*
+ * Les cartes alternent : 1 à gauche, 2 à droite, 3 à gauche.
+ *
+ * Chacune est plus étroite que la pile, et la gouttière ainsi libérée change
+ * de côté à chaque ligne. C'est ce zigzag qui donne du rythme à la colonne —
+ * trois blocs identiques empilés se lisent comme un tableau.
+ *
+ * `nth-child` porte ici une décision de MISE EN PAGE, pas de couleur. La
+ * distinction compte : le zébrage coloré retiré ailleurs dans ce fichier
+ * faisait dépendre un signal de sens de la position d'une ligne, ce qui est
+ * faux. Une position qui dépend de la position, elle, est légitime.
+ *
+ * La gouttière de la carte 1 est à droite, ce qui est exactement où le
+ * personnage se tient — les deux réglages doivent donc rester d'accord.
+ */
+.reason-card {
+  width: calc(100% - clamp(0px, 19%, 280px));
+  align-self: flex-start;
+  position: relative;
+  /*
+   * `visible` et non `hidden` : le personnage est à cheval sur l'arête haute
+   * de la carte, donc la moitié de son corps vit AU-DESSUS d'elle. Un
+   * `overflow: hidden` le décapitait. Le dégradé reste bien contenu dans les
+   * coins arrondis — un fond est clippé par `border-radius` sans avoir besoin
+   * de `overflow`.
+   */
+  overflow: visible;
+  min-height: clamp(200px, 26vw, 405px);
+  padding: clamp(24px, 3.5vw, 56px);
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 3vw, 48px);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--brand-gradient);
+  color: #fff;
+}
+
+.reason-card:nth-child(even) {
+  align-self: flex-end;
+}
+
+.reason-card__text {
+  min-width: 0;
+  flex: 1;
+}
+
+.reason-card h3 {
+  margin: 0 0 clamp(12px, 1.6vw, 28px);
+  max-width: 14ch;
+  color: inherit;
+  font-family: var(--md-sys-typescale-display-small-font);
+  /* 68px sur une carte de 1197 dans la maquette, soit 5.7% de sa largeur. */
+  font-size: clamp(1.75rem, 4.6vw, 4.25rem);
+  font-weight: var(--md-sys-typescale-display-small-weight);
+  line-height: 1.1;
+  letter-spacing: var(--md-sys-typescale-display-small-tracking);
+}
+
+.reason-card p {
+  margin: 0;
+  max-width: 52ch;
+  color: inherit;
+  /* 36px sur 1197 dans la maquette, soit 3%. */
+  font-size: clamp(1rem, 2.4vw, 2.25rem);
+  line-height: 1.4;
+}
+
+/*
+ * L'icône est décorative : le texte de la carte dit déjà tout ce qu'elle
+ * illustre, donc `alt=""` dans le markup et aucun rôle ici. `flex: none`
+ * l'empêche d'être comprimée par un titre long, et `width` seul (avec
+ * `height: auto`) préserve le ratio des trois SVG, qui diffèrent entre eux.
+ */
+.reason-card__icon {
+  flex: none;
+  width: clamp(72px, 15vw, 260px);
+  height: auto;
+}
+
+/*
+ * Le personnage, debout DEHORS, accoudé à la bordure droite.
+ *
+ * `left: 100%` l'ancre sur l'arête droite de la carte : il vit entièrement
+ * dans la gouttière réservée par `.reason-stack`, et seul le `translateX`
+ * négatif fait mordre son bras d'appui sur la bordure. C'est ce léger
+ * chevauchement — et lui seul — qui donne l'impression du poids.
+ *
+ * Les deux décalages sont en pourcentage de LUI-MÊME, jamais de la carte :
+ * le point de contact reste au même endroit de son bras quelle que soit sa
+ * taille. Exprimés en pourcentage du conteneur, ils dérivaient à chaque
+ * changement de largeur — c'est le défaut qui détachait les objets du hero.
+ */
+.reason-card__mascot {
+  position: absolute;
+  z-index: 2;
+  left: 100%;
+  bottom: 0;
+  /*
+   * Borne haute calée sur la résolution NATIVE de l'asset (292px), pas sur la
+   * place disponible. Au-delà, le navigateur agrandit un bitmap et le rend
+   * flou. Si la source est un jour ré-exportée en ≥960px avec transparence,
+   * cette borne peut remonter — et `displayMax` doit suivre dans
+   * scripts/process-brand-assets.mjs, qui refusera sinon en le signalant.
+   */
+  width: clamp(110px, 20vw, 292px);
+  height: auto;
+  /*
+   * Chevauchement volontairement MINIME : seule la main dépasse sur la
+   * bordure, le corps reste entièrement dehors. À -13% le corps montait sur la
+   * carte et on ne lisait plus « accoudé au bord » mais « posé dessus ».
+   * Et le bas s'aligne quasiment sur celui de la carte au lieu de plonger
+   * dessous : il est debout à côté, pas suspendu.
+   */
+  transform: translate(-2%, 4%);
+  pointer-events: none;
+  /*
+   * Ombre portée STRICTEMENT vers le bas, jamais latérale.
+   *
+   * Un décalage horizontal étalait l'ombre tout autour de la silhouette et
+   * dessinait un halo — sur un fond clair, ça se lit comme un mauvais
+   * détourage, pas comme une ombre. Décalage nul en X, flou serré : elle
+   * tombe sous ses pieds, comme une ombre au sol.
+   */
+  filter: drop-shadow(0 10px 8px color-mix(in srgb, var(--md-sys-color-shadow) 26%, transparent));
+}
+
+@media (max-width: 700px) {
+  /* Sous cette largeur, texte et icône côte à côte laissent au titre moins de
+     dix caractères par ligne. L'icône passe donc au-dessus du texte. */
+  .reason-card {
+    align-items: flex-start;
+    flex-direction: column-reverse;
+  }
+
+  .reason-card h3 {
+    max-width: none;
+  }
+
+  /* Il chevaucherait l'icône, qui est passée au-dessus du texte. */
+  .reason-card__mascot {
+    display: none;
+  }
+
+  /* Le zigzag n'existe que pour aérer une colonne large. Sur mobile il ne
+     ferait que rogner la mesure du texte, et la gouttière n'a plus de
+     personnage à loger. */
+  .reason-card,
+  .reason-card:nth-child(even) {
+    width: 100%;
+    align-self: stretch;
+  }
+}
+
+/*
+ * -----------------------------------------------------------------------
+ * L'anatomie d'un outil — d'où vient l'idée originale : Uiverse.io par
+ * barisdogansutcu, un bouton dont le survol révèle sa propre boîte CSS
+ * (padding, background, border-radius). Ici les cinq annotations ne décrivent
+ * plus le CSS du bouton, mais les cinq champs réels d'un enregistrement
+ * WebMCP — `document.modelContext.registerTool({ name, description,
+ * inputSchema, execute, annotations })`, exactement la forme que
+ * `src/webmcp/tools.ts` construit pour de vrai.
+ * -----------------------------------------------------------------------
+ *
+ * Reconstruit plutôt que recopié : l'original positionne chaque étiquette en
+ * pixels absolus et en rotations calibrées sur SA largeur de bouton précise
+ * (« Anatomy », 7 caractères). Avec « resume_task() », plus long, ces
+ * offsets auraient exigé un recalibrage entier ET seraient repartis à zéro au
+ * moindre changement de libellé. Une grille CSS ancre les cinq étiquettes
+ * aux coins d'une zone autour du bouton : aucune ne dépend de la largeur du
+ * texte qu'elle annote.
+ *
+ * Couleur : `tertiary`, le rôle M3 conçu pour un accent qui CONTRASTE avec le
+ * primary sans porter de signification propre — ni `proposal`, ni `verified`,
+ * ni `error`. L'exact opposé du rose choisi librement dans l'original.
+ */
+.anatomy-intro {
+  max-width: 62ch;
+  margin-top: var(--sp-2);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.anatomy-intro code {
+  font-family: var(--md-ref-typeface-mono);
+}
+
+.tool-anatomy {
+  position: relative;
+  margin: clamp(40px, 6vw, 88px) auto 0;
+  padding: clamp(56px, 9vw, 120px) clamp(16px, 6vw, 64px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    'name    .        schema'
+    '.       button   .'
+    'desc    execute  annot';
+  align-items: center;
+  justify-items: center;
+  column-gap: clamp(12px, 3vw, 40px);
+  row-gap: clamp(20px, 4vw, 44px);
+}
+
+/*
+ * La vidéo est un fond décoratif à l'intérieur de la même boîte : `position:
+ * relative` sur `.tool-anatomy` en fait le référentiel de `inset: 0`. Le
+ * bouton et les étiquettes restent des items de grille normaux (`position:
+ * static`) — sans `z-index` explicite ici, les descendants POSITIONNÉS
+ * (la vidéo, absolue) peindraient toujours par-dessus le contenu statique,
+ * quel que soit l'ordre dans le document. `position: relative` + `z-index: 1`
+ * les fait participer au même contexte d'empilement, au-dessus.
+ */
+.tool-anatomy__video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.tool-anatomy__button {
+  position: relative;
+  z-index: 1;
+  grid-area: button;
+  min-height: 56px;
+  padding: var(--sp-3) var(--sp-5);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-sys-elevation-level1);
+  cursor: default;
+}
+
+.tool-anatomy__label {
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/*
+ * Les cinq étiquettes, invisibles au repos. `~` cible tout ce qui suit le
+ * bouton dans le DOM — leur ordre visuel vient de `grid-area`, pas de l'ordre
+ * du document, donc le bouton peut rester le premier enfant sans contraindre
+ * où chaque étiquette apparaît à l'écran.
+ */
+.tool-anatomy__callout {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--md-sys-color-tertiary);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: scale(0.85);
+  transition:
+    opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.tool-anatomy__button:hover ~ .tool-anatomy__callout {
+  opacity: 1;
+  transform: none;
+}
+
+.tool-anatomy__dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: currentColor;
+}
+
+.tool-anatomy__callout--name {
+  grid-area: name;
+  justify-self: end;
+}
+
+.tool-anatomy__callout--schema {
+  grid-area: schema;
+  justify-self: start;
+}
+
+.tool-anatomy__callout--desc {
+  grid-area: desc;
+  justify-self: end;
+}
+
+.tool-anatomy__callout--execute {
+  grid-area: execute;
+}
+
+.tool-anatomy__callout--annot {
+  grid-area: annot;
+  justify-self: start;
+}
+
+/*
+ * Le survol n'existe que là où survoler existe. Sur un écran tactile, ce
+ * geste n'a pas d'équivalent — masquer le bouton et les étiquettes ne retire
+ * aucune information : `.anatomy-intro`, toujours visible, porte les cinq
+ * mêmes mots en prose. C'est aussi pourquoi tout `.tool-anatomy` porte
+ * `aria-hidden` et son bouton `tabindex="-1"` dans le marquage : décoratif
+ * pour la souris, silencieux pour tout le reste.
+ *
+ * `.tool-anatomy__video`, elle, reste affichée : le geste qui la pilote est
+ * le scroll, pas le survol — il a un équivalent tactile évident, et masquer
+ * la boîte entière l'aurait emportée avec le bouton.
+ */
+@media (hover: none) {
+  .tool-anatomy__button,
+  .tool-anatomy__callout {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-anatomy__callout {
+    transition: opacity var(--md-sys-motion-duration-short1) linear;
+    transform: none;
+  }
+}
+
+/*
+ * -----------------------------------------------------------------------
+ * Le ruban des sept outils — porté depuis le composant « TextLoop » de
+ * reactbits.dev, en DOM + `requestAnimationFrame` (voir src/ui/textLoop.ts
+ * pour pourquoi GSAP n'a pas fait le voyage).
+ * -----------------------------------------------------------------------
+ *
+ * Couleur : `primary-container` / `on-primary-container` — le vert de marque,
+ * pas l'accent `tertiary` (un ton bleu-sarcelle dérivé de ce seed) utilisé par
+ * `.tool-anatomy` juste au-dessus. Un ruban qui défile en pleine largeur doit
+ * se lire comme la couleur du site ; un accent réservé aux annotations
+ * discrètes ne portait pas assez pour ce rôle.
+ */
+.text-loop {
+  width: 100%;
+  margin: clamp(24px, 4vw, 48px) 0;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.text-loop__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.text-loop__ribbon {
+  stroke: var(--md-sys-color-primary-container);
+}
+
+.text-loop__measure,
+.text-loop__text {
+  font-family: var(--md-ref-typeface-mono);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+}
+
+.text-loop__measure {
+  visibility: hidden;
+}
+
+.text-loop__text {
+  fill: var(--md-sys-color-on-primary-container);
+  user-select: none;
+}
+
+.landing__eyebrow,
+.page-head__eyebrow,
+.section-heading__eyebrow,
+.memory-summary__kicker,
+.hero__label {
+  margin: 0 0 var(--sp-3);
+  color: var(--md-sys-color-primary);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  text-transform: none;
+}
+
+.landing--product .landing__headline {
+  max-width: 720px;
+  margin: 0 0 var(--sp-5);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-display-large-font);
+  font-size: var(--md-sys-typescale-display-large-size);
+  font-weight: var(--md-sys-typescale-display-large-weight);
+  line-height: var(--md-sys-typescale-display-large-line-height);
+  letter-spacing: var(--md-sys-typescale-display-large-tracking);
+}
+
+.landing--product .landing__lede {
+  max-width: 620px;
+  margin-bottom: var(--sp-5);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+}
+
+/*
+ * Le texte de la bannière hérite du blanc posé sur `.brand-hero`.
+ *
+ * Placé APRÈS `.landing--product .landing__headline` volontairement : les deux
+ * sélecteurs ont la même spécificité (0,2,0), donc c'est l'ordre du fichier qui
+ * tranche. Écrit plus haut, il perdait, et le titre repassait en `on-surface`
+ * — du texte sombre sur un dégradé sombre, illisible. Ne pas remonter ce bloc.
+ */
+.brand-hero .landing__eyebrow,
+.brand-hero .landing__headline,
+.brand-hero .landing__lede {
+  color: inherit;
+}
+
+.landing__actions {
+  margin-bottom: var(--sp-4);
+}
+
+.marketing-section,
+.free-section,
+.marketing-site > .form,
+.preview-auth {
+  width: min(calc(100% - 48px), 1200px);
+  margin-inline: auto;
+}
+
+.marketing-section {
+  margin-block: var(--sp-5);
+  padding: clamp(32px, 5vw, 64px);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-low);
+}
+
+.marketing-section--split {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.65fr) minmax(0, 1.35fr);
+  gap: clamp(32px, 7vw, 96px);
+}
+
+.marketing-section h2,
+.free-section h2,
+.prototype-heading h2 {
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-headline-large-font);
+  font-size: var(--md-sys-typescale-headline-large-size);
+  font-weight: var(--md-sys-typescale-headline-large-weight);
+  line-height: var(--md-sys-typescale-headline-large-line-height);
+  letter-spacing: var(--md-sys-typescale-headline-large-tracking);
+}
+
+.marketing-steps,
+.tour-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.marketing-steps article,
+.tour-card {
+  padding: var(--sp-5);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+/*
+ * Pas de zébrage. `primary-container` est une couleur d'EMPHASE : peindre un
+ * élément sur deux avec elle dit « regarde ça » une fois sur deux, donc ne dit
+ * plus rien. Et ici la couleur porte du sens ailleurs — verified, proposal,
+ * refusé — donc toute décoration colorée entre en concurrence avec un signal.
+ * La hiérarchie passe par les niveaux de surface, la forme et le type.
+ */
+
+#dashboard-tour {
+  background: var(--md-sys-color-surface-container);
+}
+
+.marketing-steps article > span,
+.tour-card > span {
+  color: var(--md-sys-color-primary);
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  text-transform: none;
+}
+
+.marketing-steps h3,
+.tour-card h3 {
+  margin: var(--sp-4) 0 var(--sp-2);
+  font-family: var(--md-sys-typescale-title-large-font);
+  font-size: var(--md-sys-typescale-title-large-size);
+  font-weight: var(--md-sys-typescale-title-large-weight);
+  line-height: var(--md-sys-typescale-title-large-line-height);
+  letter-spacing: var(--md-sys-typescale-title-large-tracking);
+}
+
+.marketing-steps p,
+.tour-card p {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.prototype-heading {
+  margin-bottom: var(--sp-5);
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+
+.tour-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tour-bars,
+.tour-toggles {
+  display: none;
+}
+
+/*
+ * -----------------------------------------------------------------------
+ * « Free by design » — d'après une maquette Figma fournie.
+ * -----------------------------------------------------------------------
+ *
+ * `.free-section` porte aussi `.brand-hero` dans le marquage : dégradé de
+ * marque, texte blanc, voile de lisibilité, tout ce mécanisme est déjà
+ * construit et son contraste déjà vérifié pour la bannière du hero — pas de
+ * raison de le refaire ici. Ce bloc ne fixe QUE ce qui est propre à cette
+ * section : sa mise en page en grille et ses deux enfants supplémentaires
+ * (le rappel « 0 = 0 » et les symboles monétaires en filigrane).
+ *
+ * `background`/`color` NE SONT PLUS déclarés ici — c'est précisément ce qui
+ * cassait le rendu : cette règle et `.brand-hero` ont la même spécificité
+ * (une seule classe chacune), et celle-ci arrivait plus tard dans le
+ * fichier, donc gagnait la cascade et écrasait le dégradé par un vert plat.
+ */
+.free-section {
+  /* Une seule colonne depuis que la carte de tarification a été retirée —
+     `.brand-hero__content > * { max-width: 720px }` garde le texte lisible
+     sans qu'il ait besoin d'une seconde colonne pour le border. */
+  position: relative;
+  margin-block: var(--sp-5) 96px;
+  padding: clamp(32px, 6vw, 72px);
+}
+
+.free-section h2 {
+  /* `.marketing-section h2` (plus haut) fixe `color: on-surface` — sombre,
+     pensé pour une carte plate. Sans ce `inherit`, cette déclaration reste
+     seule en lice (je ne refixe pas `color` ici) et gagne, puisque rien
+     d'autre à spécificité égale ne la conteste sur cette propriété. */
+  color: inherit;
+  margin: 0 0 var(--sp-2);
+  font-family: var(--md-sys-typescale-headline-large-font);
+  font-size: var(--md-sys-typescale-headline-large-size);
+  font-weight: var(--md-sys-typescale-headline-large-weight);
+  line-height: var(--md-sys-typescale-headline-large-line-height);
+}
+
+/* Le rappel jaune — mêmes jetons que le mot surligné du hero
+   (`.brand-hero__highlight`), mais en bloc : sa propre ligne, pas un mot
+   dans une phrase. */
+.free-section__callout {
+  display: inline-block;
+  margin: 0 0 var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--brand-highlight);
+  color: var(--brand-on-highlight);
+  font-family: var(--md-sys-typescale-headline-small-font);
+  font-size: var(--md-sys-typescale-headline-small-size);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+}
+
+.free-section > .brand-hero__content > p:last-of-type {
+  max-width: 46ch;
+}
+
+/*
+ * Les symboles $/€ en filigrane — du texte réel, pas une icône dessinée à la
+ * main : ce sont déjà des glyphes typographiques, la police du site les rend
+ * exactement dans le bon style sans qu'aucun tracé SVG n'ait besoin d'exister.
+ */
+.free-section__decor {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.free-section__symbol {
+  position: absolute;
+  color: rgb(255 255 255 / 18%);
+  font-family: var(--md-sys-typescale-display-large-font);
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+.free-section__symbol--dollar {
+  top: 8%;
+  right: 14%;
+  font-size: clamp(80px, 12vw, 180px);
+}
+
+.free-section__symbol--euro {
+  bottom: 10%;
+  right: 4%;
+  font-size: clamp(64px, 10vw, 150px);
+}
+
+.preview-auth,
+.marketing-site > .form {
+  margin-block: var(--sp-5);
+  padding: var(--sp-5);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-low);
+}
+
+.preview-auth h2 {
+  margin: var(--sp-3) 0 var(--sp-2);
+  font-family: var(--md-sys-typescale-headline-small-font);
+  font-size: var(--md-sys-typescale-headline-small-size);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+}
+
+.marketing-footer {
+  min-height: 88px;
+  padding: var(--sp-5) max(24px, calc((100vw - 1200px) / 2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.settings-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.settings-group {
+  min-height: 176px;
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.settings-group h3 {
+  margin-bottom: var(--sp-1);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+}
+
+.settings-group p {
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+.segmented-preview {
+  padding: var(--sp-1);
+  display: flex;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.segmented-preview button,
+.select-preview,
+.switch-preview {
+  border: 0;
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  cursor: pointer;
+}
+
+.segmented-preview button {
+  min-height: 40px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.segmented-preview__active {
+  background: var(--md-sys-color-secondary-container) !important;
+  color: var(--md-sys-color-on-secondary-container) !important;
+}
+
+.switch-preview {
+  width: 52px;
+  height: 32px;
+  padding: 2px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary);
+}
+
+.switch-preview span {
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-on-primary);
+}
+
+.select-preview {
+  min-height: 40px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-primary);
+}
+
+@media (max-width: 840px) {
+  .landing--product,
+  .marketing-section--split {
+    grid-template-columns: 1fr;
+  }
+
+  .marketing-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .landing--product {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  /* La pilule garde marque et compte-outils ; les trois onglets textuels
+     n'ont pas la place de coexister avec le bouton flèche et « Sign in » sur
+     un écran étroit — « How it works »/« Dashboard »/« Free » restent à une
+     ancre de défilement près, jamais à plus d'un geste. */
+  .marketing-nav__links {
+    display: none;
+  }
+
+  .landing--product,
+  .marketing-section,
+  .free-section,
+  .marketing-site > .form,
+  .preview-auth {
+    width: calc(100% - 32px);
+  }
+
+  /* Pas de padding ici : la section n'est plus qu'une enveloppe de largeur,
+     c'est `.landing__copy` qui porte le sien. Le laisser ajoutait 48px à
+     l'intérieur du padding de la bannière et la réduisait à 286px de large
+     sur un écran de 390. */
+  .landing--product {
+    margin-top: var(--sp-4);
+    padding: 0;
+  }
+
+  .landing--product .landing__headline {
+    font-family: var(--md-sys-typescale-display-medium-font);
+    font-size: var(--md-sys-typescale-display-medium-size);
+    line-height: var(--md-sys-typescale-display-medium-line-height);
+  }
+
+  .marketing-section {
+    padding: var(--sp-5);
+  }
+
+  .tour-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .prototype-heading,
+  .marketing-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .settings-group {
+    align-items: stretch;
+  }
+
+  .free-section {
+    margin-bottom: var(--sp-7);
+    padding: var(--sp-5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-site *,
+  .marketing-site *::before,
+  .marketing-site *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

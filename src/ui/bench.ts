@@ -19,7 +19,11 @@ import {
 } from '../persistence/durability'
 import { attentionTitle } from './attention'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
-import { buildDemoTask } from '../demo/seed'
+import { mountTextLoop } from './textLoop'
+import { mountSilkBackground } from './silkBackground'
+import { mountNavSpy } from './navSpy'
+import { mountScrollVideo } from './scrollVideo'
+import { buildDemoTask, DEMO_TASK_ID } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
 import { MIN_QUERY, searchTask, searchTasks, type Match, type MatchKind } from '../domain/search'
 import {
@@ -55,7 +59,9 @@ import {
 } from '../domain/task'
 import {
   EVIDENCE_KINDS,
+  type AuditEntry,
   type Confidence,
+  type Decision,
   type EvidenceKind,
   type Step,
   type TaskState,
@@ -91,6 +97,36 @@ import {
 
 let root: HTMLElement | null = null
 
+/**
+ * Arrête la boucle d'animation du ruban de texte du rendu précédent.
+ *
+ * `render()` remplace tout `innerHTML` : sans cet arrêt explicite, le
+ * `requestAnimationFrame` du ruban continuerait à tourner sur des nœuds
+ * détachés à chaque nouveau rendu, une boucle de plus empilée sur les
+ * précédentes — jamais visible à l'œil, jamais libéré non plus.
+ */
+let stopTextLoop: (() => void) | null = null
+
+/** Même contrat d'arrêt que `stopTextLoop`, pour le fond WebGL de la landing. */
+let stopSilkBackground: (() => void) | null = null
+
+/** Même contrat d'arrêt, pour la mise en évidence du lien de nav actif. */
+let stopNavSpy: (() => void) | null = null
+
+/** Même contrat d'arrêt, pour la vidéo pilotée par le scroll de « Under the hood ». */
+let stopToolAnatomyVideo: (() => void) | null = null
+
+/* -------------------------------------------------------------------------- */
+/* Saisies en cours                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Saisies en cours, conservées hors du rendu.
+ *
+ * La page se redessine à chaque écriture d'agent, et c'est précisément ce qui
+ * doit arriver pendant qu'un humain tape : sans ce report, l'agent effacerait
+ * la contrainte qu'on est en train de rédiger contre lui.
+ */
 const DEFAULT_DRAFTS: Record<string, string> = {
   'new-title': '',
   'new-next': '',
@@ -315,6 +351,19 @@ function refreshCredentials(taskId: string): void {
 
 let humanError: string | null = null
 
+/**
+ * Retour des interactions de maquette.
+ *
+ * Les futurs parcours cloud sont volontairement cliquables pour éprouver le
+ * design, mais ils ne doivent jamais faire croire qu'un compte ou un fournisseur
+ * a été connecté. Ce message est donc la seule conséquence de ces boutons.
+ */
+let previewNotice: string | null = null
+
+/** Le panneau de connexion factice de la landing est-il visible ? */
+let previewAuthOpen = false
+
+/** Exécute une action humaine en rendant son échec lisible. */
 function humanAction(
   action: string,
   mutate: Parameters<typeof store.mutate>[0],
@@ -341,6 +390,45 @@ function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many
 }
 
+function renderAppBar(task: TaskState | null): string {
+  const { phase, toolNames } = getRegistrationState()
+  const connection =
+    phase === 'registered'
+      ? { label: 'WebMCP ready', tone: 'ready' }
+      : phase === 'partial'
+        ? { label: 'WebMCP partial', tone: 'partial' }
+        : phase === 'pending'
+          ? { label: 'Checking WebMCP', tone: 'pending' }
+          : { label: 'WebMCP off', tone: 'off' }
+
+  return `<header class="top-app-bar">
+      <div class="top-app-bar__brand" aria-label="Watch Log home">
+        <span class="brand-mark" aria-hidden="true">W</span>
+        <span>Watch Log</span>
+      </div>
+      <div class="top-app-bar__status" aria-label="Application status">
+        <span class="status-pill status-pill--${connection.tone}">
+          <span class="status-dot" aria-hidden="true"></span>
+          ${connection.label}${toolNames.length > 0 ? ` · ${toolNames.length} ${plural(toolNames.length, 'tool', 'tools')}` : ''}
+        </span>
+        ${task ? `<span class="version-pill">Version ${task.version}</span>` : ''}
+        <button type="button" class="profile-preview" data-preview-action="Sign-in is a design preview. No account or cloud session was created." aria-label="Preview account menu">
+          <span aria-hidden="true">K</span>
+        </button>
+      </div>
+    </header>`
+}
+
+function renderPreviewNotice(): string {
+  return previewNotice
+    ? `<div class="preview-feedback" role="status" data-preview-feedback tabindex="-1">
+        <span class="preview-feedback__mark" aria-hidden="true">i</span>
+        <p>${escapeHtml(previewNotice)}</p>
+        <button type="button" class="btn btn--text" data-dismiss-preview>Dismiss</button>
+      </div>`
+    : ''
+}
+
 function noticeBlock(): string {
   return notice
     ? `<div class="notice notice--ok" role="status"><p>${escapeHtml(notice)}</p></div>`
@@ -354,7 +442,14 @@ function alertBlock(): string {
 }
 
 function renderLanding(): string {
-  const form = creating
+  // La pastille de la nav montre le compte RÉEL d'outils enregistrés à cet
+  // instant — 0 sans support WebMCP, jusqu'à sept sinon — jamais un chiffre
+  // choisi pour faire joli. `onRegistrationChange` est déjà abonné à
+  // `scheduleRender` dans `mount()`, donc ce nombre se retrouve à jour tout
+  // seul au prochain rendu, sans abonnement supplémentaire ici.
+  const toolCount = getRegistrationState().toolNames.length
+
+  const creationForm = creating
     ? `<form id="create-task" class="form" novalidate>
          <div class="field">
            <label for="new-title">Task title</label>
@@ -377,30 +472,180 @@ function renderLanding(): string {
            <button type="button" id="cancel-create" class="btn">Cancel</button>
          </div>
        </form>`
-    : `<div class="actions">
-         <button type="button" id="start-create" class="btn btn--primary">Create a task</button>
-         <button type="button" id="seed" class="btn">Try the demo</button>
-       </div>`
+    : ''
 
-  return `<section class="landing">
-      <div class="eyebrow-row">
-        <p class="landing__eyebrow">Watch Log</p>
-        ${renderThemeToggle()}
-      </div>
-      <h1 class="landing__headline">Give your AI a memory that survives the conversation.</h1>
-      <p class="landing__lede">
-        The Watch Log keeps completed work, rules to follow, and mistakes not to
-        repeat. A new conversation can read it and continue from the right place.
-      </p>
+  const signIn = previewAuthOpen
+    ? `<form id="preview-auth" class="preview-auth" novalidate>
+        <div>
+          <span class="preview-flag">Design preview</span>
+          <h2>Enter the workspace preview</h2>
+          <p>No account will be created and no email will be sent.</p>
+        </div>
+        <div class="field">
+          <label for="preview-email">Email</label>
+          <input id="preview-email" type="email" autocomplete="email" placeholder="you@example.com" />
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn--primary">Continue to dashboard</button>
+          <button type="button" id="close-preview-auth" class="btn">Cancel</button>
+        </div>
+      </form>`
+    : ''
+
+  return `<div class="marketing-site">
+      <div class="silk-background" data-silk-background aria-hidden="true"></div>
+      <nav class="marketing-nav" aria-label="Public navigation">
+        <div class="marketing-nav__pill">
+          <a class="marketing-brand" href="#landing-hero"><span class="brand-mark" aria-hidden="true">W</span><span>Watch Log</span></a>
+          <div class="marketing-nav__links" data-nav-links>
+            <a href="#how-it-works">How it works</a>
+            <a href="#dashboard-tour" aria-label="Dashboard — ${toolCount} WebMCP ${plural(toolCount, 'tool', 'tools')} registered right now">Dashboard<span class="marketing-nav__badge" aria-hidden="true">${toolCount}</span></a>
+            <a href="#free">Free</a>
+          </div>
+        </div>
+        <a
+          class="marketing-nav__external"
+          href="https://github.com/kymrapro-del/ChatGPT-WebMCP"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open the source code on GitHub"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 17 17 7" />
+            <path d="M8 7h9v9" />
+          </svg>
+        </a>
+        <button type="button" id="open-preview-auth" class="btn btn--tonal marketing-nav__signin">Sign in</button>
+      </nav>
+
+      <section id="landing-hero" class="landing landing--product">
+        <div class="landing__copy brand-hero">
+          <div class="brand-hero__decor" aria-hidden="true">
+            <img class="brand-hero__shape brand-hero__shape--cube" src="/assets/brand/cube.webp" alt="" width="384" height="378" loading="lazy" decoding="async" />
+            <img class="brand-hero__shape brand-hero__shape--cylinder" src="/assets/brand/cylinder.webp" alt="" width="384" height="348" loading="lazy" decoding="async" />
+            <img class="brand-hero__shape brand-hero__shape--gem" src="/assets/brand/gem.webp" alt="" width="376" height="384" loading="lazy" decoding="async" />
+          </div>
+          <div class="brand-hero__content">
+            <p class="landing__eyebrow">Open-source memory for WebMCP agents</p>
+            <h1 class="landing__headline">Give every AI the context it must <mark class="brand-hero__highlight">not</mark> lose.</h1>
+            <p class="landing__lede">
+              Watch Log keeps decisions, rules, evidence and failed approaches in one supervised
+              workspace. A new conversation reads the same memory and continues from the right place.
+            </p>
+            <div class="actions landing__actions">
+              <button type="button" id="start-create" class="btn btn--primary">Create a task</button>
+              <button type="button" id="seed" class="btn">Try the demo</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       ${alertBlock()}
-      ${renderOffline()}
-      ${renderOffer()}
-      ${renderShortcuts()}
-      ${form}
-      <p class="muted landing__note">
-        Everything stays in this browser. No account, no server.
-      </p>
-    </section>`
+      ${creationForm}
+      ${signIn}
+
+      <section id="how-it-works" class="marketing-section" aria-label="How it works">
+        <div class="reason-stack">
+          <article class="reason-card">
+            <img class="reason-card__mascot" src="/assets/brand/mascot.webp" alt="" width="292" height="309" loading="lazy" decoding="async" />
+            <div class="reason-card__text">
+              <h3>The human sets the memory</h3>
+              <p>Rules, rejected approaches and verified evidence stay visible and editable.</p>
+            </div>
+            <img class="reason-card__icon" src="/assets/brand/controls.webp" alt="" width="571" height="375" loading="lazy" decoding="async" />
+          </article>
+          <article class="reason-card">
+            <div class="reason-card__text">
+              <h3>The agent reads typed tools</h3>
+              <p>WebMCP exposes compact operations instead of asking a model to guess the interface.</p>
+            </div>
+            <img class="reason-card__icon" src="/assets/brand/puzzle.webp" alt="" width="513" height="298" loading="lazy" decoding="async" />
+          </article>
+          <article class="reason-card">
+            <div class="reason-card__text">
+              <h3>Every write stays supervised</h3>
+              <p>Stale writes are refused, retries do not duplicate, and the audit remains readable.</p>
+            </div>
+            <img class="reason-card__icon" src="/assets/brand/ledger.webp" alt="" width="495" height="337" loading="lazy" decoding="async" />
+          </article>
+        </div>
+      </section>
+
+      <section id="tool-anatomy" class="marketing-section" aria-labelledby="anatomy-title">
+        <p class="section-heading__eyebrow">Under the hood</p>
+        <h2 id="anatomy-title">One call, five parts a browser understands.</h2>
+        <p class="anatomy-intro">
+          Every action an agent can take on this page is registered the same way: a
+          <strong>name</strong> to call, a <strong>description</strong> telling the agent when to
+          reach for it, an <strong>inputSchema</strong> for its arguments, the
+          <strong>execute</strong> function that runs, and <strong>annotations</strong> such as
+          <code>readOnlyHint</code> that describe it before it ever runs.
+        </p>
+        <div class="tool-anatomy" aria-hidden="true">
+          <button type="button" class="tool-anatomy__button" tabindex="-1">
+            <svg
+              class="tool-anatomy__icon"
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M8 6 3 12l5 6" />
+              <path d="M16 6l5 6-5 6" />
+            </svg>
+            <span class="tool-anatomy__label">resume_task()</span>
+          </button>
+          <span class="tool-anatomy__callout tool-anatomy__callout--name"
+            ><i class="tool-anatomy__dot"></i>name</span
+          >
+          <span class="tool-anatomy__callout tool-anatomy__callout--schema"
+            >inputSchema<i class="tool-anatomy__dot"></i
+          ></span>
+          <span class="tool-anatomy__callout tool-anatomy__callout--desc"
+            ><i class="tool-anatomy__dot"></i>description</span
+          >
+          <span class="tool-anatomy__callout tool-anatomy__callout--execute"
+            ><i class="tool-anatomy__dot"></i>execute()</span
+          >
+          <span class="tool-anatomy__callout tool-anatomy__callout--annot"
+            >annotations<i class="tool-anatomy__dot"></i
+          ></span>
+        </div>
+      </section>
+
+      <div class="text-loop" data-text-loop aria-hidden="true"></div>
+
+      <section id="dashboard-tour" class="marketing-section" aria-labelledby="tour-title">
+        <header class="prototype-heading">
+          <div><p class="section-heading__eyebrow">Inside the workspace</p><h2 id="tour-title">Everything users need to supervise AI memory.</h2></div>
+          <button type="button" id="seed-tour" class="btn btn--primary">Open dashboard preview</button>
+        </header>
+        <div class="tour-grid">
+          <article class="tour-card tour-card--wide"><span>Overview</span><h3>See what is active, verified and waiting.</h3><p>One operational view across memories, rules and current next actions.</p><div class="tour-bars"><i></i><i></i><i></i></div></article>
+          <article class="tour-card"><span>Connections</span><h3>One memory layer for compatible agents.</h3><p>ChatGPT, Claude and Gemini setup flows are presented without inventing provider access.</p></article>
+          <article class="tour-card"><span>Live console</span><h3>Watch tools register and run.</h3><p>Inspect calls, refusals, versions and the exact state returned to the agent.</p></article>
+          <article class="tour-card tour-card--wide"><span>Configuration</span><h3>Control storage, permissions and retention.</h3><p>The prototype distinguishes settings that work locally from planned cloud controls.</p><div class="tour-toggles"><i></i><i></i><i></i></div></article>
+        </div>
+      </section>
+
+      <section id="free" class="marketing-section free-section brand-hero" aria-labelledby="free-title">
+        <div class="free-section__decor" aria-hidden="true">
+          <span class="free-section__symbol free-section__symbol--dollar">$</span>
+          <span class="free-section__symbol free-section__symbol--euro">€</span>
+        </div>
+        <div class="brand-hero__content">
+          <h2 id="free-title">Free by design</h2>
+          <p class="free-section__callout">0 means 0. No hiding cost.</p>
+          <p>The current product stores data in your browser and ships under the MIT license. Hosted sync is not part of this prototype.</p>
+        </div>
+      </section>
+
+      <footer class="marketing-footer"><span>Watch Log</span><span>Free · Open source · Built for the WebMCP Challenge</span></footer>
+    </div>`
 }
 
 function renderReadyForAI(task: TaskState): string {
@@ -519,35 +764,52 @@ function renderStepRow(step: Step, active: boolean): string {
 
   if (disputing === step.id) return `<li class="review">${disputeForm(step)}</li>`
 
-  return `<li class="row">
-      <span class="chip chip--${step.confidence}">${CONFIDENCE_LABEL[step.confidence]}</span>
-      <span class="row__text">
-        <strong>${escapeHtml(step.action)}</strong>
-        <span class="muted"> — ${escapeHtml(step.result)}</span>
+  const evidence = step.evidence
+    ? `<details class="evidence-disclosure" data-step-evidence="${escapeHtml(step.id)}">
+         <summary>View evidence · ${escapeHtml(step.evidence.kind.replaceAll('_', ' '))}</summary>
+         <div class="evidence-disclosure__body">
+           <pre>${escapeHtml(step.evidence.content)}</pre>
+           <p class="supporting-text">${
+             step.evidence.verifiedAt === null
+               ? 'Attached by its author · not yet checked by a human'
+               : 'Checked by a human'
+           }</p>
+         </div>
+       </details>`
+    : '<p class="supporting-text step-row__empty">No evidence attached.</p>'
+
+  return `<li class="step-row">
+      <div class="row row--step">
+        <span class="chip chip--${step.confidence}">${CONFIDENCE_LABEL[step.confidence]}</span>
+        <span class="row__text">
+          <strong>${escapeHtml(step.action)}</strong>
+          <span class="supporting-text">${escapeHtml(step.result)}</span>
+          ${
+            step.dispute
+              ? `<span class="row__dispute">You say: ${escapeHtml(step.dispute.reason)}</span>`
+              : ''
+          }
+        </span>
         ${
-          step.dispute
-            ? `<span class="row__dispute">You say: ${escapeHtml(step.dispute.reason)}</span>`
+          active && step.evidence === null && step.confidence !== 'disputed'
+            ? `<button type="button" class="btn btn--quiet" data-attach="${escapeHtml(step.id)}"
+                       aria-label="Attach evidence to: ${escapeHtml(step.action)}">Attach evidence</button>`
             : ''
         }
-      </span>
-      ${
-        active && step.evidence === null && step.confidence !== 'disputed'
-          ? `<button type="button" class="btn btn--quiet" data-attach="${escapeHtml(step.id)}"
-                     aria-label="Attach evidence to: ${escapeHtml(step.action)}">Attach evidence</button>`
-          : ''
-      }
-      ${
-        active && step.confidence !== 'disputed'
-          ? `<button type="button" class="btn btn--quiet" data-dispute="${escapeHtml(step.id)}"
-                     aria-label="Mark wrong: ${escapeHtml(step.action)}">Wrong</button>`
-          : ''
-      }
-      ${
-        active && step.confidence === 'disputed'
-          ? `<button type="button" class="btn btn--quiet" data-undispute="${escapeHtml(step.id)}"
-                     aria-label="Withdraw the dispute on: ${escapeHtml(step.action)}">Withdraw</button>`
-          : ''
-      }
+        ${
+          active && step.confidence !== 'disputed'
+            ? `<button type="button" class="btn btn--quiet" data-dispute="${escapeHtml(step.id)}"
+                       aria-label="Mark wrong: ${escapeHtml(step.action)}">Wrong</button>`
+            : ''
+        }
+        ${
+          active && step.confidence === 'disputed'
+            ? `<button type="button" class="btn btn--quiet" data-undispute="${escapeHtml(step.id)}"
+                       aria-label="Withdraw the dispute on: ${escapeHtml(step.action)}">Withdraw</button>`
+            : ''
+        }
+      </div>
+      ${evidence}
     </li>`
 }
 
@@ -636,6 +898,42 @@ function renderTrail(task: TaskState, id: string): string {
       </ul>
     </span>`
 }
+
+/* -------------------------------------------------------------------------- */
+/* 3 — DECISIONS                                                               */
+/* -------------------------------------------------------------------------- */
+
+function renderDecisionRow(decision: Decision): string {
+  return `<li class="decision-row">
+      <div class="decision-row__choice">
+        <span class="chip chip--${decision.source}">${decision.source === 'human' ? 'You' : 'Agent'}</span>
+        <strong>${escapeHtml(decision.choice)}</strong>
+      </div>
+      <p>${escapeHtml(decision.rationale)}</p>
+    </li>`
+}
+
+function renderDecisions(task: TaskState): string {
+  const shown = task.decisions.slice(-MAX_ROWS).reverse()
+  const body = shown.length
+    ? `<ol class="decision-list">${shown.map(renderDecisionRow).join('')}</ol>${remainder(task.decisions.length)}`
+    : '<p class="empty">No decision recorded yet.</p>'
+
+  return `<section class="card" aria-labelledby="decisions-title" data-decisions>
+      <div class="section-heading">
+        <div>
+          <p class="section-heading__eyebrow">Reasoning that survives</p>
+          <h2 id="decisions-title" class="card__title">Decisions</h2>
+        </div>
+        <span class="count-badge">${task.decisions.length}</span>
+      </div>
+      ${body}
+    </section>`
+}
+
+/* -------------------------------------------------------------------------- */
+/* 3 — RULES TO FOLLOW                                                         */
+/* -------------------------------------------------------------------------- */
 
 function renderRules(task: TaskState): string {
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
@@ -1314,15 +1612,17 @@ function renderEvidence(task: TaskState): string {
       disputing === s.id
         ? `<li class="review">${disputeForm(s)}</li>`
         : `<li class="review">
-        <div class="row">
+        <div class="row review__heading">
           <span class="chip chip--evidence">${escapeHtml(s.evidence!.kind)}</span>
           <span class="row__text"><strong>${escapeHtml(s.action)}</strong></span>
+        </div>
+        <pre>${escapeHtml(s.evidence!.content)}</pre>
+        <div class="review__action">
           <button type="button" class="btn btn--primary" data-verify="${escapeHtml(s.id)}"
                   aria-label="Approve the evidence for: ${escapeHtml(s.action)}">Approve</button>
           <button type="button" class="btn btn--danger" data-dispute="${escapeHtml(s.id)}"
                   aria-label="Mark wrong: ${escapeHtml(s.action)}">Wrong</button>
         </div>
-        <pre>${escapeHtml(s.evidence!.content)}</pre>
       </li>`,
     )
     .join('')
@@ -1339,6 +1639,69 @@ function renderEvidence(task: TaskState): string {
     </section>`
 }
 
+/* -------------------------------------------------------------------------- */
+/* 7 — PERSISTENT AUDIT                                                        */
+/* -------------------------------------------------------------------------- */
+
+const MAX_AUDIT_ROWS = 12
+
+function auditVersion(entry: AuditEntry): string {
+  return entry.versionBefore === entry.versionAfter
+    ? `v${entry.versionBefore}`
+    : `v${entry.versionBefore} → v${entry.versionAfter}`
+}
+
+function renderAudit(task: TaskState): string {
+  const shown = task.audit.slice(-MAX_AUDIT_ROWS).reverse()
+  const rows = shown
+    .map((entry) => {
+      const repeated = entry.repeated && entry.repeated > 1 ? ` · repeated ${entry.repeated}×` : ''
+      const time = new Date(entry.at)
+      const validTime = Number.isFinite(time.getTime())
+      const datetime = validTime ? time.toISOString() : ''
+      const timeLabel = validTime
+        ? time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+        : 'Unknown time'
+      return `<li class="audit-row audit-row--${entry.outcome}">
+        <span class="audit-marker" aria-hidden="true"></span>
+        <div class="audit-row__content">
+          <div class="audit-row__meta">
+            <strong>${escapeHtml(entry.operation.replaceAll('_', ' '))}</strong>
+            <span>${entry.actor === 'human' ? 'Human' : 'Agent'} · ${auditVersion(entry)}</span>
+          </div>
+          <p>${escapeHtml(entry.detail)}${repeated}</p>
+        </div>
+        <time${datetime ? ` datetime="${datetime}"` : ''}>${timeLabel}</time>
+      </li>`
+    })
+    .join('')
+
+  return `<section class="card" aria-labelledby="audit-title" data-persistent-audit>
+      <div class="section-heading">
+        <div>
+          <p class="section-heading__eyebrow">Stored with this task</p>
+          <h2 id="audit-title" class="card__title">Persistent audit</h2>
+        </div>
+        <span class="count-badge">${task.audit.length}</span>
+      </div>
+      <p class="supporting-text">Applied and refused writes remain here after reload.</p>
+      <ol class="audit-list">${rows}</ol>
+      ${remainder(task.audit.length)}
+    </section>`
+}
+
+/* -------------------------------------------------------------------------- */
+/* 7 — ACTIVITY                                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Le dernier refus, dit en langage humain.
+ *
+ * Le témoin d'appels sait qu'un appel a été refusé, pas pourquoi. Le journal
+ * d'audit, lui, porte le motif — et c'est le motif qui décide de la phrase. Un
+ * refus pour état périmé n'est pas une panne : c'est la supervision qui
+ * fonctionne, et la page doit le dire ainsi.
+ */
 function lastRefusal(task: TaskState): string | null {
   const refused = [...task.audit].reverse().find((e) => e.outcome === 'refused')
   if (!refused) return null
@@ -1394,10 +1757,16 @@ function renderActivity(task: TaskState): string {
     )
     .join('')
 
-  return `<section class="card" aria-labelledby="activity-title">
-      <h2 id="activity-title" class="card__title">Activity</h2>
+  return `<section class="card card--live" aria-labelledby="activity-title" data-live-calls>
+      <div class="section-heading">
+        <div>
+          <p class="section-heading__eyebrow">This page session only</p>
+          <h2 id="activity-title" class="card__title">Live tool calls</h2>
+        </div>
+        <span class="count-badge">${total}</span>
+      </div>
       ${alert ? `<div class="notice notice--stale" role="status"><p>${escapeHtml(alert)}</p></div>` : ''}
-      <p class="muted">${total} tool ${plural(total, 'call', 'calls')} so far, ${refused} refused.</p>
+      <p class="supporting-text">${total} tool ${plural(total, 'call', 'calls')} so far, ${refused} refused.</p>
       ${readBeforeWrite(total, blindWrites, sawRead)}
       ${rows ? `<ul class="calls">${rows}</ul>` : '<p class="empty">No agent has called a tool yet.</p>'}
     </section>`
@@ -1519,7 +1888,267 @@ function renderTechnical(task: TaskState | null): string {
     </details>`
 }
 
+/* -------------------------------------------------------------------------- */
+/* Assemblage                                                                  */
+/* -------------------------------------------------------------------------- */
+
+function renderWorkspaceNav(): string {
+  return `<nav class="workspace-nav" aria-label="Workspace navigation">
+      <div class="workspace-nav__heading">
+        <span class="workspace-nav__label">Private workspace</span>
+        <strong>Kymra's memory</strong>
+        <span class="preview-flag">Design preview</span>
+      </div>
+      <div class="workspace-nav__links">
+        <a class="workspace-nav__link workspace-nav__link--active" href="#workspace-overview">
+          <span aria-hidden="true">01</span> Overview
+        </a>
+        <a class="workspace-nav__link" href="#memory-detail">
+          <span aria-hidden="true">02</span> Memory
+        </a>
+        <a class="workspace-nav__link" href="#connections-preview">
+          <span aria-hidden="true">03</span> Connections
+        </a>
+        <a class="workspace-nav__link" href="#security-preview">
+          <span aria-hidden="true">04</span> Security
+        </a>
+        <a class="workspace-nav__link" href="#memory-audit">
+          <span aria-hidden="true">05</span> Console
+        </a>
+        <a class="workspace-nav__link" href="#settings-preview">
+          <span aria-hidden="true">06</span> Settings
+        </a>
+      </div>
+      <div class="workspace-nav__storage">
+        <span class="status-dot status-dot--local" aria-hidden="true"></span>
+        <span><strong>Local mode</strong><small>Cloud sync is not active</small></span>
+      </div>
+    </nav>`
+}
+
+function renderWorkspaceOverview(task: TaskState): string {
+  const acceptedRules = task.constraints.filter(
+    (constraint) => constraint.standing === 'accepted' && constraint.active,
+  ).length
+  const verifiedSteps = task.steps.filter((step) => step.confidence === 'human_verified').length
+  const toolCount = getRegistrationState().toolNames.length
+
+  return `<section id="workspace-overview" class="workspace-overview prototype-section" aria-labelledby="workspace-title">
+      <div class="workspace-overview__intro">
+        <p class="section-heading__eyebrow">AI memory workspace</p>
+        <h1 id="workspace-title">One place for the context your agents must not lose.</h1>
+        <p>
+          Review durable memories, supervise what agents write, and control how future
+          conversations pick the work back up.
+        </p>
+        <div class="actions">
+          <a class="btn btn--primary" href="#memory-detail">Open current memory</a>
+          <button type="button" class="btn" data-preview-action="Creating another cloud memory is part of the prototype. The existing local task was not changed.">New memory</button>
+        </div>
+      </div>
+      <div class="workspace-metrics" aria-label="Current workspace facts">
+        <article class="metric-card">
+          <span>Active memories</span>
+          <strong>1</strong>
+          <small>Stored in this browser</small>
+        </article>
+        <article class="metric-card">
+          <span>Binding rules</span>
+          <strong>${acceptedRules}</strong>
+          <small>Applied to the current task</small>
+        </article>
+        <article class="metric-card">
+          <span>Human verified</span>
+          <strong>${verifiedSteps}</strong>
+          <small>${plural(verifiedSteps, 'step', 'steps')} reviewed</small>
+        </article>
+        <article class="metric-card">
+          <span>WebMCP tools</span>
+          <strong>${toolCount}</strong>
+          <small>${toolCount > 0 ? 'Available in this browser' : 'Browser support is off'}</small>
+        </article>
+      </div>
+      <article class="memory-summary">
+        <div class="memory-summary__main">
+          <span class="memory-summary__status"><span aria-hidden="true"></span>${task.status}</span>
+          <div>
+            <p class="memory-summary__kicker">Current memory</p>
+            <h2>${escapeHtml(task.title)}</h2>
+            <p>${task.next ? `Next: ${escapeHtml(task.next)}` : 'No next action recorded.'}</p>
+          </div>
+        </div>
+        <div class="memory-summary__meta">
+          <span>Version ${task.version}</span>
+          <span>${task.steps.length} ${plural(task.steps.length, 'step', 'steps')}</span>
+          <a href="#memory-detail">View memory <span aria-hidden="true">→</span></a>
+        </div>
+      </article>
+    </section>`
+}
+
+const CONNECTOR_PREVIEWS = [
+  {
+    mark: 'C',
+    name: 'ChatGPT',
+    detail: "Use this workspace from ChatGPT's WebMCP-enabled browser.",
+  },
+  {
+    mark: 'A',
+    name: 'Claude',
+    detail: 'Planned client verification through a compatible browser bridge.',
+  },
+  {
+    mark: 'G',
+    name: 'Gemini',
+    detail: 'Planned compatibility validation when the client exposes WebMCP.',
+  },
+] as const
+
+function renderConnectionsPreview(): string {
+  const cards = CONNECTOR_PREVIEWS.map(
+    (connector) => `<article class="connector-card">
+        <div class="connector-card__top">
+          <span class="connector-mark" aria-hidden="true">${connector.mark}</span>
+          <span class="connector-state">Not connected</span>
+        </div>
+        <h3>${connector.name}</h3>
+        <p>${connector.detail}</p>
+        <button type="button" class="btn btn--tonal" data-preview-action="${connector.name} setup is a design preview. No provider account, API key or conversation was connected.">
+          Preview setup
+        </button>
+      </article>`,
+  ).join('')
+
+  return `<section id="connections-preview" class="prototype-section prototype-section--connections" aria-labelledby="connections-title">
+      <header class="prototype-heading">
+        <div>
+          <p class="section-heading__eyebrow">Connection centre</p>
+          <h2 id="connections-title">Bring the memory to every compatible agent.</h2>
+        </div>
+        <span class="preview-flag">Sample interface</span>
+      </header>
+      <p class="prototype-heading__copy">
+        These cards demonstrate the future connection flow. No provider identity is inferred,
+        no API key is stored, and no private conversation history is imported.
+      </p>
+      <div class="connector-grid">${cards}</div>
+      <div class="connection-explainer">
+        <span class="connection-explainer__mark" aria-hidden="true">W</span>
+        <div>
+          <strong>WebMCP is the shared connection layer</strong>
+          <p>The seven tools on this page expose the same supervised memory to any compatible agent, without rebuilding the product for each model.</p>
+        </div>
+        <a href="#memory-detail">Inspect tools</a>
+      </div>
+    </section>`
+}
+
+function renderSecurityPreview(task: TaskState): string {
+  return `<section id="security-preview" class="prototype-section prototype-section--security" aria-labelledby="security-title">
+      <header class="prototype-heading">
+        <div>
+          <p class="section-heading__eyebrow">Access & privacy</p>
+          <h2 id="security-title">The security controls users will understand.</h2>
+        </div>
+        <span class="preview-flag">Sample interface</span>
+      </header>
+      <div class="security-grid">
+        <article class="security-card security-card--actual">
+          <span class="security-card__state">Active now</span>
+          <h3>Local private storage</h3>
+          <p>This task currently lives only in this browser profile. No cloud account is active.</p>
+          <span class="security-card__detail mono">Task ${escapeHtml(task.id)}</span>
+        </article>
+        <article class="security-card">
+          <span class="security-card__state">Planned</span>
+          <h3>Passwordless sign-in</h3>
+          <p>Magic-link authentication, private workspaces and explicit device sessions.</p>
+          <button type="button" class="btn btn--text" data-preview-action="Authentication is a design preview. No email was sent and no account was created.">Preview sign-in</button>
+        </article>
+        <article class="security-card">
+          <span class="security-card__state">Planned</span>
+          <h3>Connection permissions</h3>
+          <p>Review and revoke the agents or devices allowed to open each memory.</p>
+          <button type="button" class="btn btn--text" data-preview-action="Permission management is a design preview. The current local task remains unchanged.">Preview access</button>
+        </article>
+        <article class="security-card security-card--actual">
+          <span class="security-card__state">Active now</span>
+          <h3>Append-only audit</h3>
+          <p>${task.audit.length} ${plural(task.audit.length, 'event is', 'events are')} already recorded for the current memory.</p>
+          <a class="btn btn--text" href="#memory-audit">Open audit</a>
+        </article>
+      </div>
+    </section>`
+}
+
+function renderConfigurationPreview(): string {
+  return `<section id="settings-preview" class="prototype-section prototype-section--settings" aria-labelledby="settings-title">
+      <header class="prototype-heading">
+        <div>
+          <p class="section-heading__eyebrow">Workspace configuration</p>
+          <h2 id="settings-title">Every important behavior, visible before it ships.</h2>
+        </div>
+        <span class="preview-flag">Sample interface</span>
+      </header>
+      <p class="prototype-heading__copy">These controls define the future product contract. They are interactive design previews and do not change storage, permissions or retention yet.</p>
+      <div class="settings-preview">
+        <article class="settings-group">
+          <div><h3>Memory storage</h3><p>Choose where supervised memory is authoritative.</p></div>
+          <div class="segmented-preview" role="group" aria-label="Preview storage mode">
+            <button type="button" class="segmented-preview__active" data-preview-action="Local storage is already active. Cloud storage is not connected in this prototype.">Local</button>
+            <button type="button" data-preview-action="Cloud sync is a design preview. No remote database was contacted.">Cloud</button>
+          </div>
+        </article>
+        <article class="settings-group">
+          <div><h3>Agent write access</h3><p>Require version checks and keep human approval authoritative.</p></div>
+          <button type="button" class="switch-preview switch-preview--on" data-preview-action="Strict agent writes are already enforced by the real WebMCP engine." aria-label="Preview strict write setting"><span></span></button>
+        </article>
+        <article class="settings-group">
+          <div><h3>Conversation retention</h3><p>Future cloud conversations would follow an explicit deletion window.</p></div>
+          <button type="button" class="select-preview" data-preview-action="Retention selection is a design preview. No conversation transcript is stored.">30 days <span aria-hidden="true">⌄</span></button>
+        </article>
+        <article class="settings-group">
+          <div><h3>Tool permissions</h3><p>Read tools can stay available while sensitive writes require supervision.</p></div>
+          <button type="button" class="btn btn--tonal" data-preview-action="Tool permission editing is a design preview. The seven current tool contracts were not changed.">Configure tools</button>
+        </article>
+      </div>
+    </section>`
+}
+
+function renderProductShell(task: TaskState): string {
+  return `<div class="workspace-shell">
+      ${renderWorkspaceNav()}
+      <div class="workspace-content">
+        ${renderPreviewNotice()}
+        ${renderWorkspaceOverview(task)}
+        <section id="memory-detail" class="memory-detail" aria-label="Current memory detail">
+          ${renderDashboard(task)}
+        </section>
+        ${renderConnectionsPreview()}
+        ${renderSecurityPreview(task)}
+        ${renderConfigurationPreview()}
+        <footer class="product-footer">
+          <span>Watch Log · WebMCP memory workspace</span>
+          <span>Prototype surfaces are labelled. Real memory data remains distinct.</span>
+        </footer>
+      </div>
+    </div>`
+}
+
 function renderDashboard(task: TaskState): string {
+  const demo =
+    task.id === DEMO_TASK_ID
+      ? `<aside class="demo-notice" data-demo-notice aria-label="Demonstration data">
+          <span class="demo-notice__icon" aria-hidden="true">i</span>
+          <p><strong>Sample data.</strong> The steps, evidence and results below illustrate the product; they are not real results from your machine.</p>
+        </aside>`
+      : task.id.startsWith('mesure-')
+        ? `<aside class="demo-notice" data-demo-notice aria-label="Experiment fixture data">
+            <span class="demo-notice__icon" aria-hidden="true">i</span>
+            <p><strong>Experiment fixture.</strong> This task is a controlled evaluation scenario. Its prior step and evidence URL are prepared context, not results from your machine.</p>
+          </aside>`
+        : ''
+
   return `<header class="page-head">
       <div class="eyebrow-row">
         <p class="page-head__eyebrow">Watch Log</p>
@@ -1534,11 +2163,13 @@ function renderDashboard(task: TaskState): string {
                        aria-label="Rename this task">Rename</button>
              </div>`
       }
+      <p class="page-head__meta">Task ${escapeHtml(task.id)} · Updated ${new Date(task.updatedAt).toLocaleString('en-GB')}</p>
       ${renderLastWrite(task)}
       ${renderAgentLive()}
       ${renderSwitcher(task)}
       ${renderSearchBox()}
     </header>
+    ${demo}
     ${noticeBlock()}
     ${alertBlock()}
     ${searching() ? renderSearchResults(task) : ''}
@@ -1546,30 +2177,45 @@ function renderDashboard(task: TaskState): string {
     ${renderOffline()}
     ${renderOffer()}
     ${renderShortcuts()}
-    ${searching() ? '' : renderNeeds(task)}
-    ${searching() ? '' : renderPermission(task)}
-    ${searching() ? '' : renderAway(task)}
-    ${searching() ? '' : renderNext(task)}
-    ${searching() ? '' : renderWaiting(task)}
-    ${searching() ? '' : renderReadyForAI(task)}
-    ${searching() ? '' : renderCompletedWork(task)}
-    ${searching() ? '' : renderRules(task)}
-    ${searching() ? '' : renderDontRetry(task)}
-    ${searching() ? '' : renderCredentials(task)}
-    ${searching() ? '' : renderProposals(task)}
-    ${searching() ? '' : renderEvidence(task)}
-    ${searching() ? '' : renderActivity(task)}
-    ${searching() ? '' : renderHistory(task)}
+    ${
+      searching()
+        ? ''
+        : `<div class="dashboard-grid">
+      <div class="dashboard-primary">
+        ${renderNeeds(task)}
+        ${renderPermission(task)}
+        ${renderAway(task)}
+        ${renderNext(task)}
+        ${renderWaiting(task)}
+        ${renderReadyForAI(task)}
+        ${renderCompletedWork(task)}
+        ${renderDecisions(task)}
+        ${renderEvidence(task)}
+      </div>
+      <aside class="dashboard-secondary" aria-label="Task guardrails">
+        ${renderRules(task)}
+        ${renderDontRetry(task)}
+        ${renderCredentials(task)}
+        ${renderProposals(task)}
+      </aside>
+      <div id="memory-audit" class="dashboard-operations">
+        ${renderAudit(task)}
+        ${renderActivity(task)}
+        ${renderHistory(task)}
+      </div>
+    </div>`
+    }
     ${renderTechnical(task)}`
 }
 
 function renderBody(): string {
   const { status, task, error, boundId } = store.getSnapshot()
+  const appBar = renderAppBar(task)
 
-  if (status === 'loading') return `<p class="muted">Loading…</p>`
+  if (status === 'loading') return `${appBar}<p class="muted loading-state">Loading…</p>`
 
   if (status === 'error') {
-    return `<div class="notice notice--error" role="alert">
+    return `${appBar}<div class="notice notice--error" role="alert">
         <p>${escapeHtml(humanMessage(new Error(error ?? ''), 'Opening the task'))}</p>
       </div>${renderTechnical(null)}`
   }
@@ -1585,14 +2231,14 @@ function renderBody(): string {
              <p>The address points at <code>${escapeHtml(boundId ?? '')}</code>, which is not here.
                 No other task has been opened in its place.</p>
            </div>`
-    return `${alarm}${renderLanding()}`
+    return `${appBar}${alarm}${renderLanding()}`
   }
 
   // Le formulaire de création prend toute la place, même quand un cahier est
   // déjà ouvert : sans cela, « New task » ne montrait rien depuis un tableau
   // de bord, le formulaire ne vivant que dans l'écran d'accueil.
   if (creating) return renderLanding()
-  return task ? renderDashboard(task) : renderLanding()
+  return task ? `${appBar}${renderProductShell(task)}` : renderLanding()
 }
 
 function bindDrafts(): void {
@@ -1610,6 +2256,21 @@ function bindDrafts(): void {
   }
 }
 
+function bindPreviewInteractions(): void {
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-preview-action]')) {
+    button.addEventListener('click', () => {
+      previewNotice = button.dataset.previewAction ?? 'This control is part of the design preview.'
+      renderNow()
+      document.querySelector<HTMLElement>('[data-preview-feedback]')?.focus()
+    })
+  }
+
+  document.querySelector('[data-dismiss-preview]')?.addEventListener('click', () => {
+    previewNotice = null
+    renderNow()
+  })
+}
+
 function bindCreation(): void {
   const carryBox = document.querySelector<HTMLInputElement>('#carry-rules')
   if (carryBox) {
@@ -1620,6 +2281,31 @@ function bindCreation(): void {
       })
     }
   }
+
+  const resetWorkspaceViewport = () => {
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }
+
+  document.querySelector('#open-preview-auth')?.addEventListener('click', () => {
+    previewAuthOpen = true
+    renderNow()
+    document.querySelector<HTMLInputElement>('#preview-email')?.focus()
+  })
+
+  document.querySelector('#close-preview-auth')?.addEventListener('click', () => {
+    previewAuthOpen = false
+    renderNow()
+    document.querySelector<HTMLButtonElement>('#open-preview-auth')?.focus()
+  })
+
+  document.querySelector<HTMLFormElement>('#preview-auth')?.addEventListener('submit', (event) => {
+    event.preventDefault()
+    previewAuthOpen = false
+    previewNotice =
+      'You entered the design-preview workspace. No account was created and no email was sent.'
+    void store.openPreparedTask(buildDemoTask()).then(resetWorkspaceViewport)
+  })
 
   document.querySelector('#start-create')?.addEventListener('click', () => {
     creating = true
@@ -1683,10 +2369,18 @@ function bindCreation(): void {
       )
   })
 
-  document.querySelector('#seed')?.addEventListener('click', () => {
+  const openPreparedDemo = () => {
+    // `?mesure=N` charge la tâche de mesure N au lieu du cahier de
+    // démonstration, pour que le protocole de mesure soit rejouable tel quel.
     const n = Number(new URLSearchParams(location.search).get('mesure'))
-    void store.openPreparedTask(n ? buildMeasureTask(n) : buildDemoTask())
-  })
+    void store
+      .openPreparedTask(n ? buildMeasureTask(n) : buildDemoTask())
+      .then(resetWorkspaceViewport)
+  }
+
+  for (const id of ['seed', 'seed-tour']) {
+    document.querySelector(`#${id}`)?.addEventListener('click', openPreparedDemo)
+  }
 }
 
 function bindSupervision(): void {
@@ -2566,12 +3260,59 @@ function render(): void {
       ? active.id
       : null
 
+  stopTextLoop?.()
+  stopTextLoop = null
+  stopSilkBackground?.()
+  stopSilkBackground = null
+  stopNavSpy?.()
+  stopNavSpy = null
+  stopToolAnatomyVideo?.()
+  stopToolAnatomyVideo = null
+
   root.innerHTML = `<main id="content">${renderBody()}</main>`
 
   bindDrafts()
+  bindPreviewInteractions()
   bindCreation()
   bindSupervision()
   bindTechnical()
+
+  const silkHost = root.querySelector<HTMLElement>('[data-silk-background]')
+  if (silkHost) {
+    stopSilkBackground = mountSilkBackground(silkHost)
+  }
+
+  const toolAnatomyHost = root.querySelector<HTMLElement>('.tool-anatomy')
+  if (toolAnatomyHost) {
+    stopToolAnatomyVideo = mountScrollVideo(toolAnatomyHost, {
+      lightSrc: '/assets/brand/tool-anatomy-light.webm',
+      darkSrc: '/assets/brand/tool-anatomy-dark.webm',
+    })
+  }
+
+  const navLinksHost = root.querySelector<HTMLElement>('[data-nav-links]')
+  if (navLinksHost) {
+    stopNavSpy = mountNavSpy(navLinksHost, {
+      linkSelector: 'a[href^="#"]',
+      // Un seul token : `classList.toggle()` refuse une chaîne à espaces.
+      activeClass: 'is-active',
+    })
+  }
+
+  const textLoopHost = root.querySelector<HTMLElement>('[data-text-loop]')
+  if (textLoopHost) {
+    stopTextLoop = mountTextLoop(textLoopHost, {
+      items: [
+        'resume_task',
+        'read_task_detail',
+        'log_step',
+        'add_constraint',
+        'reject_approach',
+        'add_decision',
+        'complete_task',
+      ],
+    })
+  }
 
   if (focused) {
     const field = document.querySelector<HTMLInputElement>(`#${focused}`)
@@ -2756,6 +3497,8 @@ export function mount(target: HTMLElement): () => void {
   attachKindChosen = false
   creating = false
   humanError = null
+  previewNotice = null
+  previewAuthOpen = false
   lastAnnouncement = ''
   renderScheduled = false
   credentials = []
@@ -2813,6 +3556,8 @@ export function mount(target: HTMLElement): () => void {
       else clearTimeout(pendingFrame)
       pendingFrame = null
     }
+    stopTextLoop?.()
+    stopTextLoop = null
     renderScheduled = false
     root = null
   }

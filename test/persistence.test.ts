@@ -36,6 +36,23 @@ describe('persistance', () => {
     expect((await loadLastTask())?.id).toBe(second.id)
   })
 
+  it('laisse la racine publique même si une mémoire locale existe déjà', async () => {
+    const existing = await store.createAndOpenTask('Mémoire existante', 'Continuer')
+
+    store.__resetStore()
+    await store.initPublicLanding()
+
+    expect(store.getSnapshot()).toMatchObject({
+      status: 'empty',
+      task: null,
+      boundId: null,
+    })
+    expect((await loadTask(existing.id))?.title).toBe('Mémoire existante')
+
+    await store.init(existing.id)
+    expect(store.currentTask()?.id).toBe(existing.id)
+  })
+
   it('persiste aussi les écritures refusées', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     await store.mutate((state) =>

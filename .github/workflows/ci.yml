@@ -13,10 +13,17 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.23.2
           cache: npm
 
       - run: npm ci
+
+      # Informatif seulement : un avis sans correctif ne doit jamais bloquer une
+      # PR. `continue-on-error` fait tourner la lecture au vert, mais la sortie
+      # de la commande reste visible dans les logs de l'étape.
+      - name: Audit de sécurité (informatif)
+        run: npm audit --audit-level=high
+        continue-on-error: true
 
       # Exactement ce que `npm run check` exécute en local : un échec ici doit
       # toujours être reproductible sur la machine de qui a poussé.

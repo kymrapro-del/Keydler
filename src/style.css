@@ -1,139 +1,301 @@
+/*
+ * Watch Log — couche de composants Material 3.
+ *
+ * Les couleurs, types, formes, élévations et mouvements consomment directement
+ * les rôles générés dans tokens.css. Les quelques dimensions déclarées ici
+ * décrivent la composition responsive propre au produit, pas un thème parallèle.
+ */
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+html {
+  min-width: 320px;
+  background: var(--md-sys-color-surface);
+}
+
 body {
   margin: 0;
-  padding: var(--sp-6) var(--sp-4) var(--sp-7);
-  background: var(--c-bg);
-  color: var(--c-text);
-  font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.55;
+  min-height: 100vh;
+  padding: 0;
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-ref-typeface-plain);
+  font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+  -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
+
+  /*
+   * Base du state layer M3 (voir la section « Boutons et champs » plus bas) :
+   * la couleur de fond ambiante sur laquelle un composant à conteneur
+   * transparent (bouton outlined/text, lien, <summary>) compose sa couche
+   * d'état. `color-mix()` a besoin d'une VRAIE couleur de fond à mélanger —
+   * pas de « transparent » — donc chaque conteneur qui change de fond
+   * réassigne cette variable pour que le mélange tombe sur la bonne surface
+   * plutôt que sur le fond par défaut de la page.
+   */
+  --state-layer-base: var(--md-sys-color-surface);
 }
 
 main {
-  max-width: var(--dashboard);
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
+  width: 100%;
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
 }
 
 h1 {
-  margin: 0;
-  font-size: 1.75rem;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  margin-bottom: var(--sp-2);
+  font-family: var(--md-sys-typescale-headline-large-font);
+  font-size: var(--md-sys-typescale-headline-large-size);
+  font-weight: var(--md-sys-typescale-headline-large-weight);
+  line-height: var(--md-sys-typescale-headline-large-line-height);
+  letter-spacing: var(--md-sys-typescale-headline-large-tracking);
 }
 
 h3 {
-  margin: var(--sp-4) 0 var(--sp-2);
-  font-size: 0.8125rem;
-  font-weight: 600;
+  margin-bottom: var(--sp-2);
+  font-family: var(--md-sys-typescale-title-small-font);
+  font-size: var(--md-sys-typescale-title-small-size);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+  line-height: var(--md-sys-typescale-title-small-line-height);
+  letter-spacing: var(--md-sys-typescale-title-small-tracking);
 }
 
 p {
-  margin: 0 0 var(--sp-2);
+  margin-bottom: var(--sp-2);
 }
 
 p:last-child {
   margin-bottom: 0;
 }
 
+code,
+pre,
+.mono {
+  font-family: var(--md-ref-typeface-mono);
+}
+
 code {
-  font-family: var(--font-mono);
+  padding: 0 var(--sp-1);
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
   font-size: 0.875em;
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-sm);
-  padding: 1px 5px;
   overflow-wrap: anywhere;
 }
 
 pre {
   margin: var(--sp-2) 0 0;
   padding: var(--sp-3);
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-md);
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  line-height: 1.5;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.muted {
-  color: var(--c-text-muted);
+.muted,
+.supporting-text,
+.mono {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.supporting-text {
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
 }
 
 .mono {
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: var(--md-sys-typescale-body-small-size);
   overflow-wrap: anywhere;
 }
 
 :focus-visible {
-  outline: 3px solid var(--c-accent);
+  /*
+   * Indicateur de focus M3 : 3dp secondary, décalé de 2dp
+   * (m3.material.io/foundations/interaction/states/state-layers#focus-indicator).
+   * Contraste vérifié ≥ 3:1 contre toutes les surfaces où il apparaît, clair
+   * et sombre (surfaces, surface-container-*, primary-container,
+   * secondary-container, error-container) — voir le rapport de la passe M3.
+   */
+  outline: 3px solid var(--md-sys-color-secondary);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.001ms !important;
-    animation-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
+/* Top app bar -------------------------------------------------------------- */
+
+.top-app-bar {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  min-height: 64px;
+  margin: 0;
+  padding: 0 var(--sp-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-none);
+  background: var(--md-sys-color-surface);
+  box-shadow: var(--md-sys-elevation-level0);
 }
+
+.top-app-bar__brand,
+.top-app-bar__status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.top-app-bar__brand {
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  letter-spacing: var(--md-sys-typescale-title-medium-tracking);
+}
+
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font-family: var(--md-sys-typescale-title-large-font);
+  font-size: var(--md-sys-typescale-title-large-size);
+  font-weight: 700;
+}
+
+.status-pill,
+.version-pill,
+.count-badge {
+  min-height: 32px;
+  padding: var(--sp-1) var(--sp-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border-radius: var(--md-sys-shape-corner-full);
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  white-space: nowrap;
+}
+
+.profile-preview {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font: inherit;
+  font-weight: 700;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.profile-preview:hover {
+  box-shadow: var(--md-sys-elevation-level1);
+  transform: translateY(-1px);
+}
+
+.profile-preview:active {
+  transform: scale(0.96);
+}
+
+.status-pill,
+.version-pill {
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.status-pill--ready {
+  background: var(--md-custom-color-verified-container);
+  color: var(--md-custom-color-on-verified-container);
+}
+
+.status-pill--partial,
+.status-pill--pending {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: currentColor;
+}
+
+/* Landing ------------------------------------------------------------------ */
 
 .landing {
   max-width: var(--measure);
-  margin: var(--sp-6) auto;
+  margin: clamp(var(--sp-6), 8vh, 96px) auto;
+  padding: clamp(var(--sp-5), 5vw, var(--sp-7));
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container-low);
 }
 
-.landing__eyebrow,
-.page-head__eyebrow {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--c-accent);
-}
+/* .landing__eyebrow, .page-head__eyebrow et .section-heading__eyebrow
+   partagent leur règle avec .hero__label et .memory-summary__kicker — voir
+   la déclaration unique dans marketing.css (label-large, casse normale,
+   chargé après cette feuille donc source de vérité pour ces sélecteurs). */
 
 .landing__headline {
   margin: 0;
-  font-size: clamp(1.75rem, 4.5vw, 2.5rem);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-family: var(--md-sys-typescale-display-small-font);
+  font-size: var(--md-sys-typescale-display-small-size);
+  font-weight: var(--md-sys-typescale-display-small-weight);
+  line-height: var(--md-sys-typescale-display-small-line-height);
+  letter-spacing: var(--md-sys-typescale-display-small-tracking);
 }
 
 .landing__lede {
   margin: 0;
-  font-size: 1.0625rem;
-  color: var(--c-text-muted);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
 }
 
 .landing__note {
-  font-size: 0.875rem;
+  font-size: var(--md-sys-typescale-body-medium-size);
 }
 
+/* Page shell --------------------------------------------------------------- */
+
 .page-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  margin-bottom: var(--sp-2);
+  margin-bottom: var(--sp-5);
 }
 
 .eyebrow-row {
@@ -168,234 +330,515 @@ pre {
   color: var(--c-text);
 }
 
-.hero {
-  padding: var(--sp-5);
-  border: 2px solid var(--c-accent);
-  border-radius: var(--radius-lg);
-  background: var(--c-surface);
-}
-
-.hero__label {
-  margin: 0 0 var(--sp-2);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--c-accent);
-}
-
-.hero__value {
+.page-head__meta {
   margin: 0;
-  font-size: clamp(1.25rem, 3vw, 1.625rem);
-  line-height: 1.3;
-  font-weight: 600;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
 }
 
-.hero--done {
-  border-color: var(--c-border);
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.9fr);
+  gap: var(--sp-5);
+  align-items: start;
 }
 
-.hero--done .hero__label {
-  color: var(--c-text-muted);
+.dashboard-primary,
+.dashboard-secondary,
+.dashboard-operations {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
 }
 
-.hero--done .hero__value {
-  font-size: 1.0625rem;
-  font-weight: 500;
+.dashboard-secondary {
+  position: sticky;
+  top: 92px;
+}
+
+.dashboard-operations {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+  align-items: start;
+}
+
+.dashboard-operations .technical {
+  grid-column: 1 / -1;
+}
+
+.loading-state {
+  min-height: 40vh;
+  display: grid;
+  place-items: center;
+}
+
+/* Cards and dominant next action -----------------------------------------
+ *
+ * Hiérarchie par NIVEAU DE SURFACE, pas par la couleur : le fond de page est
+ * `surface`, une carte est `surface-container-low`, un élément imbriqué dans
+ * une carte reste transparent (voir « Rows, steps and decisions » plus bas).
+ * `primary-container` est réservé au bloc « Next » ci-dessous : c'est la
+ * seule chose que l'écran a le droit de faire crier avant tout le reste.
+ */
+
+.card,
+.technical {
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-surface-container-low);
+  /* Base du state layer pour tout élément transparent imbriqué ici — les
+     <summary> de repli, plus les boutons depuis que .btn a son propre
+     dégradé en relief et ne consomme plus --state-layer-base. */
+  --state-layer-base: var(--md-sys-color-surface-container-low);
 }
 
 .card {
-  padding: var(--sp-4);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-md);
-  background: var(--c-bg);
-  box-shadow: var(--shadow-card);
+  padding: var(--sp-5);
+
+  /*
+   * Contexte de conteneur.
+   *
+   * Une carte de supervision vit dans une colonne de 300px au milieu d'un
+   * écran de 1280. Une `@media` interroge la FENÊTRE : elle ne se déclenche
+   * jamais ici, et la ligne d'une proposition d'agent — chip + texte +
+   * Accept + Decline — écrasait son texte à zéro pixel puis, une fois
+   * `overflow-wrap: anywhere` appliqué, l'écrivait une lettre par ligne.
+   *
+   * Le composant doit s'adapter à la place qu'on lui donne, pas à la taille
+   * de l'écran. C'est exactement ce que `@container` existe pour faire.
+   */
+  container: card / inline-size;
+}
+
+.hero {
+  padding: var(--sp-5);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-large);
+  border-color: transparent;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  --state-layer-base: var(--md-sys-color-primary-container);
+}
+
+/* .hero__label partage sa règle avec .landing__eyebrow, .page-head__eyebrow
+   et .section-heading__eyebrow — voir la déclaration unique dans
+   marketing.css (label-large, casse normale, chargé après cette feuille). */
+
+.hero__value {
+  margin: 0;
+  font-family: var(--md-sys-typescale-headline-small-font);
+  font-size: var(--md-sys-typescale-headline-small-size);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+}
+
+.hero--done {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.hero--done .hero__value {
+  margin-bottom: var(--sp-3);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
+}
+
+.section-heading {
+  margin-bottom: var(--sp-3);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
 
 .card__title {
-  margin: 0 0 var(--sp-3);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--c-text-muted);
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-title-medium-tracking);
 }
 
-.card--guide {
-  background: var(--c-ok-bg);
-  color: var(--c-ok-text);
-  border-color: currentColor;
+.card > .card__title {
+  margin-bottom: var(--sp-4);
 }
 
-.card--guide .card__title,
-.card--guide .muted {
-  color: currentColor;
-  opacity: 0.85;
+.count-badge {
+  min-width: 32px;
+  justify-content: center;
+  padding-inline: var(--sp-2);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 
-.card--proposals {
-  background: var(--c-warn-bg);
-  color: var(--c-warn-text);
-  border-color: currentColor;
-  border-style: dashed;
-}
-
-.card--proposals .card__title,
-.card--proposals .muted {
-  color: currentColor;
-  opacity: 0.9;
-}
+/*
+ * card--guide, card--proposals et card--live n'ont plus de fond distinct :
+ * ce sont des cartes comme les autres (surface-container-low, voir plus
+ * haut). Rien dans ce produit ne justifie de les faire crier plus fort que
+ * le reste de la colonne — seul le bloc « Next » a ce droit.
+ */
 
 .quote {
   margin: var(--sp-2) 0;
-  padding: var(--sp-3);
-  border-radius: var(--radius-sm);
-  background: var(--c-bg);
-  color: var(--c-text);
-  font-family: var(--font-mono);
-  font-size: 0.9375rem;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-ref-typeface-mono);
 }
 
 .empty {
   margin: 0;
-  color: var(--c-text-muted);
-  font-size: 0.9375rem;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-medium-size);
 }
+
+/* Demonstration disclosure ------------------------------------------------ */
+
+.demo-notice {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  border: 1px solid var(--md-sys-color-secondary);
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.demo-notice__icon {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-secondary);
+  color: var(--md-sys-color-on-secondary);
+  font-weight: 700;
+}
+
+/* Rows, steps and decisions ---------------------------------------------- */
+
+.rows,
+.decision-list,
+.audit-list,
+.calls {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+ * Anatomie M3 « list item » (m3.material.io/components/lists/specs) : tête
+ * optionnelle (ici un chip de source/confiance), headline, supporting text,
+ * queue optionnelle (bouton). Les lignes d'une même liste ne se distinguent
+ * plus par un fond alterné mais par un simple divider — c'est le fond qui
+ * porte l'imbrication (transparent ici, sur la surface-container-low de la
+ * carte), pas la position dans la liste.
+ */
 
 .rows {
-  list-style: none;
-  margin: 0 0 var(--sp-3);
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: 0;
 }
 
-.rows:last-child {
-  margin-bottom: 0;
+.rows > li {
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.rows > li:last-child {
+  border-bottom: 0;
+}
+
+.rows + .muted,
+.decision-list + .muted,
+.audit-list + .muted {
+  margin-top: var(--sp-3);
 }
 
 .row {
+  /* Élément de liste M3 une ligne : 56dp. */
+  min-height: 56px;
+  padding: 0 var(--sp-4);
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-sm);
-  background: var(--c-surface);
+  background: transparent;
 }
 
 .row__text {
-  flex: 1;
   min-width: 0;
+  flex: 1;
   overflow-wrap: anywhere;
 }
 
+.row__text > * {
+  display: block;
+}
+
 .row--lifted .row__text {
+  color: var(--md-sys-color-on-surface-variant);
   text-decoration: line-through;
-  color: var(--c-text-muted);
+}
+
+/* Deux lignes de texte (headline + supporting) : élément de liste M3 72dp. */
+.row--danger,
+.row--step {
+  min-height: 72px;
 }
 
 .row--danger {
-  border-left: 3px solid var(--c-error-text);
+  border-left: 4px solid var(--md-sys-color-error);
+  padding-left: calc(var(--sp-4) - 4px);
 }
 
-.row .btn {
-  flex: none;
+.step-row__empty {
+  margin: 0;
+  padding: 0 var(--sp-4) var(--sp-3);
 }
 
-.review {
-  padding: var(--sp-2);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-md);
+.evidence-disclosure {
+  border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
-.review .row {
-  background: transparent;
-  padding: 0 var(--sp-1);
+.evidence-disclosure summary,
+.technical > summary {
+  cursor: pointer;
+  color: var(--md-sys-color-primary);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  transition: background-color var(--md-sys-motion-duration-short3)
+    var(--md-sys-motion-easing-standard);
 }
+
+.evidence-disclosure summary {
+  padding: var(--sp-2) var(--sp-4);
+}
+
+.evidence-disclosure summary:hover,
+.technical > summary:hover {
+  background: color-mix(
+    in srgb,
+    currentColor calc(var(--md-sys-state-hover-state-layer-opacity) * 100%),
+    var(--state-layer-base)
+  );
+}
+
+.evidence-disclosure summary:active,
+.technical > summary:active {
+  background: color-mix(
+    in srgb,
+    currentColor calc(var(--md-sys-state-pressed-state-layer-opacity) * 100%),
+    var(--state-layer-base)
+  );
+}
+
+.evidence-disclosure__body {
+  padding: 0 var(--sp-4) var(--sp-3);
+}
+
+.evidence-disclosure__body .supporting-text {
+  margin-top: var(--sp-2);
+}
+
+.decision-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.decision-row {
+  padding-left: var(--sp-3);
+  border-left: 3px solid var(--md-sys-color-primary);
+}
+
+.decision-row__choice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.decision-row p {
+  margin: var(--sp-1) 0 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+}
+
+/* Chips ---------------------------------------------------------------------
+ *
+ * Ce sont des chips M3 (m3.material.io/components/chips/specs), pas des
+ * badges : 32dp, label-large, casse normale. Ils restent les seuls porteurs
+ * de couleur sémantique de l'écran (verified / proposal / claimed), ce qui
+ * est justement le rôle qu'un badge de statut jouerait — la spec chip
+ * convient telle quelle, choisir un badge maison n'aurait rien changé de
+ * plus qu'une réinvention du même composant.
+ */
 
 .chip {
+  min-height: 32px;
+  padding: var(--sp-1) var(--sp-3);
   flex: none;
-  padding: 2px var(--sp-2);
-  border-radius: var(--radius-sm);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
   white-space: nowrap;
-  background: var(--c-border);
-  color: var(--c-text);
 }
 
 .chip--human,
 .chip--human_verified {
-  background: var(--c-ok-bg);
-  color: var(--c-ok-text);
+  background: var(--md-custom-color-verified-container);
+  color: var(--md-custom-color-on-verified-container);
 }
 
-.chip--agent,
+.chip--agent {
+  background: var(--md-custom-color-proposal-container);
+  color: var(--md-custom-color-on-proposal-container);
+}
+
+.chip--evidence,
 .chip--claimed {
-  background: var(--c-warn-bg);
-  color: var(--c-warn-text);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
-.chip--evidence {
-  background: var(--c-surface);
-  color: var(--c-text-muted);
-  border: 1px solid var(--c-border);
-}
+/* Buttons and fields ------------------------------------------------------ */
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2);
   align-items: center;
+  gap: var(--sp-2);
 }
 
+/*
+ * -----------------------------------------------------------------------
+ * Bouton — inspiré d'un composant Uiverse.io par mahiatlinux : une touche
+ * physique en relief (dégradé du clair vers le foncé, liseré clair en haut,
+ * ombre creusée en bas, la touche s'enfonce à l'appui) plutôt qu'un bouton
+ * M3 plat à state layer.
+ * -----------------------------------------------------------------------
+ *
+ * Décision explicite, pas un oubli : ceci remplace le state layer M3
+ * (couche translucide de `currentColor`, opacités 8/10/10 % des jetons
+ * `--md-sys-state-*`) et le morphing de forme M3 Expressive au clic (le
+ * rayon qui passait de `full` à `small`). Les deux mécanismes disparaissent
+ * ensemble parce qu'ils appartenaient au même langage — les mélanger avec un
+ * relief physique aurait produit un bouton qui ne sait pas ce qu'il est.
+ *
+ * Aucune couleur n'est écrite en dur : chaque variante fixe seulement
+ * `--btn-base`, et le dégradé, les liserés et l'ombre en dérivent via
+ * `color-mix()` — même technique que le survol de `.marketing-nav__links a`
+ * plus haut dans ce fichier. Le blanc et le noir du liseré et du creux ne
+ * sont pas des couleurs de marque : ce sont des indices d'éclairage, au même
+ * titre que le noir pur déjà câblé dans les cinq niveaux d'élévation M3 de
+ * `tokens.css`.
+ */
 .btn {
-  padding: var(--sp-2) var(--sp-4);
+  --btn-base: var(--md-sys-color-surface-container-high);
+  --btn-fg: var(--md-sys-color-on-surface-variant);
+  position: relative;
   min-height: 40px;
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-sm);
-  background: var(--c-bg);
-  color: var(--c-text);
-  font: inherit;
-  font-size: 0.9375rem;
+  padding: var(--sp-2) var(--sp-4);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  /*
+   * 12 % de blanc, pas 16 % : mesuré au navigateur, `.btn--primary` (texte
+   * blanc sur `on-primary`) tombait à 4.44:1 sur ce premier arrêt — sous le
+   * seuil AA de 4.5:1 pour du texte normal. 12 % remonte à 4.86:1 avec de la
+   * marge, et le noircissement du dernier arrêt n'a jamais posé de problème
+   * puisqu'il ne fait qu'AUGMENTER le contraste contre un texte clair.
+   */
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, white 12%, var(--btn-base)),
+    var(--btn-base) 60%,
+    color-mix(in srgb, black 8%, var(--btn-base))
+  );
+  color: var(--btn-fg);
+  box-shadow:
+    var(--md-sys-elevation-level1),
+    inset 0 1px 0 0 rgb(255 255 255 / 30%),
+    inset 0 -2px 0 0 rgb(0 0 0 / 12%);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
   cursor: pointer;
-  transition: background-color 120ms ease;
+  transition:
+    box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
+    filter var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
 }
 
 .btn:hover {
-  background: var(--c-surface);
+  filter: brightness(1.04);
+  box-shadow:
+    var(--md-sys-elevation-level2),
+    inset 0 1px 0 0 rgb(255 255 255 / 30%),
+    inset 0 -2px 0 0 rgb(0 0 0 / 12%);
+}
+
+.btn:focus-visible {
+  filter: brightness(1.04);
+}
+
+/* La touche s'enfonce : le liseré et le creux s'inversent, l'élévation
+   retombe à zéro, et un léger déplacement vend l'appui physique. */
+.btn:active {
+  transform: translateY(1px);
+  box-shadow:
+    var(--md-sys-elevation-level0),
+    inset 0 -1px 0 0 rgb(255 255 255 / 20%),
+    inset 0 2px 2px 0 rgb(0 0 0 / 18%);
+}
+
+.btn:disabled,
+.field input:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
 }
 
 .btn--primary {
-  background: var(--c-accent);
-  border-color: var(--c-accent);
-  color: var(--c-bg);
-  font-weight: 600;
-}
-
-.btn--primary:hover {
-  opacity: 0.9;
-  background: var(--c-accent);
+  --btn-base: var(--md-sys-color-primary);
+  --btn-fg: var(--md-sys-color-on-primary);
 }
 
 .btn--danger {
-  color: var(--c-error-text);
-  border-color: var(--c-error-text);
+  --btn-base: var(--md-sys-color-error-container);
+  --btn-fg: var(--md-sys-color-on-error-container);
 }
 
 .form {
+  margin-top: var(--sp-3);
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-  margin-top: var(--sp-3);
 }
 
 .form--inline {
-  flex-direction: row;
-  flex-wrap: wrap;
+  flex-flow: row wrap;
   align-items: flex-end;
 }
 
@@ -404,100 +847,207 @@ pre {
 }
 
 .field {
+  min-width: 220px;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
-  flex: 1;
-  min-width: 220px;
 }
 
 .field label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--c-text);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
 }
 
+.field:focus-within label {
+  color: var(--md-sys-color-primary);
+}
+
+/*
+ * Filled text field M3 (m3.material.io/components/text-fields/specs) : pas
+ * de contour de boîte, seulement un indicateur actif en bas. 1dp
+ * on-surface-variant au repos, 2dp primary au focus — obtenu sans décaler le
+ * contenu : la largeur du bord reste 2dp en permanence, et c'est un
+ * box-shadow interne de 1dp qui simule l'épaisseur au repos.
+ */
 .field input {
-  min-height: 44px;
-  padding: var(--sp-2) var(--sp-3);
-  background: var(--c-bg);
-  color: var(--c-text);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-sm);
+  min-height: 56px;
+  padding: var(--sp-2) var(--sp-4);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--md-sys-shape-corner-extra-small) var(--md-sys-shape-corner-extra-small) 0 0;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
   font: inherit;
+  caret-color: var(--md-sys-color-primary);
+  box-shadow: inset 0 -1px 0 0 var(--md-sys-color-on-surface-variant);
+  transition:
+    border-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+    box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard),
+    background-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
+}
+
+.field input:hover {
+  background: var(--md-sys-color-surface-container-high);
 }
 
 .field input:focus {
-  border-color: var(--c-accent);
+  border-bottom-color: var(--md-sys-color-primary);
+  box-shadow: none;
 }
 
+/* Review ------------------------------------------------------------------ */
+
+.review {
+  padding: var(--sp-3);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: transparent;
+}
+
+.review__heading {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+}
+
+.review__action {
+  margin-top: var(--sp-3);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Notices ----------------------------------------------------------------- */
+
 .notice {
-  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
   border: 1px solid currentColor;
-  border-radius: var(--radius-md);
+  border-radius: var(--md-sys-shape-corner-medium);
   font-weight: 500;
 }
 
-.notice--error {
-  background: var(--c-error-bg);
-  color: var(--c-error-text);
+.notice--error,
+.notice--stale {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 
 .notice--warn {
-  background: var(--c-warn-bg);
-  color: var(--c-warn-text);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 
 .notice--stale {
-  background: var(--c-error-bg);
-  color: var(--c-error-text);
   border-width: 2px;
-  font-weight: 600;
-  margin-bottom: var(--sp-3);
+  font-weight: 700;
+}
+
+/* Persistent audit and live calls ---------------------------------------- */
+
+.audit-list {
+  margin-top: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.audit-row {
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-4);
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: var(--sp-2);
+  background: transparent;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.audit-list > .audit-row:last-child {
+  border-bottom: 0;
+}
+
+.audit-marker {
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border: 2px solid var(--md-custom-color-verified);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-custom-color-verified-container);
+}
+
+.audit-row--refused .audit-marker {
+  border-color: var(--md-sys-color-error);
+  background: var(--md-sys-color-error-container);
+}
+
+.audit-row__content {
+  min-width: 0;
+}
+
+.audit-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+.audit-row__meta span,
+.audit-row time,
+.audit-row p {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+}
+
+.audit-row p {
+  margin: var(--sp-1) 0 0;
+  overflow-wrap: anywhere;
 }
 
 .calls {
-  list-style: none;
-  margin: var(--sp-2) 0 0;
-  padding: 0;
+  margin-top: var(--sp-3);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: 0;
 }
 
 .call {
-  display: flex;
+  padding: var(--sp-2) var(--sp-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: baseline;
-  gap: var(--sp-3);
-  padding: var(--sp-1) var(--sp-2);
-  border-radius: var(--radius-sm);
-  background: var(--c-surface);
-  font-size: 0.875rem;
+  gap: var(--sp-2);
+  background: transparent;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.calls > .call:last-child {
+  border-bottom: 0;
 }
 
 .call--refused {
-  background: var(--c-error-bg);
-  color: var(--c-error-text);
-  font-weight: 600;
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border-radius: var(--md-sys-shape-corner-small);
+  border-bottom-color: transparent;
+  font-weight: 700;
 }
 
+/* Technical details ------------------------------------------------------- */
+
 .technical {
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-md);
-  background: var(--c-bg);
+  overflow: hidden;
 }
 
 .technical > summary {
   padding: var(--sp-3) var(--sp-4);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--c-text-muted);
+  color: var(--md-sys-color-on-surface-variant);
   list-style-position: inside;
-}
-
-.technical > summary:hover {
-  color: var(--c-text);
 }
 
 .technical__body {
@@ -511,6 +1061,57 @@ pre {
   margin-top: var(--sp-2);
 }
 
+/* Composants étroits — requêtes de CONTENEUR, pas de fenêtre ------------- */
+
+/*
+ * Seuil unique : en dessous, une ligne ne peut plus tenir « repère + texte +
+ * actions » côte à côte, quelle que soit la fenêtre. 400px est la largeur
+ * en dessous de laquelle deux boutons de 80px et un chip de 95px ne laissent
+ * plus une mesure lisible au texte.
+ *
+ * Le texte prend une ligne entière (`flex-basis: 100%`), donc les actions
+ * passent EN DESSOUS de ce qu'elles décident — jamais à côté, jamais avant.
+ * Un humain ne doit pas pouvoir cliquer « Accept » sans avoir la phrase
+ * complète au-dessus du bouton.
+ */
+@container card (max-width: 400px) {
+  .row,
+  .review__heading {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding-block: var(--sp-3);
+  }
+
+  .row__text {
+    flex: 1 1 100%;
+  }
+
+  .row > .btn,
+  .review__heading > .btn {
+    flex: 1 1 auto;
+  }
+
+  /* Une grille à trois colonnes ne tient pas non plus : l'horodatage passe
+     sous le contenu plutôt que de comprimer la colonne du milieu. */
+  .audit-row {
+    grid-template-columns: 12px minmax(0, 1fr);
+  }
+
+  .audit-row time {
+    grid-column: 2;
+  }
+
+  .call {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .call .muted {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Accessibility and responsive behavior --------------------------------- */
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -523,17 +1124,76 @@ pre {
   border: 0;
 }
 
+@media (max-width: 860px) {
+  .dashboard-grid,
+  .dashboard-operations {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dashboard-secondary {
+    position: static;
+  }
+
+  .dashboard-operations,
+  .dashboard-operations .technical {
+    grid-column: 1;
+  }
+}
+
 @media (max-width: 560px) {
   body {
-    padding: var(--sp-4) var(--sp-3) var(--sp-6);
+    padding: var(--sp-2) var(--sp-3) var(--sp-6);
+  }
+
+  .top-app-bar {
+    position: static;
+    margin-bottom: var(--sp-5);
+    align-items: flex-start;
+    border-radius: var(--md-sys-shape-corner-large);
+  }
+
+  .top-app-bar__status {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .status-pill {
+    white-space: normal;
+  }
+
+  .version-pill {
+    min-height: 24px;
+    padding-block: 0;
+  }
+
+  .landing {
+    margin: var(--sp-5) 0;
+    padding: var(--sp-5);
+  }
+
+  .landing__headline {
+    font-family: var(--md-sys-typescale-headline-large-font);
+    font-size: var(--md-sys-typescale-headline-large-size);
+    line-height: var(--md-sys-typescale-headline-large-line-height);
   }
 
   .hero {
     padding: var(--sp-4);
   }
 
-  .row {
+  .row,
+  .review__heading {
+    align-items: flex-start;
     flex-wrap: wrap;
+  }
+
+  .row--step {
+    flex-direction: column;
+  }
+
+  .row--step .row__text {
+    width: 100%;
+    flex: none;
   }
 
   .row .btn {
@@ -545,12 +1205,41 @@ pre {
     align-items: stretch;
   }
 
-  .form > .btn {
+  .form > .btn,
+  .actions .btn {
     align-self: stretch;
+    flex: 1 1 auto;
   }
 
-  .actions .btn {
-    flex: 1 1 auto;
+  .field {
+    min-width: 0;
+  }
+
+  .audit-row {
+    grid-template-columns: 12px minmax(0, 1fr);
+  }
+
+  .audit-row time {
+    grid-column: 2;
+  }
+
+  .call {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .call .muted {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 

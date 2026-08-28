@@ -60,6 +60,31 @@ export function boundTaskId(): string | null {
   return snapshot.boundId
 }
 
+/**
+ * Initialise la vitrine publique sans ouvrir silencieusement une mémoire.
+ *
+ * La racine `/` est une landing, même lorsqu'un cahier existe déjà dans ce
+ * navigateur. Les espaces de travail restent adressables explicitement par
+ * `/t/:id`; la vitrine ne choisit jamais une mémoire à la place de la personne.
+ */
+export async function initPublicLanding(): Promise<void> {
+  if (!initPromise) {
+    initPromise = enqueue(async () => {
+      setSnapshot({ status: 'empty', task: null, error: null, boundId: null })
+    })
+  }
+  return initPromise
+}
+
+/**
+ * Charge un cahier.
+ *
+ * Avec un identifiant — celui de l'adresse — la page s'y LIE : elle rendra
+ * cette tâche ou signalera sa disparition, jamais une autre.
+ *
+ * Sans identifiant, elle reprend le dernier cahier ouvert puis s'y lie. C'est
+ * le chemin d'une première visite ; une fois lié, le comportement est le même.
+ */
 export async function init(taskId?: string): Promise<void> {
   if (!initPromise || (taskId !== undefined && taskId !== snapshot.boundId)) {
     initPromise = enqueue(async () => {

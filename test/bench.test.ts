@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildDemoTask } from '../src/demo/seed'
+import { buildDemoTask, DEMO_TASK_ID } from '../src/demo/seed'
 import { renderTaskState } from '../src/domain/render'
 import {
   acceptedRejections,
@@ -78,8 +78,8 @@ describe('première visite', () => {
   it('explique le bénéfice avant le mécanisme, et sans jargon', async () => {
     await settled()
 
-    expect(text()).toContain('Give your AI a memory that survives the conversation.')
-    expect(text()).toContain('completed work, rules to follow, and mistakes not to repeat')
+    expect(text()).toContain('Give every AI the context it must not lose.')
+    expect(text()).toContain('decisions, rules, evidence and failed approaches')
 
     for (const jargon of ['based_on_version', 'mutation_id', 'IndexedDB', 'AbortController']) {
       expect(text(), jargon).not.toContain(jargon)
@@ -91,6 +91,24 @@ describe('première visite', () => {
     const primary = root.querySelector<HTMLButtonElement>('.btn--primary')
     expect(primary?.textContent?.trim()).toBe('Create a task')
     expect(button('Try the demo')).toBeTruthy()
+  })
+
+  it('présente la connexion comme une maquette sans créer de faux compte', async () => {
+    await settled()
+    button('Sign in').click()
+    await settled()
+
+    const form = root.querySelector<HTMLFormElement>('#preview-auth')
+    expect(form?.textContent).toContain('Design preview')
+    expect(form?.textContent).toContain('No account will be created')
+
+    form?.requestSubmit()
+    await settled(8)
+
+    expect(store.currentTask()?.id).toBe(DEMO_TASK_ID)
+    expect(root.querySelector('[data-preview-feedback]')?.textContent).toContain(
+      'No account was created',
+    )
   })
 })
 
@@ -199,6 +217,8 @@ describe('création d’une tâche', () => {
 describe('démonstration', () => {
   it('« Try the demo » charge le cahier préparé', async () => {
     await settled()
+    document.documentElement.scrollTop = 640
+    document.body.scrollTop = 640
     button('Try the demo').click()
     await settled(8)
 
@@ -206,6 +226,11 @@ describe('démonstration', () => {
     expect(task.title).toBe(buildDemoTask().title)
     expect(task.steps.length).toBeGreaterThan(0)
     expect(location.pathname).toBe(`/t/${task.id}`)
+    expect(task.id).toBe(DEMO_TASK_ID)
+    expect(document.documentElement.scrollTop).toBe(0)
+    expect(document.body.scrollTop).toBe(0)
+    expect(root.querySelector('[data-demo-notice]')?.textContent).toContain('Sample data')
+    expect(root.querySelector('[data-demo-notice]')?.textContent).toContain('not real results')
   })
 })
 
@@ -227,6 +252,32 @@ describe('tableau de bord', () => {
   it('rend la prochaine action dominante', async () => {
     const hero = root.querySelector('.hero')!
     expect(hero.textContent).toContain('Implement approach C')
+  })
+
+  it('ne présente jamais les connecteurs de maquette comme actifs', async () => {
+    const connections = root.querySelector('#connections-preview')!
+    expect(connections.textContent).toContain('Sample interface')
+    expect(connections.querySelectorAll('.connector-card')).toHaveLength(3)
+    expect(connections.querySelectorAll('.connector-state')).toHaveLength(3)
+    expect(connections.textContent).not.toContain('Connected')
+
+    const version = store.currentTask()!.version
+    connections.querySelector<HTMLButtonElement>('button')!.click()
+    await settled()
+
+    expect(store.currentTask()!.version).toBe(version)
+    expect(root.querySelector('[data-preview-feedback]')?.textContent).toContain(
+      'No provider account, API key or conversation was connected',
+    )
+  })
+
+  it('rend les décisions et leur justification visibles à la personne', async () => {
+    const decision = store.currentTask()!.decisions[0]
+    const section = root.querySelector('[data-decisions]')
+
+    expect(section).not.toBeNull()
+    expect(section!.textContent).toContain(decision.choice)
+    expect(section!.textContent).toContain(decision.rationale)
   })
 
   it('nomme les trois degrés de preuve en clair', async () => {
@@ -292,6 +343,39 @@ describe('tableau de bord', () => {
     const step = store.currentTask()!.steps.find((s) => s.id === id)!
     expect(step.confidence).toBe('human_verified')
     expect(step.evidence!.verifiedAt).not.toBeNull()
+
+    const permanent = root.querySelector<HTMLDetailsElement>(`[data-step-evidence="${id}"]`)
+    expect(permanent).not.toBeNull()
+    expect(permanent!.textContent).toContain(step.evidence!.content)
+  })
+
+  it('laisse consulter toutes les preuves après leur revue', async () => {
+    const task = store.currentTask()!
+    const evidenced = task.steps.filter((step) => step.evidence !== null)
+
+    for (const step of evidenced) {
+      const details = root.querySelector<HTMLDetailsElement>(`[data-step-evidence="${step.id}"]`)
+      expect(details, step.action).not.toBeNull()
+      expect(details!.open).toBe(false)
+      expect(details!.textContent).toContain(step.evidence!.kind.replaceAll('_', ' '))
+      expect(details!.textContent).toContain(step.evidence!.content)
+    }
+  })
+
+  it('sépare le journal persistant du témoin volatile', async () => {
+    const audit = root.querySelector('[data-persistent-audit]')
+    const live = root.querySelector('[data-live-calls]')
+
+    expect(audit).not.toBeNull()
+    expect(audit!.textContent).toContain('Persistent audit')
+    expect(audit!.textContent).toContain(
+      store.currentTask()!.audit.at(-1)!.operation.replaceAll('_', ' '),
+    )
+    expect(audit!.textContent).toContain(`${store.currentTask()!.audit.length}`)
+    expect(audit!.textContent).toContain('older entries not shown')
+    expect(live).not.toBeNull()
+    expect(live!.textContent).toContain('Live tool calls')
+    expect(live!.textContent).toContain('No agent has called a tool yet.')
   })
 
   it('replie les détails techniques par défaut', async () => {
@@ -475,6 +559,11 @@ describe('détails techniques', () => {
     expect(details).toContain('Lifecycle')
     expect(details).toContain('static')
     expect(fake.names()).toContain('log_step')
+
+    const appBar = root.querySelector('.top-app-bar')!.textContent ?? ''
+    expect(appBar).toContain('WebMCP ready')
+    expect(appBar).toContain(`${fake.names().length} tools`)
+    expect(appBar).toContain(`Version ${store.currentTask()!.version}`)
 
     __resetRegistration()
     removeModelContext()

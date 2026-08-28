@@ -18,12 +18,37 @@ import {
 import type { TaskState } from '../domain/types'
 
 /**
+ * Identifiant volontairement reconnaissable par l'interface.
+ *
+ * Le cahier préparé contient des preuves de démonstration, pas des résultats
+ * produits sur la machine de la personne. Un identifiant stable permet à la
+ * vue de le dire pendant toute la session, y compris après un rechargement.
+ */
+export const DEMO_TASK_ID = 'watch-log-demo'
+
+/**
  * Le socle : règles, rejets, décisions, travail avec preuves. Sans question,
  * ni autorisation, ni contestation — c'est sur lui que s'appuient les cas qui
  * ont besoin d'une page blanche pour ces trois-là.
+ *
+ * Reproductible par construction : il est bâti par les mutations du domaine,
+ * pas écrit à la main dans une base. C'est ce qui permet à un tiers — un juge,
+ * ou nous-mêmes sur une machine vierge en navigation privée — de retrouver
+ * exactement l'état qui sert à la démonstration et à la mesure.
+ *
+ * Il porte trois contraintes en vigueur et deux approches condamnées. Ce n'est
+ * pas décoratif : c'est ce qui rend le test mesurable. Un agent qui a réellement
+ * lu ce qu'il a reçu annonce l'approche C, refuse la variante B en citant la
+ * rotation des jetons, et n'ajoute aucune dépendance. Sans ces éléments, on ne
+ * mesure que le fait qu'un outil a été appelé.
+ *
+ * Les trois degrés de preuve y figurent, du plus fort au plus faible : c'est
+ * la distinction entre travail prouvé et travail affirmé qui doit se voir à
+ * l'écran, et elle ne se voit que si les trois sont présents.
  */
 export function buildCoreTask(): TaskState {
   let task = createTask({
+    id: DEMO_TASK_ID,
     title: 'Refactor the authentication module',
     next: 'Map the existing entry points',
   })

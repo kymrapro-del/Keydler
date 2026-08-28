@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDemoTask } from '../src/demo/seed'
+import { buildDemoTask, DEMO_TASK_ID } from '../src/demo/seed'
 import { renderTaskState } from '../src/domain/render'
 import {
   acceptedRejections,
@@ -9,6 +9,11 @@ import {
 } from '../src/domain/task'
 
 describe('cahier de démonstration', () => {
+  it('porte un identifiant stable qui permet de signaler les données préparées', () => {
+    expect(buildDemoTask().id).toBe(DEMO_TASK_ID)
+    expect(buildDemoTask().id).toBe(buildDemoTask().id)
+  })
+
   it('porte trois contraintes en vigueur et deux approches condamnées', () => {
     const task = buildDemoTask()
     expect(activeConstraints(task)).toHaveLength(3)
