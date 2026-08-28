@@ -1309,3 +1309,76 @@ affiche la règle, **sans un clic ni un rechargement**. Aucune erreur console.
 
 C'est la troisième fois dans ce projet qu'un test vert masque un défaut que le
 navigateur montre en une minute.
+
+## 28 août 2026 — passe de sécurité en WebMCP réel
+
+**Poste.** Brave 151, deux onglets, appels par `execute_webmcp_tool`.
+
+### Injection : ce qu'un agent écrit finit dans le DOM de l'humain
+
+Une étape écrite **par un agent**, portant
+`<img src=x onerror="window.__pwned=1">`, `<script>`, un `<iframe>` et un
+`</pre>` destiné à sortir du bloc de preuve.
+
+**Observé.** Rien d'exécuté — les quatre témoins restent `null`. Zéro `<img>`,
+zéro `<script>`, zéro `<iframe>` dans `#app`. Le texte s'affiche tel quel, y
+compris une fois la preuve dépliée. En position d'attribut (`aria-label`), les
+guillemets sont échappés en `&quot;` ; en position de texte, ils ne le sont pas
+— ce qui est correct, et non un oubli.
+
+**Erreur de sonde.** Mon premier contrôle dé-échappait le HTML avant d'y
+chercher des balises, et trouvait donc huit « balises vivantes » qui étaient les
+entités échappées de ma propre charge. Le produit n'y était pour rien.
+
+### Le coffre, jusque dans IndexedDB
+
+Un identifiant scellé depuis l'écran, puis l'enregistrement brut relu.
+
+| Question                           | Réponse                                       |
+| ---------------------------------- | --------------------------------------------- |
+| Champs stockés                     | `id, taskId, name, purpose, kind, sealed, at` |
+| Valeur en clair dans le coffre     | non                                           |
+| Passphrase en clair dans le coffre | non                                           |
+| Valeur en clair dans la tâche      | non                                           |
+| Contenu de `sealed`                | `{ciphertext: "…base64…"}`                    |
+
+`read_task_detail` sur `credentials` rend `${gemini-api-key}` et sa raison
+d'être, jamais la valeur. `search_task` sur la valeur elle-même : `NO MATCH`.
+
+**Le lien partageable non plus.** 7005 caractères, décompressés en
+19 589 caractères de JSON : ni la valeur, **ni même le nom**. Les secrets vivant
+hors de `TaskState`, `packTask` ne peut pas les emporter — la garantie est
+structurelle, et elle se vérifie sur l'octet.
+
+**Passphrase.** Mauvaise : « That passphrase does not open this credential. »
+Bonne : la valeur, avec « Hidden again in under a minute. »
+
+**Le pire moment.** Avec la valeur affichée à l'écran, `resume_task` rend
+toujours `CREDENTIALS — names only, values sealed (1)` et le seul `${nom}`.
+
+**Mais la garantie est bien celle qui est écrite, pas plus.** La page dit :
+« anything you reveal on screen can be read by an agent that drives this
+browser ». C'est exact, et je viens d'en faire la démonstration involontaire :
+j'ai lu la valeur révélée dans le DOM par `evaluate_script`. La promesse est
+« aucun OUTIL ne rend une valeur », pas « aucun agent ne peut la voir ». Le
+produit le dit ; il fallait le vérifier plutôt que le sur-vendre.
+
+### La bombe de décompression, avec le vrai `DecompressionStream`
+
+Corrigée au second audit, jamais vérifiée en navigateur jusqu'ici.
+
+| Charge         | Mesure                                         |
+| -------------- | ---------------------------------------------- |
+| En clair       | 6 000 302 octets                               |
+| Compressée     | 6 069 octets, ratio 989:1                      |
+| Fragment       | 8 093 caractères — **sous** la borne de 16 000 |
+| Verdict        | refusée en ~100 ms                             |
+| Tas après coup | 4 Mo — les 6 Mo n'ont jamais existé            |
+
+Message rendu : « That link does not carry a readable watch log. »
+
+### Durabilité
+
+`navigator.storage.persisted()` vaut `false` sur ce profil ; 0,54 Mo utilisés
+sur 2 Go de quota. La page propose « Ask the browser to keep this » quand ce
+n'est pas accordé, ce qui est le comportement attendu.
