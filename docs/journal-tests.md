@@ -1021,3 +1021,22 @@ attendait un nombre fixe de tours de boucle au lieu de l'écriture. Quatre autre
 endroits du même fichier avaient le même motif ; trois attendent un **refus**,
 où il n'y a rien à attendre, et sont restés tels quels. Cinq exécutions
 complètes consécutives vertes depuis.
+
+## 28 août 2026 — l'histoire d'une seule règle
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+Le journal contenait déjà tout ce qui était arrivé à chaque règle — `targetId`
+avait été ajouté pour rendre l'annulation possible — mais aucune surface ne
+posait la question « qu'est-il arrivé à celle-ci ? ». Chaque règle porte
+désormais un bouton **History**.
+
+**Observé.** Une règle levée depuis l'écran, puis son histoire dépliée :
+`28/08/2026, 15:11:39 — You lifted a rule — Never modify the database schema`.
+Aucun nom d'opération machine, une seule histoire ouverte à la fois, aucun
+débordement horizontal.
+
+**Erreur de test, consignée.** Le montage appelait `buildCoreTask()` **deux
+fois** — une pour lire l'identifiant de la règle, une pour la tâche — donc
+l'identifiant ne correspondait à rien. Le domaine refusait correctement avec
+« no constraint with id … » ; c'est la sonde qui était fausse.

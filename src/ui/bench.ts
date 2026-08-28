@@ -4,7 +4,8 @@ import { parseExport } from '../export/restore'
 import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
-import { describeHistory } from './history'
+import { describeEntry, describeHistory } from './history'
+import { historyOf } from '../domain/trail'
 import { needsYou, summariseNeeds } from '../domain/attention'
 import { sinceThen } from '../domain/elapsed'
 import { SHORTCUTS } from './shortcuts'
@@ -194,6 +195,7 @@ let answering: string | null = null
 let attaching: string | null = null
 let disputing: string | null = null
 let showingShortcuts = false
+let showingTrail: string | null = null
 let storage: StorageState = UNKNOWN
 let storageRead = false
 let online = true
@@ -605,6 +607,36 @@ function renderCompletedWork(task: TaskState): string {
     </section>`
 }
 
+function trailButton(task: TaskState, id: string, label: string): string {
+  if (historyOf(task, id).length === 0) return ''
+  return `<button type="button" class="btn btn--quiet" data-trail="${escapeHtml(id)}"
+            aria-expanded="${showingTrail === id}"
+            aria-label="What happened to: ${escapeHtml(label)}">${
+              showingTrail === id ? 'Hide history' : 'History'
+            }</button>`
+}
+
+function renderTrail(task: TaskState, id: string): string {
+  if (showingTrail !== id) return ''
+  const lines = historyOf(task, id).map(describeEntry).reverse()
+  if (lines.length === 0) return ''
+
+  return `<span class="trail">
+      <ul class="events">
+        ${lines
+          .map(
+            (l) => `<li class="event">
+              <span class="event__when">${escapeHtml(new Date(l.at).toLocaleString('en-GB'))}</span>
+              <span class="event__what"><strong>${escapeHtml(l.who)}</strong> ${escapeHtml(l.what)}${
+                l.detail ? ` — ${escapeHtml(l.detail)}` : ''
+              }</span>
+            </li>`,
+          )
+          .join('')}
+      </ul>
+    </span>`
+}
+
 function renderRules(task: TaskState): string {
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
 
@@ -614,7 +646,8 @@ function renderRules(task: TaskState): string {
       if (editingIs('constraint', c.id)) return `<li>${editForm('Rule')}</li>`
       return `<li class="row${lifted ? ' row--lifted' : ''}">
         <span class="chip chip--${c.source}">${c.source === 'human' ? 'You' : 'Agent'}</span>
-        <span class="row__text">${escapeHtml(c.rule)}</span>
+        <span class="row__text">${escapeHtml(c.rule)}${renderTrail(task, c.id)}</span>
+        ${trailButton(task, c.id, c.rule)}
         ${
           c.standing === 'declined'
             ? '<span class="muted">declined</span>'
@@ -1973,6 +2006,15 @@ function bindSupervision(): void {
     )
   })
 
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-trail]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.trail!
+      showingTrail = showingTrail === id ? null : id
+      renderNow()
+      document.querySelector<HTMLButtonElement>(`[data-trail="${id}"]`)?.focus()
+    })
+  }
+
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-toggle]')) {
     button.addEventListener('click', () => {
       const id = button.dataset.toggle!
@@ -2734,6 +2776,7 @@ export function mount(target: HTMLElement): () => void {
   attaching = null
   disputing = null
   showingShortcuts = false
+  showingTrail = null
   storage = UNKNOWN
   storageRead = false
   online = typeof navigator.onLine === 'boolean' ? navigator.onLine : true

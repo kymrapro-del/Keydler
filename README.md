@@ -225,6 +225,10 @@ defend against everything:
 - **Search** across the open task and the others at once, from the box or by
   pressing `/`. It matches a rejection by its reason and a step by the content of
   its evidence, and says which. Agents get the same search as `search_task`.
+- **The history of one rule.** Every rule carries a History button: what was
+  reworded, when it was lifted, when it came back. It falls out of the `targetId`
+  the audit already keeps for undo — the same field answering a second question
+  no card was asking.
 - **History** in words — _“You lifted a rule”_, _“Agent tried to record a step —
   refused — the task had changed since it was read”_. The audit trail was always
   complete; this is the screen for it.
