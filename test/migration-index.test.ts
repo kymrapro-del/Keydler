@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ConcurrentWriteError } from '../src/domain/errors'
+import { ConcurrentWriteError, TaskGoneError } from '../src/domain/errors'
 import { buildCoreTask } from '../src/demo/seed'
 import { loadTask, saveTask } from '../src/persistence/taskRepository'
 import { getDb } from '../src/persistence/db'
@@ -69,12 +69,37 @@ describe('un cahier écrit avant l’index reste protégé', () => {
     expect((await loadTask('ancien'))?.version).toBe(8)
   })
 
-  it('laisse passer la toute première écriture d’un cahier qui n’existe pas', async () => {
-    // « Aucune clé ne correspond » recouvre deux cas : le cahier a bougé, ou
-    // il n'a jamais été écrit. Les confondre rendrait toute création
-    // impossible.
+  /**
+   * J'avais écrit ici l'assertion inverse — « laisse passer la toute première
+   * écriture d'un cahier qui n'existe pas » — en croyant qu'une clé absente
+   * recouvrait deux cas légitimes. C'était faux, et coûteux : une écriture qui
+   * PORTE une version attendue est par définition une mise à jour. Les
+   * créations passent par le chemin sans version, et aucun appelant du produit
+   * ne fait autrement.
+   *
+   * Le cas que je prenais pour une création était en réalité un cahier
+   * SUPPRIMÉ ailleurs. Le laisser passer le ressuscitait avec toutes ses
+   * étapes et toutes ses preuves collées, mais sans ses identifiants scellés,
+   * eux réellement effacés : l'humain croyait la donnée partie, elle revenait
+   * amputée, et chaque référence `${name}` pendait dans le vide.
+   */
+  it('refuse de ressusciter un cahier supprimé, et ne le recrée pas', async () => {
+    const posé: TaskState = { ...buildCoreTask(), id: 'supprime', version: 3 }
+    await saveTask(posé)
+    expect((await loadTask('supprime'))?.version).toBe(3)
+
+    const db = await getDb()
+    await db.delete('tasks', 'supprime')
+
+    const erreur = await saveTask({ ...posé, version: 4 }, 3).catch((e) => e)
+    expect(erreur).toBeInstanceOf(TaskGoneError)
+    expect((erreur as Error).message).toContain('was deleted')
+    expect(await loadTask('supprime')).toBeUndefined()
+  })
+
+  it('laisse passer une création, qui ne porte aucune version attendue', async () => {
     const neuf: TaskState = { ...buildCoreTask(), id: 'jamais-vu', version: 1 }
-    await saveTask(neuf, 1)
+    await saveTask(neuf)
     expect((await loadTask('jamais-vu'))?.version).toBe(1)
   })
 })

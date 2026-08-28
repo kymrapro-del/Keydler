@@ -23,7 +23,12 @@ export default defineConfig(({ mode }) => {
     plugins: [originTrialMeta(env.VITE_WEBMCP_ORIGIN_TRIAL_TOKEN)],
     build: {
       target: 'es2022',
-      sourcemap: process.env.TRIAL !== '1',
+      // Jamais par défaut : `npm run build` est ce que les hébergeurs
+      // détectent tout seuls, et la carte de source pesait 519 ko — plus que
+      // tout le reste du site réuni. Elle rend aussi la source entière lisible
+      // par un agent qui pilote le navigateur, ce que les campagnes de mesure
+      // supposent impossible. `SOURCEMAP=1` la redemande.
+      sourcemap: process.env.SOURCEMAP === '1',
     },
     test: {
       globals: true,

@@ -1,0 +1,5 @@
+# Une tâche vit à /t/:id, et la page y déplace l'adresse dès qu'un cahier est
+# ouvert. Sans cette règle, tout rechargement, tout signet et tout lien partagé
+# tombe sur le 404 de l'hébergeur. Invisible en local : `vite preview` réécrit
+# déjà, un hébergeur statique non.
+/*  /index.html  200

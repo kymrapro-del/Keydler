@@ -1479,3 +1479,168 @@ fait son travail — taper vite ne produit pas un rendu par caractère.
 cahier : `lastTaskId` avait été écrit pendant que la page était déjà montée, et
 le rechargement a rouvert celui d'avant. Le chiffre de 1009 ms que j'ai lu là
 était celui d'un cahier de dix étapes — il ne mesurait rien.
+
+## 28 août 2026 — ce qu'un audit adversarial a trouvé dans le code d'il y a une heure
+
+Neuf agents lancés en parallèle : trois sur le concours, trois en audit du code
+écrit aujourd'hui, deux sur les surfaces non couvertes et le build de
+production, un de synthèse. Ils ont trouvé **quatre défauts dans le
+`BroadcastChannel` posé une heure plus tôt**, dont deux atteignables avec deux
+onglets et un cahier de dix étapes.
+
+### Le pire : une suppression pouvait être annulée par l'autre onglet
+
+La suppression n'annonçait que « la liste a changé », sans nommer le cahier.
+L'onglet d'à côté gardait donc à l'écran un cahier disparu — et sa prochaine
+écriture le **ressuscitait**. `saveTask` traitait « aucun enregistrement » comme
+« pas encore créé » et retombait sur le `put`.
+
+Le cahier revenait avec toutes ses étapes et toutes ses preuves collées, mais
+**sans ses identifiants scellés**, eux réellement effacés : l'humain croyait la
+donnée partie, elle revenait amputée, et chaque référence `${name}` pendait dans
+le vide. Sur l'opération que l'on fait précisément *parce qu'on veut que la
+donnée disparaisse.
+
+Le commit `26501e8` s'intitule « Verify … that deleting a task takes its
+secrets ». Ce défaut le démentait dans le cas à deux onglets.
+
+**Deux correctifs, les deux nécessaires.** La suppression nomme le cahier
+(`{id, gone: true}`), et le récepteur passe en `missing`. Et `saveTask` refuse
+désormais une écriture qui porte une version attendue contre un enregistrement
+absent : une telle écriture est par définition une mise à jour, les créations
+passent par le chemin sans version.
+
+**J'avais écrit l'assertion inverse.** `test/migration-index.test.ts` affirmait
+« laisse passer la toute première écriture d'un cahier qui n'existe pas ».
+C'était mon raisonnement qui était faux, pas le code qui l'a suivi. Le test
+affirme maintenant le contraire, avec la raison.
+
+### Trois autres, dans le même fichier
+
+- **La relecture ne revérifiait pas la liaison.** La garde « est-ce le cahier
+  ouvert ? » était évaluée à la réception du message ; le travail, lui, était
+  différé dans la file. Entre les deux, l'utilisateur peut ouvrir un autre
+  cahier — et la relecture rebasculait l'écran, et `boundId`, sur le précédent.
+  Pire que l'écran périmé que le canal devait supprimer.
+- **Aucun regroupement.** Mesuré par l'agent sur 20 000 étapes : cinquante
+  annonces coûtaient cinquante lectures et 1702 ms, dont 1668 jetés. Et comme la
+  file est partagée avec les écritures locales, elles retardaient les écritures
+  de cet onglet d'un facteur 51. Une seule relecture par cahier désormais.
+- **La liste des cahiers se relisait à chaque écriture.** `listKey` contenait la
+  version du cahier ouvert, qui change à chaque écriture : 61 ms et **15,9 Mo
+  lus pour produire 9 ko de fiches**, sur 20 cahiers de 2000 étapes. Les lignes
+  du sélecteur n'en dépendent pas.
+
+### Vérifié à deux vrais onglets
+
+Onglet 1 supprime. Onglet 2, **sans un clic ni un rechargement** :
+
+> This task does not exist on this device. The address points at suppr0000001,
+> which is not here. No other task has been opened in its place.
+
+Puis un agent tente d'écrire depuis l'onglet 2 : refusé. Et sur le disque :
+`tasks` vide, `secrets` vide. Le cahier ne revient pas.
+
+### Un mutant survivant, non résolu
+
+Retirer la revérification de liaison **à l'intérieur** de `resyncFromDisk` ne
+fait rougir aucun test : la garde de la file la couvre en amont. Les deux ont
+pourtant un rôle distinct — l'une évite la lecture, l'autre évite d'appliquer
+une lecture périmée — et je n'ai pas su construire une course déterministe pour
+la seconde. Elle reste, non couverte, et c'est écrit ici plutôt que maquillé.
+
+### Un chiffre publié par le banc était faux
+
+`bench/detail.bench.ts` chronométrait `normalizeTask(structuredClone(task))`,
+attribuant à la normalisation le coût du clone : **3,94 ms de clone comptés dans
+0,24 ms de normalisation**, à 4000 étapes. Un facteur seize, et il pointait vers
+le mauvais correctif — « accélérer normalize » au lieu de « lire moins
+souvent ». Le clone est sorti du chronomètre. Aucun document publié ne citait ce
+chiffre ; seule la sortie du banc était fausse.
+
+## 28 août 2026 — le build de production, et une promesse du README qui était fausse
+
+Un agent d'audit a construit puis servi `dist/` depuis un serveur statique NU —
+pas `vite preview`, qui réécrit tout seul et masquait tout. Trois problèmes,
+tous invisibles en local.
+
+### L'adresse profonde tombait sur un 404
+
+La page déplace l'adresse vers `/t/:id` dès qu'un cahier est ouvert. Sur un
+hôte sans réécriture, tout rechargement, tout signet et tout lien partagé
+tombait sur le 404 de l'hébergeur. Vérifié : `curl http://127.0.0.1:8911/t/abc`
+rend **404** sur un serveur nu, **200** sous `vite preview`.
+
+`public/_redirects` et `vercel.json` posés. Un serveur statique nu ne les lit
+pas — ce sont des conventions d'hébergeur — donc ce point reste à vérifier sur
+l'hôte réellement choisi.
+
+### Le service worker ne précachait rien de l'application
+
+`SHELL` listait `/`, `/index.html`, le manifeste et une icône. Les deux
+fichiers dont l'application est faite portent une empreinte dans leur nom : ils
+ne peuvent pas être écrits à la main, et rien ne les injectait. L'enregistrement
+se faisant sur `load`, la première visite ne passe pas non plus par le worker.
+**Après une seule visite, hors ligne rendait une page blanche** — alors que le
+README annonçait l'inverse, « verified with the server stopped ».
+
+`scripts/precache.mjs` écrit désormais les vrais noms dans `dist/sw.js`, et
+donne au cache un nom dérivé de leur contenu — sans quoi `activate` ne
+supprimait jamais rien.
+
+**Vérifié pour de bon, cette fois.** Serveur statique **arrêté**, réseau émulé
+hors ligne, `fetch` d'une ressource non cachée qui **échoue** — et la page rend
+957 caractères de contenu réel. Cache : cinq entrées, dont le JS et le CSS.
+
+### Une page d'erreur pouvait empoisonner le cache pour de bon
+
+La branche de navigation mettait la réponse en cache **sans contrôler son
+statut**. Sur un hôte sans réécriture, le premier `/t/:id` rendait un 404 qui
+était écrit par-dessus `/index.html` : le repli hors ligne servait ensuite ce
+404 pour toute navigation, racine comprise. Et le nom du cache étant figé,
+aucun déploiement ne le nettoyait. Le contrôle `response.ok` existait déjà sur
+la branche des ressources ; il manquait sur celle des navigations.
+
+### La carte de source partait en production
+
+`npm run build` — ce que les hébergeurs détectent tout seuls — produisait une
+carte de source de **519 ko**, plus lourde que tout le reste du site réuni, et
+qui rend la source entière lisible par un agent pilotant le navigateur. Elle est
+maintenant sur demande (`SOURCEMAP=1`). `dist/` passe de ~760 ko à **260 ko**.
+
+## 29 août 2026 — le lien protégé par une phrase de passe
+
+Un lien porte le cahier entier, et sa vraie fuite n'est pas le fragment — que
+le navigateur ne transmet jamais — mais **l'endroit où on le colle** : un fil
+Slack, un mail, une conversation qui garde le message.
+
+**Ce qui a été construit.** Un second bouton, « Copy a protected link », qui
+scelle le lien par une phrase de passe. Aucune cryptographie nouvelle : c'est
+`seal`/`unseal` du coffre, AES-GCM 256 et PBKDF2-SHA256 à 600 000 itérations,
+sel et IV tirés au hasard à chaque scellement. On chiffre **après** avoir
+compressé, un chiffré ne se compressant pas.
+
+**Ce que ça ne fait pas, et l'écran le dit.** Cela ne vérifie pas une identité.
+Un fragment d'URL est une capacité au porteur, et authentifier quelqu'un
+demanderait un serveur. Ce qu'une phrase prouve, c'est la connaissance d'un
+secret — autre chose, et le maximum disponible sans serveur. Un mutant qui
+remplace cette phrase par « We check who opens it » fait rougir la suite.
+
+**Vérifié dans Brave 151, de bout en bout.**
+
+| Étape                       | Observé                                                                                                         |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Lien copié                  | 6852 caractères, marqueur `#log=s`, titre du cahier absent                                                      |
+| Destinataire, appareil vide | « A protected watch log » — **rien n'est lisible, pas même le nom**                                             |
+| Mauvaise phrase             | « That passphrase does not open this link. Ask them to repeat it — the link itself is fine. » et le champ reste |
+| Bonne phrase                | l'offre ordinaire, titre visible, « Take a copy »                                                               |
+| Après ouverture             | le fragment a quitté la barre d'adresse                                                                         |
+
+Taille : **1,82×** le lien ordinaire (3747 → 6821 caractères sur le cahier de
+démonstration), très en deçà de la borne de 16 000.
+
+**Erreur de sonde, consignée.** Ma première tentative montrait le cahier au
+lieu de demander la phrase. J'avais vidé IndexedDB depuis la page **encore
+montée** : le magasin, toujours en mémoire, a réécrit la tâche avant la
+navigation. En passant d'abord par une page neuve, le comportement attendu
+apparaît. Le produit n'y était pour rien.
