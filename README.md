@@ -286,6 +286,15 @@ defend against everything:
   an agent's work. Nothing is erased: the undo is a write of its own, and both
   it and what it reversed stay in the history.
 
+## Audit
+
+[`docs/audit-2026-08-28.md`](docs/audit-2026-08-28.md) is a full defect hunt over
+the repository: static review, boundary probes, real-browser sequences including
+two tabs at once, and thirteen mutation tests that break a guarantee in the
+source and check the suite goes red. It lists what was found and fixed — sealed
+credentials outlived the task that held them, the worst of the four — and, at
+the same length, what is known and left alone.
+
 ## Technical guarantees
 
 - **Stale writes are refused, never merged.** Every agent write carries the

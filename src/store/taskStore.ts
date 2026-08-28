@@ -11,6 +11,8 @@ import {
   saveTask,
   setLastTaskId,
 } from '../persistence/taskRepository'
+import { deleteSecretsForTask } from '../persistence/vault'
+import { forgetSeen } from '../persistence/seen'
 
 export type StoreStatus = 'loading' | 'ready' | 'empty' | 'error' | 'missing'
 
@@ -175,6 +177,11 @@ export async function deleteCurrentTask(): Promise<void> {
 
   await enqueue(async () => {
     await deleteTask(current.id)
+    // Les identifiants scellés vivent hors de l'état de la tâche : sans cet
+    // appel, ils survivaient à la suppression, hors d'atteinte de l'écran mais
+    // bien présents sur le disque.
+    await deleteSecretsForTask(current.id).catch(() => undefined)
+    forgetSeen(current.id)
     tasksChanged()
     const suivant = await loadLastTask()
     if (suivant) {

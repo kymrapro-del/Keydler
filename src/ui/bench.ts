@@ -7,7 +7,7 @@ import { humanMessage } from './messages'
 import { describeHistory } from './history'
 import { needsYou } from '../domain/attention'
 import { SHORTCUTS } from './shortcuts'
-import { markSeen, seenVersion } from './seen'
+import { markSeen, seenVersion } from '../persistence/seen'
 import { attentionTitle } from './attention'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
@@ -751,7 +751,8 @@ function renderSwitcher(task: TaskState): string {
                 }</button>`
               : ''
           }
-          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown" hidden />
+          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown"
+                 aria-label="Choose a watch log file to import" hidden />
         </div>
       </div>
     </details>`
