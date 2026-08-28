@@ -1420,3 +1420,25 @@ Relevé dans IndexedDB, de part et d'autre de la suppression :
 | Après | `289687a53a75`                 | _(vide)_                          |
 
 Le cahier part, le secret part avec lui, et l'autre cahier n'est pas touché.
+
+## 28 août 2026 — la page sur un écran étroit
+
+**Poste.** Brave 151, viewport émulé 375 × 812, mobile et tactile. Jamais
+vérifié jusqu'ici, et un juge ouvre ce qu'il veut.
+
+**Ce qui tient.** Aucun débordement horizontal : `scrollWidth` vaut exactement
+375, et **aucun** des éléments de `#app` ne dépasse la largeur du viewport. La
+hauteur médiane d'une cible tactile est de 41 px.
+
+**Ce qui ne tient pas, et n'est pas corrigé.** Quatre éléments passent sous une
+cible confortable :
+
+| Élément                                   | Hauteur   |
+| ----------------------------------------- | --------- |
+| `<select>` du type d'identifiant          | **19 px** |
+| Les trois liens de la barre « Needs you » | **22 px** |
+
+Le reste est à 41 px, soit juste sous les 44 px recommandés — un écart que je ne
+compte pas comme un défaut. Les quatre ci-dessus, si. Non corrigé : la mise en
+forme est un domaine où l'on ne touche pas sans décision, et ce n'est pas la
+mienne à prendre.
