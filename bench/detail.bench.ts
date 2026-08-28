@@ -108,6 +108,44 @@ describe('détail', () => {
     sync('querySelectorAll sur tous les boutons', () => root.querySelectorAll('button').length)
   }, 300_000)
 
+  it('un rendu qui change vraiment, sur un gros cahier', async () => {
+    await wipe()
+    store.__resetStore()
+    await store.init()
+    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    const root = document.querySelector<HTMLElement>('#app')!
+    mount(root)
+    await store.openPreparedTask({ ...buildCoreTask(), steps: steps(20000) })
+    __renderNow()
+
+    const durées: number[] = []
+    for (let i = 0; i < 12; i++) {
+      await store.mutate((st) => ({ ...st, version: st.version + 1, next: `tour ${i}` }))
+      const t0 = performance.now()
+      __renderNow()
+      durées.push(performance.now() - t0)
+    }
+    console.log(`\n  rendu changeant (le cahier bouge)   : ${median(durées).toFixed(2)} ms`)
+
+    // Le cas qui compte vraiment : le cahier ne bouge PAS, mais l'écran si —
+    // une frappe dans la recherche, une liste que l'on déplie. C'est là que
+    // tout ce qui dépend du seul cahier peut être réutilisé.
+    const champ = root.querySelector<HTMLInputElement>('#search')
+    const interactifs: number[] = []
+    for (let i = 0; i < 12; i++) {
+      if (champ) {
+        champ.value = 'shard'.slice(0, (i % 5) + 1)
+        champ.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+      const t0 = performance.now()
+      __renderNow()
+      interactifs.push(performance.now() - t0)
+    }
+    console.log(
+      `  rendu interactif (le cahier ne bouge pas) : ${median(interactifs).toFixed(2)} ms${champ ? '' : '  [PAS DE CHAMP]'}`,
+    )
+  }, 300_000)
+
   it('démarrage', async () => {
     for (const [nombre, taille] of [
       [1, 200],

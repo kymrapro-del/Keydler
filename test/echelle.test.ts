@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildCoreTask } from '../src/demo/seed'
+import { logStep } from '../src/domain/task'
 import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import type {
@@ -327,5 +328,47 @@ describe('la liste des cahiers ne retient pas les cahiers', () => {
     // Et ce qui doit survivre à la réduction survit : la pastille est calculée
     // avant que le cahier ne soit relâché.
     expect(carte.needs.some((n) => n.kind === 'question')).toBe(true)
+  })
+})
+
+/**
+ * Le panneau technique montre exactement ce que `resume_task` rendrait —
+ * 5 ms sur un cahier de 20 000 étapes, recalculé à chaque frappe. Il est
+ * maintenant mémorisé ; une mémorisation qui rate son invalidation montre un
+ * état périmé, ce qui est pire que lent dans un produit dont c'est le sujet.
+ */
+describe('l’aperçu de ce que lit l’agent reste à jour', () => {
+  function apercu(): string {
+    const pre = [...root.querySelectorAll('pre')].find((p) => p.textContent?.includes('TASK ID'))
+    return pre?.textContent ?? ''
+  }
+
+  it('suit la moindre écriture', async () => {
+    await open({ steps: steps(3) })
+    expect(apercu()).toContain('3 steps logged')
+
+    const before = store.currentTask()!.version
+    await store.mutate((s) =>
+      logStep(s, {
+        action: 'Ran one more shard',
+        result: 'moved',
+        evidence: null,
+        basedOnVersion: s.version,
+      }),
+    )
+    expect(store.currentTask()!.version).toBeGreaterThan(before)
+    __renderNow()
+
+    expect(apercu()).toContain('4 steps logged')
+    expect(apercu()).toContain('Ran one more shard')
+  })
+
+  it('suit un changement de cahier', async () => {
+    await open({ id: 'un', title: 'Premier', steps: steps(1) })
+    expect(apercu()).toContain('Premier')
+
+    await open({ id: 'deux', title: 'Second', steps: steps(2) })
+    expect(apercu()).toContain('Second')
+    expect(apercu()).not.toContain('Premier')
   })
 })

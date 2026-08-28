@@ -75,8 +75,22 @@ export async function loadLastTask(): Promise<TaskState | undefined> {
     const task = normalizeTask(await db.get('tasks', id))
     if (task) return task
   }
-  const all = await listTasks()
-  return all[0]
+
+  // Le repli — plus de dernier cahier connu — rapatriait TOUS les cahiers du
+  // poste pour n'en garder qu'un : 22 ms pour trente. L'index est déjà trié
+  // par date d'écriture ; on n'a besoin que de ses clés, et l'on ne descend
+  // vers le suivant que si le plus récent est illisible, comme avant.
+  const clés = await db.getAllKeysFromIndex('tasks', 'by-updatedAt')
+  for (let i = clés.length - 1; i >= 0; i--) {
+    try {
+      const task = normalizeTask(await db.get('tasks', clés[i]))
+      if (task) return task
+    } catch {
+      // Illisible : on essaie le précédent, sans rien dire de plus que ce que
+      // faisait la lecture en bloc.
+    }
+  }
+  return undefined
 }
 
 export async function setLastTaskId(id: string): Promise<void> {
