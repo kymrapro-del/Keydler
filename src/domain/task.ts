@@ -97,6 +97,7 @@ type AppliedMutation = {
   actor: Actor
   basedOnVersion: number | null
   detail: string
+  targetId?: string
   patch: Partial<TaskState>
 }
 
@@ -112,6 +113,7 @@ function apply(state: TaskState, mutation: AppliedMutation, ctx?: MutationContex
     basedOnVersion: mutation.basedOnVersion,
     outcome: 'applied',
     detail: mutation.detail,
+    ...(mutation.targetId ? { targetId: mutation.targetId } : {}),
     at: now,
   }
   return {
@@ -526,6 +528,7 @@ export function setConstraintStanding(
       actor: 'human',
       basedOnVersion: null,
       detail: constraint.rule,
+      targetId: constraintId,
       patch: {
         constraints: state.constraints.map((c) => (c.id === constraintId ? { ...c, standing } : c)),
       },
@@ -560,6 +563,7 @@ export function setRejectionStanding(
       actor: 'human',
       basedOnVersion: null,
       detail: rejection.approach,
+      targetId: rejectionId,
       patch: {
         rejected: state.rejected.map((r) => (r.id === rejectionId ? { ...r, standing } : r)),
       },
@@ -706,6 +710,7 @@ export function setConstraintActive(
       actor: 'human',
       basedOnVersion: null,
       detail: constraint.rule,
+      targetId: constraintId,
       patch: { constraints },
     },
     ctx,
@@ -827,6 +832,131 @@ export function answerQuestion(
     },
     ctx,
   )
+}
+
+type Undoable = {
+  label: string
+  apply: (state: TaskState, ctx?: MutationContext) => TaskState
+}
+
+/**
+ * On n'annule que ce dont l'effet est ENCORE VISIBLE dans l'état courant.
+ * Sans cette condition, annuler deux fois rejouerait la même action à
+ * l'envers, et une correction faite à la main entre-temps serait écrasée.
+ */
+function invert(state: TaskState, entry: AuditEntry): Undoable | null {
+  const id = entry.targetId
+
+  switch (entry.operation) {
+    case 'deactivate_constraint':
+    case 'reactivate_constraint': {
+      if (id === undefined) return null
+      const constraint = state.constraints.find((c) => c.id === id)
+      if (!constraint) return null
+      const wanted = entry.operation === 'deactivate_constraint'
+      if (constraint.active !== !wanted) return null
+      return {
+        label: `${wanted ? 'lifted' : 'restored'} the rule “${constraint.rule}”`,
+        apply: (s, ctx) => setConstraintActive(s, id, wanted, ctx),
+      }
+    }
+
+    case 'accept_constraint':
+    case 'decline_constraint': {
+      if (id === undefined) return null
+      const constraint = state.constraints.find((c) => c.id === id)
+      if (!constraint) return null
+      const decided = entry.operation === 'accept_constraint' ? 'accepted' : 'declined'
+      if (constraint.standing !== decided) return null
+      return {
+        label: `${decided} the proposed rule “${constraint.rule}”`,
+        apply: (s, ctx) => setConstraintStanding(s, id, 'proposed', ctx),
+      }
+    }
+
+    case 'accept_rejection':
+    case 'decline_rejection': {
+      if (id === undefined) return null
+      const rejection = state.rejected.find((r) => r.id === id)
+      if (!rejection) return null
+      const decided = entry.operation === 'accept_rejection' ? 'accepted' : 'declined'
+      if (rejection.standing !== decided) return null
+      return {
+        label: `${decided} the proposed rejection “${rejection.approach}”`,
+        apply: (s, ctx) => setRejectionStanding(s, id, 'proposed', ctx),
+      }
+    }
+
+    case 'archive_task':
+    case 'unarchive_task': {
+      const archived = entry.operation === 'archive_task'
+      if (state.archived !== archived) return null
+      return {
+        label: archived ? 'archived this task' : 'brought this task back',
+        apply: (s, ctx) => setArchived(s, !archived, ctx),
+      }
+    }
+
+    default:
+      return null
+  }
+}
+
+/**
+ * On ne remonte que la fin du journal, et on s'arrête à la première écriture
+ * qui n'est pas une décision annulable de l'humain. « Annuler » veut dire
+ * défaire ce que l'on vient de faire ; remonter par-dessus le travail d'un
+ * agent reviendrait à révoquer une décision d'il y a une semaine d'un clic.
+ */
+const UNDOABLE_OPERATIONS = new Set([
+  'deactivate_constraint',
+  'reactivate_constraint',
+  'accept_constraint',
+  'decline_constraint',
+  'accept_rejection',
+  'decline_rejection',
+  'archive_task',
+  'unarchive_task',
+  'undo',
+])
+
+function lastUndoable(state: TaskState): { entry: AuditEntry; undo: Undoable } | null {
+  for (let i = state.audit.length - 1; i >= 0; i--) {
+    const entry = state.audit[i]
+    if (entry.outcome !== 'applied') continue
+    if (entry.actor !== 'human') return null
+
+    const undo = invert(state, entry)
+    if (undo) return { entry, undo }
+
+    // Une décision déjà annulée, ou l'annulation elle-même, ne bloque pas la
+    // remontée. Tout le reste l'arrête.
+    if (!UNDOABLE_OPERATIONS.has(entry.operation)) return null
+  }
+  return null
+}
+
+export function undoable(state: TaskState): string | null {
+  return lastUndoable(state)?.undo.label ?? null
+}
+
+export function undoLastSupervision(state: TaskState, ctx?: MutationContext): TaskState {
+  const found = lastUndoable(state)
+  if (!found) {
+    throw new ValidationError('status', 'there is no decision of yours left to undo.', {
+      code: 'not-found',
+      retryable: false,
+    })
+  }
+
+  const next = found.undo.apply(state, ctx)
+  const audit = [...next.audit]
+  audit[audit.length - 1] = {
+    ...audit[audit.length - 1],
+    operation: 'undo',
+    detail: found.undo.label,
+  }
+  return { ...next, audit }
 }
 
 export function openQuestions(state: TaskState): OpenQuestion[] {

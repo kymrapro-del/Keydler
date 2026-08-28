@@ -4,6 +4,7 @@ import { parseExport } from '../export/restore'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeHistory } from './history'
+import { markSeen, seenVersion } from './seen'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
@@ -13,6 +14,8 @@ import {
   addConstraint,
   answerQuestion,
   answeredQuestions,
+  undoLastSupervision,
+  undoable,
   attachEvidence,
   openQuestions,
   setArchived,
@@ -147,6 +150,8 @@ function showNotice(message: string): void {
   scheduleRender()
 }
 let showAllHistory = false
+let awaySince: number | null = null
+let awayFor: string | null = null
 
 type Editing =
   | { kind: 'title' }
@@ -700,6 +705,44 @@ function renderSwitcher(task: TaskState): string {
     </details>`
 }
 
+function renderAway(task: TaskState): string {
+  const since = awaySince
+  if (since === null || since >= task.version) return ''
+
+  const lines = describeHistory(task.audit.filter((e) => e.versionAfter > since))
+  if (lines.length === 0) return ''
+
+  const shown = lines.slice(0, 8)
+  const rows = shown
+    .map(
+      (l) => `<li class="row">
+          <span class="chip chip--${l.who === 'You' ? 'human' : 'agent'}">${escapeHtml(l.who)}</span>
+          <span class="row__text">
+            <strong>${escapeHtml(l.what)}</strong>
+            ${l.detail ? `<span class="muted"> — ${escapeHtml(l.detail)}</span>` : ''}
+          </span>
+        </li>`,
+    )
+    .join('')
+
+  return `<section class="card card--away" aria-labelledby="away-title">
+      <h2 id="away-title" class="card__title">While you were away</h2>
+      <p class="muted">
+        ${lines.length} ${plural(lines.length, 'write', 'writes')} since you last had this
+        page open, at v${since}.
+      </p>
+      <ul class="rows">${rows}</ul>
+      ${
+        lines.length > shown.length
+          ? `<p class="muted">${lines.length - shown.length} older still, in the history below.</p>`
+          : ''
+      }
+      <div class="actions">
+        <button type="button" id="seen" class="btn btn--primary">Got it</button>
+      </div>
+    </section>`
+}
+
 function renderWaiting(task: TaskState): string {
   const open = openQuestions(task)
   const answered = answeredQuestions(task)
@@ -770,10 +813,21 @@ function renderWaiting(task: TaskState): string {
 }
 
 function renderHandoff(task: TaskState): string {
-  if (task.status !== 'active') return ''
+  const undo = undoable(task)
+  const undoButton = undo
+    ? `<button type="button" id="undo" class="btn btn--quiet"
+               aria-label="Undo: you ${escapeHtml(undo)}">Undo that</button>
+       <span class="muted">You ${escapeHtml(undo)}.</span>`
+    : ''
+
+  if (task.status !== 'active') {
+    return undoButton ? `<p class="handoff">${undoButton}</p>` : ''
+  }
+
   return `<p class="handoff">
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
+      ${undoButton}
     </p>`
 }
 
@@ -1141,6 +1195,7 @@ function renderDashboard(task: TaskState): string {
     ${alertBlock()}
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
+    ${searching() ? '' : renderAway(task)}
     ${searching() ? '' : renderNext(task)}
     ${searching() ? '' : renderWaiting(task)}
     ${searching() ? '' : renderReadyForAI(task)}
@@ -1654,6 +1709,18 @@ function bindSupervision(): void {
       })
   })
 
+  document.querySelector('#seen')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    markSeen(task.id, task.version)
+    awaySince = null
+    renderNow()
+  })
+
+  document.querySelector('#undo')?.addEventListener('click', () => {
+    humanAction('Undoing that', (state) => undoLastSupervision(state))
+  })
+
   document.querySelector('#copy-handoff')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (!task) return
@@ -1880,6 +1947,21 @@ function render(): void {
   if (!root) return
 
   const openTask = store.currentTask()
+
+  if (openTask && awayFor !== openTask.id) {
+    awayFor = openTask.id
+    // La première ouverture d'un cahier n'est pas une absence : on note la
+    // version courante sans rien annoncer.
+    const known = seenVersion(openTask.id)
+    awaySince = known === null ? null : known
+    if (known === null) markSeen(openTask.id, openTask.version)
+  }
+
+  // On ne marque « vu » que si l'onglet est réellement à l'écran. Un onglet en
+  // arrière-plan pendant qu'un agent travaille est exactement l'absence que ce
+  // digest doit rapporter.
+  if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
+
   const listKey = openTask ? `${openTask.id}:${openTask.version}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
   if ((openTask?.id ?? null) !== credentialsFor) {
@@ -1957,6 +2039,20 @@ function typingSomewhereElse(target: EventTarget | null): boolean {
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
+function looking(): boolean {
+  return typeof document.visibilityState !== 'string' || document.visibilityState === 'visible'
+}
+
+function onVisibilityChange(): void {
+  if (!looking()) return
+  const task = store.currentTask()
+  if (task && awaySince === null) {
+    const known = seenVersion(task.id)
+    if (known !== null && known < task.version) awaySince = known
+  }
+  scheduleRender()
+}
+
 function closeOnEscape(event: KeyboardEvent): void {
   if (event.key !== 'Escape' || event.ctrlKey || event.metaKey || event.altKey) return
 
@@ -2024,6 +2120,8 @@ export function mount(target: HTMLElement): () => void {
   allTasksFor = ''
   clearNotice()
   showAllHistory = false
+  awaySince = null
+  awayFor = null
   editing = null
   loggingStep = false
   answering = null
@@ -2039,10 +2137,12 @@ export function mount(target: HTMLElement): () => void {
 
   document.addEventListener('keydown', focusSearchOnSlash)
   document.addEventListener('keydown', closeOnEscape)
+  document.addEventListener('visibilitychange', onVisibilityChange)
 
   return () => {
     document.removeEventListener('keydown', focusSearchOnSlash)
     document.removeEventListener('keydown', closeOnEscape)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
     hideRevealed()
     clearNotice()
     for (const off of subscriptions) off()

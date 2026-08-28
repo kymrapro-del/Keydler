@@ -684,3 +684,8 @@ mark {
 .card--waiting .card__title {
   color: var(--c-accent);
 }
+
+.card--away {
+  border-color: var(--c-accent);
+  border-style: dashed;
+}

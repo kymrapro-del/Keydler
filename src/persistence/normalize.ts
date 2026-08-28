@@ -137,6 +137,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       basedOnVersion: typeof a.basedOnVersion === 'number' ? a.basedOnVersion : null,
       outcome: a.outcome === 'refused' ? 'refused' : 'applied',
       detail: asString(a.detail, ''),
+      ...(typeof a.targetId === 'string' && a.targetId !== '' ? { targetId: a.targetId } : {}),
       ...(typeof a.repeated === 'number' ? { repeated: a.repeated } : {}),
       at: asNumber(a.at, now),
     })),

@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { buildDemoTask } from '../src/demo/seed'
 import {
+  activeConstraints,
+  addConstraint,
   answerQuestion,
   askHuman,
   attachEvidence,
   openQuestions,
+  setConstraintActive,
   setNext,
+  undoLastSupervision,
 } from '../src/domain/task'
+import { renderChanges } from '../src/domain/changes'
 import { searchTask } from '../src/domain/search'
 import { buildTaskExport } from '../src/export/notebook'
 import { humanMessage } from '../src/ui/messages'
@@ -31,6 +36,10 @@ function entry(over: Partial<AuditEntry>): AuditEntry {
 
 const NEW_OPERATIONS = ['ask_human', 'attach_evidence', 'set_next_action', 'answer_question']
 
+// « undo » n'existe que côté humain : un agent ne révoque pas une décision de
+// supervision, c'est précisément ce que le modèle de confiance lui interdit.
+const HUMAN_ONLY = ['undo']
+
 describe('le journal met en mots ce que les nouveaux outils écrivent', () => {
   it('ne laisse aucun nom d’opération machine atteindre l’écran', () => {
     for (const operation of NEW_OPERATIONS) {
@@ -39,6 +48,11 @@ describe('le journal met en mots ce que les nouveaux outils écrivent', () => {
         expect(line.what, `${actor}/${operation}`).not.toContain(operation)
         expect(line.what, `${actor}/${operation}`).not.toContain('_')
       }
+    }
+
+    for (const operation of HUMAN_ONLY) {
+      const line = describeEntry(entry({ operation, actor: 'human' }))
+      expect(line.what, operation).not.toContain(operation)
     }
   })
 
@@ -52,12 +66,31 @@ describe('le journal met en mots ce que les nouveaux outils écrivent', () => {
   })
 
   it('met la tentative à l’infinitif pour les nouveaux outils aussi', () => {
-    for (const operation of NEW_OPERATIONS) {
+    for (const operation of [...NEW_OPERATIONS, ...HUMAN_ONLY]) {
       const line = describeEntry(entry({ operation, outcome: 'refused', detail: 'stale write' }))
       expect(line.what, operation).toMatch(/^tried to [a-z]/)
       expect(line.what, operation).not.toMatch(/tried to \w+ed\b/)
       expect(line.what, operation).not.toContain('_')
     }
+  })
+})
+
+describe('ce que l’agent lit d’une annulation', () => {
+  it('nomme l’annulation en phrase, jamais par son code', () => {
+    const withRule = addConstraint(
+      buildDemoTask(),
+      { rule: 'Do not add Redis', basedOnVersion: null },
+      'human',
+    )
+    const rule = activeConstraints(withRule).at(-1)!
+    const lifted = setConstraintActive(withRule, rule.id, false)
+    const back = undoLastSupervision(lifted)
+
+    const rendered = renderChanges(back, withRule.version)
+    expect(rendered).not.toContain('ran undo')
+    expect(rendered).toContain('The human')
+    // Une annulation rétablit une règle : elle change ce que l'agent peut faire.
+    expect(rendered).toContain('CHANGES WHAT YOU MAY DO')
   })
 })
 

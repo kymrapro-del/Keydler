@@ -87,6 +87,7 @@ export type AuditEntry = {
   basedOnVersion: number | null
   outcome: 'applied' | 'refused'
   detail: string
+  targetId?: string
   repeated?: number
   at: number
 }
@@ -123,4 +124,4 @@ export type TaskState = {
   updatedAt: number
 }
 
-export const SCHEMA_VERSION = 5
+export const SCHEMA_VERSION = 6

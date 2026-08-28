@@ -21,6 +21,7 @@ const BINDING_OPERATIONS = new Set([
   'reopen_task',
   'archive_task',
   'unarchive_task',
+  'undo',
 ])
 
 const BY_HUMAN: Record<string, string> = {
@@ -48,6 +49,7 @@ const BY_HUMAN: Record<string, string> = {
   reopen_task: 'reopened this task',
   archive_task: 'archived this task',
   unarchive_task: 'brought this task back',
+  undo: 'undid their own last decision',
 }
 
 const BY_AGENT: Record<string, string> = {

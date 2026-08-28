@@ -95,6 +95,11 @@ the attempt alongside the rule that caused it.
 
 ![Human intervention](docs/assets/human-intervention.png)
 
+**You come back, and the page tells you what happened.** It counts the tab as
+away when it is hidden, so switching to your agent and back is enough
+
+![While you were away](docs/assets/while-you-were-away.png)
+
 **Did the agent read before writing?** Counted from the calls the page observed,
 not asserted
 
@@ -208,6 +213,15 @@ defend against everything:
   data rather than asserted.
 - **Escape closes whatever is open**, and `/` reaches search. One thing closes at
   a time, and it is always the thing on screen.
+- **While you were away.** Come back to the page and it lists what was written
+  since you last had it in front of you — the human-side mirror of
+  `what_changed`. A hidden tab counts as away, so switching to your agent and
+  back is enough to trigger it.
+- **Undo that.** Lifting a rule, accepting a proposal, archiving a task are all
+  one click, so all three are one click back. It undoes only your own last
+  decision, only while that decision is still in force, and never reaches past
+  an agent's work. Nothing is erased: the undo is a write of its own, and both
+  it and what it reversed stay in the history.
 
 ## Technical guarantees
 

@@ -676,3 +676,46 @@ de ce poste.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — annuler une décision, et le digest d'absence
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+
+**Observé.**
+
+- Aucun bouton **Annuler** sur un cahier fraîchement ouvert. Après avoir levé
+  une règle, il apparaît et se nomme :
+  `Undo: you lifted the rule “Never modify the database schema”`. Un clic
+  rétablit la règle et le bouton disparaît.
+- `what_changed` rend l'annulation en phrase, du côté agent :
+  `v17 The human undid their own last decision: lifted the rule “…”`, rangée
+  sous **CHANGES WHAT YOU MAY DO** — rétablir une règle change bien ce que
+  l'agent a le droit de faire.
+- Digest d'absence : onglet passé à `hidden`, écriture d'un agent par WebMCP,
+  retour sur l'onglet. La carte **While you were away** apparaît en tête :
+  « 1 write since you last had this page open, at v17 ». Le bouton **Got it**
+  la referme et elle ne revient pas.
+
+**Décisions de conception prises pendant cette passe.**
+
+1. L'annulation ne remonte **jamais au-delà d'une écriture d'agent**, et
+   seulement tant que la décision est encore en vigueur. Sans cela, ouvrir un
+   cahier de la semaine dernière aurait proposé de révoquer une décision
+   ancienne d'un clic, et annuler deux fois aurait rejoué la même action à
+   l'envers.
+2. La page ne se marque « vue » que si l'onglet est **réellement à l'écran**.
+   Sans cette condition le digest ne se serait jamais déclenché : un onglet en
+   arrière-plan continue de rendre à chaque écriture d'agent.
+3. `AuditEntry` porte désormais `targetId` — sans lui, une entrée ne pouvait pas
+   désigner ce qu'elle avait touché, et l'inversion aurait dû relire le texte
+   de la règle dans le détail. Schéma passé à v6, normalisation en place pour
+   les cahiers écrits avant.
+
+**Défaut trouvé.** `undo` n'avait de verbe ni dans l'historique de la page ni
+dans `what_changed` : l'écran affichait « ran undo ». Même classe d'oubli que
+lors du lot précédent ; le test couvre maintenant les opérations réservées à
+l'humain.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

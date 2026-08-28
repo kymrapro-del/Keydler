@@ -34,6 +34,7 @@ const BY_HUMAN: Record<string, string> = {
   answer_question: 'answered a question',
   attach_evidence: 'attached evidence to a step',
   set_next_action: 'changed the next action',
+  undo: 'undid that',
 }
 
 const BY_AGENT: Record<string, string> = {
@@ -58,6 +59,7 @@ const ATTEMPTED: Record<string, string> = {
   answer_question: 'answer a question',
   attach_evidence: 'attach evidence to a step',
   set_next_action: 'change the next action',
+  undo: 'undo that',
 }
 
 export function refusalReason(detail: string): string {
