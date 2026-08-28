@@ -340,6 +340,13 @@ defend against everything:
 
 ## Audits
 
+[`docs/concours-2026-08-28.md`](docs/concours-2026-08-28.md) is what nine agents
+established about the challenge itself from primary sources — the deadline
+freeze that is not on the rules page, the video requirements that are stricter
+than they look, and the uncomfortable finding that "the agent proposes, the
+human decides" is the single most crowded pitch in the field rather than a
+differentiator. It also lists, at length, what could not be established.
+
 [`docs/echelle-2026-08-28.md`](docs/echelle-2026-08-28.md) is a cost pass rather
 than a defect pass: what grows without bound, what redoes work, what stops being
 usable as the log fills. It found that `resume_task` was overshooting its own
