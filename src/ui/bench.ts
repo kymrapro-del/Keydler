@@ -61,6 +61,7 @@ import {
   onRegistrationChange,
   resetCalls,
   taskPath,
+  taskUrl,
 } from '../webmcp'
 
 let root: HTMLElement | null = null
@@ -177,13 +178,21 @@ function searching(): boolean {
 }
 
 function highlight(text: string, q: string): string {
-  const hay = text.toLocaleLowerCase()
   const needle = q.toLocaleLowerCase()
-  const at = hay.indexOf(needle)
-  if (at < 0) return escapeHtml(text)
-  return `${escapeHtml(text.slice(0, at))}<mark>${escapeHtml(
-    text.slice(at, at + needle.length),
-  )}</mark>${escapeHtml(text.slice(at + needle.length))}`
+  if (needle.length === 0) return escapeHtml(text)
+
+  const hay = text.toLocaleLowerCase()
+  const parts: string[] = []
+  let from = 0
+
+  for (let at = hay.indexOf(needle); at >= 0; at = hay.indexOf(needle, at + needle.length)) {
+    parts.push(escapeHtml(text.slice(from, at)))
+    parts.push(`<mark>${escapeHtml(text.slice(at, at + needle.length))}</mark>`)
+    from = at + needle.length
+  }
+
+  parts.push(escapeHtml(text.slice(from)))
+  return parts.join('')
 }
 
 function startEditing(next: Editing, value: string, reason = ''): void {
@@ -984,8 +993,27 @@ function lastRefusal(task: TaskState): string | null {
   return `An agent write was refused (${refused.operation}). Nothing changed.`
 }
 
+function readBeforeWrite(total: number, blindWrites: number, sawRead: boolean): string {
+  if (total === 0) return ''
+
+  if (blindWrites > 0) {
+    return `<p class="notice notice--stale" role="status">
+        ${blindWrites} ${plural(blindWrites, 'write', 'writes')} arrived
+        <strong>without reading this page first</strong>. That agent was working from
+        its own memory, not from this log — check what it recorded.
+      </p>`
+  }
+
+  if (!sawRead) return ''
+
+  return `<p class="muted">
+      Every write so far arrived <strong>after reading this page</strong>. Counted
+      since this page loaded, from the calls below.
+    </p>`
+}
+
 function renderActivity(task: TaskState): string {
-  const { total, refused, recents } = getWitness()
+  const { total, refused, recents, blindWrites, sawRead } = getWitness()
   const alert = lastRefusal(task)
 
   const rows = [...recents]
@@ -1004,6 +1032,7 @@ function renderActivity(task: TaskState): string {
       <h2 id="activity-title" class="card__title">Activity</h2>
       ${alert ? `<div class="notice notice--stale" role="status"><p>${escapeHtml(alert)}</p></div>` : ''}
       <p class="muted">${total} tool ${plural(total, 'call', 'calls')} so far, ${refused} refused.</p>
+      ${readBeforeWrite(total, blindWrites, sawRead)}
       ${rows ? `<ul class="calls">${rows}</ul>` : '<p class="empty">No agent has called a tool yet.</p>'}
     </section>`
 }
@@ -1075,7 +1104,9 @@ function renderTechnical(task: TaskState | null): string {
           task
             ? `<p class="mono">Task ID: ${escapeHtml(task.id)} · version ${task.version}</p>
                <h3>What <code>resume_task</code> returns</h3>
-               <pre>${escapeHtml(renderTaskState(task))}</pre>`
+               <pre>${escapeHtml(
+                 renderTaskState(task, { url: taskUrl(task.id), credentials }),
+               )}</pre>`
             : ''
         }
         <div class="actions">
@@ -1530,11 +1561,6 @@ function bindSupervision(): void {
   const searchField = document.querySelector<HTMLInputElement>('#search')
   searchField?.addEventListener('input', () => scheduleRender())
   searchField?.addEventListener('search', () => scheduleRender())
-  searchField?.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return
-    drafts['search'] = ''
-    renderNow()
-  })
   document.querySelector<HTMLFormElement>('#form-search')?.addEventListener('submit', (e) => {
     e.preventDefault()
     renderNow()
@@ -1931,6 +1957,46 @@ function typingSomewhereElse(target: EventTarget | null): boolean {
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
+function closeOnEscape(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || event.ctrlKey || event.metaKey || event.altKey) return
+
+  if (creating) {
+    creating = false
+    humanError = null
+    event.preventDefault()
+    renderNow()
+    document.querySelector<HTMLButtonElement>('#new-task')?.focus()
+    return
+  }
+
+  // La recherche masque le tableau de bord : un formulaire resté ouvert
+  // dessous est invisible. On ferme ce qui est à l'écran, pas ce qui est en
+  // mémoire.
+  if (searching()) {
+    drafts['search'] = ''
+    event.preventDefault()
+    renderNow()
+    document.querySelector<HTMLInputElement>('#search')?.focus()
+    return
+  }
+
+  const openForm = editing !== null || loggingStep || answering !== null || attaching !== null
+  if (openForm) {
+    editing = null
+    loggingStep = false
+    answering = null
+    attaching = null
+    humanError = null
+    drafts['edit-value'] = ''
+    drafts['edit-reason'] = ''
+    drafts['answer-text'] = ''
+    resetStepDraft()
+    drafts['attach-content'] = ''
+    event.preventDefault()
+    renderNow()
+  }
+}
+
 function focusSearchOnSlash(event: KeyboardEvent): void {
   if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return
   if (typingSomewhereElse(event.target)) return
@@ -1972,9 +2038,11 @@ export function mount(target: HTMLElement): () => void {
   ]
 
   document.addEventListener('keydown', focusSearchOnSlash)
+  document.addEventListener('keydown', closeOnEscape)
 
   return () => {
     document.removeEventListener('keydown', focusSearchOnSlash)
+    document.removeEventListener('keydown', closeOnEscape)
     hideRevealed()
     clearNotice()
     for (const off of subscriptions) off()

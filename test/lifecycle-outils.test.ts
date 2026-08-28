@@ -83,7 +83,7 @@ describe('mode statique — la cible du concours', () => {
     await registerTools()
 
     expect(getRegistrationState().lifecycle.mode).toBe('static')
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task'])
+    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
   it('pose deux outils au chargement d’une tâche déjà close', async () => {
@@ -96,7 +96,7 @@ describe('mode statique — la cible du concours', () => {
     const fake = installModelContext()
     await registerTools()
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task'])
+    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
   it('ne retire JAMAIS un outil pendant la vie du document', async () => {
@@ -165,7 +165,7 @@ describe('mode dynamique — Chromium 153 et au-delà', () => {
     )
     await settle(6)
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task'])
+    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
   it('les rend à la réouverture', async () => {

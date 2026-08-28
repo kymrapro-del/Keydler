@@ -196,7 +196,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('WRITE PROTOCOL')
     lines.push(`  Every write must carry based_on_version: ${state.version}`)
     lines.push('  Every write must carry a fresh mutation_id; reuse it verbatim to retry.')
-    lines.push('  A refused write means the human changed this state. Call resume_task again.')
+    lines.push('  A refused write means this state moved: call what_changed, or resume_task.')
   } else {
     lines.push('TASK CLOSED')
     lines.push('  This task is complete. Writes are refused — do not log further work.')

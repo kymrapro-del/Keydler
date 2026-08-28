@@ -83,6 +83,21 @@ export const SEARCH_TASK_SCHEMA = {
   additionalProperties: false,
 } as const
 
+export const WHAT_CHANGED_SCHEMA = {
+  type: 'object',
+  properties: {
+    since_version: {
+      type: 'integer',
+      minimum: 1,
+      description:
+        'The version you last read, from resume_task or from the reply to your last write. ' +
+        'Everything written after it is listed.',
+    },
+  },
+  required: ['since_version'],
+  additionalProperties: false,
+} as const
+
 export const LOG_STEP_SCHEMA = writeSchema(
   {
     action: boundedText('What was done, in one line.'),

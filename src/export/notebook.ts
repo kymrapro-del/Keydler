@@ -31,6 +31,28 @@ function enTete(task: TaskState): string[] {
   ]
 }
 
+function questions(task: TaskState): string[] {
+  if (task.questions.length === 0) return []
+
+  const blocs = task.questions.flatMap((q) => [
+    `### ${q.question}`,
+    '',
+    `- Asked by: ${q.source} at v${q.addedAtVersion}`,
+    `- Why it blocks: ${q.why}`,
+    `- Answer: ${q.answer === null ? '**still open — nobody has answered**' : q.answer}`,
+    ...(q.answeredAt === null ? [] : [`- Answered: ${horodatage(q.answeredAt)}`]),
+    '',
+  ])
+
+  return [
+    '## Questions and answers',
+    '',
+    'What an agent stopped for rather than guess, and what a human answered.',
+    '',
+    ...blocs,
+  ]
+}
+
 function journal(task: TaskState): string[] {
   if (task.audit.length === 0) return []
   return [
@@ -90,6 +112,7 @@ export function buildTaskExport(task: TaskState): string {
     ),
     '',
     ...preuves(task),
+    ...questions(task),
     ...journal(task),
     '## Full state',
     '',

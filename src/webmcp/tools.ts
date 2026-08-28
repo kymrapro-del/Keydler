@@ -17,6 +17,7 @@ import {
 } from '../domain/task'
 import { parseDetailQuery, renderDetail } from '../domain/detail'
 import { MAX_MATCHES, renderSearch } from '../domain/searchResult'
+import { renderChanges } from '../domain/changes'
 import { MIN_QUERY } from '../domain/search'
 import { fingerprintIntent } from '../domain/intent'
 import { renderMissingTask, renderNoTask, renderTaskState } from '../domain/render'
@@ -39,6 +40,7 @@ import {
   RESUME_TASK_SCHEMA,
   SEARCH_TASK_SCHEMA,
   SET_NEXT_ACTION_SCHEMA,
+  WHAT_CHANGED_SCHEMA,
 } from './schemas'
 import {
   ADD_CONSTRAINT_DESCRIPTION,
@@ -52,6 +54,7 @@ import {
   RESUME_TASK_DESCRIPTION,
   SEARCH_TASK_DESCRIPTION,
   SET_NEXT_ACTION_DESCRIPTION,
+  WHAT_CHANGED_DESCRIPTION,
 } from './descriptions'
 
 const EMPTY_CREDENTIALS: SecretName[] = []
@@ -312,6 +315,28 @@ export const searchTaskTool: ModelContextTool = {
   },
 }
 
+export const whatChangedTool: ModelContextTool = {
+  name: 'what_changed',
+  title: 'What changed since I read this',
+  description: WHAT_CHANGED_DESCRIPTION,
+  inputSchema: WHAT_CHANGED_SCHEMA,
+  annotations: { readOnlyHint: true, untrustedContentHint: true },
+  async execute(input, options) {
+    try {
+      if (options?.signal?.aborted) throw new CancelledError('what_changed')
+
+      const since = requireVersion('since_version', input.since_version)
+      const task = await requireTask()
+
+      recordCall('what_changed', false)
+      return text(renderChanges(task, since))
+    } catch (error) {
+      recordCall('what_changed', true)
+      return toToolError(error)
+    }
+  },
+}
+
 export const logStepTool: ModelContextTool = {
   name: 'log_step',
   title: 'Log a completed step',
@@ -445,6 +470,7 @@ export const completeTaskTool: ModelContextTool = {
 
 export const READ_TOOLS: readonly ModelContextTool[] = [
   resumeTaskTool,
+  whatChangedTool,
   readTaskDetailTool,
   searchTaskTool,
 ] as const

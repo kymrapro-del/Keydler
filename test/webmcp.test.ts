@@ -32,9 +32,10 @@ afterEach(() => {
 })
 
 describe('inventaire', () => {
-  it('expose trois outils de lecture et huit d’écriture', () => {
+  it('expose quatre outils de lecture et huit d’écriture', () => {
     expect(READ_TOOLS.map((t) => t.name)).toEqual([
       'resume_task',
+      'what_changed',
       'read_task_detail',
       'search_task',
     ])
@@ -48,7 +49,7 @@ describe('inventaire', () => {
       'ask_human',
       'complete_task',
     ])
-    expect(ALL_TOOLS).toHaveLength(11)
+    expect(ALL_TOOLS).toHaveLength(12)
   })
 
   it('n’annonce jamais une annotation que WebMCP ne transporte pas', () => {
@@ -115,6 +116,7 @@ describe('disponibilité', () => {
     expect(state.availability).toEqual({ supported: true, surface: 'navigator' })
     expect(registered.map((t) => t.name)).toEqual([
       'resume_task',
+      'what_changed',
       'read_task_detail',
       'search_task',
     ])
@@ -143,7 +145,8 @@ describe('outils de bout en bout', () => {
     const stale = await call(logStep, writeArgs(task, { action: 'Encore', result: 'raté' }))
     expect(stale.isError).toBe(true)
     expect(textOf(stale)).toContain('STALE STATE')
-    expect(textOf(stale)).toContain('Call resume_task before continuing.')
+    expect(textOf(stale)).toContain('what_changed')
+    expect(textOf(stale)).toContain('resume_task')
 
     const current = store.currentTask()!
     expect(current.audit.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
@@ -189,9 +192,10 @@ describe('cycle de vie des outils', () => {
     const fake = installModelContext()
     await registerTools()
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task'])
+    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
     expect(toolsForCurrentState().map((t) => t.name)).toEqual([
       'resume_task',
+      'what_changed',
       'read_task_detail',
       'search_task',
     ])
@@ -221,6 +225,7 @@ describe('cycle de vie des outils', () => {
       'resume_task',
       'search_task',
       'set_next_action',
+      'what_changed',
     ])
 
     expect(changements.length).toBeGreaterThan(0)

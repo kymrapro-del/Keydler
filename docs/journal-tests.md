@@ -634,3 +634,45 @@ production sur `http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — douze outils, et le témoin qui répond à la question du produit
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+
+**Observé.**
+
+- `what_changed` sur une tâche que l'humain a modifiée pendant le travail de
+  l'agent : trois écritures depuis v15, séparées en **CHANGES WHAT YOU MAY DO**
+  (règle ajoutée, règle levée) et **ALSO HAPPENED** (étape d'un autre agent).
+  Réponse mesurée à ~90 jetons, contre ~400 pour `resume_task`.
+- Le refus d'état périmé nomme désormais la sortie exacte :
+  `Call what_changed with since_version: 15`. Vérifié dans le navigateur.
+- Témoin : une écriture arrivée sans lecture préalable est signalée en clair
+  (« 1 write arrived without reading this page first »). Après un `resume_task`
+  suivi d'un `log_step`, la page dit « Every write so far arrived after reading
+  this page ». Les deux états relevés sur le vrai navigateur.
+- Échap ferme ce qui est à l'écran ; le surlignage marque les quatre
+  occurrences d'un même terme dans une règle, et non la première seule.
+
+**Défauts trouvés par cette passe.**
+
+1. Le témoin comptait une écriture **refusée** comme une écriture arrivée sans
+   lecture, et invitait à « vérifier ce qu'elle a consigné » — alors qu'un refus
+   n'a rien consigné. Seules les écritures abouties sont comptées.
+2. Le panneau technique s'intitule « What `resume_task` returns » mais rendait
+   l'état **sans l'URL ni les identifiants** : il montrait autre chose que ce que
+   l'agent reçoit. Le test compare maintenant le panneau à la sortie réelle de
+   l'outil.
+3. Le contrôle d'exécution des versions acceptait `0` alors que tous les schémas
+   déclarent `minimum: 1`. Les deux sont alignés.
+4. Les quatre opérations ajoutées au lot précédent n'avaient pas de verbe dans
+   l'historique, ni d'étiquette de champ dans les messages d'erreur : l'écran
+   affichait `ask_human` et « le champ “questionId” ».
+5. La recherche ne couvrait ni les questions ni les réponses — c'est-à-dire
+   souvent la seule trace d'une décision humaine.
+6. Une ligne de plus dans WRITE PROTOCOL faisait sortir `resume_task` du budget
+   de 400 jetons et coûtait un nom d'identifiant à chaque appel. Condensée.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

@@ -71,7 +71,8 @@ describe('conflit entre pages', () => {
     expect(result.isError).toBe(true)
     const texte = result.content[0].text
     expect(texte).toContain('STALE STATE')
-    expect(texte).toContain('Call resume_task before continuing.')
+    expect(texte).toContain('what_changed')
+    expect(texte).toContain('resume_task')
     expect(texte.startsWith('STALE STATE')).toBe(true)
   })
 

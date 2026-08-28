@@ -49,6 +49,20 @@ may use other words. Say so rather than concluding it is untried.
 
 Read-only: this never changes the task, and needs no version.`
 
+export const WHAT_CHANGED_DESCRIPTION = `List what has been written to this task since a version you hold.
+
+Call this when a write is refused as stale, and whenever you come back
+to a task you read earlier. It answers the only question that matters
+then — what did the human do while I was working? — for a fraction of
+what a full resume_task costs.
+
+The reply separates what changes what you may do (a rule added or
+lifted, a proposal accepted, a question answered) from what merely
+happened. If the log had to drop older entries, it says so instead of
+looking complete; fall back to resume_task then.
+
+Read-only: this never changes the task.`
+
 export const LOG_STEP_DESCRIPTION = `Record one completed step in the task's watch log, with its evidence.
 
 Call this immediately AFTER finishing a unit of work — a file

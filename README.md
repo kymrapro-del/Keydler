@@ -95,6 +95,11 @@ the attempt alongside the rule that caused it.
 
 ![Human intervention](docs/assets/human-intervention.png)
 
+**Did the agent read before writing?** Counted from the calls the page observed,
+not asserted
+
+![Activity](docs/assets/activity.png)
+
 **Search** covers the open task and every other one — including a rejection
 found by its _reason_, and a step found by the content of its evidence
 
@@ -106,12 +111,13 @@ found by its _reason_, and a step found by the content of its evidence
 
 ## The tools
 
-Three read, eight write. The count is not a goal — each tool dilutes the list an
+Four read, eight write. The count is not a goal — each tool dilutes the list an
 agent must read in order to choose, so each has to pay for itself.
 
 | Tool               | Role                                                                             |
 | ------------------ | -------------------------------------------------------------------------------- |
 | `resume_task`      | The canonical state, under 400 tokens: id, version, rules, rejections, next step |
+| `what_changed`     | What was written since the version you hold — the cheap answer to a stale write  |
 | `read_task_detail` | Paginated detail — whole evidence, whole reasons, older work, credential names   |
 | `search_task`      | “Have we already tried this?” — one term across steps, evidence, rules, refusals |
 | `log_step`         | Record a completed step and its evidence                                         |
@@ -195,6 +201,13 @@ defend against everything:
   different version is added as a copy.
 - **Installable and offline.** A manifest and a service worker; verified with the
   server stopped.
+- **Did the agent read before writing?** The page counts it, from the calls it
+  actually observed. Every write after a read says so; a write that arrived
+  before any read is called out — that agent was working from its own memory,
+  not from this log. It is the product's central claim, reported as observed
+  data rather than asserted.
+- **Escape closes whatever is open**, and `/` reaches search. One thing closes at
+  a time, and it is always the thing on screen.
 
 ## Technical guarantees
 
@@ -374,7 +387,7 @@ That also sets the boundaries, and they are real:
 | `src/domain`      | Pure task model and mutations — no DOM, no storage, no WebMCP            |
 | `src/store`       | The single in-memory source of truth, and the write queue                |
 | `src/persistence` | IndexedDB, with defensive reads and schema migration                     |
-| `src/webmcp`      | API adapter, schemas, descriptions, eleven tools, registration lifecycle |
+| `src/webmcp`      | API adapter, schemas, descriptions, twelve tools, registration lifecycle |
 | `src/ui`          | The dashboard                                                            |
 | `docs`            | Protocols, test journal, measurement, demo script                        |
 

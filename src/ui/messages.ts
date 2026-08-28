@@ -4,7 +4,6 @@ const FIELDS: Record<string, string> = {
   rule: 'the rule',
   approach: 'the approach',
   reason: 'the reason',
-  next: 'the next action',
   title: 'the task title',
   summary: 'the summary',
   stepId: 'that step',
@@ -13,6 +12,19 @@ const FIELDS: Record<string, string> = {
   reviewedContent: 'the evidence shown',
   mutation_id: 'the write id',
   status: 'this task',
+  question: 'the question',
+  why: 'the reason it blocks you',
+  answer: 'your answer',
+  questionId: 'that question',
+  step_id: 'that step',
+  next: 'the next action',
+  name: 'the credential name',
+  purpose: 'what the credential is for',
+  kind: 'the kind',
+  value: 'the value',
+  passphrase: 'the passphrase',
+  query: 'the search term',
+  limit: 'the number of results',
 }
 
 export function humanReason(error: ValidationError): string {
