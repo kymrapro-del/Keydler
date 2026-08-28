@@ -10,7 +10,7 @@ import type {
   Step,
   TaskState,
 } from '../src/domain/types'
-import { clearDatabase } from './helpers'
+import { clearDatabase, waitUntil } from './helpers'
 
 let root: HTMLElement
 let unmount: () => void
@@ -266,5 +266,36 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
     const après = root.querySelector<HTMLInputElement>('#new-constraint')!
     expect(document.activeElement).toBe(après)
     expect(après.selectionStart).toBe(6)
+  })
+})
+
+describe('le poste entier ne fait pas grandir la page non plus', () => {
+  async function poser(nombre: number): Promise<void> {
+    for (let i = 0; i < nombre; i++) {
+      await store.openPreparedTask({
+        ...buildCoreTask(),
+        id: `t${i}`,
+        title: `Task ${i}`,
+        constraints: [],
+        steps: steps(50),
+      })
+    }
+    __renderNow()
+    // La liste des cahiers est relue de façon asynchrone après le rendu.
+    await waitUntil(
+      () => (root.textContent ?? '').includes(`${nombre} tasks on this device`),
+      'la liste des cahiers',
+    )
+    __renderNow()
+  }
+
+  it('borne le sélecteur de cahiers, qui balaie chaque cahier du poste', async () => {
+    // `needsYou` parcourt les étapes de CHAQUE cahier pour sa pastille : la
+    // page coûtait donc le poste entier, et pas seulement le cahier ouvert.
+    await poser(40)
+
+    const switcher = root.querySelector<HTMLElement>('.switcher')!
+    expect(switcher.querySelectorAll('.rows li').length).toBe(12)
+    expect(switcher.textContent).toContain('Show all 39 tasks')
   })
 })

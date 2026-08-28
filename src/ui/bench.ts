@@ -673,7 +673,7 @@ function renderTrail(task: TaskState, id: string): string {
     </span>`
 }
 
-const RULES_PREVIEW = 12
+const LIST_PREVIEW = 12
 
 function renderRules(task: TaskState): string {
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
@@ -682,7 +682,7 @@ function renderRules(task: TaskState): string {
   // règles levées faisait sauter la ligne que l'on venait de lever, sous le
   // curseur. On borne dans l'ordre, et on DIT combien d'obligations tombent
   // hors de la fenêtre — c'est la garantie qui comptait, pas l'ordre.
-  const shown = capped('rules', decided, RULES_PREVIEW)
+  const shown = capped('rules', decided, LIST_PREVIEW)
   const hiddenBinding = decided
     .slice(shown.length)
     .filter((c) => c.active && c.standing === 'accepted').length
@@ -745,7 +745,7 @@ function renderRules(task: TaskState): string {
 
 function renderDontRetry(task: TaskState): string {
   const all = acceptedRejections(task)
-  const shown = capped('ruled-out', all, RULES_PREVIEW)
+  const shown = capped('ruled-out', all, LIST_PREVIEW)
   const rows = shown
     .map((r) =>
       editingIs('rejection', r.id)
@@ -884,7 +884,10 @@ function renderSearchResults(task: TaskState | null): string {
 function renderSwitcher(task: TaskState): string {
   const others = allTasks.filter((t) => t.id !== task.id && (showArchived || !t.archived))
   const hidden = allTasks.filter((t) => t.id !== task.id && t.archived).length
-  const rows = others
+  // Chaque ligne fait balayer les étapes de SON cahier par `needsYou` : le
+  // sélecteur coûte donc le poste entier, pas seulement le cahier ouvert.
+  const shown = capped('tasks', others, LIST_PREVIEW)
+  const rows = shown
     .map((t) => {
       // `needsYou` balaie toutes les étapes du cahier : l'appeler une fois
       // pour tester et une fois pour afficher le faisait deux fois par ligne.
@@ -909,6 +912,7 @@ function renderSwitcher(task: TaskState): string {
       <summary>${allTasks.length} ${plural(allTasks.length, 'task', 'tasks')} on this device</summary>
       <div class="switcher__body">
         ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">This is the only one.</p>'}
+        ${moreButton('tasks', others.length, shown.length, 'task', 'tasks')}
         <div class="actions">
           <button type="button" id="new-task" class="btn">New task</button>
           <button type="button" id="import" class="btn">Import a file</button>
@@ -1234,7 +1238,8 @@ function editSecretKind(): SecretKind {
 }
 
 function renderCredentials(task: TaskState): string {
-  const rows = credentials
+  const shownSecrets = capped('credentials', credentials)
+  const rows = shownSecrets
     .map((secret) => {
       const shown =
         revealed && revealed.id === secret.id
@@ -1324,6 +1329,7 @@ function renderCredentials(task: TaskState): string {
         real one. No tool on this page can return a value.
       </p>
       ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">No credentials yet.</p>'}
+      ${moreButton('credentials', credentials.length, shownSecrets.length, 'credential', 'credentials')}
       ${form}
       <p class="muted">
         Sealed with a passphrase that is never stored, and never written to an

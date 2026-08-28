@@ -1064,6 +1064,11 @@ image qui ne montre rien.
 du même cahier, chargement normal. Une connexion IndexedDB tenue ouverte ne
 reproduit pas le blocage. Consigné comme non expliqué.
 
+**Sélecteur de cahiers, vérifié aussi.** 41 cahiers sur le poste, 12 lignes
+affichées, « Show all 40 tasks », 457 nœuds ; après clic, 40 lignes et
+681 nœuds. C'est la dimension que le test de garde manquait : il faisait varier
+le contenu d'un cahier, jamais le nombre de cahiers.
+
 **Erreurs de sonde, consignées.** Deux fois : `.rows li` compté sur toute la
 page alors que la carte visée était « Rules to follow », et une référence DOM
 relue après un rendu qui l'avait remplacée. Dans les deux cas c'est la sonde qui
