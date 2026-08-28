@@ -20,6 +20,7 @@ import {
   requireVersion,
   setNext,
 } from '../domain/task'
+import { requireText } from '../domain/validate'
 import { parseDetailQuery, renderDetail } from '../domain/detail'
 import { MAX_MATCHES, renderSearch } from '../domain/searchResult'
 import { renderChanges } from '../domain/changes'
@@ -457,7 +458,10 @@ export const setNextActionTool: ModelContextTool = {
   async execute(input, options) {
     return runWrite(setNextActionTool, input, options?.signal, (state, basedOnVersion) => {
       requireVersion('based_on_version', basedOnVersion)
-      return setNext(state, input.next)
+      // L'humain peut vider ce champ ; un agent ne le peut pas. Le schéma
+      // déclare minLength: 1, et effacer la prochaine action par mégarde
+      // priverait la conversation suivante de son point de départ.
+      return setNext(state, requireText('next', input.next, 400))
     })
   },
 }
@@ -643,8 +647,28 @@ export const completeTaskTool: ModelContextTool = {
     )
     if (result.isError) return result
 
-    const remaining = leftUnresolved(store.currentTask() ?? ({ steps: [] } as unknown as TaskState))
-    if (remaining.length === 0) return result
+    const closed = store.currentTask()
+    const goal = closed?.goal ?? null
+    const remaining = leftUnresolved(closed ?? ({ steps: [] } as unknown as TaskState))
+    if (remaining.length === 0 && goal === null) return result
+
+    if (goal !== null) {
+      return text(
+        [
+          ...result.content.map((c) => c.text),
+          '',
+          `DONE WHEN   ${goal}`,
+          'Say whether that was reached, in the summary, in as many words.',
+          ...(remaining.length === 0
+            ? []
+            : [
+                '',
+                'LEFT UNRESOLVED — say this in your hand-over, do not imply it was settled:',
+                ...remaining,
+              ]),
+        ].join('\n'),
+      )
+    }
 
     // Clore n'est pas régler. L'agent doit le dire dans sa passation plutôt
     // que de laisser croire que tout a été traité.

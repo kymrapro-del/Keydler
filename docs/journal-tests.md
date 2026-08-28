@@ -960,3 +960,35 @@ Schéma passé à v9.
 **Note de méthode.** Une sonde a lu `<h1>` **après** avoir ouvert le formulaire
 de renommage, qui remplace précisément le titre : erreur de sonde, pas de code.
 Consignée pour la même raison que les précédentes.
+
+## 28 août 2026 — la définition de « terminé », et les agents sans WebMCP
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Deux manques de fond, pas de surface.**
+
+1. Le cahier disait la **prochaine action** et jamais **ce que « terminé » veut
+   dire**. Une conversation qui reprend connaissait le pas suivant, pas la
+   destination. `DONE WHEN` est désormais à côté de `NEXT` dans ce que lit tout
+   agent, et `complete_task` le lui rappelle pour que le résumé de clôture dise
+   s'il a été atteint.
+2. Un agent **sans WebMCP** — l'immense majorité aujourd'hui — ne pouvait rien
+   lire de ce cahier. « Copy the log as text » copie la sortie **exacte** de
+   `resume_task`, encadrée d'une consigne. Un test compare le texte copié au
+   rendu de `renderTaskState` avec les mêmes options : ce n'est pas une variante
+   écrite pour l'écran.
+
+**Choix de modèle.** Le but est **humain seulement**. Un agent peut le demander
+par `ask_human`, pas l'écrire : la définition du succès est précisément la chose
+que l'humain doit tenir.
+
+**Défaut de mise en forme, trouvé dans le navigateur.** `DONE WHEN` s'était posé
+après le bloc des contestations, sans ligne vide : il se lisait comme une partie
+de ce bloc. Remonté dans l'en-tête, avec `NEXT`.
+
+**Effet de bord repéré et traité.** Rendre `optionalText` tolérant aux espaces —
+pour qu'un champ vidé à la main veuille dire « rien » — a rendu
+`set_next_action` capable d'**effacer** la prochaine action avec une chaîne
+d'espaces, alors que son schéma déclare `minLength: 1`. Un test existant l'a
+attrapé. L'outil valide maintenant strictement ; l'humain garde le droit de
+vider le champ.

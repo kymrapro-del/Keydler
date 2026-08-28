@@ -41,6 +41,7 @@ import {
   editRejection,
   logStep,
   renameTask,
+  setGoal,
   setNext,
   proposedConstraints,
   proposedRejections,
@@ -179,6 +180,7 @@ let linkPending = false
 type Editing =
   | { kind: 'title' }
   | { kind: 'next' }
+  | { kind: 'goal' }
   | { kind: 'constraint'; id: string }
   | { kind: 'rejection'; id: string }
   | { kind: 'secret'; id: string }
@@ -410,11 +412,32 @@ function renderReadyForAI(task: TaskState): string {
     </section>`
 }
 
+function renderGoal(task: TaskState): string {
+  if (editingIs('goal')) return editForm('What done looks like')
+
+  return `<p class="hero__goal">
+      <strong>Done when:</strong>
+      ${
+        task.goal
+          ? escapeHtml(task.goal)
+          : '<span class="muted">nobody has said yet — an agent reads the next action but not the destination.</span>'
+      }
+      <button type="button" id="edit-goal" class="btn btn--quiet">
+        ${task.goal ? 'Change what done means' : 'Say what done means'}
+      </button>
+    </p>`
+}
+
 function renderNext(task: TaskState): string {
   if (task.status === 'completed') {
     return `<section class="hero hero--done" aria-labelledby="next-title">
         <h2 id="next-title" class="hero__label">Task closed</h2>
         <p class="hero__value">${escapeHtml(task.summary ?? 'No summary was recorded.')}</p>
+        ${
+          task.goal
+            ? `<p class="hero__goal"><strong>Done when:</strong> ${escapeHtml(task.goal)}</p>`
+            : ''
+        }
         <div class="actions">
           <button type="button" id="reopen" class="btn btn--primary">Reopen this task</button>
         </div>
@@ -436,6 +459,7 @@ function renderNext(task: TaskState): string {
                <button type="button" id="edit-next" class="btn btn--quiet">Change it</button>
              </div>`
       }
+      ${renderGoal(task)}
     </section>`
 }
 
@@ -1055,6 +1079,7 @@ function renderHandoff(task: TaskState): string {
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
       <button type="button" id="copy-link" class="btn btn--quiet">Copy a link that carries this log</button>
+      <button type="button" id="copy-state" class="btn btn--quiet">Copy the log as text</button>
       ${undoButton}
     </p>`
 }
@@ -1617,6 +1642,11 @@ function bindSupervision(): void {
     if (task) startEditing({ kind: 'title' }, task.title)
   })
 
+  document.querySelector('#edit-goal')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (task) startEditing({ kind: 'goal' }, task.goal ?? '')
+  })
+
   document.querySelector('#edit-next')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (task) startEditing({ kind: 'next' }, task.next ?? '')
@@ -1681,11 +1711,13 @@ function bindSupervision(): void {
     const mutate: Parameters<typeof store.mutate>[0] =
       current.kind === 'title'
         ? (state) => renameTask(state, value)
-        : current.kind === 'next'
-          ? (state) => setNext(state, value)
-          : current.kind === 'constraint'
-            ? (state) => editConstraint(state, current.id, value)
-            : (state) => editRejection(state, current.id, { approach: value, reason })
+        : current.kind === 'goal'
+          ? (state) => setGoal(state, value)
+          : current.kind === 'next'
+            ? (state) => setNext(state, value)
+            : current.kind === 'constraint'
+              ? (state) => editConstraint(state, current.id, value)
+              : (state) => editRejection(state, current.id, { approach: value, reason })
 
     humanAction('Saving the change', mutate, stopEditing)
   })
@@ -2118,6 +2150,30 @@ function bindSupervision(): void {
     offered = null
     clearLinkFragment()
     renderNow()
+  })
+
+  document.querySelector('#copy-state')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    humanError = null
+    // Pour les agents sans WebMCP — l'immense majorité aujourd'hui. Le texte
+    // est celui de resume_task, pas une variante rédigée pour l'écran.
+    const body = [
+      'Read this before doing anything. It is the shared log for the task we are',
+      'continuing; it holds the rules, the work already done, and what was ruled out.',
+      '',
+      renderTaskState(task, { url: taskUrl(task.id), credentials }),
+      '',
+      'Continue this task. Tell me what you are about to do before you do it.',
+    ].join('\n')
+
+    void navigator.clipboard?.writeText(body).then(
+      () => showNotice('Copied. Paste it to any assistant — WebMCP or not.'),
+      (error: unknown) => {
+        humanError = humanMessage(error, 'Copying the log')
+        scheduleRender()
+      },
+    )
   })
 
   document.querySelector('#copy-link')?.addEventListener('click', () => {

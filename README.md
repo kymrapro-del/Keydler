@@ -252,6 +252,15 @@ defend against everything:
   on its own_ — you still can, and so can a site-data wipe. If the browser
   declines the request, the page says that too rather than doing nothing
   visible.
+- **What “done” means.** A title is not a definition of done, and the next action
+  is not a destination. `DONE WHEN` sits beside `NEXT` in what every agent reads,
+  it is yours to write — an agent can ask for it but not set it, because the
+  definition of success is the one thing the human must own — and `complete_task`
+  quotes it back so the closing summary has to say whether it was reached.
+- **Copy the log as text.** Most assistants have no WebMCP today. One button
+  copies the exact `resume_task` output, framed with “read this before doing
+  anything” and “continue this task”, ready to paste into any conversation. It is
+  the same text the tool returns, not a version written for the screen.
 - **Carry the rules over.** Creating a task offers to bring the rules in force
   from the one you are on. They arrive binding and attributed to you, and
   nothing else follows — not the work, not the rejections, not the history.

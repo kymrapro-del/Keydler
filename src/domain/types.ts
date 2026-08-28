@@ -131,6 +131,7 @@ export type TaskState = {
   title: string
   version: number
   next: string | null
+  goal: string | null
   status: TaskStatus
   archived: boolean
   summary: string | null
@@ -146,4 +147,4 @@ export type TaskState = {
   updatedAt: number
 }
 
-export const SCHEMA_VERSION = 9
+export const SCHEMA_VERSION = 10

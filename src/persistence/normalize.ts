@@ -76,6 +76,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
     title: asString(stored.title, 'Untitled task'),
     version: Math.max(1, Math.trunc(asNumber(stored.version, 1))),
     next: asNullableString(stored.next),
+    goal: asNullableString(stored.goal),
     status: stored.status === 'completed' ? 'completed' : 'active',
     archived: stored.archived === true,
     summary: asNullableString(stored.summary),

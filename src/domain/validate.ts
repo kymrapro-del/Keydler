@@ -26,7 +26,10 @@ export function optionalText(
   value: unknown,
   maxLength = MAX_FIELD_LENGTH,
 ): string | null {
-  if (value === undefined || value === null || value === '') return null
+  // Des espaces seuls veulent dire « rien » : c'est ce que produit un champ
+  // qu'on vide à la main, et le refuser n'aiderait personne.
+  if (value === undefined || value === null) return null
+  if (typeof value === 'string' && value.trim() === '') return null
   return requireText(field, value, maxLength)
 }
 
