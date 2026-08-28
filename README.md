@@ -213,11 +213,22 @@ defend against everything:
 
 ## What else is on the page
 
-- **Every task is reachable.** The header lists them all and switches between
-  them; each lives at its own `/t/:id`.
+- **Every task is reachable**, and the list says which of them need you. The
+  header lists them all and switches between them; each lives at its own
+  `/t/:id`, and each carries a badge naming what is unresolved — _“1 agent is
+  blocked on your decision +3 more”_ — so “which one is waiting on me?” is a
+  glance, not five clicks.
+- **An agent just called a tool.** When one has, the header says which tool and
+  how long ago. It reports a call the page observed, never a connection: nothing
+  in WebMCP tells a page an agent is present, and the wording does not pretend
+  otherwise.
 - **Search** across the open task and the others at once, from the box or by
   pressing `/`. It matches a rejection by its reason and a step by the content of
   its evidence, and says which. Agents get the same search as `search_task`.
+- **The history of one rule.** Every rule carries a History button: what was
+  reworded, when it was lifted, when it came back. It falls out of the `targetId`
+  the audit already keeps for undo — the same field answering a second question
+  no card was asking.
 - **History** in words — _“You lifted a rule”_, _“Agent tried to record a step —
   refused — the task had changed since it was read”_. The audit trail was always
   complete; this is the screen for it.
@@ -252,6 +263,15 @@ defend against everything:
   on its own_ — you still can, and so can a site-data wipe. If the browser
   declines the request, the page says that too rather than doing nothing
   visible.
+- **What “done” means.** A title is not a definition of done, and the next action
+  is not a destination. `DONE WHEN` sits beside `NEXT` in what every agent reads,
+  it is yours to write — an agent can ask for it but not set it, because the
+  definition of success is the one thing the human must own — and `complete_task`
+  quotes it back so the closing summary has to say whether it was reached.
+- **Copy the log as text.** Most assistants have no WebMCP today. One button
+  copies the exact `resume_task` output, framed with “read this before doing
+  anything” and “continue this task”, ready to paste into any conversation. It is
+  the same text the tool returns, not a version written for the screen.
 - **Carry the rules over.** Creating a task offers to bring the rules in force
   from the one you are on. They arrive binding and attributed to you, and
   nothing else follows — not the work, not the rejections, not the history.
@@ -294,11 +314,24 @@ defend against everything:
 - **The tab calls you.** When something is waiting on you and the tab is in the
   background, its title carries the count — the same signal every chat app uses,
   and it costs no permission prompt.
-- **Undo that.** Lifting a rule, accepting a proposal, archiving a task are all
-  one click, so all three are one click back. It undoes only your own last
+- **Undo that.** Lifting a rule, accepting a proposal, archiving a task,
+  disputing a step, renaming, rewording a rule, changing the next action — each
+  is one click, so each is one click back. It undoes only your own last
   decision, only while that decision is still in force, and never reaches past
-  an agent's work. Nothing is erased: the undo is a write of its own, and both
-  it and what it reversed stay in the history.
+  an agent's work. An answer to a question and a logged step stay outside it: an
+  agent may already have acted on the answer, and a step is a record of work,
+  not a decision. Nothing is erased — the undo is a write of its own, and the
+  audit entry now keeps what was replaced, so the history reads _“renamed: X →
+  Y”_ rather than just _“renamed”_.
+- **Filter what you searched.** When results span rules, steps, decisions and
+  rejections, one button per kind narrows them, with a count each. The filter
+  resets when the query changes, so a stale filter never makes a hit look like a
+  miss.
+- **See exactly what an agent reads.** Technical details holds the thirteen
+  registered tool objects verbatim — the same descriptions and JSON schemas that
+  reach an agent through WebMCP, not a summary written for the page. A reader
+  with no agent to hand can check every claim in this README against the source
+  of truth.
 
 ## Audit
 

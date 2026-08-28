@@ -60,6 +60,7 @@ export function createTask(
     title,
     version: 1,
     next: optionalText('next', input.next, 400),
+    goal: null,
     status: 'active',
     archived: false,
     summary: null,
@@ -101,6 +102,7 @@ type AppliedMutation = {
   basedOnVersion: number | null
   detail: string
   targetId?: string
+  previous?: string
   patch: Partial<TaskState>
 }
 
@@ -117,6 +119,7 @@ function apply(state: TaskState, mutation: AppliedMutation, ctx?: MutationContex
     outcome: 'applied',
     detail: mutation.detail,
     ...(mutation.targetId ? { targetId: mutation.targetId } : {}),
+    ...(mutation.previous !== undefined ? { previous: mutation.previous } : {}),
     at: now,
   }
   return {
@@ -600,6 +603,7 @@ export function renameTask(state: TaskState, title: unknown, ctx?: MutationConte
       actor: 'human',
       basedOnVersion: null,
       detail: `${state.title} → ${next}`,
+      previous: state.title,
       patch: { title: next },
     },
     ctx,
@@ -631,6 +635,8 @@ export function editConstraint(
       actor: 'human',
       basedOnVersion: null,
       detail: `${constraint.rule} → ${next}`,
+      previous: constraint.rule,
+      targetId: constraintId,
       patch: {
         constraints: state.constraints.map((c) =>
           c.id === constraintId ? { ...c, rule: next } : c,
@@ -753,6 +759,29 @@ export function reopenTask(state: TaskState, reason: unknown, ctx?: MutationCont
   )
 }
 
+export function setGoal(state: TaskState, goal: unknown, ctx?: MutationContext): TaskState {
+  const value = optionalText('goal', goal, 400)
+  if (value === state.goal) {
+    throw new ValidationError('goal', 'is already what this task says done means.', {
+      code: 'not-proposed',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: 'set_goal',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: value ?? '(cleared)',
+      ...(state.goal === null ? {} : { previous: state.goal }),
+      patch: { goal: value },
+    },
+    ctx,
+  )
+}
+
 export function setNext(state: TaskState, next: unknown, ctx?: MutationContext): TaskState {
   assertActive(state, 'set_next')
   const value = optionalText('next', next, 400)
@@ -763,6 +792,7 @@ export function setNext(state: TaskState, next: unknown, ctx?: MutationContext):
       actor: 'human',
       basedOnVersion: null,
       detail: value ?? '(cleared)',
+      ...(state.next === null ? {} : { previous: state.next }),
       patch: { next: value },
     },
     ctx,
@@ -931,6 +961,44 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
       }
     }
 
+    case 'rename_task': {
+      if (entry.previous === undefined || state.title === entry.previous) return null
+      const back = entry.previous
+      return {
+        label: `renamed this task to “${state.title}”`,
+        apply: (s, ctx) => renameTask(s, back, ctx),
+      }
+    }
+
+    case 'set_goal': {
+      if (entry.previous === undefined || state.goal === entry.previous) return null
+      const back = entry.previous
+      return {
+        label: `changed what done means to “${state.goal ?? ''}”`,
+        apply: (s, ctx) => setGoal(s, back, ctx),
+      }
+    }
+
+    case 'set_next': {
+      if (entry.previous === undefined || state.next === entry.previous) return null
+      const back = entry.previous
+      return {
+        label: `changed the next action to “${state.next ?? ''}”`,
+        apply: (s, ctx) => setNext(s, back, ctx),
+      }
+    }
+
+    case 'edit_constraint': {
+      if (id === undefined || entry.previous === undefined) return null
+      const constraint = state.constraints.find((c) => c.id === id)
+      if (!constraint || constraint.rule === entry.previous) return null
+      const back = entry.previous
+      return {
+        label: `reworded a rule to “${constraint.rule}”`,
+        apply: (s, ctx) => editConstraint(s, id, back, ctx),
+      }
+    }
+
     case 'dispute_step': {
       if (id === undefined) return null
       const step = state.steps.find((s) => s.id === id)
@@ -973,6 +1041,10 @@ const UNDOABLE_OPERATIONS = new Set([
   'unarchive_task',
   'dispute_step',
   'withdraw_dispute',
+  'rename_task',
+  'set_next',
+  'set_goal',
+  'edit_constraint',
   'undo',
 ])
 

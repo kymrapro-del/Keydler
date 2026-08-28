@@ -240,3 +240,108 @@ describe('le surlignage', () => {
     expect(row.querySelectorAll('mark').length).toBeGreaterThanOrEqual(4)
   })
 })
+
+describe('filtrer les résultats par nature', () => {
+  let root: HTMLElement
+  let unmount: () => void
+
+  async function settled(turns = 8) {
+    for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
+    __renderNow()
+  }
+
+  function type(value: string) {
+    const field = root.querySelector<HTMLInputElement>('#search')!
+    field.value = value
+    field.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+
+  const rows = () => [...root.querySelectorAll('[aria-labelledby="search-title"] .rows > li')]
+
+  beforeEach(async () => {
+    store.__resetStore()
+    await clearDatabase()
+    await store.init()
+    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    root = document.querySelector<HTMLElement>('#app')!
+    unmount = mount(root)
+    await store.openPreparedTask(buildDemoTask())
+    await settled()
+    type('token')
+    await settled()
+  })
+
+  afterEach(() => {
+    unmount()
+    history.replaceState(null, '', '/')
+  })
+
+  it('ne propose que les natures réellement présentes dans les résultats', () => {
+    const filters = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
+    expect(filters.length).toBeGreaterThan(1)
+
+    const kinds = filters.map((b) => b.dataset.filter)
+    expect(kinds).toContain('all')
+    // Aucun filtre pour une nature qui ne rendrait rien.
+    for (const kind of kinds) {
+      if (kind === 'all') continue
+      expect(
+        rows().some((li) => li.textContent!.length > 0),
+        kind,
+      ).toBe(true)
+    }
+  })
+
+  it('réduit aux seules lignes de la nature choisie', async () => {
+    const avant = rows().length
+    const bouton = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')].find(
+      (b) => b.dataset.filter === 'step',
+    )!
+    bouton.click()
+    __renderNow()
+
+    const après = rows().length
+    expect(après).toBeGreaterThan(0)
+    expect(après).toBeLessThan(avant)
+    for (const li of rows()) {
+      expect(li.textContent!.toUpperCase()).toContain('STEP')
+    }
+  })
+
+  it('dit lequel est actif, pour le lecteur d’écran aussi', () => {
+    const bouton = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')].find(
+      (b) => b.dataset.filter === 'step',
+    )!
+    bouton.click()
+    __renderNow()
+
+    const actif = root.querySelector('[data-filter="step"]')!
+    expect(actif.getAttribute('aria-pressed')).toBe('true')
+    expect(root.querySelector('[data-filter="all"]')!.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('revient à tout, et le compte du titre suit le filtre', async () => {
+    const tout = rows().length
+    root.querySelector<HTMLButtonElement>('[data-filter="step"]')!.click()
+    __renderNow()
+    const filtré = rows().length
+    expect(root.querySelector('#search-title')!.textContent).toContain(String(filtré))
+
+    root.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click()
+    __renderNow()
+    expect(rows().length).toBe(tout)
+  })
+
+  it('oublie le filtre quand la recherche change', async () => {
+    root.querySelector<HTMLButtonElement>('[data-filter="step"]')!.click()
+    __renderNow()
+    expect(root.querySelector('[data-filter="step"]')!.getAttribute('aria-pressed')).toBe('true')
+
+    type('rotation')
+    await settled()
+
+    // Un filtre gardé d'une recherche à l'autre fait croire à un résultat vide.
+    const actif = root.querySelector('[data-filter="all"]')
+    expect(actif?.getAttribute('aria-pressed')).toBe('true')
+  })
+})

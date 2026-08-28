@@ -321,9 +321,10 @@ describe('tableau de bord', () => {
 
   it('ajoute une règle humaine, immédiatement opposable', async () => {
     const before = activeConstraints(store.currentTask()!).length
+    const version = store.currentTask()!.version
     type('new-constraint', 'Do not touch the router')
     root.querySelector<HTMLFormElement>('#form-constraint')!.requestSubmit()
-    await settled()
+    await written(version)
 
     const rules = activeConstraints(store.currentTask()!)
     expect(rules).toHaveLength(before + 1)
@@ -345,10 +346,11 @@ describe('tableau de bord', () => {
   })
 
   it('condamne une approche, marquée humaine', async () => {
+    const before = store.currentTask()!.version
     type('new-rejection', 'Client-side rotation')
     type('new-rejection-reason', 'exposes the token to the browser')
     root.querySelector<HTMLFormElement>('#form-rejection')!.requestSubmit()
-    await settled()
+    await written(before)
 
     const last = acceptedRejections(store.currentTask()!).at(-1)!
     expect(last).toMatchObject({ approach: 'Client-side rotation', source: 'human' })

@@ -20,6 +20,17 @@ function plural(n: number, one: string, many: string): string {
  * demande d'autorisation bloque un agent en ce moment même ; une étape
  * affirmée sans preuve attendra.
  */
+/**
+ * Une pastille de sélecteur ne se lit pas si elle énumère tout : on nomme ce
+ * qui coûte le plus de rater, et on compte le reste.
+ */
+export function summariseNeeds(needs: readonly Need[]): string | null {
+  if (needs.length === 0) return null
+  const [first, ...rest] = needs
+  const others = rest.reduce((n, need) => n + need.count, 0)
+  return others === 0 ? first.label : `${first.label} +${others} more`
+}
+
 export function needsYou(state: TaskState): Need[] {
   if (state.status !== 'active') return []
 

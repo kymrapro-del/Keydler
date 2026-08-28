@@ -90,6 +90,9 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       `NEXT        ${state.next ? clip(state.next, c(200)) : '(not set — decide and log it)'}`,
     )
   }
+  if (state.goal) {
+    lines.push(`DONE WHEN   ${clip(state.goal, c(220))}`)
+  }
 
   const attente = pendingApprovals(state)
   if (attente.length > 0) {

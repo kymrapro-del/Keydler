@@ -928,3 +928,115 @@ se lit comme un bouton cassé.
 **Note de couche.** `elapsed.ts` a été placé dans `src/domain` et non dans
 `src/ui` : `render.ts` s'en sert, et le domaine ne doit pas dépendre de la vue.
 Même correction que pour `seen.ts` lors de l'audit.
+
+## 28 août 2026 — annulation étendue, inspecteur d'outils, filtres
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Observé.**
+
+- Renommage d'une tâche, puis clic sur **Annuler** :
+  `Undo: you renamed this task to “A name I will regret”`, et le titre d'origine
+  revient. Même chose désormais pour la prochaine action et la reformulation
+  d'une règle.
+- Inspecteur d'outils, replié par défaut sous les détails techniques :
+  **treize** outils, chacun avec la description et le schéma **exacts** que
+  l'agent reçoit. Un test compare le `<pre>` du schéma à `tool.inputSchema` par
+  égalité structurelle, donc il ne peut pas dériver.
+- Filtres de recherche sur « token » : `All (5) · Ruled out (2) · Steps (2) ·
+Decisions (1)`. Cliquer « Steps » réduit de 5 à 2 lignes.
+
+**Décision de conception.** L'annulation s'arrête toujours à deux choses : une
+**réponse** à une question, et une **étape** consignée. Un agent a pu lire la
+réponse et s'appuyer dessus ; la retirer d'un clic effacerait le sol sous ses
+pieds. Une étape est le récit d'un travail, pas une décision de supervision. Un
+test énonce cette frontière plutôt que de la laisser implicite.
+
+**Ce qui a rendu l'annulation possible.** `AuditEntry` porte maintenant
+`previous`, la valeur remplacée. C'est d'abord un meilleur journal — « renamed:
+X → Y » plutôt que « renamed » — et l'annulation n'en est qu'une conséquence.
+Schéma passé à v9.
+
+**Note de méthode.** Une sonde a lu `<h1>` **après** avoir ouvert le formulaire
+de renommage, qui remplace précisément le titre : erreur de sonde, pas de code.
+Consignée pour la même raison que les précédentes.
+
+## 28 août 2026 — la définition de « terminé », et les agents sans WebMCP
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Deux manques de fond, pas de surface.**
+
+1. Le cahier disait la **prochaine action** et jamais **ce que « terminé » veut
+   dire**. Une conversation qui reprend connaissait le pas suivant, pas la
+   destination. `DONE WHEN` est désormais à côté de `NEXT` dans ce que lit tout
+   agent, et `complete_task` le lui rappelle pour que le résumé de clôture dise
+   s'il a été atteint.
+2. Un agent **sans WebMCP** — l'immense majorité aujourd'hui — ne pouvait rien
+   lire de ce cahier. « Copy the log as text » copie la sortie **exacte** de
+   `resume_task`, encadrée d'une consigne. Un test compare le texte copié au
+   rendu de `renderTaskState` avec les mêmes options : ce n'est pas une variante
+   écrite pour l'écran.
+
+**Choix de modèle.** Le but est **humain seulement**. Un agent peut le demander
+par `ask_human`, pas l'écrire : la définition du succès est précisément la chose
+que l'humain doit tenir.
+
+**Défaut de mise en forme, trouvé dans le navigateur.** `DONE WHEN` s'était posé
+après le bloc des contestations, sans ligne vide : il se lisait comme une partie
+de ce bloc. Remonté dans l'en-tête, avec `NEXT`.
+
+**Effet de bord repéré et traité.** Rendre `optionalText` tolérant aux espaces —
+pour qu'un champ vidé à la main veuille dire « rien » — a rendu
+`set_next_action` capable d'**effacer** la prochaine action avec une chaîne
+d'espaces, alors que son schéma déclare `minLength: 1`. Un test existant l'a
+attrapé. L'outil valide maintenant strictement ; l'humain garde le droit de
+vider le champ.
+
+## 28 août 2026 — vue d'ensemble, et un appel d'outil qui se voit
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Deux questions qu'on ne pouvait pas poser au produit.**
+
+1. « Laquelle de mes tâches est bloquée ? » demandait d'ouvrir chacune. Le
+   sélecteur porte désormais, par tâche, un résumé de ce qui attend — relevé
+   dans le navigateur : `1 proposal to accept or decline +3 more`. Le résumé
+   nomme ce qui coûte le plus de rater et compte le reste ; une énumération
+   complète dans une pastille ne se lit pas.
+2. « Un agent travaille-t-il en ce moment ? » Après un appel réel de
+   `search_task`, l'en-tête affiche : `An agent called search_task just now.`
+   Le libellé rapporte **un appel observé**, jamais une présence : rien dans
+   WebMCP ne dit à une page qu'un agent est là, et un test interdit le mot
+   « connected ».
+
+**Un test qui passait pour la mauvaise raison.** Le premier jet vérifiait qu'une
+ligne du sélecteur contenait « blocked » — sur une tâche intitulée « Blocked
+task ». C'était le titre qui satisfaisait l'assertion, pas la pastille. Tâche
+renommée, assertion portée sur l'élément.
+
+**Un test intermittent, traqué plutôt que toléré.** « condamne une approche,
+marquée humaine » échouait en suite complète environ une fois sur deux : il
+attendait un nombre fixe de tours de boucle au lieu de l'écriture. Quatre autres
+endroits du même fichier avaient le même motif ; trois attendent un **refus**,
+où il n'y a rien à attendre, et sont restés tels quels. Cinq exécutions
+complètes consécutives vertes depuis.
+
+## 28 août 2026 — l'histoire d'une seule règle
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+Le journal contenait déjà tout ce qui était arrivé à chaque règle — `targetId`
+avait été ajouté pour rendre l'annulation possible — mais aucune surface ne
+posait la question « qu'est-il arrivé à celle-ci ? ». Chaque règle porte
+désormais un bouton **History**.
+
+**Observé.** Une règle levée depuis l'écran, puis son histoire dépliée :
+`28/08/2026, 15:11:39 — You lifted a rule — Never modify the database schema`.
+Aucun nom d'opération machine, une seule histoire ouverte à la fois, aucun
+débordement horizontal.
+
+**Erreur de test, consignée.** Le montage appelait `buildCoreTask()` **deux
+fois** — une pour lire l'identifiant de la règle, une pour la tâche — donc
+l'identifiant ne correspondait à rien. Le domaine refusait correctement avec
+« no constraint with id … » ; c'est la sonde qui était fausse.
