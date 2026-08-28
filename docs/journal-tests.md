@@ -1199,3 +1199,68 @@ recommandation de Chrome et à l'intérieur du budget du produit (400 tokens,
 1600 caractères). Écrit plutôt que rattrapé en rognant de la prose pour tomber
 sur un chiffre rond — c'est le même arbitrage que le `TOKEN_BUDGET` à 375, et
 il se tranche pareil.
+
+## 28 août 2026 — passe de vérification en WebMCP réel
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, profil jetable,
+`--enable-features=WebMCP,WebMCPTesting`, serveur de développement. Les appels
+d'outil passent par `execute_webmcp_tool`, donc par la même surface qu'un agent.
+Deux onglets ouverts sur la même tâche pour les épreuves de concurrence.
+
+### Ce qui tient
+
+| Épreuve                                                          | Résultat                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `document.modelContext` présent, `getTools()` trié par nom       | oui                                                                       |
+| Budgets Chrome : nom / description / paramètre                   | 16 · 499 · 146 sur 30 · 500 · 150                                         |
+| `untrustedContentHint` et `readOnlyHint` sur les quatre lectures | oui                                                                       |
+| Cycle de vie : 0 tâche → 4 outils, tâche ouverte → 13            | oui                                                                       |
+| Rejeu idempotent : même `mutation_id`, mêmes arguments           | réponse d'origine, « Nothing was written twice »                          |
+| Même `mutation_id`, arguments différents                         | refusé, motif explicite                                                   |
+| Version périmée                                                  | refusé, renvoie vers `what_changed`                                       |
+| Conflit entre onglets                                            | message **distinct** : « Another page has since written v30 »             |
+| Règle écrite par un agent                                        | arrive en PROPOSAL, non contraignante, visible à l'écran                  |
+| Autorisation bloquante                                           | ALLOWED et DENIED font l'aller-retour ; le refus dit de ne pas contourner |
+| `complete_task`                                                  | énumère ce qui reste non tranché avant de clore                           |
+| Écriture après clôture                                           | refusée, avec la marche à suivre                                          |
+| Réouverture                                                      | exige un motif écrit, et les outils d'écriture se réenregistrent aussitôt |
+| Section `credentials`                                            | rend des noms, jamais une valeur                                          |
+| Erreurs console sur toute la passe                               | aucune                                                                    |
+
+### Deux trouvailles
+
+**1. Deux outils de lecture débordent la borne de sortie de Chrome.** La garde
+posée plus tôt ne mesurait que `resume_task`.
+
+| Sortie                                 | Mesurée   | Face à 1,5 k |
+| -------------------------------------- | --------- | ------------ |
+| `resume_task`                          | 1528      | +2 %         |
+| `what_changed`                         | 613       | tient        |
+| `search_task`, cas ordinaire           | 811       | tient        |
+| `search_task`, pire cas                | **6 296** | ×4,2         |
+| `read_task_detail`, page de 20         | **1 989** | ×1,3         |
+| `read_task_detail`, une entrée entière | **9 078** | ×6           |
+
+La dernière est délibérée : l'outil existe pour rendre une preuve entière, et
+`MAX_EVIDENCE_LENGTH` vaut 8000. Les deux autres ne sont bornées que par un
+nombre d'entrées, jamais par des caractères — or une entrée peut être vingt fois
+plus grosse qu'une autre.
+
+**2. Aucun rafraîchissement entre onglets.** Le second onglet a rouvert la
+tâche et écrit jusqu'à v31 ; le premier affichait encore v29 et « Task closed ».
+Il ne l'apprend qu'en tentant d'écrire. La garantie de sûreté tient — rien n'est
+écrasé en silence, et le refus nomme même l'autre page — mais l'écran ment
+jusque-là, ce qui est exactement ce que ce produit reproche aux autres.
+`visibilitychange` ne relit pas la base ; il redessine depuis la mémoire.
+
+### Erreurs de sonde, consignées
+
+**Deux versions devinées à tort.** Une décision d'autorisation incrémente
+elle-même la version ; mes appels suivants portaient donc une version périmée.
+Les refus étaient justes, la sonde non.
+
+**« La réouverture ne fait rien » était de moi.** J'avais laissé le `prompt()`
+en suspens pendant que je lançais d'autres outils ; la boîte de dialogue est
+ressortie bien plus tard, derrière un appel sans rapport. Répondue tout de
+suite, la réouverture fonctionne — et les neuf outils d'écriture se
+réenregistrent dans la seconde.
