@@ -35,6 +35,9 @@ const BY_HUMAN: Record<string, string> = {
   attach_evidence: 'attached evidence to a step',
   set_next_action: 'changed the next action',
   undo: 'undid that',
+  allow_action: 'allowed an action',
+  deny_action: 'refused an action',
+  request_approval: 'asked for permission to act',
 }
 
 const BY_AGENT: Record<string, string> = {
@@ -47,6 +50,7 @@ const BY_AGENT: Record<string, string> = {
   answer_question: 'answered a question',
   attach_evidence: 'attached evidence to a step',
   set_next_action: 'changed the next action',
+  request_approval: 'asked for permission to act',
 }
 
 const ATTEMPTED: Record<string, string> = {
@@ -60,6 +64,9 @@ const ATTEMPTED: Record<string, string> = {
   attach_evidence: 'attach evidence to a step',
   set_next_action: 'change the next action',
   undo: 'undo that',
+  allow_action: 'allow an action',
+  deny_action: 'refuse an action',
+  request_approval: 'ask for permission to act',
 }
 
 export function refusalReason(detail: string): string {

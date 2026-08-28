@@ -14,6 +14,8 @@ import type {
   Constraint,
   Decision,
   Evidence,
+  ApprovalDecision,
+  ApprovalRequest,
   MutationRecord,
   OpenQuestion,
   Rejection,
@@ -66,6 +68,7 @@ export function createTask(
     decisions: [],
     rejected: [],
     questions: [],
+    approvals: [],
     mutations: [],
     audit: [
       {
@@ -957,6 +960,93 @@ export function undoLastSupervision(state: TaskState, ctx?: MutationContext): Ta
     detail: found.undo.label,
   }
   return { ...next, audit }
+}
+
+export function requestApproval(
+  state: TaskState,
+  input: { action: unknown; why: unknown; basedOnVersion: number | null },
+  actor: Actor = 'agent',
+  ctx?: MutationContext,
+): TaskState {
+  assertActive(state, 'request_approval')
+  guardVersion(state, input.basedOnVersion)
+  const { now, newId } = resolve(ctx)
+
+  const action = requireText('action', input.action)
+  const why = requireText('why', input.why)
+
+  const entry: ApprovalRequest = {
+    id: newId(),
+    action,
+    why,
+    source: actor,
+    addedAtVersion: state.version,
+    at: now,
+    decision: null,
+    decidedAt: null,
+  }
+
+  return apply(
+    state,
+    {
+      operation: 'request_approval',
+      actor,
+      basedOnVersion: input.basedOnVersion,
+      detail: action,
+      targetId: entry.id,
+      patch: { approvals: [...state.approvals, entry] },
+    },
+    ctx,
+  )
+}
+
+export function decideApproval(
+  state: TaskState,
+  approvalId: unknown,
+  decision: ApprovalDecision,
+  ctx?: MutationContext,
+): TaskState {
+  const { now } = resolve(ctx)
+  const id = requireText('approvalId', approvalId, 200)
+  const found = state.approvals.find((a) => a.id === id)
+
+  if (!found) {
+    throw new ValidationError('approvalId', 'no request for approval with that id.', {
+      code: 'not-found',
+      retryable: false,
+    })
+  }
+  if (found.decision !== null) {
+    throw new ValidationError('approvalId', 'that request has already been decided.', {
+      code: 'already-answered',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: decision === 'allowed' ? 'allow_action' : 'deny_action',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: found.action,
+      targetId: id,
+      patch: {
+        approvals: state.approvals.map((a) =>
+          a.id === id ? { ...a, decision, decidedAt: now } : a,
+        ),
+      },
+    },
+    ctx,
+  )
+}
+
+export function pendingApprovals(state: TaskState): ApprovalRequest[] {
+  return state.approvals.filter((a) => a.decision === null)
+}
+
+export function decidedApprovals(state: TaskState): ApprovalRequest[] {
+  return state.approvals.filter((a) => a.decision !== null)
 }
 
 export function openQuestions(state: TaskState): OpenQuestion[] {

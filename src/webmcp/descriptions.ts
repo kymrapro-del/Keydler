@@ -165,6 +165,25 @@ field instead: one call, and the change is tied to what caused it.
 Requires based_on_version from the most recent resume_task, and a
 mutation_id.`
 
+export const REQUEST_APPROVAL_DESCRIPTION = `Ask the human for permission to do something outside this log, and
+wait for their answer.
+
+Call this BEFORE an action you cannot undo and they would want a say
+in: running a migration, deploying, deleting data, spending money,
+sending anything to anyone. Describe exactly what you are about to do,
+in the terms they would use to judge it.
+
+This call blocks. A human sees the request on the page and clicks
+allow or deny; you get their decision. If nobody answers within the
+page's window, the call comes back as NO ANSWER.
+
+NO ANSWER IS NOT APPROVAL. Silence means nobody was there — treat it
+exactly as a refusal, say so, and do something else. The request stays
+on the page, so the human still sees it when they return.
+
+Requires based_on_version from the most recent resume_task, and a
+mutation_id.`
+
 export const COMPLETE_TASK_DESCRIPTION = `Close the task with a final, hand-over-ready summary.
 
 Call this only when the work is genuinely finished and the human has

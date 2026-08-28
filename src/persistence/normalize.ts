@@ -128,6 +128,17 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       answeredAt: typeof q.answeredAt === 'number' ? q.answeredAt : null,
     })),
 
+    approvals: asObjects(stored.approvals).map((a) => ({
+      id: asId(a.id),
+      action: asString(a.action, ''),
+      why: asString(a.why, ''),
+      source: a.source === 'human' ? 'human' : 'agent',
+      addedAtVersion: asNumber(a.addedAtVersion, 1),
+      at: asNumber(a.at, now),
+      decision: a.decision === 'allowed' || a.decision === 'denied' ? a.decision : null,
+      decidedAt: typeof a.decidedAt === 'number' ? a.decidedAt : null,
+    })),
+
     audit: asObjects(stored.audit).map((a) => ({
       id: asId(a.id),
       operation: asString(a.operation, 'unknown'),

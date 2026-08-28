@@ -78,6 +78,19 @@ export type OpenQuestion = {
   answeredAt: number | null
 }
 
+export type ApprovalDecision = 'allowed' | 'denied'
+
+export type ApprovalRequest = {
+  id: string
+  action: string
+  why: string
+  source: Actor
+  addedAtVersion: number
+  at: number
+  decision: ApprovalDecision | null
+  decidedAt: number | null
+}
+
 export type AuditEntry = {
   id: string
   operation: string
@@ -118,10 +131,11 @@ export type TaskState = {
   decisions: Decision[]
   rejected: Rejection[]
   questions: OpenQuestion[]
+  approvals: ApprovalRequest[]
   audit: AuditEntry[]
   mutations: MutationRecord[]
   createdAt: number
   updatedAt: number
 }
 
-export const SCHEMA_VERSION = 6
+export const SCHEMA_VERSION = 7

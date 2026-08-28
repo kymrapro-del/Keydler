@@ -157,6 +157,17 @@ export const SET_NEXT_ACTION_SCHEMA = writeSchema(
   ['next'],
 )
 
+export const REQUEST_APPROVAL_SCHEMA = writeSchema(
+  {
+    action: boundedText(
+      'Exactly what you are about to do, stated so a human can judge it in one line.',
+      600,
+    ),
+    why: boundedText('Why it needs a human decision — what it changes, and what it costs.', 600),
+  },
+  ['action', 'why'],
+)
+
 export const COMPLETE_TASK_SCHEMA = writeSchema(
   {
     summary: boundedText('Final hand-over summary, written for someone who was not present.', 4000),

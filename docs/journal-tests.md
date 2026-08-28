@@ -719,3 +719,37 @@ l'humain.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — `request_approval` : un appel d'outil qui attend un humain
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+
+C'est le seul appel du produit qui **bloque**. Sans page ouverte devant
+quelqu'un, cette attente n'aurait aucun sens : c'est précisément ce que WebMCP
+rend possible et qu'un serveur MCP classique ne peut pas faire.
+
+**Observé, par la vraie surface WebMCP.**
+
+- **Délai dépassé** : appel lancé sans personne pour répondre. Retour au bout de
+  120 s : `NO ANSWER … NO ANSWER IS NOT APPROVAL … treat this exactly as a
+refusal`, avec `isError: true`. La demande reste ouverte sur la page.
+- **Refus** : un clic sur **Deny** débloque l'appel, qui rend `DENIED by the
+human`, en erreur, avec l'instruction de ne pas contourner.
+- **Autorisation** : un clic sur **Allow** débloque l'appel, qui rend `ALLOWED by
+the human` avec l'action citée mot pour mot.
+
+Les clics sont de vrais clics sur les vrais boutons de la page ; seul leur
+déclenchement est programmé, faute de deux mains disponibles pendant qu'un
+appel bloque.
+
+**Défaut trouvé, et c'était le pire possible pour cet outil.** Une seconde
+demande portant **exactement le même libellé** qu'une demande déjà tranchée
+recevait la décision de la première. Relevé dans le navigateur : une demande
+refusée plus tôt a fait revenir `DENIED` instantanément pour une demande neuve.
+Avec un `allowed` à la place, le produit aurait **autorisé une action que
+personne n'avait validée**. La recherche prend désormais la demande la plus
+récente, jamais la première ; un test rouge reproduit le cas exact.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

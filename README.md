@@ -82,6 +82,17 @@ and the whole history
 
 ![Active task](docs/assets/active-task.png)
 
+**The agent asks permission, and waits.** `request_approval` blocks until a human
+clicks. This is the one thing a page can do that a server cannot: there is
+somebody at the other end.
+
+![Permission to act](docs/assets/permission-to-act.png)
+
+If nobody answers within the window, the call comes back `NO ANSWER` — never
+`ALLOWED`. The reply says it in as many words: _no answer is not approval,
+treat it exactly as a refusal_. The request stays on the page for when you
+return.
+
 **An agent stops rather than guess.** Its question sits between the next action
 and the work, with the reason it is blocked. Your answer goes back into
 `resume_task`, so the next conversation reads it instead of guessing again. Note
@@ -116,7 +127,7 @@ found by its _reason_, and a step found by the content of its evidence
 
 ## The tools
 
-Four read, eight write. The count is not a goal — each tool dilutes the list an
+Four read, nine write. The count is not a goal — each tool dilutes the list an
 agent must read in order to choose, so each has to pay for itself.
 
 | Tool               | Role                                                                             |
@@ -130,6 +141,7 @@ agent must read in order to choose, so each has to pay for itself.
 | `reject_approach`  | **Propose** ruling out an approach, reason mandatory                             |
 | `add_decision`     | The “why”, which every summary loses first                                       |
 | `ask_human`        | Record a blocking question instead of guessing — the next conversation sees it   |
+| `request_approval` | Ask permission for something irreversible, and **wait** for the human to decide  |
 | `attach_evidence`  | Proof that arrived after the step was logged                                     |
 | `set_next_action`  | Redirect the task without inventing a step to hang it on                         |
 | `complete_task`    | Close with a hand-over summary                                                   |
@@ -217,6 +229,9 @@ defend against everything:
   since you last had it in front of you — the human-side mirror of
   `what_changed`. A hidden tab counts as away, so switching to your agent and
   back is enough to trigger it.
+- **The tab calls you.** When something is waiting on you and the tab is in the
+  background, its title carries the count — the same signal every chat app uses,
+  and it costs no permission prompt.
 - **Undo that.** Lifting a rule, accepting a proposal, archiving a task are all
   one click, so all three are one click back. It undoes only your own last
   decision, only while that decision is still in force, and never reaches past
@@ -396,14 +411,14 @@ That also sets the boundaries, and they are real:
 
 ## Project layout
 
-| Path              | What lives there                                                         |
-| ----------------- | ------------------------------------------------------------------------ |
-| `src/domain`      | Pure task model and mutations — no DOM, no storage, no WebMCP            |
-| `src/store`       | The single in-memory source of truth, and the write queue                |
-| `src/persistence` | IndexedDB, with defensive reads and schema migration                     |
-| `src/webmcp`      | API adapter, schemas, descriptions, twelve tools, registration lifecycle |
-| `src/ui`          | The dashboard                                                            |
-| `docs`            | Protocols, test journal, measurement, demo script                        |
+| Path              | What lives there                                                           |
+| ----------------- | -------------------------------------------------------------------------- |
+| `src/domain`      | Pure task model and mutations — no DOM, no storage, no WebMCP              |
+| `src/store`       | The single in-memory source of truth, and the write queue                  |
+| `src/persistence` | IndexedDB, with defensive reads and schema migration                       |
+| `src/webmcp`      | API adapter, schemas, descriptions, thirteen tools, registration lifecycle |
+| `src/ui`          | The dashboard                                                              |
+| `docs`            | Protocols, test journal, measurement, demo script                          |
 
 Internal documents and code comments are in French; the product is in English.
 

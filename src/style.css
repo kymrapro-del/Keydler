@@ -689,3 +689,16 @@ mark {
   border-color: var(--c-accent);
   border-style: dashed;
 }
+
+.card--permission {
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+  border-color: currentColor;
+  border-width: 2px;
+}
+
+.card--permission .card__title,
+.card--permission .muted {
+  color: currentColor;
+  opacity: 0.92;
+}

@@ -5,6 +5,7 @@ import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeHistory } from './history'
 import { markSeen, seenVersion } from './seen'
+import { attentionTitle } from './attention'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
@@ -14,6 +15,8 @@ import {
   addConstraint,
   answerQuestion,
   answeredQuestions,
+  decideApproval,
+  pendingApprovals,
   undoLastSupervision,
   undoable,
   attachEvidence,
@@ -705,6 +708,39 @@ function renderSwitcher(task: TaskState): string {
     </details>`
 }
 
+function renderPermission(task: TaskState): string {
+  const waiting = pendingApprovals(task)
+  if (waiting.length === 0) return ''
+
+  const rows = waiting
+    .map(
+      (a) => `<li class="review">
+          <div class="row">
+            <span class="chip chip--claimed">blocked</span>
+            <span class="row__text">
+              <strong>${escapeHtml(a.action)}</strong>
+              <span class="muted"> — ${escapeHtml(a.why)}</span>
+            </span>
+            <button type="button" class="btn btn--primary" data-allow="${escapeHtml(a.id)}"
+                    aria-label="Allow: ${escapeHtml(a.action)}">Allow</button>
+            <button type="button" class="btn btn--danger" data-deny="${escapeHtml(a.id)}"
+                    aria-label="Deny: ${escapeHtml(a.action)}">Deny</button>
+          </div>
+        </li>`,
+    )
+    .join('')
+
+  return `<section class="card card--permission" aria-labelledby="permission-title">
+      <h2 id="permission-title" class="card__title">Permission to act</h2>
+      <p class="muted">
+        An agent is <strong>waiting on this right now</strong> — it stopped before doing
+        something it cannot undo. If nobody answers, it is told plainly that silence is
+        not approval.
+      </p>
+      <ul class="rows">${rows}</ul>
+    </section>`
+}
+
 function renderAway(task: TaskState): string {
   const since = awaySince
   if (since === null || since >= task.version) return ''
@@ -1195,6 +1231,7 @@ function renderDashboard(task: TaskState): string {
     ${alertBlock()}
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
+    ${searching() ? '' : renderPermission(task)}
     ${searching() ? '' : renderAway(task)}
     ${searching() ? '' : renderNext(task)}
     ${searching() ? '' : renderWaiting(task)}
@@ -1709,6 +1746,16 @@ function bindSupervision(): void {
       })
   })
 
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-allow], [data-deny]')) {
+    b.addEventListener('click', () => {
+      const allow = b.dataset.allow !== undefined
+      const id = (allow ? b.dataset.allow : b.dataset.deny)!
+      humanAction(allow ? 'Allowing the action' : 'Refusing the action', (state) =>
+        decideApproval(state, id, allow ? 'allowed' : 'denied'),
+      )
+    })
+  }
+
   document.querySelector('#seen')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (!task) return
@@ -1961,6 +2008,9 @@ function render(): void {
   // arrière-plan pendant qu'un agent travaille est exactement l'absence que ce
   // digest doit rapporter.
   if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
+
+  const waiting = openTask ? pendingApprovals(openTask).length + openQuestions(openTask).length : 0
+  document.title = attentionTitle(document.title, waiting, looking())
 
   const listKey = openTask ? `${openTask.id}:${openTask.version}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)

@@ -11,6 +11,7 @@ const HEADINGS: Record<MatchKind, string> = {
   evidence: 'STEP (matched in its evidence)',
   decision: 'DECISION',
   question: 'QUESTION',
+  approval: 'APPROVAL',
   history: 'HISTORY',
 }
 
@@ -21,6 +22,7 @@ const SECTION_FOR: Record<MatchKind, string> = {
   evidence: 'steps',
   decision: 'decisions',
   question: 'questions',
+  approval: 'approvals',
   history: 'audit',
 }
 

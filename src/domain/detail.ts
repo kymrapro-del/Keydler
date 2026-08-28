@@ -1,6 +1,7 @@
 import { ValidationError } from './errors'
 import { referenceSyntax, secretKindLabel, type SecretName } from './secret'
 import type {
+  ApprovalRequest,
   AuditEntry,
   Constraint,
   Decision,
@@ -18,6 +19,7 @@ export const SECTIONS = [
   'proposals',
   'credentials',
   'questions',
+  'approvals',
   'audit',
 ] as const
 
@@ -144,6 +146,15 @@ function renderQuestion(q: OpenQuestion): string[] {
   ]
 }
 
+function renderApproval(a: ApprovalRequest): string[] {
+  return [
+    `- id: ${a.id}`,
+    `  standing: ${a.decision === null ? 'waiting — nobody has decided' : a.decision} · asked by ${a.source} at v${a.addedAtVersion}`,
+    `  action: ${a.action}`,
+    `  why it needs a human: ${a.why}`,
+  ]
+}
+
 function renderCredential(secret: SecretName): string[] {
   return [
     `- ${referenceSyntax(secret.name)}`,
@@ -186,6 +197,8 @@ function collect(state: TaskState, section: Section, credentials: readonly Secre
       return credentials.map((c) => ({ id: c.id, lines: () => renderCredential(c) }))
     case 'questions':
       return state.questions.map((q) => ({ id: q.id, lines: () => renderQuestion(q) }))
+    case 'approvals':
+      return state.approvals.map((a) => ({ id: a.id, lines: () => renderApproval(a) }))
     case 'audit':
       return state.audit.map((a) => ({ id: a.id, lines: () => renderAudit(a) }))
   }
