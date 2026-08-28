@@ -23,6 +23,8 @@ export function humanReason(error: ValidationError): string {
       return `${field} cannot be empty.`
     case 'too-long':
       return `${field} is longer than ${error.max ?? 0} characters.`
+    case 'too-short':
+      return `${field} is too short.`
     case 'not-a-string':
       return `${field} has to be text.`
     case 'bad-version':

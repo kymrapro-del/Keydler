@@ -13,6 +13,8 @@ import {
   requireVersion,
 } from '../domain/task'
 import { parseDetailQuery, renderDetail } from '../domain/detail'
+import { MAX_MATCHES, renderSearch } from '../domain/searchResult'
+import { MIN_QUERY } from '../domain/search'
 import { fingerprintIntent } from '../domain/intent'
 import { renderMissingTask, renderNoTask, renderTaskState } from '../domain/render'
 import type { TaskState } from '../domain/types'
@@ -30,6 +32,7 @@ import {
   READ_DETAIL_SCHEMA,
   REJECT_APPROACH_SCHEMA,
   RESUME_TASK_SCHEMA,
+  SEARCH_TASK_SCHEMA,
 } from './schemas'
 import {
   ADD_CONSTRAINT_DESCRIPTION,
@@ -39,7 +42,10 @@ import {
   READ_DETAIL_DESCRIPTION,
   REJECT_APPROACH_DESCRIPTION,
   RESUME_TASK_DESCRIPTION,
+  SEARCH_TASK_DESCRIPTION,
 } from './descriptions'
+
+const EMPTY_CREDENTIALS: SecretName[] = []
 
 function toToolError(error: unknown, retryVersion?: number): ToolResult {
   if (
@@ -74,6 +80,14 @@ function storageError(detail: string): Error {
       '(private browsing and blocked site data are the usual causes).',
     ].join('\n'),
   )
+}
+
+async function credentialNames(taskId: string): Promise<SecretName[]> {
+  try {
+    return await listSecretNames(taskId)
+  } catch {
+    return []
+  }
 }
 
 async function requireTask(): Promise<TaskState> {
@@ -198,13 +212,7 @@ export const resumeTaskTool: ModelContextTool = {
       recordCall('resume_task', false)
       if (!task) return text(renderNoTask())
 
-      let credentials: SecretName[] = []
-      try {
-        credentials = await listSecretNames(task.id)
-      } catch {
-        credentials = []
-      }
-
+      const credentials = await credentialNames(task.id)
       return text(renderTaskState(task, { url: taskUrl(task.id), credentials }))
     } catch (error) {
       recordCall('resume_task', true)
@@ -225,11 +233,71 @@ export const readTaskDetailTool: ModelContextTool = {
 
       const query = parseDetailQuery(input)
       const task = await requireTask()
+      const credentials =
+        query.section === 'credentials' ? await credentialNames(task.id) : EMPTY_CREDENTIALS
 
       recordCall('read_task_detail', false)
-      return text(renderDetail(task, query))
+      return text(renderDetail(task, query, credentials))
     } catch (error) {
       recordCall('read_task_detail', true)
+      return toToolError(error)
+    }
+  },
+}
+
+function requireQuery(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw new ValidationError('query', 'expected a string.', { code: 'not-a-string' })
+  }
+  const trimmed = value.trim()
+  if (trimmed.length < MIN_QUERY) {
+    throw new ValidationError('query', `must be at least ${MIN_QUERY} characters.`, {
+      code: 'too-short',
+    })
+  }
+  if (trimmed.length > 200) {
+    throw new ValidationError('query', 'must be at most 200 characters.', {
+      code: 'too-long',
+      max: 200,
+    })
+  }
+  return trimmed
+}
+
+function requireLimit(value: unknown): number {
+  if (value === undefined || value === null) return MAX_MATCHES
+  const parsed = typeof value === 'string' ? Number(value.trim()) : value
+  if (
+    typeof parsed !== 'number' ||
+    !Number.isInteger(parsed) ||
+    parsed < 1 ||
+    parsed > MAX_MATCHES
+  ) {
+    throw new ValidationError('limit', `expected an integer between 1 and ${MAX_MATCHES}.`, {
+      code: 'out-of-range',
+    })
+  }
+  return parsed
+}
+
+export const searchTaskTool: ModelContextTool = {
+  name: 'search_task',
+  title: 'Search this task',
+  description: SEARCH_TASK_DESCRIPTION,
+  inputSchema: SEARCH_TASK_SCHEMA,
+  annotations: { readOnlyHint: true, untrustedContentHint: true },
+  async execute(input, options) {
+    try {
+      if (options?.signal?.aborted) throw new CancelledError('search_task')
+
+      const query = requireQuery(input.query)
+      const limit = requireLimit(input.limit)
+      const task = await requireTask()
+
+      recordCall('search_task', false)
+      return text(renderSearch(task, query, limit))
+    } catch (error) {
+      recordCall('search_task', true)
       return toToolError(error)
     }
   },
@@ -318,7 +386,11 @@ export const completeTaskTool: ModelContextTool = {
   },
 }
 
-export const READ_TOOLS: readonly ModelContextTool[] = [resumeTaskTool, readTaskDetailTool] as const
+export const READ_TOOLS: readonly ModelContextTool[] = [
+  resumeTaskTool,
+  readTaskDetailTool,
+  searchTaskTool,
+] as const
 
 export const WRITE_TOOLS: readonly ModelContextTool[] = [
   logStepTool,

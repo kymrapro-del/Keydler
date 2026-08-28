@@ -32,8 +32,12 @@ afterEach(() => {
 })
 
 describe('inventaire', () => {
-  it('expose deux outils de lecture et cinq d’écriture', () => {
-    expect(READ_TOOLS.map((t) => t.name)).toEqual(['resume_task', 'read_task_detail'])
+  it('expose trois outils de lecture et cinq d’écriture', () => {
+    expect(READ_TOOLS.map((t) => t.name)).toEqual([
+      'resume_task',
+      'read_task_detail',
+      'search_task',
+    ])
     expect(WRITE_TOOLS.map((t) => t.name)).toEqual([
       'log_step',
       'add_constraint',
@@ -41,7 +45,7 @@ describe('inventaire', () => {
       'add_decision',
       'complete_task',
     ])
-    expect(ALL_TOOLS).toHaveLength(7)
+    expect(ALL_TOOLS).toHaveLength(8)
   })
 
   it('n’annonce jamais une annotation que WebMCP ne transporte pas', () => {
@@ -106,7 +110,11 @@ describe('disponibilité', () => {
     const state = await registerTools()
     expect(state.phase).toBe('registered')
     expect(state.availability).toEqual({ supported: true, surface: 'navigator' })
-    expect(registered.map((t) => t.name)).toEqual(['resume_task', 'read_task_detail'])
+    expect(registered.map((t) => t.name)).toEqual([
+      'resume_task',
+      'read_task_detail',
+      'search_task',
+    ])
 
     Reflect.deleteProperty(navigator, 'modelContext')
   })
@@ -178,8 +186,12 @@ describe('cycle de vie des outils', () => {
     const fake = installModelContext()
     await registerTools()
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task'])
-    expect(toolsForCurrentState().map((t) => t.name)).toEqual(['resume_task', 'read_task_detail'])
+    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task'])
+    expect(toolsForCurrentState().map((t) => t.name)).toEqual([
+      'resume_task',
+      'read_task_detail',
+      'search_task',
+    ])
   })
 
   it('expose les écritures dès qu’une tâche est ouverte, et émet toolchange', async () => {
@@ -202,6 +214,7 @@ describe('cycle de vie des outils', () => {
       'read_task_detail',
       'reject_approach',
       'resume_task',
+      'search_task',
     ])
 
     expect(changements.length).toBeGreaterThan(0)
@@ -223,7 +236,7 @@ describe('cycle de vie des outils', () => {
     await settle(6)
 
     expect(getRegistrationState().lifecycle.mode).toBe('static')
-    expect(fake.names()).toHaveLength(7)
+    expect(fake.names()).toHaveLength(ALL_TOOLS.length)
 
     expect(textOf(résultat)).toContain('OK — complete_task recorded.')
     expect(textOf(await call(resumeTaskTool))).toContain('TASK CLOSED')
@@ -321,7 +334,7 @@ describe('cycle de vie des outils', () => {
 
     expect(first.phase).toBe('registered')
     expect(second.phase).toBe('registered')
-    expect(fake.attempts).toHaveLength(7)
+    expect(fake.attempts).toHaveLength(ALL_TOOLS.length)
   })
 
   it('rejette un enregistrement dont le signal est déjà avorté', async () => {

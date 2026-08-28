@@ -550,3 +550,44 @@ sont corrélés et ne justifient aucun pourcentage. Ils établissent que la repr
 spontanée par le pont est réelle et reproductible, mais pas déterministe. Pour
 le protocole global, le point 13 est **MIXTE** ; la seule inconnue complète
 reste le retrait dynamique sous Chromium ≥ 153.
+
+## 28 août 2026 — `search_task`, huitième outil, contrôlé dans le navigateur
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, Linux, `--enable-features=WebMCP,WebMCPTesting`,
+build de production servi sur `http://localhost:5174`, pilotage par
+`chrome-devtools-mcp`.
+
+**Observé.**
+
+- `list_webmcp_tools` renvoie **huit** outils. `search_task` y figure avec
+  `annotations={"readOnly":true,"untrustedContent":true}` et le schéma attendu
+  (`query` requis, `minLength: 2`, `limit` borné à 12).
+- `search_task { query: "issuer" }` : `MATCHES 1 shown of 1 found`, l'étape
+  restituée avec son résultat, et la section à relire (`steps`) nommée.
+- `search_task { query: "gemini" }` sur un cahier portant deux identifiants
+  nommés `gemini-api-key` : **`NO MATCH`**. La recherche ne traverse pas le
+  coffre — ni les noms, ni a fortiori les valeurs.
+- `read_task_detail { section: "steps" }` après une étape consignée à la main
+  avec un rapport de tests collé : `evidence kind: test_report`, retours à la
+  ligne conservés.
+
+**Défauts trouvés par cette passe, tous dans le navigateur et non par les tests
+jsdom.**
+
+1. Le champ de preuve du formulaire humain était un `<input type="text">` :
+   coller une sortie de commande ou un diff en écrasait les retours à la ligne.
+2. La nature de la preuve était figée à `command_output` : un diff collé était
+   annoncé à l'agent comme une sortie de commande, par `read_task_detail`.
+3. Deux identifiants pouvaient porter le même nom, ce qui rend `${nom}`
+   ambigu — la seule chose que l'agent reçoit.
+4. Le message de succès (« Copied. Paste it to your agent. ») ne s'effaçait
+   jamais : il affirmait encore, dix minutes plus tard, qu'une action venait
+   d'avoir lieu.
+5. `mount()` remettait **tous** les brouillons à la chaîne vide, y compris celui
+   qui portait une valeur par défaut, ce qui rendait une écriture invalide.
+
+Chacun a été reproduit par un test rouge avant correction. Les quatre premiers
+sont vérifiés à nouveau dans le navigateur après correctif.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste, comme lors des passes précédentes.

@@ -28,6 +28,25 @@ tells you how many entries remain and the offset to continue from.
 To get one entry whole — including evidence that pages truncate —
 pass its id.
 
+The "credentials" section lists every credential the human sealed for
+this task: the name to write as ${name}, and what it is for. It never
+returns a value, and no tool here does.
+
+Read-only: this never changes the task, and needs no version.`
+
+export const SEARCH_TASK_DESCRIPTION = `Search this task's record for a word or phrase.
+
+Call this before trying something, to find out whether it has already
+been tried here and what came of it. It looks through the steps and
+their evidence, the rules, the ruled-out approaches, the decisions,
+and the history of refused writes.
+
+Prefer this to paging read_task_detail when you have a term to look
+for; use read_task_detail afterwards to read a match in full.
+
+Finding nothing does not prove the work was never attempted — the log
+may use other words. Say so rather than concluding it is untried.
+
 Read-only: this never changes the task, and needs no version.`
 
 export const LOG_STEP_DESCRIPTION = `Record one completed step in the task's watch log, with its evidence.

@@ -7,8 +7,25 @@ import { fingerprintIntent } from '../src/domain/intent'
 
 export async function clearDatabase(): Promise<void> {
   const db = await getDb()
-  const tx = db.transaction(['tasks', 'meta'], 'readwrite')
-  await Promise.all([tx.objectStore('tasks').clear(), tx.objectStore('meta').clear(), tx.done])
+  const tx = db.transaction(['tasks', 'meta', 'secrets'], 'readwrite')
+  await Promise.all([
+    tx.objectStore('tasks').clear(),
+    tx.objectStore('meta').clear(),
+    tx.objectStore('secrets').clear(),
+    tx.done,
+  ])
+}
+
+export async function waitUntil(
+  predicate: () => boolean,
+  what = 'la condition attendue',
+  tours = 300,
+): Promise<void> {
+  for (let i = 0; i < tours; i++) {
+    if (predicate()) return
+    await new Promise((r) => setTimeout(r, 0))
+  }
+  throw new Error(`délai dépassé en attendant : ${what}`)
 }
 
 export function call(

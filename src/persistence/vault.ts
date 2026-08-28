@@ -24,6 +24,21 @@ export class VaultUnavailableError extends Error {
   }
 }
 
+export class DuplicateSecretNameError extends Error {
+  readonly credentialName: string
+
+  constructor(name: string) {
+    super(
+      `This task already has a credential named ${name}. ` +
+        'The agent only ever sees the name, so two of them would make ${' +
+        name +
+        '} ambiguous. Rename one, or delete the old one first.',
+    )
+    this.name = 'DuplicateSecretNameError'
+    this.credentialName = name
+  }
+}
+
 export class WrongPassphraseError extends Error {
   constructor() {
     super('That passphrase does not open this value.')
@@ -129,6 +144,12 @@ export async function addSecret(input: {
   const value = requireSecretValue(input.value)
   const passphrase = requirePassphrase(input.passphrase)
 
+  const db = await getDb()
+  const existing = await db.getAllFromIndex('secrets', 'by-taskId', input.taskId)
+  if (existing.some((ref) => ref.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+    throw new DuplicateSecretNameError(name)
+  }
+
   const ref: SecretRef = {
     id: newId(),
     taskId: input.taskId,
@@ -138,9 +159,30 @@ export async function addSecret(input: {
     at: Date.now(),
   }
 
-  const db = await getDb()
   await db.put('secrets', ref)
   return publicName(ref)
+}
+
+export async function editSecret(
+  id: string,
+  input: { name: unknown; purpose: unknown },
+): Promise<SecretName> {
+  const name = requireSecretName(input.name)
+  const purpose = requireSecretPurpose(input.purpose)
+
+  const db = await getDb()
+  const ref = await db.get('secrets', id)
+  if (!ref) throw new Error('No such credential on this device.')
+
+  const siblings = await db.getAllFromIndex('secrets', 'by-taskId', ref.taskId)
+  const clash = siblings.some(
+    (other) => other.id !== id && other.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
+  )
+  if (clash) throw new DuplicateSecretNameError(name)
+
+  const next: SecretRef = { ...ref, name, purpose }
+  await db.put('secrets', next)
+  return publicName(next)
 }
 
 export async function listSecretNames(taskId: string): Promise<SecretName[]> {

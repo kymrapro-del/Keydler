@@ -1,4 +1,5 @@
 import { ValidationError } from './errors'
+import { referenceSyntax, type SecretName } from './secret'
 import type { AuditEntry, Constraint, Decision, Rejection, Step, TaskState } from './types'
 
 export const SECTIONS = [
@@ -7,6 +8,7 @@ export const SECTIONS = [
   'rejections',
   'constraints',
   'proposals',
+  'credentials',
   'audit',
 ] as const
 
@@ -123,6 +125,10 @@ function renderConstraint(c: Constraint): string[] {
   ]
 }
 
+function renderCredential(secret: SecretName): string[] {
+  return [`- ${referenceSyntax(secret.name)}`, `  for: ${secret.purpose}`]
+}
+
 function renderAudit(a: AuditEntry): string[] {
   const versions =
     a.versionBefore === a.versionAfter
@@ -134,7 +140,7 @@ function renderAudit(a: AuditEntry): string[] {
 
 type Entry = { id: string; lines: (full: boolean) => string[] }
 
-function collect(state: TaskState, section: Section): Entry[] {
+function collect(state: TaskState, section: Section, credentials: readonly SecretName[]): Entry[] {
   switch (section) {
     case 'steps':
       return state.steps.map((s) => ({ id: s.id, lines: (full) => renderStep(s, full) }))
@@ -153,13 +159,19 @@ function collect(state: TaskState, section: Section): Entry[] {
           .filter((r) => r.standing === 'proposed')
           .map((r) => ({ id: r.id, lines: () => renderRejection(r) })),
       ]
+    case 'credentials':
+      return credentials.map((c) => ({ id: c.id, lines: () => renderCredential(c) }))
     case 'audit':
       return state.audit.map((a) => ({ id: a.id, lines: () => renderAudit(a) }))
   }
 }
 
-export function renderDetail(state: TaskState, query: Required<DetailQuery>): string {
-  const entries = collect(state, query.section)
+export function renderDetail(
+  state: TaskState,
+  query: Required<DetailQuery>,
+  credentials: readonly SecretName[] = [],
+): string {
+  const entries = collect(state, query.section, credentials)
 
   if (query.id !== null) {
     const found = entries.find((e) => e.id === query.id)
@@ -207,5 +219,10 @@ export function renderDetail(state: TaskState, query: Required<DetailQuery>): st
     ].join('\n')
   }
 
-  return [...header, ...page.flatMap((e) => e.lines(false))].join('\n')
+  const footer =
+    query.section === 'credentials'
+      ? ['', 'Write these as ${name}; no tool here returns a value.']
+      : []
+
+  return [...header, ...page.flatMap((e) => e.lines(false)), ...footer].join('\n')
 }

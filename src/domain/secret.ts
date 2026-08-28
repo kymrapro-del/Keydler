@@ -85,7 +85,9 @@ export function requirePassphrase(value: unknown): string {
     throw new ValidationError('passphrase', 'expected a string.', { code: 'not-a-string' })
   }
   if (value.length < 8) {
-    throw new ValidationError('passphrase', 'must be at least 8 characters.', { code: 'too-long' })
+    throw new ValidationError('passphrase', 'must be at least 8 characters.', {
+      code: 'too-short',
+    })
   }
   return value
 }

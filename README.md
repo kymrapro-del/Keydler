@@ -99,13 +99,14 @@ found by its _reason_, and a step found by the content of its evidence
 
 ## The tools
 
-Two read, five write. The count is not a goal — each tool dilutes the list an
+Three read, five write. The count is not a goal — each tool dilutes the list an
 agent must read in order to choose, so each has to pay for itself.
 
 | Tool               | Role                                                                             |
 | ------------------ | -------------------------------------------------------------------------------- |
 | `resume_task`      | The canonical state, under 400 tokens: id, version, rules, rejections, next step |
-| `read_task_detail` | Paginated detail — whole evidence, whole reasons, older work                     |
+| `read_task_detail` | Paginated detail — whole evidence, whole reasons, older work, credential names   |
+| `search_task`      | “Have we already tried this?” — one term across steps, evidence, rules, refusals |
 | `log_step`         | Record a completed step and its evidence                                         |
 | `add_constraint`   | **Propose** a rule                                                               |
 | `reject_approach`  | **Propose** ruling out an approach, reason mandatory                             |
@@ -152,14 +153,18 @@ defend against everything:
 
 - **Every task is reachable.** The header lists them all and switches between
   them; each lives at its own `/t/:id`.
-- **Search** across the open task and the others at once. It matches a rejection
-  by its reason and a step by the content of its evidence, and says which.
+- **Search** across the open task and the others at once, from the box or by
+  pressing `/`. It matches a rejection by its reason and a step by the content of
+  its evidence, and says which. Agents get the same search as `search_task`.
 - **History** in words — _“You lifted a rule”_, _“Agent tried to record a step —
   refused — the task had changed since it was read”_. The audit trail was always
   complete; this is the screen for it.
 - **Correct anything.** Rename the task, change the next action, reword a rule or
-  a ruled-out approach, record a step you did yourself. All human writes: never
-  refused, always audited.
+  a ruled-out approach, rename a credential or fix what it is for. All human
+  writes: never refused, always audited.
+- **Record a step you did yourself**, with evidence pasted whole — several lines,
+  a diff, a test report. You say what the evidence _is_; the page guesses and you
+  correct it, so a diff is never filed as command output.
 - **Archive** what is done, without deleting it. `resume_task` says so, in case
   an agent arrives on an old link.
 - **Import and export.** Import never overwrites: a task already here at a
@@ -345,7 +350,7 @@ That also sets the boundaries, and they are real:
 | `src/domain`      | Pure task model and mutations — no DOM, no storage, no WebMCP           |
 | `src/store`       | The single in-memory source of truth, and the write queue               |
 | `src/persistence` | IndexedDB, with defensive reads and schema migration                    |
-| `src/webmcp`      | API adapter, schemas, descriptions, seven tools, registration lifecycle |
+| `src/webmcp`      | API adapter, schemas, descriptions, eight tools, registration lifecycle |
 | `src/ui`          | The dashboard                                                           |
 | `docs`            | Protocols, test journal, measurement, demo script                       |
 

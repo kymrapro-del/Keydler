@@ -151,8 +151,9 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   lines.push('')
   lines.push('FULL DETAIL')
-  lines.push('  read_task_detail returns whole steps, decisions, rejections and')
-  lines.push('  evidence, one page at a time. Nothing above is the complete record.')
+  lines.push('  read_task_detail returns whole steps, decisions, rejections,')
+  lines.push('  evidence and credentials, one page at a time. Nothing above is')
+  lines.push('  the complete record.')
 
   lines.push('')
   if (state.status === 'active') {
@@ -170,13 +171,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   if (estimateTokens(text) <= TOKEN_BUDGET) return text
 
-  if (recentSteps > 2 || recentDecisions > 1 || recentProposals > 1 || recentCredentials > 1) {
+  if (recentSteps > 2 || recentDecisions > 1 || recentProposals > 1) {
     return renderTaskState(state, {
       ...options,
       recentSteps: Math.max(2, recentSteps - 2),
       recentDecisions: Math.max(1, recentDecisions - 1),
       recentProposals: Math.max(1, recentProposals - 1),
-      recentCredentials: Math.max(1, recentCredentials - 1),
+      recentCredentials,
       clipScale,
     })
   }
@@ -189,6 +190,17 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentProposals,
       recentCredentials,
       clipScale: Math.max(CLIP_FLOOR, clipScale - 0.2),
+    })
+  }
+
+  if (recentCredentials > 1) {
+    return renderTaskState(state, {
+      ...options,
+      recentSteps,
+      recentDecisions,
+      recentProposals,
+      recentCredentials: Math.max(1, recentCredentials - 1),
+      clipScale,
     })
   }
 

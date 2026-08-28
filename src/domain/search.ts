@@ -92,15 +92,17 @@ export function searchTask(task: TaskState, query: string): Match[] {
     }
   }
 
+  const alreadyShown = new Set(found.map((m) => normalise(m.text)))
+
   for (const entry of task.audit) {
-    if (matches(entry.detail, q)) {
-      found.push({
-        kind: 'history',
-        label: entry.outcome === 'refused' ? 'History, refused' : 'History',
-        text: entry.detail,
-        context: entry.actor === 'human' ? 'you' : 'an agent',
-      })
-    }
+    if (!matches(entry.detail, q)) continue
+    if (entry.outcome !== 'refused' && alreadyShown.has(normalise(entry.detail))) continue
+    found.push({
+      kind: 'history',
+      label: entry.outcome === 'refused' ? 'History, refused' : 'History',
+      text: entry.detail,
+      context: entry.actor === 'human' ? 'you' : 'an agent',
+    })
   }
 
   return found

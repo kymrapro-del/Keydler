@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildDemoTask } from '../src/demo/seed'
-import { estimateTokens, renderTaskState } from '../src/domain/render'
+import { estimateTokens, renderTaskState, TOKEN_BUDGET } from '../src/domain/render'
 import { buildFullExport, buildTaskExport } from '../src/export/notebook'
 import { addSecret, listSecretNames } from '../src/persistence/vault'
 import { getDb } from '../src/persistence/db'
@@ -162,6 +162,39 @@ describe('ce que l’agent reçoit', () => {
     const rendu = renderTaskState(task, { credentials: creds(30) })
     expect(rendu).toMatch(/CREDENTIALS — names only, values sealed \(\d+ of 30\)/)
     expect(rendu).not.toMatch(/\$\{service-\d+-api-k…/)
+  })
+
+  it('sacrifie le travail ancien avant de cacher un nom d’identifiant', () => {
+    const task = buildDemoTask()
+    const creds = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({
+        id: `s${i}`,
+        name: `service-${i}-api-key`,
+        purpose: 'Calls the upstream service from the ingestion worker',
+      }))
+
+    // Le budget passe d'abord sur le travail ancien, qui se relit page par
+    // page, avant de toucher aux identifiants.
+    const rendu = renderTaskState(task, { credentials: creds(4) })
+    expect(rendu).toContain('${service-0-api-key}')
+    expect(rendu).toMatch(/RECENT WORK \(last 2 of 4\)/)
+    expect(estimateTokens(rendu)).toBeLessThanOrEqual(TOKEN_BUDGET)
+  })
+
+  it('dit où lire les noms qu’il a dû cacher', () => {
+    const rendu = renderTaskState(buildDemoTask(), {
+      credentials: Array.from({ length: 8 }, (_, i) => ({
+        id: `s${i}`,
+        name: `service-${i}-api-key`,
+        purpose: 'Calls the upstream service from the ingestion worker',
+      })),
+    })
+
+    // Un nom caché sans moyen de le retrouver est perdu pour la conversation :
+    // aucun autre outil ne les portait.
+    expect(rendu).toMatch(/CREDENTIALS — names only, values sealed \(\d+ of 8\)/)
+    expect(rendu).toContain('read_task_detail')
+    expect(rendu).toContain('credentials')
   })
 
   it('rend une restitution sans identifiants identique à avant', async () => {

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   addSecret,
+  DuplicateSecretNameError,
   deleteSecret,
   deleteSecretsForTask,
   listSecretNames,
@@ -189,5 +190,45 @@ describe('validation', () => {
 describe('syntaxe de référence', () => {
   it('donne à l’agent la forme exacte à écrire', () => {
     expect(referenceSyntax('gemini-api-key')).toBe('${gemini-api-key}')
+  })
+})
+
+describe('un nom, un identifiant', () => {
+  const base = {
+    taskId: 'task-unique',
+    purpose: 'Gemini calls',
+    value: 'AIzaSy-first',
+    passphrase: 'correct horse battery',
+  }
+
+  it('refuse un second identifiant qui porterait le même nom', async () => {
+    await addSecret({ ...base, name: 'gemini-api-key' })
+
+    // ${gemini-api-key} est la seule chose que l'agent reçoit. Deux entrées de
+    // ce nom rendent la référence ambiguë : il ne peut plus désigner une valeur.
+    await expect(
+      addSecret({ ...base, name: 'gemini-api-key', value: 'AIzaSy-second' }),
+    ).rejects.toBeInstanceOf(DuplicateSecretNameError)
+
+    expect((await listSecretNames(base.taskId)).length).toBe(1)
+  })
+
+  it('compare les noms sans tenir compte de la casse', async () => {
+    await addSecret({ ...base, name: 'gemini-api-key' })
+    await expect(addSecret({ ...base, name: 'GEMINI-API-KEY' })).rejects.toBeInstanceOf(
+      DuplicateSecretNameError,
+    )
+  })
+
+  it('laisse le même nom vivre dans un autre cahier', async () => {
+    await addSecret({ ...base, name: 'gemini-api-key' })
+    await addSecret({ ...base, taskId: 'another-task', name: 'gemini-api-key' })
+    expect((await listSecretNames('another-task')).length).toBe(1)
+  })
+
+  it('dit qu’une phrase est trop courte, pas trop longue', async () => {
+    const error = await addSecret({ ...base, name: 'k', passphrase: 'short' }).catch((e) => e)
+    expect(error).toBeInstanceOf(ValidationError)
+    expect((error as ValidationError).code).toBe('too-short')
   })
 })

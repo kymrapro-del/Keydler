@@ -10,10 +10,16 @@ import {
   proposedRejections,
 } from '../src/domain/task'
 import * as store from '../src/store/taskStore'
-import { __renderNow, mount } from '../src/ui/bench'
+import { __renderNow, mount, NOTICE_TTL } from '../src/ui/bench'
 import { resetCalls } from '../src/webmcp/witness'
 import { __resetRegistration, registerTools } from '../src/webmcp/register'
-import { clearDatabase, installModelContext, mutationId, removeModelContext } from './helpers'
+import {
+  clearDatabase,
+  installModelContext,
+  mutationId,
+  removeModelContext,
+  waitUntil,
+} from './helpers'
 
 let root: HTMLElement
 let unmount: () => void
@@ -448,5 +454,52 @@ describe('détails techniques', () => {
 
     __resetRegistration()
     removeModelContext()
+  })
+})
+
+describe('un message de succès ne s’installe pas', () => {
+  let root: HTMLElement
+  let unmount: () => void
+
+  async function settled(turns = 8) {
+    for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
+    __renderNow()
+  }
+
+  beforeEach(async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    store.__resetStore()
+    await clearDatabase()
+    await store.init()
+    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    root = document.querySelector<HTMLElement>('#app')!
+    unmount = mount(root)
+    await store.createAndOpenTask('Ship the issuer', 'Read the spec')
+    await settled()
+  })
+
+  afterEach(() => {
+    unmount()
+    vi.useRealTimers()
+    history.replaceState(null, '', '/')
+  })
+
+  it('s’efface tout seul, au lieu de prétendre indéfiniment que l’on vient de copier', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.resolve() },
+    })
+
+    root.querySelector<HTMLButtonElement>('#copy-handoff')!.click()
+    await waitUntil(() => !!root.querySelector('.notice--ok'), 'le message de copie')
+    __renderNow()
+    expect(root.querySelector('.notice--ok')!.textContent).toContain('Copied')
+
+    await vi.advanceTimersByTimeAsync(NOTICE_TTL + 1000)
+    __renderNow()
+
+    // Un message qui reste affirme, une minute plus tard, qu'une action vient
+    // d'avoir lieu. Il faut le lire comme faux.
+    expect(root.querySelector('.notice--ok')).toBeNull()
   })
 })

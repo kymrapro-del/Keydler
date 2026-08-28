@@ -19,6 +19,7 @@ export class StaleStateError extends Error {
 export type ValidationCode =
   | 'empty'
   | 'too-long'
+  | 'too-short'
   | 'not-a-string'
   | 'bad-enum'
   | 'bad-version'
