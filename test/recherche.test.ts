@@ -24,6 +24,38 @@ describe('recherche dans un cahier', () => {
     expect(matches('Refactor', 'zzz')).toBe(false)
   })
 
+  /**
+   * `normalise` prend un raccourci quand la chaîne est en ASCII : elle n'a
+   * alors rien à replier. Le raccourci ne vaut que s'il rend EXACTEMENT la
+   * même réponse, y compris quand une seule des deux chaînes est accentuée —
+   * c'est là qu'un repli sauté se verrait.
+   */
+  it('replie les accents dans les deux sens, quel que soit le côté accentué', () => {
+    expect(matches('déjà migré', 'deja')).toBe(true)
+    expect(matches('deja migre', 'déjà')).toBe(true)
+    expect(matches('DÉJÀ MIGRÉ', 'deja')).toBe(true)
+    expect(matches('naïve façade', 'naive facade')).toBe(true)
+    expect(matches('crème brûlée', 'creme')).toBe(true)
+
+    // Et il ne rapproche pas des mots que l'accent seul ne sépare pas.
+    expect(matches('déjà', 'deta')).toBe(false)
+  })
+
+  it('replie un accent déjà décomposé, que NFD laisse tel quel', () => {
+    // « é » écrit e + U+0301 : la longueur ne change pas à la décomposition,
+    // donc rien ne signale qu'il reste un diacritique à retirer.
+    const décomposé = 'caf\u0065\u0301 ferme'
+    expect(décomposé.normalize('NFD')).toHaveLength(décomposé.length)
+    expect(matches(décomposé, 'cafe')).toBe(true)
+  })
+
+  it('replie un caractère dont la MINUSCULE seule sort de l’ASCII', () => {
+    // « İ » est ASCII-adjacent à l'œil mais sa minuscule est i + point
+    // suscrit : tester la casse d'origine plutôt que la minuscule aurait
+    // choisi la mauvaise voie.
+    expect(matches('İstanbul', 'istanbul')).toBe(true)
+  })
+
   it('trouve une règle et dit qui l’a posée', () => {
     const hits = searchTask(task, 'database schema')
     const rule = hits.find((h) => h.kind === 'rule')!
