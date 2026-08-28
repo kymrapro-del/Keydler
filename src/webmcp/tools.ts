@@ -9,7 +9,10 @@ import {
   addDecision,
   askHuman,
   attachEvidence,
+  openQuestions,
   pendingApprovals,
+  proposedConstraints,
+  proposedRejections,
   requestApproval,
   completeTask,
   logStep,
@@ -587,6 +590,43 @@ function decisionResult(decision: 'allowed' | 'denied', action: string): ToolRes
   )
 }
 
+function leftUnresolved(state: TaskState): string[] {
+  const items: string[] = []
+  const questions = openQuestions(state).length
+  const approvals = pendingApprovals(state).length
+  const proposals = proposedConstraints(state).length + proposedRejections(state).length
+  const claimed = state.steps.filter((s) => s.confidence === 'claimed').length
+  const disputed = state.steps.filter((s) => s.confidence === 'disputed').length
+
+  const line = (n: number, one: string, many: string) => `  ${n} ${n === 1 ? one : many}`
+  if (questions > 0)
+    items.push(line(questions, 'question nobody answered', 'questions nobody answered'))
+  if (approvals > 0)
+    items.push(
+      line(
+        approvals,
+        'request for permission left undecided',
+        'requests for permission left undecided',
+      ),
+    )
+  if (proposals > 0)
+    items.push(
+      line(
+        proposals,
+        'proposal nobody accepted or declined',
+        'proposals nobody accepted or declined',
+      ),
+    )
+  if (claimed > 0)
+    items.push(
+      line(claimed, 'step still claimed with no evidence', 'steps still claimed with no evidence'),
+    )
+  if (disputed > 0)
+    items.push(line(disputed, 'step the human says is wrong', 'steps the human says are wrong'))
+
+  return items
+}
+
 export const completeTaskTool: ModelContextTool = {
   name: 'complete_task',
   title: 'Complete the task',
@@ -594,8 +634,27 @@ export const completeTaskTool: ModelContextTool = {
   inputSchema: COMPLETE_TASK_SCHEMA,
   annotations: { readOnlyHint: false },
   async execute(input, options) {
-    return runWrite(completeTaskTool, input, options?.signal, (state, basedOnVersion) =>
-      completeTask(state, { summary: input.summary, basedOnVersion }, 'agent'),
+    const result = await runWrite(
+      completeTaskTool,
+      input,
+      options?.signal,
+      (state, basedOnVersion) =>
+        completeTask(state, { summary: input.summary, basedOnVersion }, 'agent'),
+    )
+    if (result.isError) return result
+
+    const remaining = leftUnresolved(store.currentTask() ?? ({ steps: [] } as unknown as TaskState))
+    if (remaining.length === 0) return result
+
+    // Clore n'est pas régler. L'agent doit le dire dans sa passation plutôt
+    // que de laisser croire que tout a été traité.
+    return text(
+      [
+        ...result.content.map((c) => c.text),
+        '',
+        'LEFT UNRESOLVED — say this in your hand-over, do not imply it was settled:',
+        ...remaining,
+      ].join('\n'),
     )
   },
 }

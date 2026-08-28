@@ -113,7 +113,7 @@ describe('une demande d’autorisation à l’écran', () => {
     await written(before)
 
     expect(pendingApprovals(store.currentTask()!)).toHaveLength(0)
-    expect(store.currentTask()!.approvals[0].decision).toBe('allowed')
+    expect(store.currentTask()!.approvals.find((a) => a.id === id)!.decision).toBe('allowed')
     expect(card()).toBeUndefined()
   })
 
@@ -125,7 +125,7 @@ describe('une demande d’autorisation à l’écran', () => {
     root.querySelector<HTMLButtonElement>(`[data-deny="${id}"]`)!.click()
     await written(before)
 
-    expect(store.currentTask()!.approvals[0].decision).toBe('denied')
+    expect(store.currentTask()!.approvals.find((a) => a.id === id)!.decision).toBe('denied')
   })
 
   it('met le compte dans le titre quand l’onglet est caché', async () => {

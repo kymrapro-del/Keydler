@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildDemoTask } from '../src/demo/seed'
+import { buildCoreTask as buildDemoTask } from '../src/demo/seed'
 import { estimateTokens, renderTaskState, TOKEN_BUDGET } from '../src/domain/render'
 import { buildFullExport, buildTaskExport } from '../src/export/notebook'
 import { addSecret, listSecretNames } from '../src/persistence/vault'

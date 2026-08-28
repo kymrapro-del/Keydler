@@ -43,8 +43,11 @@ describe('journal d’audit', () => {
 
   it('ne fusionne jamais une réussite avec ce qui la précède', () => {
     let t = tâche()
-    t = addConstraint(t, { rule: 'R', basedOnVersion: 1 }, 'human', ctx(10))
-    t = addConstraint(t, { rule: 'R', basedOnVersion: 2 }, 'human', ctx(20))
+    // Deux règles DIFFÉRENTES : une répétition mot pour mot est refusée depuis
+    // qu'un garde-fou existe, et ce cas-ci parle de fusion d'entrées, pas de
+    // doublons.
+    t = addConstraint(t, { rule: 'R one', basedOnVersion: 1 }, 'human', ctx(10))
+    t = addConstraint(t, { rule: 'R two', basedOnVersion: 2 }, 'human', ctx(20))
 
     const appliquées = t.audit.filter((e) => e.outcome === 'applied')
     expect(appliquées).toHaveLength(3)

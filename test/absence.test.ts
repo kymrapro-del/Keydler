@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildDemoTask } from '../src/demo/seed'
 import { addConstraint, askHuman, logStep } from '../src/domain/task'
-import { forgetSeen, markSeen, seenVersion } from '../src/ui/seen'
+import { forgetSeen, markSeen, seenVersion } from '../src/persistence/seen'
 import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase, waitUntil } from './helpers'

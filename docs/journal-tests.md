@@ -823,3 +823,108 @@ faux négatif pour un défaut.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — la démonstration rattrape le produit
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Constat de départ.** `buildDemoTask()` datait d'avant les questions, les
+autorisations et les contestations. Un juré cliquant « Try the demo » voyait un
+produit d'il y a **trois lots**. C'était le défaut à plus fort levier du dépôt.
+
+**Ce qui a été fait.** Le fichier est désormais en deux couches :
+`buildCoreTask()` — règles, rejets, décisions, travail avec preuves — et
+`buildDemoTask()`, qui y ajoute une question posée puis répondue, une demande
+d'autorisation **refusée**, et une étape **contestée** avec son motif. Les cas
+qui avaient besoin d'une page blanche pointent sur le socle.
+
+**Deux décisions prises en chemin.**
+
+1. La démonstration se termine sur une écriture d'**agent** (il refait le
+   benchmark après la contestation). Sans cela, « Undo that » s'affichait à
+   l'ouverture et proposait de révoquer une décision que personne ne venait de
+   prendre.
+2. Le cahier enrichi poussait `resume_task` à 425 jetons. L'échelle de
+   dégradation sait maintenant **abandonner l'historique tranché** — réponses
+   déjà données, autorisations déjà décidées — avant ce qui attend encore une
+   décision. Ce qui est réglé se relit page par page ; ce qui bloque, non.
+
+**Observé dans le navigateur.** Démo ouverte : la barre **Needs you** annonce
+« 1 proposal · 1 piece of evidence · 2 steps claimed with no evidence », la
+question répondue et l'étape contestée sont visibles, aucun bouton « Undo » à
+l'ouverture. `?` ouvre l'aide clavier, Échap la referme, `s` ouvre le
+formulaire d'étape.
+
+**Mesure.** Le lien partageable de la démo enrichie : **3 587 caractères**
+compressés. Sans `CompressionStream`, 12 255 — d'où la borne portée à 16 000,
+faute de quoi le repli aurait refusé un cahier ordinaire et n'aurait servi à
+rien.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.
+
+## 28 août 2026 — ne pas répéter, et ne pas clore en silence
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Observé par la vraie surface WebMCP.**
+
+- `add_constraint` avec `"  never modify the DATABASE schema.  "` sur un cahier
+  qui porte déjà « Never modify the database schema » : **refusé**, rien
+  écrit. La casse, les espaces et le point final sont ignorés.
+- `complete_task` : réussit, puis énumère ce qui n'a jamais été tranché —
+  `1 proposal nobody accepted or declined`, `2 steps still claimed with no
+evidence`, `1 step the human says is wrong` — avec la consigne de le dire dans
+  la passation plutôt que de laisser croire que tout a été réglé.
+
+**Un point d'honnêteté.** Le garde-fou compare des **chaînes**, pas des sens :
+deux formulations différentes du même interdit passeront toutes les deux. Le
+message de refus le dit en toutes lettres, pour que personne ne prenne cette
+comparaison pour une compréhension.
+
+**Défaut trouvé pendant l'écriture.** La garde s'était glissée dans
+`editRejection` : reformuler le motif d'un rejet en gardant son approche — le
+cas le plus normal — était refusé. Deux tests de non-régression l'avaient
+attrapé ; la garde n'est plus que sur les créations.
+
+**Lacune comblée au passage.** L'export ne portait ni les demandes
+d'autorisation ni les contestations, alors qu'il portait déjà les questions.
+Même famille d'oubli que les fois précédentes, désormais couverte par un test
+par section.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.
+
+## 28 août 2026 — durabilité du stockage, et reprise des règles
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Observé.**
+
+- Panneau technique : « Storage is not durable: the browser may clear this when
+  space runs short, and nothing here would survive it. » — l'état réel de ce
+  poste, relevé par `navigator.storage.persisted()`.
+- Un clic sur « Ask the browser to keep this » : **Brave a refusé**. La page le
+  dit — « The browser declined for now » — et laisse le bouton en place. C'est
+  le comportement attendu : Chrome accorde la durabilité sur des critères
+  d'usage, pas sur simple demande.
+- Création d'une tâche : « Carry over the 3 rules from “Refactor the
+  authentication module” », coché ou non.
+- En-tête : « Last written 14 minutes ago. »
+
+**Deux points de méthode, tous deux des erreurs de test et non de code.**
+
+1. Un test lisait l'état après `createAndOpenTask` sans attendre la **seconde**
+   écriture, celle qui reprend les règles. Il attend maintenant l'effet, pas la
+   première promesse.
+2. Un autre gardait une référence au nœud `details` **avant** un rendu : le DOM
+   étant remplacé à chaque rendu, il inspectait un nœud détaché. Relevé ici
+   parce que c'est un faux négatif facile à reprendre pour un défaut.
+
+**Défaut d'ergonomie corrigé.** La première version ne disait rien quand le
+navigateur refusait la durabilité : le clic n'avait aucun effet visible, ce qui
+se lit comme un bouton cassé.
+
+**Note de couche.** `elapsed.ts` a été placé dans `src/domain` et non dans
+`src/ui` : `render.ts` s'en sert, et le domaine ne doit pas dépendre de la vue.
+Même correction que pour `seen.ts` lors de l'audit.

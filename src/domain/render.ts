@@ -13,6 +13,7 @@ import {
 } from './task'
 import type { Confidence, TaskState } from './types'
 import { referenceSyntax, type SecretName } from './secret'
+import { sinceThen } from './elapsed'
 
 export const TOKEN_BUDGET = 400
 
@@ -106,7 +107,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   }
 
   const tranchées = decidedApprovals(state)
-  if (tranchées.length > 0) {
+  if (tranchées.length > 0 && recentApprovals > 0) {
     const shown = tranchées.slice(-recentApprovals)
     lines.push('')
     lines.push(
@@ -150,7 +151,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   }
 
   const répondues = answeredQuestions(state)
-  if (répondues.length > 0) {
+  if (répondues.length > 0 && recentAnswers > 0) {
     const shown = répondues.slice(-recentAnswers)
     lines.push('')
     lines.push(
@@ -162,6 +163,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       lines.push(`  Q: ${clip(q.question, c(120))}`)
       lines.push(`  A: ${clip(q.answer ?? '', c(150))}`)
     }
+  }
+
+  // Un cahier resté longtemps sans écriture est un cahier dont les hypothèses
+  // ont pu vieillir. On ne le dit que si c'est vrai, et jamais à la minute.
+  const dormant = sinceThen(state.updatedAt)
+  if (dormant !== null && Date.now() - state.updatedAt >= 24 * 60 * 60 * 1000) {
+    lines.push(`LAST WRITE  ${dormant} — check that what is below still holds`)
   }
 
   lines.push('')
@@ -321,6 +329,23 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentDisputes,
       recentQuestions,
       recentCredentials: Math.max(1, recentCredentials - 1),
+      clipScale,
+    })
+  }
+
+  // Dernier recours : ce qui est déjà tranché est de l'histoire, et se relit
+  // page par page. Ce qui attend une décision, non.
+  if (recentAnswers > 0 || recentApprovals > 0) {
+    return renderTaskState(state, {
+      ...options,
+      recentSteps,
+      recentDecisions,
+      recentProposals,
+      recentAnswers: 0,
+      recentApprovals: 0,
+      recentCredentials,
+      recentQuestions,
+      recentDisputes,
       clipScale,
     })
   }

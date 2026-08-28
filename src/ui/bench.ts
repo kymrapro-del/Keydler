@@ -5,7 +5,17 @@ import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeHistory } from './history'
-import { markSeen, seenVersion } from './seen'
+import { needsYou } from '../domain/attention'
+import { sinceThen } from '../domain/elapsed'
+import { SHORTCUTS } from './shortcuts'
+import { markSeen, seenVersion } from '../persistence/seen'
+import {
+  askForPersistence,
+  describeStorage,
+  readStorage,
+  UNKNOWN,
+  type StorageState,
+} from '../persistence/durability'
 import { attentionTitle } from './attention'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
@@ -15,6 +25,7 @@ import {
   acceptedRejections,
   activeConstraints,
   addConstraint,
+  copyRulesInto,
   answerQuestion,
   answeredQuestions,
   decideApproval,
@@ -178,6 +189,11 @@ let attachKindChosen = false
 let answering: string | null = null
 let attaching: string | null = null
 let disputing: string | null = null
+let showingShortcuts = false
+let storage: StorageState = UNKNOWN
+let storageRead = false
+let online = true
+let carryRules = false
 let showArchived = false
 
 function renderThemeToggle(): string {
@@ -348,6 +364,7 @@ function renderLanding(): string {
            <input id="new-rule" type="text" autocomplete="off"
                   placeholder="Never modify the database schema" />
          </div>
+         ${carryableRules()}
          <div class="actions">
            <button type="submit" class="btn btn--primary">Create task</button>
            <button type="button" id="cancel-create" class="btn">Cancel</button>
@@ -369,7 +386,9 @@ function renderLanding(): string {
         repeat. A new conversation can read it and continue from the right place.
       </p>
       ${alertBlock()}
+      ${renderOffline()}
       ${renderOffer()}
+      ${renderShortcuts()}
       ${form}
       <p class="muted landing__note">
         Everything stays in this browser. No account, no server.
@@ -747,7 +766,8 @@ function renderSwitcher(task: TaskState): string {
                 }</button>`
               : ''
           }
-          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown" hidden />
+          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown"
+                 aria-label="Choose a watch log file to import" hidden />
         </div>
       </div>
     </details>`
@@ -785,6 +805,66 @@ function renderOffer(): string {
         <button type="button" id="decline-link" class="btn">No thanks</button>
       </div>
     </section>`
+}
+
+function renderLastWrite(task: TaskState): string {
+  const when = sinceThen(task.updatedAt)
+  if (when === null) return ''
+  return `<p class="muted page-head__when">Last written ${escapeHtml(when)}.</p>`
+}
+
+function carryableRules(): string {
+  const open = store.currentTask()
+  const rules = open ? activeConstraints(open) : []
+  if (rules.length === 0) return ''
+
+  return `<div class="field field--check">
+      <input id="carry-rules" type="checkbox"${carryRules ? ' checked' : ''} />
+      <label for="carry-rules">
+        Carry over the ${rules.length} ${plural(rules.length, 'rule', 'rules')} from
+        “${escapeHtml(open!.title)}”
+      </label>
+    </div>`
+}
+
+function renderOffline(): string {
+  if (online) return ''
+  return `<p class="offline" role="status">
+      <strong>Offline.</strong> Everything here is on this device, so nothing stops —
+      the page and this log both work without a network.
+    </p>`
+}
+
+function renderShortcuts(): string {
+  if (!showingShortcuts) return ''
+  const rows = SHORTCUTS.map(
+    (s) => `<li class="row">
+        <kbd>${escapeHtml(s.key)}</kbd>
+        <span class="row__text">${escapeHtml(s.what)}</span>
+      </li>`,
+  ).join('')
+
+  return `<section id="shortcuts" class="card" aria-labelledby="shortcuts-title">
+      <h2 id="shortcuts-title" class="card__title">Keyboard</h2>
+      <ul class="rows">${rows}</ul>
+      <div class="actions">
+        <button type="button" id="close-shortcuts" class="btn">Close</button>
+      </div>
+    </section>`
+}
+
+function renderNeeds(task: TaskState): string {
+  const needs = needsYou(task)
+  if (needs.length === 0) return ''
+
+  const items = needs
+    .map((n) => `<li><a href="${n.anchor}">${escapeHtml(n.label)}</a></li>`)
+    .join('')
+
+  return `<nav class="needs" aria-label="What needs you">
+      <p class="needs__title">Needs you</p>
+      <ul class="needs__list">${items}</ul>
+    </nav>`
 }
 
 function renderPermission(task: TaskState): string {
@@ -1277,6 +1357,14 @@ function renderTechnical(task: TaskState | null): string {
           observedTools === null ? '(not read)' : escapeHtml(observedTools.join(' · ')) || '(none)'
         }</p>
         <p class="muted">Lifecycle: <strong>${lifecycle.mode}</strong> — ${escapeHtml(lifecycle.reason)}</p>
+        <p class="muted">${escapeHtml(describeStorage(storage))}</p>
+        ${
+          storage.persisted === false
+            ? `<div class="actions">
+                 <button type="button" id="persist" class="btn">Ask the browser to keep this</button>
+               </div>`
+            : ''
+        }
         ${
           task
             ? `<p class="mono">Task ID: ${escapeHtml(task.id)} · version ${task.version}</p>
@@ -1311,6 +1399,7 @@ function renderDashboard(task: TaskState): string {
                        aria-label="Rename this task">Rename</button>
              </div>`
       }
+      ${renderLastWrite(task)}
       ${renderSwitcher(task)}
       ${renderSearchBox()}
     </header>
@@ -1318,7 +1407,10 @@ function renderDashboard(task: TaskState): string {
     ${alertBlock()}
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
+    ${renderOffline()}
     ${renderOffer()}
+    ${renderShortcuts()}
+    ${searching() ? '' : renderNeeds(task)}
     ${searching() ? '' : renderPermission(task)}
     ${searching() ? '' : renderAway(task)}
     ${searching() ? '' : renderNext(task)}
@@ -1383,6 +1475,16 @@ function bindDrafts(): void {
 }
 
 function bindCreation(): void {
+  const carryBox = document.querySelector<HTMLInputElement>('#carry-rules')
+  if (carryBox) {
+    carryBox.checked = carryRules
+    for (const event of ['change', 'input']) {
+      carryBox.addEventListener(event, () => {
+        carryRules = carryBox.checked
+      })
+    }
+  }
+
   document.querySelector('#start-create')?.addEventListener('click', () => {
     creating = true
     renderNow()
@@ -1416,8 +1518,15 @@ function bindCreation(): void {
     }
 
     humanError = null
+    // Lu AVANT la création : ouvrir la nouvelle tâche remplace la courante.
+    const source = carryRules ? store.currentTask() : null
+
     void store
       .createAndOpenTask(title, next)
+      .then(() => {
+        if (!source) return undefined
+        return store.mutate((s) => copyRulesInto(s, source)).then(() => undefined)
+      })
       .then(() => {
         if (!rule) return undefined
         return store
@@ -1893,6 +2002,34 @@ function bindSupervision(): void {
     })
   }
 
+  document.querySelector('#persist')?.addEventListener('click', () => {
+    void askForPersistence()
+      .then((granted) => {
+        // Un clic sans effet visible se lit comme un bouton cassé. Chrome
+        // accorde la durabilité sur des critères d'usage, pas sur demande.
+        if (granted === true) {
+          showNotice('The browser will keep this data unless you delete it yourself.')
+        } else if (granted === false) {
+          showNotice(
+            'The browser declined for now. It usually grants this once the page has ' +
+              'been used a few times; asking again later costs nothing.',
+          )
+        } else {
+          showNotice('This browser does not answer that question. Export what matters.')
+        }
+      })
+      .then(() => readStorage())
+      .then((state) => {
+        storage = state
+        scheduleRender()
+      })
+  })
+
+  document.querySelector('#close-shortcuts')?.addEventListener('click', () => {
+    showingShortcuts = false
+    renderNow()
+  })
+
   document.querySelector('#accept-link')?.addEventListener('click', () => {
     const task = offered
     if (!task) return
@@ -2187,6 +2324,14 @@ function render(): void {
   // digest doit rapporter.
   if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
 
+  if (!storageRead) {
+    storageRead = true
+    void readStorage().then((state) => {
+      storage = state
+      scheduleRender()
+    })
+  }
+
   if (!linkRead) {
     linkRead = true
     const packed = readLinkFragment()
@@ -2293,6 +2438,11 @@ function clearLinkFragment(): void {
   history.replaceState(null, '', `${location.pathname}${location.search}`)
 }
 
+function onNetworkChange(): void {
+  online = navigator.onLine
+  scheduleRender()
+}
+
 function looking(): boolean {
   return typeof document.visibilityState !== 'string' || document.visibilityState === 'visible'
 }
@@ -2309,6 +2459,13 @@ function onVisibilityChange(): void {
 
 function closeOnEscape(event: KeyboardEvent): void {
   if (event.key !== 'Escape' || event.ctrlKey || event.metaKey || event.altKey) return
+
+  if (showingShortcuts) {
+    showingShortcuts = false
+    event.preventDefault()
+    renderNow()
+    return
+  }
 
   if (creating) {
     creating = false
@@ -2354,6 +2511,46 @@ function closeOnEscape(event: KeyboardEvent): void {
   }
 }
 
+function onShortcut(event: KeyboardEvent): void {
+  if (event.ctrlKey || event.metaKey || event.altKey) return
+  if (typingSomewhereElse(event.target)) return
+
+  const act = (run: () => void) => {
+    event.preventDefault()
+    run()
+  }
+
+  switch (event.key) {
+    case '?':
+      return act(() => {
+        showingShortcuts = !showingShortcuts
+        renderNow()
+      })
+    case 's':
+      return act(() => {
+        if (store.currentTask()?.status !== 'active') return
+        loggingStep = true
+        editing = null
+        renderNow()
+        document.querySelector<HTMLInputElement>('#step-action')?.focus()
+      })
+    case 'n':
+      return act(() => {
+        creating = true
+        clearNotice()
+        humanError = null
+        renderNow()
+        document.querySelector<HTMLInputElement>('#new-title')?.focus()
+      })
+    case 'e':
+      return act(() => {
+        const task = store.currentTask()
+        if (!task || task.status !== 'active') return
+        startEditing({ kind: 'next' }, task.next ?? '')
+      })
+  }
+}
+
 function focusSearchOnSlash(event: KeyboardEvent): void {
   if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return
   if (typingSomewhereElse(event.target)) return
@@ -2391,6 +2588,11 @@ export function mount(target: HTMLElement): () => void {
   answering = null
   attaching = null
   disputing = null
+  showingShortcuts = false
+  storage = UNKNOWN
+  storageRead = false
+  online = typeof navigator.onLine === 'boolean' ? navigator.onLine : true
+  carryRules = false
   showArchived = false
 
   render()
@@ -2402,12 +2604,18 @@ export function mount(target: HTMLElement): () => void {
 
   document.addEventListener('keydown', focusSearchOnSlash)
   document.addEventListener('keydown', closeOnEscape)
+  document.addEventListener('keydown', onShortcut)
   document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('online', onNetworkChange)
+  window.addEventListener('offline', onNetworkChange)
 
   return () => {
     document.removeEventListener('keydown', focusSearchOnSlash)
     document.removeEventListener('keydown', closeOnEscape)
+    document.removeEventListener('keydown', onShortcut)
     document.removeEventListener('visibilitychange', onVisibilityChange)
+    window.removeEventListener('online', onNetworkChange)
+    window.removeEventListener('offline', onNetworkChange)
     hideRevealed()
     clearNotice()
     for (const off of subscriptions) off()

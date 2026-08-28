@@ -99,6 +99,12 @@ If nobody answers within the window, the call comes back `NO ANSWER` — never
 treat it exactly as a refusal_. The request stays on the page for when you
 return.
 
+**One bar tells you what needs you.** The human-side answer to `resume_task`:
+what is unresolved, in the order it costs to miss, each one a link to the card
+that holds it
+
+![Needs you](docs/assets/needs-you.png)
+
 **You can say an agent is wrong.** Approving evidence was always possible;
 refusing it was not. A disputed step carries your reason forever, stops counting
 as proven, and reaches the next conversation as `DISPUTED BY THE HUMAN — treat
@@ -237,7 +243,21 @@ defend against everything:
   big for a link is refused with the size, and points at the file export, which
   has no limit.
 - **Installable and offline.** A manifest and a service worker; verified with the
-  server stopped.
+  server stopped. When the network goes, the page says so — everything here is on
+  the device, so nothing stops.
+- **Will the browser keep this?** Technical details reports whether storage is
+  durable and how much room the log takes, and offers to ask the browser for
+  durability. It never claims the work is safe: not durable means _may be
+  cleared when space runs short_, durable means _the browser will not clear it
+  on its own_ — you still can, and so can a site-data wipe. If the browser
+  declines the request, the page says that too rather than doing nothing
+  visible.
+- **Carry the rules over.** Creating a task offers to bring the rules in force
+  from the one you are on. They arrive binding and attributed to you, and
+  nothing else follows — not the work, not the rejections, not the history.
+- **How long since anything happened.** The header says when the log was last
+  written, and `resume_task` warns an agent when a notebook has sat untouched
+  for a day or more, so it checks that what it is reading still holds.
 - **Did the agent read before writing?** The page counts it, from the calls it
   actually observed. Every write after a read says so; a write that arrived
   before any read is called out — that agent was working from its own memory,
@@ -253,6 +273,24 @@ defend against everything:
   approve it is a form with one exit. “Wrong” sits beside “Approve”, asks for
   your reason, and that reason is what every later conversation reads. Disputing
   drops the step out of the proven count, and it undoes like any other decision.
+- **“Needs you”**, at the top, before you read ten cards: agents blocked on a
+  decision, questions, proposals, evidence to read, work claimed with no
+  evidence — counted, ordered by what it costs to miss, and linked to the card
+  that holds each one. It disappears when there is nothing left.
+- **Keyboard.** `/` search, `s` record a step, `n` new task, `e` change the next
+  action, `?` for the list, `Esc` closes whatever is open. Nothing is captured
+  while you are typing.
+- **Print it.** A print stylesheet drops the buttons and the dark ground, so
+  `Cmd+P` gives a hand-over sheet that reads on paper.
+- **No repeating what is already written.** An agent proposing a rule, a
+  rejection, a question or a request word for word identical to one already on
+  the task is refused, and told so — it compares strings, not meanings, and the
+  message says exactly that. It keeps the log from filling with duplicates the
+  human then has to decline one by one.
+- **Closing is not settling.** `complete_task` succeeds, then lists what was
+  never resolved — questions nobody answered, proposals nobody decided, steps
+  still claimed, steps you called wrong — and tells the agent to say so in its
+  hand-over rather than imply it was all handled.
 - **The tab calls you.** When something is waiting on you and the tab is in the
   background, its title carries the count — the same signal every chat app uses,
   and it costs no permission prompt.
@@ -261,6 +299,15 @@ defend against everything:
   decision, only while that decision is still in force, and never reaches past
   an agent's work. Nothing is erased: the undo is a write of its own, and both
   it and what it reversed stay in the history.
+
+## Audit
+
+[`docs/audit-2026-08-28.md`](docs/audit-2026-08-28.md) is a full defect hunt over
+the repository: static review, boundary probes, real-browser sequences including
+two tabs at once, and thirteen mutation tests that break a guarantee in the
+source and check the suite goes red. It lists what was found and fixed — sealed
+credentials outlived the task that held them, the worst of the four — and, at
+the same length, what is known and left alone.
 
 ## Technical guarantees
 
