@@ -1,7 +1,15 @@
 import { buildMeasureTask } from '../demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from '../export/notebook'
 import { parseExport } from '../export/restore'
-import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
+import {
+  isSealedLink,
+  linkFor,
+  packSealedTask,
+  packTask,
+  readLinkFragment,
+  unpackTask,
+  unsealTask,
+} from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeEntry, describeHistory } from './history'
@@ -180,6 +188,8 @@ let awayFor: string | null = null
 let offered: TaskState | null = null
 let linkRead = false
 let linkPending = false
+// Un lien scellé attend une phrase avant même de pouvoir être décrit.
+let sealedLink: string | null = null
 
 type Editing =
   | { kind: 'title' }
@@ -396,6 +406,7 @@ function renderLanding(): string {
       </p>
       ${alertBlock()}
       ${renderOffline()}
+      ${renderSealedOffer()}
       ${renderOffer()}
       ${renderShortcuts()}
       ${form}
@@ -942,6 +953,28 @@ function renderSwitcher(task: TaskState): string {
     </details>`
 }
 
+function renderSealedOffer(): string {
+  if (!sealedLink) return ''
+  return `<section class="card card--away" aria-labelledby="sealed-title">
+      <h2 id="sealed-title" class="card__title">A protected watch log</h2>
+      <p class="muted">
+        Somebody sent you a sealed link. Nothing about the log can be read —
+        not even its name — until the passphrase they gave you separately is
+        entered here. It is checked on this device; no server sees it.
+      </p>
+      <form id="form-sealed" class="form" novalidate>
+        <div class="field">
+          <label for="sealed-passphrase">The passphrase they gave you</label>
+          <input id="sealed-passphrase" type="password" autocomplete="off" />
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn--primary">Open it</button>
+          <button type="button" id="decline-sealed" class="btn">No thanks</button>
+        </div>
+      </form>
+    </section>`
+}
+
 function renderOffer(): string {
   if (!offered) return ''
   const counts = [
@@ -1263,6 +1296,12 @@ function renderHandoff(task: TaskState): string {
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
       <button type="button" id="copy-link" class="btn btn--quiet">Copy a link that carries this log</button>
+      <button type="button" id="copy-sealed-link" class="btn btn--quiet">Copy a protected link</button>
+      <span class="muted">
+        A protected link is sealed with a passphrase you give them another way.
+        Nobody can tell who opens a link — that would need a server — but a
+        sealed one is useless to anyone who does not know the phrase.
+      </span>
       ${carriedNote}
       <button type="button" id="copy-state" class="btn btn--quiet">Copy the log as text</button>
       ${undoButton}
@@ -1684,7 +1723,8 @@ function renderDashboard(task: TaskState): string {
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
     ${renderOffline()}
-    ${renderOffer()}
+    ${renderSealedOffer()}
+      ${renderOffer()}
     ${renderShortcuts()}
     ${searching() ? '' : renderNeeds(task)}
     ${searching() ? '' : renderPermission(task)}
@@ -2410,6 +2450,67 @@ function bindSupervision(): void {
       )
   })
 
+  document.querySelector('#copy-sealed-link')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    const phrase = window.prompt(
+      'Passphrase for this link? Give it to them another way — not in the same message.',
+    )
+    if (!phrase?.trim()) return
+    humanError = null
+    void packSealedTask(task, phrase)
+      .then((packed) =>
+        navigator.clipboard?.writeText(linkFor(location.origin, taskPath(task.id), packed)),
+      )
+      .then(
+        () =>
+          showNotice(
+            'Protected link copied. Without the passphrase it is unreadable — send the phrase another way.',
+          ),
+        (error: unknown) => {
+          humanError = humanMessage(error, 'Building that protected link')
+          scheduleRender()
+        },
+      )
+  })
+
+  document.querySelector('#decline-sealed')?.addEventListener('click', () => {
+    sealedLink = null
+    clearLinkFragment()
+    renderNow()
+  })
+
+  document.querySelector<HTMLFormElement>('#form-sealed')?.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const packed = sealedLink
+    const champ = document.querySelector<HTMLInputElement>('#sealed-passphrase')
+    if (!packed || !champ?.value.trim()) return
+    const phrase = champ.value
+    humanError = null
+    linkPending = true
+    renderNow()
+    void unsealTask(packed, phrase).then(
+      (task) => {
+        linkPending = false
+        sealedLink = null
+        offered = task
+        clearLinkFragment()
+        renderNow()
+      },
+      (error: unknown) => {
+        linkPending = false
+        // « La phrase est fausse » et « ce lien est illisible » ne se disent
+        // pas pareil à quelqu'un qui vient de taper une phrase : l'un se
+        // corrige en réessayant, l'autre non.
+        humanError =
+          error instanceof WrongPassphraseError
+            ? 'That passphrase does not open this link. Ask them to repeat it — the link itself is fine.'
+            : humanMessage(error, 'Opening that protected link')
+        renderNow()
+      },
+    )
+  })
+
   document.querySelector('#seen')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (!task) return
@@ -2674,7 +2775,11 @@ function render(): void {
   if (!linkRead) {
     linkRead = true
     const packed = readLinkFragment()
-    if (packed) {
+    if (packed && isSealedLink(packed)) {
+      // On ne tente rien : sans la phrase, il n'y a rien à lire, pas même le
+      // titre. C'est la propriété qu'on vend.
+      sealedLink = packed
+    } else if (packed) {
       linkPending = true
       void unpackTask(packed).then(
         (task) => {
@@ -2950,6 +3055,7 @@ export function mount(target: HTMLElement): () => void {
   offered = null
   linkRead = false
   linkPending = false
+  sealedLink = null
   editing = null
   loggingStep = false
   answering = null

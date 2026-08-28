@@ -82,6 +82,17 @@ and the whole history
 
 ![Active task](docs/assets/active-task.png)
 
+**Or send it sealed.** A protected link is encrypted with a passphrase you give
+the other person another way — the same AES-GCM 256 and PBKDF2-SHA256 at 600 000
+iterations the credential vault uses, no new cryptography. Until the phrase is
+entered, nothing about the log can be read, not even its name. A sealed link
+left in a chat log is a block of ciphertext.
+
+What it does **not** do, and the screen says so: it cannot tell who opens it.
+A URL fragment is a bearer capability, and checking an identity would need a
+server this product does not have. What a passphrase proves is knowledge of a
+secret, which is a different thing and the strongest thing available without one.
+
 **Send the whole log in a link.** No server sees it — the log rides in the URL
 fragment, which browsers never transmit. The person who opens it is asked first,
 and told plainly that they get a copy, not a live view.

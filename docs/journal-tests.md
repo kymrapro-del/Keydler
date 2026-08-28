@@ -1607,3 +1607,40 @@ la branche des ressources ; il manquait sur celle des navigations.
 carte de source de **519 ko**, plus lourde que tout le reste du site réuni, et
 qui rend la source entière lisible par un agent pilotant le navigateur. Elle est
 maintenant sur demande (`SOURCEMAP=1`). `dist/` passe de ~760 ko à **260 ko**.
+
+## 29 août 2026 — le lien protégé par une phrase de passe
+
+Un lien porte le cahier entier, et sa vraie fuite n'est pas le fragment — que
+le navigateur ne transmet jamais — mais **l'endroit où on le colle** : un fil
+Slack, un mail, une conversation qui garde le message.
+
+**Ce qui a été construit.** Un second bouton, « Copy a protected link », qui
+scelle le lien par une phrase de passe. Aucune cryptographie nouvelle : c'est
+`seal`/`unseal` du coffre, AES-GCM 256 et PBKDF2-SHA256 à 600 000 itérations,
+sel et IV tirés au hasard à chaque scellement. On chiffre **après** avoir
+compressé, un chiffré ne se compressant pas.
+
+**Ce que ça ne fait pas, et l'écran le dit.** Cela ne vérifie pas une identité.
+Un fragment d'URL est une capacité au porteur, et authentifier quelqu'un
+demanderait un serveur. Ce qu'une phrase prouve, c'est la connaissance d'un
+secret — autre chose, et le maximum disponible sans serveur. Un mutant qui
+remplace cette phrase par « We check who opens it » fait rougir la suite.
+
+**Vérifié dans Brave 151, de bout en bout.**
+
+| Étape                       | Observé                                                                                                         |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Lien copié                  | 6852 caractères, marqueur `#log=s`, titre du cahier absent                                                      |
+| Destinataire, appareil vide | « A protected watch log » — **rien n'est lisible, pas même le nom**                                             |
+| Mauvaise phrase             | « That passphrase does not open this link. Ask them to repeat it — the link itself is fine. » et le champ reste |
+| Bonne phrase                | l'offre ordinaire, titre visible, « Take a copy »                                                               |
+| Après ouverture             | le fragment a quitté la barre d'adresse                                                                         |
+
+Taille : **1,82×** le lien ordinaire (3747 → 6821 caractères sur le cahier de
+démonstration), très en deçà de la borne de 16 000.
+
+**Erreur de sonde, consignée.** Ma première tentative montrait le cahier au
+lieu de demander la phrase. J'avais vidé IndexedDB depuis la page **encore
+montée** : le magasin, toujours en mémoire, a réécrit la tâche avant la
+navigation. En passant d'abord par une page neuve, le comportement attendu
+apparaît. Le produit n'y était pour rien.
