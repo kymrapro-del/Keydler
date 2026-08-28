@@ -120,7 +120,10 @@ describe('annuler la dernière décision de supervision', () => {
     expect(undoable(restored)).toContain('restored')
   })
 
-  it('n’annule pas une réponse, un renommage ou une étape', () => {
+  it('n’annule ni une réponse, ni une étape consignée', () => {
+    // Une réponse a pu être lue et suivie par un agent : la retirer d'un clic
+    // effacerait ce sur quoi il s'est appuyé. Une étape est le récit d'un
+    // travail, pas une décision de supervision.
     const asked = askHuman(
       task,
       { question: 'Which region?', why: 'It changes the endpoint.', basedOnVersion: null },
@@ -129,10 +132,13 @@ describe('annuler la dernière décision de supervision', () => {
     const answered = answerQuestion(asked, openQuestions(asked)[0].id, 'eu-west-1')
     expect(undoable(answered)).toBeNull()
 
-    expect(undoable(renameTask(task, 'A new title'))).toBeNull()
     expect(
       undoable(logStep(task, { action: 'a', result: 'b', basedOnVersion: null }, 'human')),
     ).toBeNull()
+  })
+
+  it('annule en revanche un renommage, qui n’est qu’un mot remplacé', () => {
+    expect(undoable(renameTask(task, 'A new title'))).toContain('renamed')
   })
 })
 

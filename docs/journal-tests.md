@@ -928,3 +928,35 @@ se lit comme un bouton cassé.
 **Note de couche.** `elapsed.ts` a été placé dans `src/domain` et non dans
 `src/ui` : `render.ts` s'en sert, et le domaine ne doit pas dépendre de la vue.
 Même correction que pour `seen.ts` lors de l'audit.
+
+## 28 août 2026 — annulation étendue, inspecteur d'outils, filtres
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Observé.**
+
+- Renommage d'une tâche, puis clic sur **Annuler** :
+  `Undo: you renamed this task to “A name I will regret”`, et le titre d'origine
+  revient. Même chose désormais pour la prochaine action et la reformulation
+  d'une règle.
+- Inspecteur d'outils, replié par défaut sous les détails techniques :
+  **treize** outils, chacun avec la description et le schéma **exacts** que
+  l'agent reçoit. Un test compare le `<pre>` du schéma à `tool.inputSchema` par
+  égalité structurelle, donc il ne peut pas dériver.
+- Filtres de recherche sur « token » : `All (5) · Ruled out (2) · Steps (2) ·
+Decisions (1)`. Cliquer « Steps » réduit de 5 à 2 lignes.
+
+**Décision de conception.** L'annulation s'arrête toujours à deux choses : une
+**réponse** à une question, et une **étape** consignée. Un agent a pu lire la
+réponse et s'appuyer dessus ; la retirer d'un clic effacerait le sol sous ses
+pieds. Une étape est le récit d'un travail, pas une décision de supervision. Un
+test énonce cette frontière plutôt que de la laisser implicite.
+
+**Ce qui a rendu l'annulation possible.** `AuditEntry` porte maintenant
+`previous`, la valeur remplacée. C'est d'abord un meilleur journal — « renamed:
+X → Y » plutôt que « renamed » — et l'annulation n'en est qu'une conséquence.
+Schéma passé à v9.
+
+**Note de méthode.** Une sonde a lu `<h1>` **après** avoir ouvert le formulaire
+de renommage, qui remplace précisément le titre : erreur de sonde, pas de code.
+Consignée pour la même raison que les précédentes.

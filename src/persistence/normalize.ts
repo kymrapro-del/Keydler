@@ -158,6 +158,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       outcome: a.outcome === 'refused' ? 'refused' : 'applied',
       detail: asString(a.detail, ''),
       ...(typeof a.targetId === 'string' && a.targetId !== '' ? { targetId: a.targetId } : {}),
+      ...(typeof a.previous === 'string' ? { previous: a.previous } : {}),
       ...(typeof a.repeated === 'number' ? { repeated: a.repeated } : {}),
       at: asNumber(a.at, now),
     })),

@@ -20,7 +20,7 @@ import { attentionTitle } from './attention'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
-import { MIN_QUERY, searchTask, searchTasks, type Match } from '../domain/search'
+import { MIN_QUERY, searchTask, searchTasks, type Match, type MatchKind } from '../domain/search'
 import {
   acceptedRejections,
   activeConstraints,
@@ -75,6 +75,7 @@ import {
   type SecretKind,
   type SecretName,
 } from '../domain/secret'
+import { ALL_TOOLS, READ_TOOLS } from '../webmcp/tools'
 import {
   getRegistrationState,
   getWitness,
@@ -194,6 +195,7 @@ let storage: StorageState = UNKNOWN
 let storageRead = false
 let online = true
 let carryRules = false
+let searchFilter: MatchKind | 'all' = 'all'
 let showArchived = false
 
 function renderThemeToggle(): string {
@@ -688,10 +690,39 @@ function renderMatch(match: Match, q: string): string {
     </li>`
 }
 
+const FILTER_LABEL: Record<MatchKind, string> = {
+  rule: 'Rules',
+  rejection: 'Ruled out',
+  step: 'Steps',
+  evidence: 'Evidence',
+  decision: 'Decisions',
+  question: 'Questions',
+  approval: 'Permissions',
+  history: 'History',
+}
+
+function renderFilters(all: Match[]): string {
+  const present = [...new Set(all.map((m) => m.kind))]
+  if (present.length < 2) return ''
+
+  const button = (kind: MatchKind | 'all', label: string, count: number) =>
+    `<button type="button" class="btn btn--quiet" data-filter="${kind}"
+             aria-pressed="${searchFilter === kind}">${escapeHtml(label)} (${count})</button>`
+
+  return `<div class="actions search__filters">
+      ${button('all', 'All', all.length)}
+      ${present
+        .map((kind) => button(kind, FILTER_LABEL[kind], all.filter((m) => m.kind === kind).length))
+        .join('')}
+    </div>`
+}
+
 function renderSearchResults(task: TaskState | null): string {
   const q = query()
-  const here = task ? searchTask(task, q) : []
-  const elsewhere = searchTasks(allTasks, q).filter((t) => t.id !== task?.id)
+  const found = task ? searchTask(task, q) : []
+  const here = searchFilter === 'all' ? found : found.filter((m) => m.kind === searchFilter)
+  const elsewhere =
+    searchFilter === 'all' ? searchTasks(allTasks, q).filter((t) => t.id !== task?.id) : []
 
   const hereBody = here.length
     ? `<ul class="rows">${here
@@ -722,6 +753,7 @@ function renderSearchResults(task: TaskState | null): string {
       <h2 id="search-title" class="card__title">
         ${here.length + elsewhere.length} ${plural(here.length + elsewhere.length, 'match', 'matches')} for “${escapeHtml(q)}”
       </h2>
+      ${renderFilters(found)}
       <h3>In this task <span class="muted">(${here.length})</span></h3>
       ${hereBody}
       <h3>Other tasks <span class="muted">(${elsewhere.length})</span></h3>
@@ -1332,6 +1364,31 @@ function renderHistory(task: TaskState): string {
     </section>`
 }
 
+function renderToolInspector(): string {
+  const rows = ALL_TOOLS.map((tool) => {
+    const reads = READ_TOOLS.includes(tool)
+    return `<li class="review" data-tool="${escapeHtml(tool.name)}">
+        <div class="row">
+          <span class="chip chip--${reads ? 'evidence' : 'claimed'}">${reads ? 'reads' : 'writes'}</span>
+          <span class="row__text"><code>${escapeHtml(tool.name)}</code></span>
+        </div>
+        <pre>${escapeHtml(tool.description)}</pre>
+        <pre>${escapeHtml(JSON.stringify(tool.inputSchema, null, 2))}</pre>
+      </li>`
+  }).join('')
+
+  return `<details id="tools" class="technical">
+      <summary>What an agent reads — ${ALL_TOOLS.length} tools, verbatim</summary>
+      <div class="technical__body">
+        <p class="muted">
+          The registered tool objects themselves: the same descriptions and schemas
+          an agent receives through WebMCP, not a summary written for this page.
+        </p>
+        <ul class="rows">${rows}</ul>
+      </div>
+    </details>`
+}
+
 function renderTechnical(task: TaskState | null): string {
   const { phase, availability, toolNames, error, observedTools, lifecycle } = getRegistrationState()
 
@@ -1374,6 +1431,7 @@ function renderTechnical(task: TaskState | null): string {
                )}</pre>`
             : ''
         }
+        ${renderToolInspector()}
         <div class="actions">
           <button type="button" id="export-one" class="btn">Export this task</button>
           <button type="button" id="export-all" class="btn">Export all tasks</button>
@@ -1896,8 +1954,19 @@ function bindSupervision(): void {
     })
   }
 
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-filter]')) {
+    b.addEventListener('click', () => {
+      searchFilter = b.dataset.filter as MatchKind | 'all'
+      renderNow()
+    })
+  }
+
   const searchField = document.querySelector<HTMLInputElement>('#search')
-  searchField?.addEventListener('input', () => scheduleRender())
+  searchField?.addEventListener('input', () => {
+    // Un filtre gardé d'une recherche à l'autre fait croire à un résultat vide.
+    searchFilter = 'all'
+    scheduleRender()
+  })
   searchField?.addEventListener('search', () => scheduleRender())
   document.querySelector<HTMLFormElement>('#form-search')?.addEventListener('submit', (e) => {
     e.preventDefault()
@@ -2593,6 +2662,7 @@ export function mount(target: HTMLElement): () => void {
   storageRead = false
   online = typeof navigator.onLine === 'boolean' ? navigator.onLine : true
   carryRules = false
+  searchFilter = 'all'
   showArchived = false
 
   render()

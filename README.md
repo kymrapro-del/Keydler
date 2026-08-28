@@ -294,11 +294,24 @@ defend against everything:
 - **The tab calls you.** When something is waiting on you and the tab is in the
   background, its title carries the count — the same signal every chat app uses,
   and it costs no permission prompt.
-- **Undo that.** Lifting a rule, accepting a proposal, archiving a task are all
-  one click, so all three are one click back. It undoes only your own last
+- **Undo that.** Lifting a rule, accepting a proposal, archiving a task,
+  disputing a step, renaming, rewording a rule, changing the next action — each
+  is one click, so each is one click back. It undoes only your own last
   decision, only while that decision is still in force, and never reaches past
-  an agent's work. Nothing is erased: the undo is a write of its own, and both
-  it and what it reversed stay in the history.
+  an agent's work. An answer to a question and a logged step stay outside it: an
+  agent may already have acted on the answer, and a step is a record of work,
+  not a decision. Nothing is erased — the undo is a write of its own, and the
+  audit entry now keeps what was replaced, so the history reads _“renamed: X →
+  Y”_ rather than just _“renamed”_.
+- **Filter what you searched.** When results span rules, steps, decisions and
+  rejections, one button per kind narrows them, with a count each. The filter
+  resets when the query changes, so a stale filter never makes a hit look like a
+  miss.
+- **See exactly what an agent reads.** Technical details holds the thirteen
+  registered tool objects verbatim — the same descriptions and JSON schemas that
+  reach an agent through WebMCP, not a summary written for the page. A reader
+  with no agent to hand can check every claim in this README against the source
+  of truth.
 
 ## Audit
 

@@ -811,3 +811,7 @@ kbd {
   margin: 0 0 var(--sp-2);
   font-size: 0.875rem;
 }
+
+.search__filters {
+  margin-bottom: var(--sp-2);
+}
