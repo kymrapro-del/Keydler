@@ -35,7 +35,9 @@ function seeker(query: string): (haystack: string) => boolean {
   return (haystack) => fold(haystack).includes(needle)
 }
 
-export function searchTasks(tasks: readonly TaskState[], query: string): TaskHit[] {
+type Searchable = Pick<TaskState, 'id' | 'title' | 'next' | 'status' | 'archived'>
+
+export function searchTasks(tasks: readonly Searchable[], query: string): TaskHit[] {
   if (query.trim().length < MIN_QUERY) return []
   const hit = seeker(query.trim())
 

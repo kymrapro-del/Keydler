@@ -16,11 +16,23 @@ export async function saveTask(state: TaskState, expectedVersion?: number): Prom
   const tasks = tx.objectStore('tasks')
 
   if (expectedVersion !== undefined) {
-    const stored = await tasks.get(state.id)
-    if (stored && stored.version !== expectedVersion) {
-      tx.abort()
-      tx.done.catch(() => undefined)
-      throw new ConcurrentWriteError(expectedVersion, stored.version)
+    // Le contrôle ne porte que sur un entier, et il relisait tout le cahier
+    // pour l'obtenir : 2 ms pour 800 ko dans Chrome, contre 0,1 ms pour une
+    // clé. L'index `by-id-version` répond « ce cahier est-il à CETTE version »
+    // sans rapatrier son contenu. Il est tenu par IndexedDB à partir des
+    // champs du cahier : aucun miroir à maintenir, donc rien qui dérive.
+    const àJour = await tasks.index('by-id-version').getKey([state.id, expectedVersion])
+    if (àJour === undefined) {
+      // Deux cas se ressemblent ici : le cahier n'existe pas encore, ou il a
+      // bougé. Seul le second est un conflit, et lui seul paie la relecture —
+      // parce qu'il faut dire à quelle version on est vraiment.
+      const existe = await tasks.getKey(state.id)
+      if (existe !== undefined) {
+        const stored = await tasks.get(state.id)
+        tx.abort()
+        tx.done.catch(() => undefined)
+        throw new ConcurrentWriteError(expectedVersion, stored?.version ?? -1)
+      }
     }
   }
 

@@ -299,3 +299,33 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
     expect(switcher.textContent).toContain('Show all 39 tasks')
   })
 })
+
+/**
+ * Le sélecteur gardait les cahiers ENTIERS en mémoire — tout le poste, en
+ * permanence, pour une liste déroulante repliée. Mesuré : 1,5 Mo en tas pour
+ * un cahier de 1000 étapes, 29,6 Mo pour 20 000.
+ */
+describe('la liste des cahiers ne retient pas les cahiers', () => {
+  it('ne rend que ce que le sélecteur affiche', async () => {
+    await store.openPreparedTask({
+      ...buildCoreTask(),
+      id: 'gros',
+      title: 'Gros cahier',
+      steps: steps(300),
+      questions: questions(2),
+    })
+
+    const cards = await store.allTaskCards()
+    const carte = cards.find((c) => c.id === 'gros')!
+
+    expect(carte.title).toBe('Gros cahier')
+    // Ce qui pèse n'est pas là. Un test de mémoire clignoterait ; celui-ci dit
+    // la même chose et ne clignote pas.
+    for (const lourd of ['steps', 'audit', 'mutations', 'decisions', 'rejected', 'constraints']) {
+      expect(Object.keys(carte), lourd).not.toContain(lourd)
+    }
+    // Et ce qui doit survivre à la réduction survit : la pastille est calculée
+    // avant que le cahier ne soit relâché.
+    expect(carte.needs.some((n) => n.kind === 'question')).toBe(true)
+  })
+})

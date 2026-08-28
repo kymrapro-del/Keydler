@@ -5,6 +5,7 @@ import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeEntry, describeHistory } from './history'
+import type { TaskCard } from '../domain/card'
 import { historyOf } from '../domain/trail'
 import { needsYou, summariseNeeds } from '../domain/attention'
 import { sinceThen } from '../domain/elapsed'
@@ -147,7 +148,7 @@ function hideRevealedLater(): void {
 }
 let credentialsFor: string | null = null
 
-let allTasks: TaskState[] = []
+let allTasks: TaskCard[] = []
 let allTasksFor = ''
 let notice: string | null = null
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
@@ -290,9 +291,9 @@ function editForm(label: string, second?: string): string {
 
 function refreshTaskList(key: string): void {
   allTasksFor = key
-  void store.allTasks().then(
-    (tasks) => {
-      allTasks = tasks
+  void store.allTaskCards().then(
+    (cards) => {
+      allTasks = cards
       scheduleRender()
     },
     () => {
@@ -891,7 +892,7 @@ function renderSwitcher(task: TaskState): string {
     .map((t) => {
       // `needsYou` balaie toutes les étapes du cahier : l'appeler une fois
       // pour tester et une fois pour afficher le faisait deux fois par ligne.
-      const badge = summariseNeeds(needsYou(t))
+      const badge = summariseNeeds(t.needs)
       return `<li class="row">
         <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
           t.archived ? 'archived' : t.status === 'completed' ? 'closed' : 'open'
