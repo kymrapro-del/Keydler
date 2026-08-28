@@ -1200,6 +1200,42 @@ export function answeredQuestions(state: TaskState): OpenQuestion[] {
   return state.questions.filter((q) => q.answer !== null)
 }
 
+/**
+ * Les règles en vigueur d'un autre cahier, reprises comme des règles humaines :
+ * quelqu'un a choisi de les porter ici, elles engagent donc d'emblée. Rien
+ * d'autre ne suit — ni le travail, ni les rejets, ni le journal.
+ */
+export function copyRulesInto(
+  target: TaskState,
+  source: TaskState,
+  ctx?: MutationContext,
+): TaskState {
+  const { newId } = resolve(ctx)
+  const rules = source.constraints.filter((c) => c.active && c.standing !== 'declined')
+  if (rules.length === 0) return target
+
+  const carried: Constraint[] = rules.map((c) => ({
+    id: newId(),
+    rule: c.rule,
+    source: 'human',
+    addedAtVersion: target.version + 1,
+    active: true,
+    standing: 'accepted',
+  }))
+
+  return apply(
+    target,
+    {
+      operation: 'copy_rules',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: `${carried.length} rule${carried.length === 1 ? '' : 's'} carried over from “${source.title}”`,
+      patch: { constraints: [...target.constraints, ...carried] },
+    },
+    ctx,
+  )
+}
+
 export function activeConstraints(state: TaskState): Constraint[] {
   return state.constraints.filter((c) => c.active && c.standing === 'accepted')
 }

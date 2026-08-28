@@ -13,6 +13,7 @@ import {
 } from './task'
 import type { Confidence, TaskState } from './types'
 import { referenceSyntax, type SecretName } from './secret'
+import { sinceThen } from './elapsed'
 
 export const TOKEN_BUDGET = 400
 
@@ -162,6 +163,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       lines.push(`  Q: ${clip(q.question, c(120))}`)
       lines.push(`  A: ${clip(q.answer ?? '', c(150))}`)
     }
+  }
+
+  // Un cahier resté longtemps sans écriture est un cahier dont les hypothèses
+  // ont pu vieillir. On ne le dit que si c'est vrai, et jamais à la minute.
+  const dormant = sinceThen(state.updatedAt)
+  if (dormant !== null && Date.now() - state.updatedAt >= 24 * 60 * 60 * 1000) {
+    lines.push(`LAST WRITE  ${dormant} — check that what is below still holds`)
   }
 
   lines.push('')

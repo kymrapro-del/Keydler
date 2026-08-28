@@ -787,3 +787,27 @@ kbd {
     font-size: 0.8em;
   }
 }
+
+.offline {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--c-warn-text);
+  border-radius: var(--radius-lg);
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+}
+
+.field--check {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+}
+
+.field--check label {
+  font-weight: 400;
+}
+
+.page-head__when {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.875rem;
+}

@@ -243,7 +243,21 @@ defend against everything:
   big for a link is refused with the size, and points at the file export, which
   has no limit.
 - **Installable and offline.** A manifest and a service worker; verified with the
-  server stopped.
+  server stopped. When the network goes, the page says so — everything here is on
+  the device, so nothing stops.
+- **Will the browser keep this?** Technical details reports whether storage is
+  durable and how much room the log takes, and offers to ask the browser for
+  durability. It never claims the work is safe: not durable means _may be
+  cleared when space runs short_, durable means _the browser will not clear it
+  on its own_ — you still can, and so can a site-data wipe. If the browser
+  declines the request, the page says that too rather than doing nothing
+  visible.
+- **Carry the rules over.** Creating a task offers to bring the rules in force
+  from the one you are on. They arrive binding and attributed to you, and
+  nothing else follows — not the work, not the rejections, not the history.
+- **How long since anything happened.** The header says when the log was last
+  written, and `resume_task` warns an agent when a notebook has sat untouched
+  for a day or more, so it checks that what it is reading still holds.
 - **Did the agent read before writing?** The page counts it, from the calls it
   actually observed. Every write after a read says so; a write that arrived
   before any read is called out — that agent was working from its own memory,

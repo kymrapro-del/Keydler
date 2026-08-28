@@ -894,3 +894,37 @@ par section.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — durabilité du stockage, et reprise des règles
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Observé.**
+
+- Panneau technique : « Storage is not durable: the browser may clear this when
+  space runs short, and nothing here would survive it. » — l'état réel de ce
+  poste, relevé par `navigator.storage.persisted()`.
+- Un clic sur « Ask the browser to keep this » : **Brave a refusé**. La page le
+  dit — « The browser declined for now » — et laisse le bouton en place. C'est
+  le comportement attendu : Chrome accorde la durabilité sur des critères
+  d'usage, pas sur simple demande.
+- Création d'une tâche : « Carry over the 3 rules from “Refactor the
+  authentication module” », coché ou non.
+- En-tête : « Last written 14 minutes ago. »
+
+**Deux points de méthode, tous deux des erreurs de test et non de code.**
+
+1. Un test lisait l'état après `createAndOpenTask` sans attendre la **seconde**
+   écriture, celle qui reprend les règles. Il attend maintenant l'effet, pas la
+   première promesse.
+2. Un autre gardait une référence au nœud `details` **avant** un rendu : le DOM
+   étant remplacé à chaque rendu, il inspectait un nœud détaché. Relevé ici
+   parce que c'est un faux négatif facile à reprendre pour un défaut.
+
+**Défaut d'ergonomie corrigé.** La première version ne disait rien quand le
+navigateur refusait la durabilité : le clic n'avait aucun effet visible, ce qui
+se lit comme un bouton cassé.
+
+**Note de couche.** `elapsed.ts` a été placé dans `src/domain` et non dans
+`src/ui` : `render.ts` s'en sert, et le domaine ne doit pas dépendre de la vue.
+Même correction que pour `seen.ts` lors de l'audit.
