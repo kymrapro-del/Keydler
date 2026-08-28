@@ -26,8 +26,8 @@ export const mutationIdProperty = {
 const evidenceSchema = {
   type: 'object',
   description:
-    'Proof of the result. Omit it only when you genuinely have none — the step is then recorded as claimed, and a human will have to re-check it. ' +
-    'Attaching evidence does NOT mark the step verified: a human still has to read it.',
+    'Proof of the result. Omit only if you genuinely have none — the step is then ' +
+    'recorded as claimed. Attaching does NOT mark it verified.',
   properties: {
     kind: {
       type: 'string',
@@ -188,7 +188,8 @@ export const READ_DETAIL_SCHEMA = {
       type: 'string',
       enum: [...SECTIONS],
       description:
-        'Which part of the record to read. "proposals" holds agent-written rules and rejections that no human has approved. "credentials" lists sealed credentials by name, never by value.',
+        'Which part of the record to read. "proposals" holds agent-written rules and ' +
+        'rejections no human approved; "credentials" lists names, never values.',
     },
     offset: {
       type: 'integer',

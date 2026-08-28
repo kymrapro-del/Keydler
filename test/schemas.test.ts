@@ -106,10 +106,15 @@ describe('durcissement', () => {
 describe('ce que la description doit porter faute d’annotation', () => {
   it('dit le contrat de rejeu, que WebMCP ne sait pas transporter', () => {
     for (const tool of WRITE_TOOLS) {
-      expect(tool.description, tool.name).toContain('mutation_id')
-      const jeton = (tool.inputSchema as Schema).properties!.mutation_id.description!
-      expect(jeton).toContain('retry with the SAME mutation_id')
-      expect(jeton).toContain('the write happens once')
+      // Le contrat vit dans la description du PARAMÈTRE, pas dans celle de
+      // l'outil : c'est là qu'un agent le lit au moment de remplir l'appel, et
+      // le répéter dans les deux ne faisait que gonfler un budget que Chrome
+      // recommande de tenir. Ce qui compte, c'est qu'il soit dit une fois.
+      const schéma = tool.inputSchema as Schema
+      expect(schéma.required, tool.name).toContain('mutation_id')
+      const jeton = schéma.properties!.mutation_id.description!
+      expect(jeton, tool.name).toContain('retry with the SAME mutation_id')
+      expect(jeton, tool.name).toContain('the write happens once')
     }
   })
 

@@ -1129,3 +1129,48 @@ montré sans raison s'apprend à ne plus être lu. Un test tient ce silence.
 copie perdait le mot « copy », et avec lui l'idée que le destinataire reçoit un
 exemplaire à lui, qui divergera. Un test existant l'a rattrapée — il ne
 vérifiait pas une chaîne, il vérifiait cette idée.
+
+## 28 août 2026 — les budgets de caractères de Chrome
+
+Chrome publie des budgets pour les outils WebMCP : 30 caractères par nom, 500
+par description d'outil, 150 par description de paramètre, 1,5 k par sortie —
+des recommandations, pas des limites dures, mais au-delà on « tombe sur les
+garde-fous des agents ».
+
+**Mesuré avant.** Dix descriptions sur treize dépassaient, jusqu'à 801. Une
+description de paramètre — `mutation_id`, 351 caractères — dépassait de plus du
+double, et elle était répétée sur les neuf outils d'écriture. Le catalogue
+entier, ce qu'un agent lit à chaque énumération, pesait 20 378 caractères.
+
+**Après :** 15 576, soit 24 % de moins, et aucune borne dépassée.
+
+**La règle éditoriale.** Une description d'outil instruit, le README explique.
+Ce qui a été coupé, ce sont les justifications — pourquoi la règle existe — et
+les rappels de protocole qui figuraient déjà trois fois : dans le schéma, dans
+le bloc WRITE PROTOCOL de `resume_task`, et dans le texte des refus. Aucune
+instruction n'a été retirée, et un second bloc d'épreuves nomme celles qui
+devaient survivre : « BEFORE doing any work », « Do NOT guess and carry on »,
+« NO ANSWER IS NOT APPROVAL », « does not prove the work was never attempted ».
+
+**Un changement essayé puis retiré.** Descendre `TOKEN_BUDGET` de 400 à 375
+pour tomber pile sur les 1,5 k de Chrome. Mesuré : dix-sept caractères gagnés
+sur une restitution ordinaire, et un nom d'identifiant perdu à l'écran sur un
+cahier chargé. Mauvais échange, annulé. Les restitutions réelles mesurent 1501
+et 1484 caractères — la recommandation est tenue à un caractère près sans
+l'avoir visée, et l'écart de 6,7 % entre le budget du produit et celui de Chrome
+est écrit dans le test plutôt que maquillé.
+
+**Trois tests existants ont refusé la coupe, à raison.** Ils tenaient le contrat
+de rejeu, le fait qu'une preuve jointe n'est pas vérifiée, et le déclencheur de
+`resume_task`. Deux d'entre eux ont échoué non parce que le sens avait disparu,
+mais parce que la phrase enjambait un retour à la ligne du gabarit : les
+nouvelles épreuves comparent donc sur un texte à espaces normalisés, comme le
+lit un agent.
+
+**Ce qui n'a PAS été vérifié en navigateur.** Le panneau de cette session
+n'expose pas `document.modelContext` ; je n'ai donc pas pu relire les
+descriptions telles qu'un agent les reçoit. Ce que la garde mesure, ce sont les
+objets `ALL_TOOLS` eux-mêmes — exactement ceux passés à `registerTool` — ce qui
+rend l'écart improbable, mais ce n'est pas la même chose que de l'avoir vu. La
+page, elle, a été rechargée dans Chrome : la restitution s'y termine bien sur le
+bloc WRITE PROTOCOL entier, et le nouveau libellé de FULL DETAIL est en place.

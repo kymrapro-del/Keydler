@@ -382,6 +382,12 @@ the same length, what is known and left alone.
   (Chromium ≥ 153). Below that, tools stay registered and refuse cleanly —
   unregistering a tool that is mid-reply can drop that reply, and no timer trick
   makes that ordering safe.
+- **The tool catalogue fits Chrome's published budgets.** Chrome recommends 30
+  characters per tool name, 500 per tool description, 150 per parameter
+  description and 1.5K per tool output — past those, agents hit their own
+  guardrails. Ten of the thirteen descriptions were over, and one parameter was
+  more than twice the limit, repeated on nine tools. A test now holds all four
+  bounds, including a floor, so nothing is trimmed into silence to fit.
 - **One task, one address.** A task lives at `/t/:id`. A page bound to that
   address returns that task or says it is gone; it never substitutes “whatever
   was touched last on this device”.
