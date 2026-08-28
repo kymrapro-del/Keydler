@@ -169,6 +169,7 @@ describe('section credentials', () => {
       id: `s${i}`,
       name: `service-${i}-api-key`,
       purpose: 'Calls the upstream service from the ingestion worker',
+      kind: 'api_key' as const,
     }))
 
   it('rend la liste complète des noms, page par page', () => {

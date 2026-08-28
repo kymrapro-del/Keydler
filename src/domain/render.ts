@@ -1,7 +1,9 @@
 import {
   acceptedRejections,
   activeConstraints,
+  answeredQuestions,
   evidenceCounts,
+  openQuestions,
   proposedConstraints,
   proposedRejections,
   provenStepCount,
@@ -34,6 +36,8 @@ export type RenderOptions = {
   url?: string | null
   credentials?: readonly SecretName[]
   recentCredentials?: number
+  recentQuestions?: number
+  recentAnswers?: number
 }
 
 const CLIP_FLOOR = 0.4
@@ -43,6 +47,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   const recentDecisions = options.recentDecisions ?? 3
   const recentProposals = options.recentProposals ?? 4
   const recentCredentials = options.recentCredentials ?? 5
+  const recentQuestions = options.recentQuestions ?? 5
+  const recentAnswers = options.recentAnswers ?? 3
   const clipScale = options.clipScale ?? 1
   const c = (max: number) => Math.max(24, Math.round(max * clipScale))
 
@@ -74,6 +80,36 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push(
       `NEXT        ${state.next ? clip(state.next, c(200)) : '(not set — decide and log it)'}`,
     )
+  }
+
+  const ouvertes = openQuestions(state)
+  if (ouvertes.length > 0) {
+    const shown = ouvertes.slice(0, recentQuestions)
+    lines.push('')
+    lines.push(
+      ouvertes.length > shown.length
+        ? `WAITING ON THE HUMAN — blocked until answered (${shown.length} of ${ouvertes.length})`
+        : `WAITING ON THE HUMAN — blocked until answered (${ouvertes.length})`,
+    )
+    for (const q of shown) {
+      lines.push(`  Q: ${clip(q.question, c(150))}`)
+      lines.push(`     why: ${clip(q.why, c(130))}`)
+    }
+  }
+
+  const répondues = answeredQuestions(state)
+  if (répondues.length > 0) {
+    const shown = répondues.slice(-recentAnswers)
+    lines.push('')
+    lines.push(
+      répondues.length > shown.length
+        ? `ANSWERED BY THE HUMAN (last ${shown.length} of ${répondues.length})`
+        : 'ANSWERED BY THE HUMAN',
+    )
+    for (const q of shown) {
+      lines.push(`  Q: ${clip(q.question, c(120))}`)
+      lines.push(`  A: ${clip(q.answer ?? '', c(150))}`)
+    }
   }
 
   lines.push('')
@@ -152,8 +188,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   lines.push('')
   lines.push('FULL DETAIL')
   lines.push('  read_task_detail returns whole steps, decisions, rejections,')
-  lines.push('  evidence and credentials, one page at a time. Nothing above is')
-  lines.push('  the complete record.')
+  lines.push('  evidence, questions and credentials, one page at a time. Nothing')
+  lines.push('  above is the complete record.')
 
   lines.push('')
   if (state.status === 'active') {
@@ -171,13 +207,15 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   if (estimateTokens(text) <= TOKEN_BUDGET) return text
 
-  if (recentSteps > 2 || recentDecisions > 1 || recentProposals > 1) {
+  if (recentSteps > 2 || recentDecisions > 1 || recentProposals > 1 || recentAnswers > 1) {
     return renderTaskState(state, {
       ...options,
       recentSteps: Math.max(2, recentSteps - 2),
       recentDecisions: Math.max(1, recentDecisions - 1),
       recentProposals: Math.max(1, recentProposals - 1),
+      recentAnswers: Math.max(1, recentAnswers - 1),
       recentCredentials,
+      recentQuestions,
       clipScale,
     })
   }
@@ -188,8 +226,23 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentSteps,
       recentDecisions,
       recentProposals,
+      recentAnswers,
       recentCredentials,
+      recentQuestions,
       clipScale: Math.max(CLIP_FLOOR, clipScale - 0.2),
+    })
+  }
+
+  if (recentSteps > 1) {
+    return renderTaskState(state, {
+      ...options,
+      recentSteps: 1,
+      recentDecisions,
+      recentProposals,
+      recentAnswers,
+      recentCredentials,
+      recentQuestions,
+      clipScale,
     })
   }
 
@@ -199,7 +252,22 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentSteps,
       recentDecisions,
       recentProposals,
+      recentAnswers,
+      recentQuestions,
       recentCredentials: Math.max(1, recentCredentials - 1),
+      clipScale,
+    })
+  }
+
+  if (recentQuestions > 1) {
+    return renderTaskState(state, {
+      ...options,
+      recentSteps,
+      recentDecisions,
+      recentProposals,
+      recentAnswers,
+      recentCredentials,
+      recentQuestions: Math.max(1, recentQuestions - 1),
       clipScale,
     })
   }

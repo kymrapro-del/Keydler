@@ -33,6 +33,8 @@ export type ValidationCode =
   | 'mutation-id-collision'
   | 'content-not-reviewed'
   | 'not-proposed'
+  | 'already-answered'
+  | 'already-has-evidence'
 
 export type ValidationOptions = {
   code: ValidationCode

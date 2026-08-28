@@ -32,7 +32,7 @@ afterEach(() => {
 })
 
 describe('inventaire', () => {
-  it('expose trois outils de lecture et cinq d’écriture', () => {
+  it('expose trois outils de lecture et huit d’écriture', () => {
     expect(READ_TOOLS.map((t) => t.name)).toEqual([
       'resume_task',
       'read_task_detail',
@@ -40,12 +40,15 @@ describe('inventaire', () => {
     ])
     expect(WRITE_TOOLS.map((t) => t.name)).toEqual([
       'log_step',
+      'attach_evidence',
+      'set_next_action',
       'add_constraint',
       'reject_approach',
       'add_decision',
+      'ask_human',
       'complete_task',
     ])
-    expect(ALL_TOOLS).toHaveLength(8)
+    expect(ALL_TOOLS).toHaveLength(11)
   })
 
   it('n’annonce jamais une annotation que WebMCP ne transporte pas', () => {
@@ -209,12 +212,15 @@ describe('cycle de vie des outils', () => {
     expect(fake.names()).toEqual([
       'add_constraint',
       'add_decision',
+      'ask_human',
+      'attach_evidence',
       'complete_task',
       'log_step',
       'read_task_detail',
       'reject_approach',
       'resume_task',
       'search_task',
+      'set_next_action',
     ])
 
     expect(changements.length).toBeGreaterThan(0)

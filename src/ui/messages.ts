@@ -51,6 +51,10 @@ export function humanReason(error: ValidationError): string {
       return 'the evidence on screen no longer matches the one on file — read it again before approving.'
     case 'not-proposed':
       return 'that proposal has already been decided.'
+    case 'already-has-evidence':
+      return 'that step already carries evidence. Record a new step rather than replacing it.'
+    case 'already-answered':
+      return 'that question already has an answer. Reword the question instead of replacing it.'
   }
 }
 

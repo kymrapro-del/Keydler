@@ -29,7 +29,7 @@ To get one entry whole — including evidence that pages truncate —
 pass its id.
 
 The "credentials" section lists every credential the human sealed for
-this task: the name to write as ${name}, and what it is for. It never
+this task: the name to write as \${name}, and what it is for. It never
 returns a value, and no tool here does.
 
 Read-only: this never changes the task, and needs no version.`
@@ -104,6 +104,49 @@ constraints until a human approves it. A rule the human states is
 binding from the moment they enter it; a rule you infer is not.
 
 Do not use this for one-off notes; use log_step for those.
+
+Requires based_on_version from the most recent resume_task, and a
+mutation_id.`
+
+export const ASK_HUMAN_DESCRIPTION = `Record a question only the human can answer, and why it blocks you.
+
+Call this the moment you hit a decision you cannot make from the code
+or the task record: a business rule, a credential you do not have, a
+choice between two acceptable designs, a measurement you cannot take.
+
+Do NOT guess and carry on. A guess recorded as work is worse than a
+question recorded as a question: the next conversation inherits it as
+fact. Record the question, do the parts that do not depend on it, and
+say plainly what is blocked.
+
+The question stays open in the task until a human answers it, and
+resume_task shows it to every later conversation — so asking it once
+is enough. Read the answers before asking again.
+
+Requires based_on_version from the most recent resume_task, and a
+mutation_id.`
+
+export const ATTACH_EVIDENCE_DESCRIPTION = `Attach evidence to a step you already logged without any.
+
+Call this when proof arrives after the fact — a suite that finished,
+a build that completed, a link that became available. It turns a step
+recorded as merely claimed into one with evidence attached.
+
+It does not mark the step verified: only a human who reads the
+evidence can do that. A step that already carries evidence is refused
+rather than overwritten — record a new step instead.
+
+Requires based_on_version from the most recent resume_task, and a
+mutation_id.`
+
+export const SET_NEXT_ACTION_DESCRIPTION = `Change the single next action, without recording work.
+
+Call this when the next action changes but nothing was completed —
+you learned something that redirects the task, or you are ending a
+conversation and want the next one to start in the right place.
+
+If you also finished a unit of work, use log_step and set its next
+field instead: one call, and the change is tied to what caused it.
 
 Requires based_on_version from the most recent resume_task, and a
 mutation_id.`

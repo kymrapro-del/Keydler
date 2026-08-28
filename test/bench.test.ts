@@ -24,8 +24,18 @@ import {
 let root: HTMLElement
 let unmount: () => void
 
+/**
+ * Attendre un nombre fixe de tours suffisait à vide et échouait en suite
+ * complète : la file d'écriture passe par IndexedDB, dont la latence dépend de
+ * la charge. On attend l'effet, pas un délai.
+ */
 async function settled(turns = 4) {
   for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
+  __renderNow()
+}
+
+async function written(before: number) {
+  await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'l’écriture à être appliquée')
   __renderNow()
 }
 
@@ -312,13 +322,15 @@ describe('tableau de bord', () => {
 
   it('lève puis rétablit une règle, et la restitution suit', async () => {
     const rule = activeConstraints(store.currentTask()!)[0].rule
-    root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
-    await settled()
 
+    let before = store.currentTask()!.version
+    root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
+    await written(before)
     expect(renderTaskState(store.currentTask()!)).not.toContain(rule)
 
+    before = store.currentTask()!.version
     root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
-    await settled()
+    await written(before)
     expect(renderTaskState(store.currentTask()!)).toContain(rule)
   })
 

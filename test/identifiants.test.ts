@@ -36,6 +36,24 @@ describe('corriger un identifiant sans le desceller', () => {
     expect(await revealSecret(id, PASSPHRASE)).toBe('AIzaSy-original')
   })
 
+  it('reclasse un identifiant scellé avant que les natures existent', async () => {
+    const { id } = await addSecret({ ...base, name: 'legacy-key' })
+    expect((await listSecretNames('task-edit'))[0].kind).toBe('other')
+
+    await editSecret(id, {
+      name: 'legacy-key',
+      purpose: 'Signs the deploy bundle',
+      kind: 'private_key',
+    })
+    expect((await listSecretNames('task-edit'))[0].kind).toBe('private_key')
+  })
+
+  it('garde la nature quand la correction n’en mentionne pas', async () => {
+    const { id } = await addSecret({ ...base, name: 'hook', kind: 'webhook_url' })
+    await editSecret(id, { name: 'hook', purpose: 'Posts build results' })
+    expect((await listSecretNames('task-edit'))[0].kind).toBe('webhook_url')
+  })
+
   it('refuse un renommage qui créerait un doublon', async () => {
     await addSecret(base)
     const { id } = await addSecret({ ...base, name: 'stripe-key', value: 'sk-other' })

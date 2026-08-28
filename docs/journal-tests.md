@@ -591,3 +591,46 @@ sont vérifiés à nouveau dans le navigateur après correctif.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste, comme lors des passes précédentes.
+
+## 28 août 2026 — onze outils, et un canal de l'agent vers l'humain
+
+**Poste.** Même configuration : Brave 151.1.93.137 / Chromium 151, build de
+production sur `http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+
+**Observé.**
+
+- `list_webmcp_tools` renvoie **onze** outils. Les trois nouveaux —
+  `ask_human`, `attach_evidence`, `set_next_action` — portent les schémas
+  attendus et `readOnly: false`.
+- Boucle complète de `ask_human` : l'outil ouvre la question (v15 → v16), la
+  carte « Waiting on you » apparaît entre NEXT et le travail, la réponse saisie
+  sur la page ferme la question (v17), et `resume_task` restitue
+  `ANSWERED BY THE HUMAN` avec la réponse. C'est la première fois qu'un agent
+  peut laisser autre chose qu'une proposition à l'humain.
+- `attach_evidence` sur une étape restée `claimed` : preuve jointe, retours à la
+  ligne conservés, `confidence` passée à `evidence` — jamais à `human_verified`.
+  Un second appel sur la même étape est **refusé**, la première preuve intacte.
+- `set_next_action` change NEXT sans créer d'étape.
+- Coffre : une clé PEM de trois lignes scellée puis révélée **octet pour
+  octet**, annoncée « Private key ». Les identifiants scellés avant l'existence
+  des natures se lisent « Other » et se reclassent depuis la page.
+
+**Défauts trouvés par cette passe.**
+
+1. `${name}` écrit dans un gabarit TypeScript de `descriptions.ts` était
+   **interpolé par JavaScript** : la variable globale `name` vaut la chaîne vide
+   dans un navigateur, et tous les agents recevaient « the name to write as ,
+   and what it is for ». Rien ne plantait. Un test compare désormais chaque
+   description livrée à ce motif.
+2. La classe `card--waiting` échappait au garde-fou CSS : l'extraction ignorait
+   tout attribut `class` contenant un `$`, donc toute classe écrite à côté d'une
+   interpolation. Le garde-fou lit maintenant les marqueurs BEM où qu'ils
+   soient écrits — et il a trouvé la classe manquante.
+3. Le sélecteur de nature du formulaire de correction n'était relié à rien :
+   reclasser un identifiant gardait silencieusement l'ancienne nature.
+4. Un test de tableau de bord passait seul et échouait en suite complète : il
+   attendait un nombre fixe de tours de boucle au lieu d'attendre l'écriture.
+   Trois exécutions complètes consécutives depuis le correctif, toutes vertes.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

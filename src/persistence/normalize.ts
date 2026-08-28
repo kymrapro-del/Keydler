@@ -117,6 +117,17 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       }
     }),
 
+    questions: asObjects(stored.questions).map((q) => ({
+      id: asId(q.id),
+      question: asString(q.question, ''),
+      why: asString(q.why, ''),
+      source: q.source === 'human' ? 'human' : 'agent',
+      addedAtVersion: asNumber(q.addedAtVersion, 1),
+      at: asNumber(q.at, now),
+      answer: asNullableString(q.answer),
+      answeredAt: typeof q.answeredAt === 'number' ? q.answeredAt : null,
+    })),
+
     audit: asObjects(stored.audit).map((a) => ({
       id: asId(a.id),
       operation: asString(a.operation, 'unknown'),

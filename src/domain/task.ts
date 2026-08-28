@@ -15,6 +15,7 @@ import type {
   Decision,
   Evidence,
   MutationRecord,
+  OpenQuestion,
   Rejection,
   Standing,
   Step,
@@ -64,6 +65,7 @@ export function createTask(
     steps: [],
     decisions: [],
     rejected: [],
+    questions: [],
     mutations: [],
     audit: [
       {
@@ -391,6 +393,66 @@ export function completeTask(
   )
 }
 
+export function attachEvidence(
+  state: TaskState,
+  input: {
+    stepId: unknown
+    evidence: { kind?: unknown; content?: unknown }
+    basedOnVersion: number | null
+  },
+  actor: Actor = 'agent',
+  ctx?: MutationContext,
+): TaskState {
+  assertActive(state, 'attach_evidence')
+  guardVersion(state, input.basedOnVersion)
+  const { now } = resolve(ctx)
+
+  const stepId = requireText('stepId', input.stepId, 200)
+  const step = state.steps.find((s) => s.id === stepId)
+  if (!step) {
+    throw new ValidationError('stepId', `no step with id "${stepId}".`, {
+      code: 'not-found',
+      retryable: false,
+    })
+  }
+  if (step.evidence) {
+    throw new ValidationError(
+      'stepId',
+      'this step already carries evidence. Replacing it would destroy the record — ' +
+        'log a new step instead.',
+      { code: 'already-has-evidence', retryable: false },
+    )
+  }
+
+  const evidence: Evidence = {
+    kind: requireEvidenceKind('evidence.kind', input.evidence.kind),
+    content: requireEvidenceContent('evidence.content', input.evidence.content),
+    verifiedAt: actor === 'human' ? now : null,
+  }
+
+  const steps = state.steps.map((s) =>
+    s.id === stepId
+      ? {
+          ...s,
+          evidence,
+          confidence: (actor === 'human' ? 'human_verified' : 'evidence') as Confidence,
+        }
+      : s,
+  )
+
+  return apply(
+    state,
+    {
+      operation: 'attach_evidence',
+      actor,
+      basedOnVersion: input.basedOnVersion,
+      detail: step.action,
+      patch: { steps },
+    },
+    ctx,
+  )
+}
+
 export function verifyEvidence(
   state: TaskState,
   stepId: string,
@@ -686,6 +748,93 @@ export function setNext(state: TaskState, next: unknown, ctx?: MutationContext):
     },
     ctx,
   )
+}
+
+export function askHuman(
+  state: TaskState,
+  input: { question: unknown; why: unknown; basedOnVersion: number | null },
+  actor: Actor = 'agent',
+  ctx?: MutationContext,
+): TaskState {
+  assertActive(state, 'ask_human')
+  guardVersion(state, input.basedOnVersion)
+  const { now, newId } = resolve(ctx)
+
+  const question = requireText('question', input.question)
+  const why = requireText('why', input.why)
+
+  const entry: OpenQuestion = {
+    id: newId(),
+    question,
+    why,
+    source: actor,
+    addedAtVersion: state.version,
+    at: now,
+    answer: null,
+    answeredAt: null,
+  }
+
+  return apply(
+    state,
+    {
+      operation: 'ask_human',
+      actor,
+      basedOnVersion: input.basedOnVersion,
+      detail: question,
+      patch: { questions: [...state.questions, entry] },
+    },
+    ctx,
+  )
+}
+
+export function answerQuestion(
+  state: TaskState,
+  questionId: unknown,
+  answer: unknown,
+  ctx?: MutationContext,
+): TaskState {
+  const { now } = resolve(ctx)
+  const id = requireText('questionId', questionId, 200)
+  const found = state.questions.find((q) => q.id === id)
+
+  if (!found) {
+    throw new ValidationError('questionId', 'no question with that id on this task.', {
+      code: 'not-found',
+      retryable: false,
+    })
+  }
+  if (found.answer !== null) {
+    throw new ValidationError('questionId', 'that question has already been answered.', {
+      code: 'already-answered',
+      retryable: false,
+    })
+  }
+
+  const text = requireText('answer', answer)
+
+  return apply(
+    state,
+    {
+      operation: 'answer_question',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: `${found.question} — ${text}`,
+      patch: {
+        questions: state.questions.map((q) =>
+          q.id === id ? { ...q, answer: text, answeredAt: now } : q,
+        ),
+      },
+    },
+    ctx,
+  )
+}
+
+export function openQuestions(state: TaskState): OpenQuestion[] {
+  return state.questions.filter((q) => q.answer === null)
+}
+
+export function answeredQuestions(state: TaskState): OpenQuestion[] {
+  return state.questions.filter((q) => q.answer !== null)
 }
 
 export function activeConstraints(state: TaskState): Constraint[] {

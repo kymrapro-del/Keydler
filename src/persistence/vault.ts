@@ -2,6 +2,7 @@ import { getDb } from './db'
 import {
   publicName,
   requirePassphrase,
+  requireSecretKind,
   requireSecretName,
   requireSecretPurpose,
   requireSecretValue,
@@ -136,11 +137,13 @@ export async function addSecret(input: {
   taskId: string
   name: unknown
   purpose: unknown
+  kind?: unknown
   value: unknown
   passphrase: unknown
 }): Promise<SecretName> {
   const name = requireSecretName(input.name)
   const purpose = requireSecretPurpose(input.purpose)
+  const kind = requireSecretKind(input.kind)
   const value = requireSecretValue(input.value)
   const passphrase = requirePassphrase(input.passphrase)
 
@@ -155,6 +158,7 @@ export async function addSecret(input: {
     taskId: input.taskId,
     name,
     purpose,
+    kind,
     sealed: await seal(value, passphrase),
     at: Date.now(),
   }
@@ -165,7 +169,7 @@ export async function addSecret(input: {
 
 export async function editSecret(
   id: string,
-  input: { name: unknown; purpose: unknown },
+  input: { name: unknown; purpose: unknown; kind?: unknown },
 ): Promise<SecretName> {
   const name = requireSecretName(input.name)
   const purpose = requireSecretPurpose(input.purpose)
@@ -174,13 +178,15 @@ export async function editSecret(
   const ref = await db.get('secrets', id)
   if (!ref) throw new Error('No such credential on this device.')
 
+  const kind = input.kind === undefined ? publicName(ref).kind : requireSecretKind(input.kind)
+
   const siblings = await db.getAllFromIndex('secrets', 'by-taskId', ref.taskId)
   const clash = siblings.some(
     (other) => other.id !== id && other.name.toLocaleLowerCase() === name.toLocaleLowerCase(),
   )
   if (clash) throw new DuplicateSecretNameError(name)
 
-  const next: SecretRef = { ...ref, name, purpose }
+  const next: SecretRef = { ...ref, name, purpose, kind }
   await db.put('secrets', next)
   return publicName(next)
 }

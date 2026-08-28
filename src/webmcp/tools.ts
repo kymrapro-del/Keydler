@@ -7,10 +7,13 @@ import {
 import {
   addConstraint,
   addDecision,
+  askHuman,
+  attachEvidence,
   completeTask,
   logStep,
   rejectApproach,
   requireVersion,
+  setNext,
 } from '../domain/task'
 import { parseDetailQuery, renderDetail } from '../domain/detail'
 import { MAX_MATCHES, renderSearch } from '../domain/searchResult'
@@ -27,22 +30,28 @@ import { taskUrl } from './location'
 import {
   ADD_CONSTRAINT_SCHEMA,
   ADD_DECISION_SCHEMA,
+  ASK_HUMAN_SCHEMA,
+  ATTACH_EVIDENCE_SCHEMA,
   COMPLETE_TASK_SCHEMA,
   LOG_STEP_SCHEMA,
   READ_DETAIL_SCHEMA,
   REJECT_APPROACH_SCHEMA,
   RESUME_TASK_SCHEMA,
   SEARCH_TASK_SCHEMA,
+  SET_NEXT_ACTION_SCHEMA,
 } from './schemas'
 import {
   ADD_CONSTRAINT_DESCRIPTION,
   ADD_DECISION_DESCRIPTION,
+  ASK_HUMAN_DESCRIPTION,
+  ATTACH_EVIDENCE_DESCRIPTION,
   COMPLETE_TASK_DESCRIPTION,
   LOG_STEP_DESCRIPTION,
   READ_DETAIL_DESCRIPTION,
   REJECT_APPROACH_DESCRIPTION,
   RESUME_TASK_DESCRIPTION,
   SEARCH_TASK_DESCRIPTION,
+  SET_NEXT_ACTION_DESCRIPTION,
 } from './descriptions'
 
 const EMPTY_CREDENTIALS: SecretName[] = []
@@ -373,6 +382,54 @@ export const addDecisionTool: ModelContextTool = {
   },
 }
 
+export const askHumanTool: ModelContextTool = {
+  name: 'ask_human',
+  title: 'Ask the human a blocking question',
+  description: ASK_HUMAN_DESCRIPTION,
+  inputSchema: ASK_HUMAN_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    return runWrite(askHumanTool, input, options?.signal, (state, basedOnVersion) =>
+      askHuman(state, { question: input.question, why: input.why, basedOnVersion }, 'agent'),
+    )
+  },
+}
+
+export const attachEvidenceTool: ModelContextTool = {
+  name: 'attach_evidence',
+  title: 'Attach evidence to a logged step',
+  description: ATTACH_EVIDENCE_DESCRIPTION,
+  inputSchema: ATTACH_EVIDENCE_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    return runWrite(attachEvidenceTool, input, options?.signal, (state, basedOnVersion) =>
+      attachEvidence(
+        state,
+        {
+          stepId: input.step_id,
+          evidence: (input.evidence ?? {}) as { kind?: unknown; content?: unknown },
+          basedOnVersion,
+        },
+        'agent',
+      ),
+    )
+  },
+}
+
+export const setNextActionTool: ModelContextTool = {
+  name: 'set_next_action',
+  title: 'Change the next action',
+  description: SET_NEXT_ACTION_DESCRIPTION,
+  inputSchema: SET_NEXT_ACTION_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    return runWrite(setNextActionTool, input, options?.signal, (state, basedOnVersion) => {
+      requireVersion('based_on_version', basedOnVersion)
+      return setNext(state, input.next)
+    })
+  },
+}
+
 export const completeTaskTool: ModelContextTool = {
   name: 'complete_task',
   title: 'Complete the task',
@@ -394,9 +451,12 @@ export const READ_TOOLS: readonly ModelContextTool[] = [
 
 export const WRITE_TOOLS: readonly ModelContextTool[] = [
   logStepTool,
+  attachEvidenceTool,
+  setNextActionTool,
   addConstraintTool,
   rejectApproachTool,
   addDecisionTool,
+  askHumanTool,
   completeTaskTool,
 ] as const
 

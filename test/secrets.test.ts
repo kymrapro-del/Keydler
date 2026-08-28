@@ -150,11 +150,14 @@ describe('ce que l’agent reçoit', () => {
         id: `s${i}`,
         name: `service-${i}-api-key`,
         purpose: 'Calls the upstream service from the ingestion worker',
+        kind: 'api_key' as const,
       }))
 
     const deux = estimateTokens(renderTaskState(task, { credentials: creds(2) }))
     const trente = estimateTokens(renderTaskState(task, { credentials: creds(30) }))
-    expect(trente).toBeLessThanOrEqual(deux)
+    // Le coût est borné, pas proportionnel : trente n'ajoutent qu'un compteur.
+    expect(trente).toBeLessThanOrEqual(TOKEN_BUDGET)
+    expect(trente - deux).toBeLessThanOrEqual(5)
 
     // Un NOM n'est jamais tronqué : un agent qui citerait `${service-1-api-k…}`
     // écrirait une référence fausse. Sous pression, on en montre moins, on ne
@@ -171,14 +174,21 @@ describe('ce que l’agent reçoit', () => {
         id: `s${i}`,
         name: `service-${i}-api-key`,
         purpose: 'Calls the upstream service from the ingestion worker',
+        kind: 'api_key' as const,
       }))
 
     // Le budget passe d'abord sur le travail ancien, qui se relit page par
     // page, avant de toucher aux identifiants.
-    const rendu = renderTaskState(task, { credentials: creds(4) })
-    expect(rendu).toContain('${service-0-api-key}')
-    expect(rendu).toMatch(/RECENT WORK \(last 2 of 4\)/)
-    expect(estimateTokens(rendu)).toBeLessThanOrEqual(TOKEN_BUDGET)
+    const sans = renderTaskState(task)
+    const avec = renderTaskState(task, { credentials: creds(4) })
+
+    // Sans identifiants, le budget tient deux étapes. Avec, il n'en tient plus
+    // qu'une — c'est le travail ancien qui paie, et il se relit page par page.
+    expect(sans).toMatch(/RECENT WORK \(last 2 of 4\)/)
+    expect(avec).toMatch(/RECENT WORK \(last 1 of 4\)/)
+    expect(avec).toContain('${service-0-api-key}')
+    expect(avec).toContain('${service-1-api-key}')
+    expect(estimateTokens(avec)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
   it('dit où lire les noms qu’il a dû cacher', () => {
@@ -187,6 +197,7 @@ describe('ce que l’agent reçoit', () => {
         id: `s${i}`,
         name: `service-${i}-api-key`,
         purpose: 'Calls the upstream service from the ingestion worker',
+        kind: 'api_key' as const,
       })),
     })
 

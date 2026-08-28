@@ -1,6 +1,14 @@
 import { ValidationError } from './errors'
-import { referenceSyntax, type SecretName } from './secret'
-import type { AuditEntry, Constraint, Decision, Rejection, Step, TaskState } from './types'
+import { referenceSyntax, secretKindLabel, type SecretName } from './secret'
+import type {
+  AuditEntry,
+  Constraint,
+  Decision,
+  OpenQuestion,
+  Rejection,
+  Step,
+  TaskState,
+} from './types'
 
 export const SECTIONS = [
   'steps',
@@ -9,6 +17,7 @@ export const SECTIONS = [
   'constraints',
   'proposals',
   'credentials',
+  'questions',
   'audit',
 ] as const
 
@@ -125,8 +134,22 @@ function renderConstraint(c: Constraint): string[] {
   ]
 }
 
+function renderQuestion(q: OpenQuestion): string[] {
+  return [
+    `- id: ${q.id}`,
+    `  standing: ${q.answer === null ? 'open — nobody has answered' : 'answered'} · asked by ${q.source} at v${q.addedAtVersion}`,
+    `  question: ${q.question}`,
+    `  why it matters: ${q.why}`,
+    ...(q.answer === null ? [] : [`  answer: ${q.answer}`]),
+  ]
+}
+
 function renderCredential(secret: SecretName): string[] {
-  return [`- ${referenceSyntax(secret.name)}`, `  for: ${secret.purpose}`]
+  return [
+    `- ${referenceSyntax(secret.name)}`,
+    `  kind: ${secretKindLabel(secret.kind)}`,
+    `  for: ${secret.purpose}`,
+  ]
 }
 
 function renderAudit(a: AuditEntry): string[] {
@@ -161,6 +184,8 @@ function collect(state: TaskState, section: Section, credentials: readonly Secre
       ]
     case 'credentials':
       return credentials.map((c) => ({ id: c.id, lines: () => renderCredential(c) }))
+    case 'questions':
+      return state.questions.map((q) => ({ id: q.id, lines: () => renderQuestion(q) }))
     case 'audit':
       return state.audit.map((a) => ({ id: a.id, lines: () => renderAudit(a) }))
   }

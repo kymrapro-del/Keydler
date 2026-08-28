@@ -116,6 +116,32 @@ export const ADD_DECISION_SCHEMA = writeSchema(
   ['choice', 'rationale'],
 )
 
+export const ASK_HUMAN_SCHEMA = writeSchema(
+  {
+    question: boundedText('The question, asked so a human can answer it in one line.', 600),
+    why: boundedText('What it blocks, and why you cannot settle it yourself.', 600),
+  },
+  ['question', 'why'],
+)
+
+export const ATTACH_EVIDENCE_SCHEMA = writeSchema(
+  {
+    step_id: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 200,
+      description: 'The id of the step, taken from read_task_detail on the "steps" section.',
+    },
+    evidence: evidenceSchema,
+  },
+  ['step_id', 'evidence'],
+)
+
+export const SET_NEXT_ACTION_SCHEMA = writeSchema(
+  { next: boundedText('The next action, in one sentence.', 400) },
+  ['next'],
+)
+
 export const COMPLETE_TASK_SCHEMA = writeSchema(
   {
     summary: boundedText('Final hand-over summary, written for someone who was not present.', 4000),

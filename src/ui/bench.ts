@@ -11,6 +11,10 @@ import { MIN_QUERY, searchTask, searchTasks, type Match } from '../domain/search
 import {
   acceptedRejections,
   addConstraint,
+  answerQuestion,
+  answeredQuestions,
+  attachEvidence,
+  openQuestions,
   setArchived,
   editConstraint,
   editRejection,
@@ -43,7 +47,13 @@ import {
   revealSecret,
   WrongPassphraseError,
 } from '../persistence/vault'
-import type { SecretName } from '../domain/secret'
+import {
+  MULTILINE_KINDS,
+  SECRET_KINDS,
+  secretKindLabel,
+  type SecretKind,
+  type SecretName,
+} from '../domain/secret'
 import {
   getRegistrationState,
   getWitness,
@@ -70,6 +80,11 @@ const DEFAULT_DRAFTS: Record<string, string> = {
   'step-result': '',
   'step-evidence': '',
   'step-kind': 'command_output',
+  'attach-content': '',
+  'attach-kind': 'command_output',
+  'answer-text': '',
+  'new-secret-kind': 'api_key',
+  'edit-secret-kind': 'other',
   search: '',
 }
 
@@ -142,6 +157,9 @@ type Editing =
 let editing: Editing | null = null
 let loggingStep = false
 let kindChosen = false
+let attachKindChosen = false
+let answering: string | null = null
+let attaching: string | null = null
 let showArchived = false
 
 function renderThemeToggle(): string {
@@ -381,20 +399,54 @@ function remainder(total: number): string {
     : ''
 }
 
-function renderStepRow(step: Step): string {
+function renderStepRow(step: Step, active: boolean): string {
+  if (attaching === step.id) {
+    return `<li class="review">
+        <p class="row__text"><strong>${escapeHtml(step.action)}</strong></p>
+        <form id="form-attach" class="form" novalidate>
+          <div class="field">
+            <label for="attach-content">The evidence, pasted whole</label>
+            <textarea id="attach-content" rows="5" autocomplete="off" spellcheck="false"
+                      placeholder="Command output, a diff, a test report, a link"></textarea>
+          </div>
+          <div class="field">
+            <label for="attach-kind">What that evidence is</label>
+            <select id="attach-kind">
+              ${EVIDENCE_KINDS.map(
+                (kind) => `<option value="${kind}">${escapeHtml(evidenceKindLabel(kind))}</option>`,
+              ).join('')}
+            </select>
+          </div>
+          <div class="actions">
+            <button type="submit" class="btn btn--primary">Attach it</button>
+            <button type="button" id="cancel-attach" class="btn">Cancel</button>
+          </div>
+          <p class="muted">You read it, so it counts as verified by you.</p>
+        </form>
+      </li>`
+  }
+
   return `<li class="row">
       <span class="chip chip--${step.confidence}">${CONFIDENCE_LABEL[step.confidence]}</span>
       <span class="row__text">
         <strong>${escapeHtml(step.action)}</strong>
         <span class="muted"> — ${escapeHtml(step.result)}</span>
       </span>
+      ${
+        active && step.evidence === null
+          ? `<button type="button" class="btn btn--quiet" data-attach="${escapeHtml(step.id)}"
+                     aria-label="Attach evidence to: ${escapeHtml(step.action)}">Attach evidence</button>`
+          : ''
+      }
     </li>`
 }
 
 function renderCompletedWork(task: TaskState): string {
   const shown = task.steps.slice(-MAX_ROWS).reverse()
   const body = shown.length
-    ? `<ul class="rows">${shown.map(renderStepRow).join('')}</ul>${remainder(task.steps.length)}`
+    ? `<ul class="rows">${shown
+        .map((step) => renderStepRow(step, task.status === 'active'))
+        .join('')}</ul>${remainder(task.steps.length)}`
     : `<p class="empty">Nothing recorded yet. Steps appear here as the agent works.</p>`
 
   const own =
@@ -639,12 +691,106 @@ function renderSwitcher(task: TaskState): string {
     </details>`
 }
 
+function renderWaiting(task: TaskState): string {
+  const open = openQuestions(task)
+  const answered = answeredQuestions(task)
+  if (open.length === 0 && answered.length === 0) return ''
+
+  const openRows = open
+    .map((q) => {
+      if (answering === q.id) {
+        return `<li class="review">
+            <p class="row__text"><strong>${escapeHtml(q.question)}</strong></p>
+            <form id="form-answer" class="form" novalidate>
+              <div class="field">
+                <label for="answer-text">Your answer</label>
+                <textarea id="answer-text" rows="3" autocomplete="off"
+                          placeholder="Answer in your own words — the next conversation reads this"></textarea>
+              </div>
+              <div class="actions">
+                <button type="submit" class="btn btn--primary">Answer it</button>
+                <button type="button" id="cancel-answer" class="btn">Cancel</button>
+              </div>
+            </form>
+          </li>`
+      }
+      return `<li class="review">
+          <div class="row">
+            <span class="chip chip--agent">asked by ${q.source === 'human' ? 'you' : 'an agent'}</span>
+            <span class="row__text">
+              <strong>${escapeHtml(q.question)}</strong>
+              <span class="muted"> — ${escapeHtml(q.why)}</span>
+            </span>
+            ${
+              task.status === 'active'
+                ? `<button type="button" class="btn btn--primary" data-answer="${escapeHtml(q.id)}"
+                           aria-label="Answer: ${escapeHtml(q.question)}">Answer</button>`
+                : ''
+            }
+          </div>
+        </li>`
+    })
+    .join('')
+
+  const answeredRows = answered
+    .slice(-3)
+    .map(
+      (q) => `<li class="row">
+          <span class="chip chip--human">answered</span>
+          <span class="row__text">
+            <strong>${escapeHtml(q.question)}</strong>
+            <span class="muted"> — ${escapeHtml(q.answer ?? '')}</span>
+          </span>
+        </li>`,
+    )
+    .join('')
+
+  return `<section class="card${open.length > 0 ? ' card--waiting' : ''}" aria-labelledby="waiting-title">
+      <h2 id="waiting-title" class="card__title">Waiting on you</h2>
+      ${
+        open.length > 0
+          ? `<p class="muted">
+               An agent stopped rather than guess. Every later conversation sees these
+               until you answer.
+             </p>
+             <ul class="rows">${openRows}</ul>`
+          : ''
+      }
+      ${answeredRows ? `<h3>Already answered</h3><ul class="rows">${answeredRows}</ul>` : ''}
+    </section>`
+}
+
 function renderHandoff(task: TaskState): string {
   if (task.status !== 'active') return ''
   return `<p class="handoff">
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
     </p>`
+}
+
+const KIND_HINTS: Record<SecretKind, { name: string; purpose: string }> = {
+  api_key: { name: 'gemini-api-key', purpose: 'Calls the Gemini API from the ingestion script' },
+  token: { name: 'github-token', purpose: 'Opens pull requests on the release repository' },
+  password: { name: 'smtp-password', purpose: 'Sends the nightly report over SMTP' },
+  database_url: { name: 'staging-db-url', purpose: 'Read-only replica used by the migration run' },
+  webhook_url: { name: 'slack-webhook', purpose: 'Posts build results to the team channel' },
+  private_key: { name: 'deploy-signing-key', purpose: 'Signs the deploy bundle' },
+  certificate: { name: 'client-cert', purpose: 'Authenticates to the partner API over mTLS' },
+  other: { name: 'shared-secret', purpose: 'What this is for, in one line' },
+}
+
+function kindHints(kind: SecretKind): { name: string; purpose: string } {
+  return KIND_HINTS[kind]
+}
+
+function newSecretKind(): SecretKind {
+  const draft = drafts['new-secret-kind'] as SecretKind
+  return SECRET_KINDS.includes(draft) ? draft : 'api_key'
+}
+
+function editSecretKind(): SecretKind {
+  const draft = drafts['edit-secret-kind'] as SecretKind
+  return SECRET_KINDS.includes(draft) ? draft : 'other'
 }
 
 function renderCredentials(task: TaskState): string {
@@ -657,12 +803,25 @@ function renderCredentials(task: TaskState): string {
           : ''
 
       if (editingIs('secret', secret.id)) {
-        return `<li class="review">${editForm('Name the agent will use', 'What it is for')}</li>`
+        return `<li class="review">
+            <div class="field">
+              <label for="edit-secret-kind">What kind of secret</label>
+              <select id="edit-secret-kind">
+                ${SECRET_KINDS.map(
+                  (kind) =>
+                    `<option value="${kind}"${kind === editSecretKind() ? ' selected' : ''}>${escapeHtml(
+                      secretKindLabel(kind),
+                    )}</option>`,
+                ).join('')}
+              </select>
+            </div>
+            ${editForm('Name the agent will use', 'What it is for')}
+          </li>`
       }
 
       return `<li class="review">
         <div class="row">
-          <span class="chip chip--human">sealed</span>
+          <span class="chip chip--human">${escapeHtml(secretKindLabel(secret.kind))}</span>
           <span class="row__text">
             <code>\${${escapeHtml(secret.name)}}</code>
             <span class="muted"> — ${escapeHtml(secret.purpose)}</span>
@@ -683,17 +842,31 @@ function renderCredentials(task: TaskState): string {
     task.status === 'active'
       ? `<form id="form-secret" class="form" novalidate autocomplete="off">
            <div class="field">
+             <label for="new-secret-kind">What kind of secret</label>
+             <select id="new-secret-kind">
+               ${SECRET_KINDS.map(
+                 (kind) => `<option value="${kind}">${escapeHtml(secretKindLabel(kind))}</option>`,
+               ).join('')}
+             </select>
+           </div>
+           <div class="field">
              <label for="new-secret-name">Name the agent will use</label>
-             <input id="new-secret-name" type="text" autocomplete="off" placeholder="gemini-api-key" />
+             <input id="new-secret-name" type="text" autocomplete="off"
+                    placeholder="${escapeHtml(kindHints(newSecretKind()).name)}" />
            </div>
            <div class="field">
              <label for="new-secret-purpose">What it is for</label>
              <input id="new-secret-purpose" type="text" autocomplete="off"
-                    placeholder="Calls the Gemini API from the ingestion script" />
+                    placeholder="${escapeHtml(kindHints(newSecretKind()).purpose)}" />
            </div>
            <div class="field">
              <label for="new-secret-value">Value</label>
-             <input id="new-secret-value" type="password" autocomplete="new-password" spellcheck="false" />
+             ${
+               MULTILINE_KINDS.includes(newSecretKind())
+                 ? `<textarea id="new-secret-value" rows="5" autocomplete="off" spellcheck="false"
+                              placeholder="Paste it whole, every line"></textarea>`
+                 : `<input id="new-secret-value" type="password" autocomplete="new-password" spellcheck="false" />`
+             }
            </div>
            <div class="field">
              <label for="new-secret-passphrase">Passphrase that seals it</label>
@@ -938,6 +1111,7 @@ function renderDashboard(task: TaskState): string {
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
     ${searching() ? '' : renderNext(task)}
+    ${searching() ? '' : renderWaiting(task)}
     ${searching() ? '' : renderReadyForAI(task)}
     ${searching() ? '' : renderCompletedWork(task)}
     ${searching() ? '' : renderRules(task)}
@@ -1081,6 +1255,16 @@ function bindSupervision(): void {
     })
   }
 
+  const editKind = document.querySelector<HTMLSelectElement>('#edit-secret-kind')
+  if (editKind) {
+    editKind.value = editSecretKind()
+    for (const event of ['input', 'change']) {
+      editKind.addEventListener(event, () => {
+        drafts['edit-secret-kind'] = editKind.value
+      })
+    }
+  }
+
   document.querySelector('#cancel-edit')?.addEventListener('click', stopEditing)
 
   document.querySelector<HTMLFormElement>('#edit-form')?.addEventListener('submit', (e) => {
@@ -1094,7 +1278,11 @@ function bindSupervision(): void {
       const task = store.currentTask()
       if (!task) return
       humanError = null
-      void editSecret(current.id, { name: value, purpose: reason }).then(
+      void editSecret(current.id, {
+        name: value,
+        purpose: reason,
+        kind: editSecretKind(),
+      }).then(
         () => {
           stopEditing()
           refreshCredentials(task.id)
@@ -1117,6 +1305,106 @@ function bindSupervision(): void {
             : (state) => editRejection(state, current.id, { approach: value, reason })
 
     humanAction('Saving the change', mutate, stopEditing)
+  })
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-answer]')) {
+    b.addEventListener('click', () => {
+      answering = b.dataset.answer!
+      attaching = null
+      editing = null
+      humanError = null
+      drafts['answer-text'] = ''
+      renderNow()
+      document.querySelector<HTMLTextAreaElement>('#answer-text')?.focus()
+    })
+  }
+
+  document.querySelector('#cancel-answer')?.addEventListener('click', () => {
+    answering = null
+    drafts['answer-text'] = ''
+    renderNow()
+  })
+
+  document.querySelector<HTMLFormElement>('#form-answer')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const id = answering
+    const answer = drafts['answer-text'].trim()
+    if (!id || !answer) return
+
+    humanAction(
+      'Answering the question',
+      (state) => answerQuestion(state, id, answer),
+      () => {
+        answering = null
+        drafts['answer-text'] = ''
+        renderNow()
+      },
+    )
+  })
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-attach]')) {
+    b.addEventListener('click', () => {
+      attaching = b.dataset.attach!
+      answering = null
+      editing = null
+      loggingStep = false
+      humanError = null
+      drafts['attach-content'] = ''
+      drafts['attach-kind'] = 'command_output'
+      attachKindChosen = false
+      renderNow()
+      document.querySelector<HTMLTextAreaElement>('#attach-content')?.focus()
+    })
+  }
+
+  document.querySelector('#cancel-attach')?.addEventListener('click', () => {
+    attaching = null
+    drafts['attach-content'] = ''
+    renderNow()
+  })
+
+  const attachKind = document.querySelector<HTMLSelectElement>('#attach-kind')
+  if (attachKind) {
+    attachKind.value = drafts['attach-kind']
+    for (const event of ['input', 'change']) {
+      attachKind.addEventListener(event, () => {
+        attachKindChosen = true
+        drafts['attach-kind'] = attachKind.value
+      })
+    }
+    document.querySelector('#attach-content')?.addEventListener('input', () => {
+      if (attachKindChosen) return
+      const guessed = guessEvidenceKind(drafts['attach-content'])
+      drafts['attach-kind'] = guessed
+      attachKind.value = guessed
+    })
+  }
+
+  document.querySelector<HTMLFormElement>('#form-attach')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const stepId = attaching
+    const content = drafts['attach-content'].trim()
+    if (!stepId || !content) return
+    const kind = EVIDENCE_KINDS.includes(drafts['attach-kind'] as EvidenceKind)
+      ? (drafts['attach-kind'] as EvidenceKind)
+      : guessEvidenceKind(content)
+
+    humanAction(
+      'Attaching the evidence',
+      (state) =>
+        attachEvidence(
+          state,
+          { stepId, evidence: { kind, content }, basedOnVersion: null },
+          'human',
+        ),
+      () => {
+        attaching = null
+        drafts['attach-content'] = ''
+        drafts['attach-kind'] = 'command_output'
+        attachKindChosen = false
+        renderNow()
+      },
+    )
   })
 
   document.querySelector('#log-step')?.addEventListener('click', () => {
@@ -1356,6 +1644,18 @@ function bindSupervision(): void {
     )
   })
 
+  const secretKind = document.querySelector<HTMLSelectElement>('#new-secret-kind')
+  if (secretKind) {
+    secretKind.value = newSecretKind()
+    for (const event of ['input', 'change']) {
+      secretKind.addEventListener(event, () => {
+        drafts['new-secret-kind'] = secretKind.value
+        renderNow()
+        document.querySelector<HTMLSelectElement>('#new-secret-kind')?.focus()
+      })
+    }
+  }
+
   document.querySelector<HTMLFormElement>('#form-secret')?.addEventListener('submit', (e) => {
     e.preventDefault()
     const task = store.currentTask()
@@ -1363,18 +1663,28 @@ function bindSupervision(): void {
 
     const name = drafts['new-secret-name'].trim()
     const purpose = drafts['new-secret-purpose'].trim()
-    const valueField = document.querySelector<HTMLInputElement>('#new-secret-value')
+    const valueField = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+      '#new-secret-value',
+    )
     const phraseField = document.querySelector<HTMLInputElement>('#new-secret-passphrase')
     const value = valueField?.value ?? ''
     const passphrase = phraseField?.value ?? ''
 
     humanError = null
-    void addSecret({ taskId: task.id, name, purpose, value, passphrase }).then(
+    void addSecret({
+      taskId: task.id,
+      name,
+      purpose,
+      kind: newSecretKind(),
+      value,
+      passphrase,
+    }).then(
       () => {
         if (valueField) valueField.value = ''
         if (phraseField) phraseField.value = ''
         drafts['new-secret-name'] = ''
         drafts['new-secret-purpose'] = ''
+        drafts['new-secret-kind'] = DEFAULT_DRAFTS['new-secret-kind']
         refreshCredentials(task.id)
       },
       (error: unknown) => {
@@ -1388,7 +1698,9 @@ function bindSupervision(): void {
     b.addEventListener('click', () => {
       const id = b.dataset.editSecret!
       const secret = credentials.find((c) => c.id === id)
-      if (secret) startEditing({ kind: 'secret', id }, secret.name, secret.purpose)
+      if (!secret) return
+      drafts['edit-secret-kind'] = secret.kind
+      startEditing({ kind: 'secret', id }, secret.name, secret.purpose)
     })
   }
 
@@ -1634,6 +1946,7 @@ export function mount(target: HTMLElement): () => void {
   root = target
   resetDrafts()
   kindChosen = false
+  attachKindChosen = false
   creating = false
   humanError = null
   lastAnnouncement = ''
@@ -1647,6 +1960,8 @@ export function mount(target: HTMLElement): () => void {
   showAllHistory = false
   editing = null
   loggingStep = false
+  answering = null
+  attaching = null
   showArchived = false
 
   render()
