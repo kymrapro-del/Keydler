@@ -337,6 +337,17 @@ defend against everything:
 
 ## Audits
 
+[`docs/echelle-2026-08-28.md`](docs/echelle-2026-08-28.md) is a cost pass rather
+than a defect pass: what grows without bound, what redoes work, what stops being
+usable as the log fills. It found that `resume_task` was overshooting its own
+400-token budget by a factor of 94 on a task carrying two thousand rules —
+because the degradation ladder trimmed history and never obligations. Keeping
+every rule sounds principled until you measure it: a 37 800-token briefing is
+truncated by the model's context window instead, in silence and out of reach.
+Four dashboard lists had the same shape of problem. Every figure in it is
+reproducible with `npm run bench`, and the "before" column comes from that same
+harness run against the previous commit.
+
 [`docs/audit-2-2026-08-28.md`](docs/audit-2-2026-08-28.md) is a second pass
 aimed only at the features built after the first one — the shareable link, the
 blocking approval, undo, the goal, the badges. It found that a link could carry
@@ -392,6 +403,16 @@ npm run check
 `dev` serves on `http://localhost:5173`. `check` runs typecheck, lint,
 formatting, the full test suite and the production build; `npm run coverage`
 adds the coverage report.
+
+```bash
+npm run bench
+```
+
+`bench` is the scaling harness behind [`docs/echelle-2026-08-28.md`](docs/echelle-2026-08-28.md).
+It is kept out of `npm test` on purpose: it runs for minutes, and a duration is
+not an assertion — a time threshold in the suite starts blinking on the first
+loaded machine. What the bench finds becomes an ordinary test instead: a node
+bound, a token count, a bounded list.
 
 The page works without WebMCP: the state is real and persistent, only the agent
 connection is missing.
@@ -532,6 +553,7 @@ That also sets the boundaries, and they are real:
 | `src/persistence` | IndexedDB, with defensive reads and schema migration                       |
 | `src/webmcp`      | API adapter, schemas, descriptions, thirteen tools, registration lifecycle |
 | `src/ui`          | The dashboard                                                              |
+| `bench`           | The scaling harness — `npm run bench`, never part of `npm test`            |
 | `docs`            | Protocols, test journal, measurement, demo script                          |
 
 Internal documents and code comments are in French; the product is in English.

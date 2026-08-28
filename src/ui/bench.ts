@@ -5,6 +5,7 @@ import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeEntry, describeHistory } from './history'
+import type { TaskCard } from '../domain/card'
 import { historyOf } from '../domain/trail'
 import { needsYou, summariseNeeds } from '../domain/attention'
 import { sinceThen } from '../domain/elapsed'
@@ -147,7 +148,7 @@ function hideRevealedLater(): void {
 }
 let credentialsFor: string | null = null
 
-let allTasks: TaskState[] = []
+let allTasks: TaskCard[] = []
 let allTasksFor = ''
 let notice: string | null = null
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
@@ -290,9 +291,9 @@ function editForm(label: string, second?: string): string {
 
 function refreshTaskList(key: string): void {
   allTasksFor = key
-  void store.allTasks().then(
-    (tasks) => {
-      allTasks = tasks
+  void store.allTaskCards().then(
+    (cards) => {
+      allTasks = cards
       scheduleRender()
     },
     () => {
@@ -673,7 +674,7 @@ function renderTrail(task: TaskState, id: string): string {
     </span>`
 }
 
-const RULES_PREVIEW = 12
+const LIST_PREVIEW = 12
 
 function renderRules(task: TaskState): string {
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
@@ -682,7 +683,7 @@ function renderRules(task: TaskState): string {
   // règles levées faisait sauter la ligne que l'on venait de lever, sous le
   // curseur. On borne dans l'ordre, et on DIT combien d'obligations tombent
   // hors de la fenêtre — c'est la garantie qui comptait, pas l'ordre.
-  const shown = capped('rules', decided, RULES_PREVIEW)
+  const shown = capped('rules', decided, LIST_PREVIEW)
   const hiddenBinding = decided
     .slice(shown.length)
     .filter((c) => c.active && c.standing === 'accepted').length
@@ -745,7 +746,7 @@ function renderRules(task: TaskState): string {
 
 function renderDontRetry(task: TaskState): string {
   const all = acceptedRejections(task)
-  const shown = capped('ruled-out', all, RULES_PREVIEW)
+  const shown = capped('ruled-out', all, LIST_PREVIEW)
   const rows = shown
     .map((r) =>
       editingIs('rejection', r.id)
@@ -822,7 +823,12 @@ const FILTER_LABEL: Record<MatchKind, string> = {
 }
 
 function renderFilters(all: Match[]): string {
-  const present = [...new Set(all.map((m) => m.kind))]
+  // Un seul passage pour compter, plutôt qu'un par catégorie : sur un mot
+  // fréquent dans un gros cahier, les résultats se comptent par milliers, et
+  // il y a huit catégories.
+  const counts = new Map<MatchKind, number>()
+  for (const m of all) counts.set(m.kind, (counts.get(m.kind) ?? 0) + 1)
+  const present = [...counts.keys()]
   if (present.length < 2) return ''
 
   const button = (kind: MatchKind | 'all', label: string, count: number) =>
@@ -831,9 +837,7 @@ function renderFilters(all: Match[]): string {
 
   return `<div class="actions search__filters">
       ${button('all', 'All', all.length)}
-      ${present
-        .map((kind) => button(kind, FILTER_LABEL[kind], all.filter((m) => m.kind === kind).length))
-        .join('')}
+      ${present.map((kind) => button(kind, FILTER_LABEL[kind], counts.get(kind) ?? 0)).join('')}
     </div>`
 }
 
@@ -884,11 +888,14 @@ function renderSearchResults(task: TaskState | null): string {
 function renderSwitcher(task: TaskState): string {
   const others = allTasks.filter((t) => t.id !== task.id && (showArchived || !t.archived))
   const hidden = allTasks.filter((t) => t.id !== task.id && t.archived).length
-  const rows = others
+  // Chaque ligne fait balayer les étapes de SON cahier par `needsYou` : le
+  // sélecteur coûte donc le poste entier, pas seulement le cahier ouvert.
+  const shown = capped('tasks', others, LIST_PREVIEW)
+  const rows = shown
     .map((t) => {
       // `needsYou` balaie toutes les étapes du cahier : l'appeler une fois
       // pour tester et une fois pour afficher le faisait deux fois par ligne.
-      const badge = summariseNeeds(needsYou(t))
+      const badge = summariseNeeds(t.needs)
       return `<li class="row">
         <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
           t.archived ? 'archived' : t.status === 'completed' ? 'closed' : 'open'
@@ -909,6 +916,7 @@ function renderSwitcher(task: TaskState): string {
       <summary>${allTasks.length} ${plural(allTasks.length, 'task', 'tasks')} on this device</summary>
       <div class="switcher__body">
         ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">This is the only one.</p>'}
+        ${moreButton('tasks', others.length, shown.length, 'task', 'tasks')}
         <div class="actions">
           <button type="button" id="new-task" class="btn">New task</button>
           <button type="button" id="import" class="btn">Import a file</button>
@@ -1075,10 +1083,10 @@ function renderAway(task: TaskState): string {
   const since = awaySince
   if (since === null || since >= task.version) return ''
 
-  const lines = describeHistory(task.audit.filter((e) => e.versionAfter > since))
-  if (lines.length === 0) return ''
+  const depuis = task.audit.filter((e) => e.versionAfter > since)
+  if (depuis.length === 0) return ''
 
-  const shown = lines.slice(0, 8)
+  const shown = describeHistory(depuis.slice(-8))
   const rows = shown
     .map(
       (l) => `<li class="row">
@@ -1094,13 +1102,13 @@ function renderAway(task: TaskState): string {
   return `<section class="card card--away" aria-labelledby="away-title">
       <h2 id="away-title" class="card__title">While you were away</h2>
       <p class="muted">
-        ${lines.length} ${plural(lines.length, 'write', 'writes')} since you last had this
+        ${depuis.length} ${plural(depuis.length, 'write', 'writes')} since you last had this
         page open, at v${since}.
       </p>
       <ul class="rows">${rows}</ul>
       ${
-        lines.length > shown.length
-          ? `<p class="muted">${lines.length - shown.length} older still, in the history below.</p>`
+        depuis.length > shown.length
+          ? `<p class="muted">${depuis.length - shown.length} older still, in the history below.</p>`
           : ''
       }
       <div class="actions">
@@ -1187,6 +1195,39 @@ function renderWaiting(task: TaskState): string {
     </section>`
 }
 
+/**
+ * Le panneau technique montre EXACTEMENT ce que `resume_task` rendrait. Ce
+ * texte coûte 5 ms sur un cahier de 20 000 étapes, et il était recalculé à
+ * chaque rendu — donc à chaque frappe dans la recherche, pour un panneau replié
+ * la plupart du temps.
+ *
+ * Le cahier est immuable et remplacé en entier à chaque écriture : comparer les
+ * identités suffit. La minute entre dans la clé parce que la restitution porte
+ * une ligne qui dépend de l'heure (« LAST WRITE … ») ; sans elle, l'aperçu
+ * finirait par mentir sur l'âge du cahier.
+ */
+let briefing: {
+  task: TaskState
+  credentials: readonly SecretName[]
+  minute: number
+  text: string
+} | null = null
+
+function agentBriefing(task: TaskState): string {
+  const minute = Math.floor(Date.now() / 60_000)
+  if (
+    briefing !== null &&
+    briefing.task === task &&
+    briefing.credentials === credentials &&
+    briefing.minute === minute
+  ) {
+    return briefing.text
+  }
+  const text = renderTaskState(task, { url: taskUrl(task.id), credentials })
+  briefing = { task, credentials, minute, text }
+  return text
+}
+
 function renderHandoff(task: TaskState): string {
   const undo = undoable(task)
   const undoButton = undo
@@ -1234,7 +1275,8 @@ function editSecretKind(): SecretKind {
 }
 
 function renderCredentials(task: TaskState): string {
-  const rows = credentials
+  const shownSecrets = capped('credentials', credentials)
+  const rows = shownSecrets
     .map((secret) => {
       const shown =
         revealed && revealed.id === secret.id
@@ -1324,6 +1366,7 @@ function renderCredentials(task: TaskState): string {
         real one. No tool on this page can return a value.
       </p>
       ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">No credentials yet.</p>'}
+      ${moreButton('credentials', credentials.length, shownSecrets.length, 'credential', 'credentials')}
       ${form}
       <p class="muted">
         Sealed with a passphrase that is never stored, and never written to an
@@ -1478,8 +1521,11 @@ function renderActivity(task: TaskState): string {
 const HISTORY_PREVIEW = 12
 
 function renderHistory(task: TaskState): string {
-  const lines = describeHistory(task.audit)
-  const shown = showAllHistory ? lines : lines.slice(0, HISTORY_PREVIEW)
+  // Décrire les 200 entrées du journal pour en montrer douze, à chaque rendu.
+  // `describeHistory` renverse puis décrit une par une : on prend donc la
+  // QUEUE du journal, qui devient la tête une fois renversée.
+  const total = task.audit.length
+  const shown = describeHistory(showAllHistory ? task.audit : task.audit.slice(-HISTORY_PREVIEW))
 
   const rows = shown
     .map(
@@ -1496,9 +1542,9 @@ function renderHistory(task: TaskState): string {
     .join('')
 
   const more =
-    lines.length > HISTORY_PREVIEW
+    total > HISTORY_PREVIEW
       ? `<button type="button" id="toggle-history" class="btn">${
-          showAllHistory ? 'Show recent only' : `Show all ${lines.length} entries`
+          showAllHistory ? 'Show recent only' : `Show all ${total} entries`
         }</button>`
       : ''
 
@@ -1575,9 +1621,7 @@ function renderTechnical(task: TaskState | null): string {
           task
             ? `<p class="mono">Task ID: ${escapeHtml(task.id)} · version ${task.version}</p>
                <h3>What <code>resume_task</code> returns</h3>
-               <pre>${escapeHtml(
-                 renderTaskState(task, { url: taskUrl(task.id), credentials }),
-               )}</pre>`
+               <pre>${escapeHtml(agentBriefing(task))}</pre>`
             : ''
         }
         ${renderToolInspector()}
@@ -2306,7 +2350,7 @@ function bindSupervision(): void {
       'Read this before doing anything. It is the shared log for the task we are',
       'continuing; it holds the rules, the work already done, and what was ruled out.',
       '',
-      renderTaskState(task, { url: taskUrl(task.id), credentials }),
+      agentBriefing(task),
       '',
       'Continue this task. Tell me what you are about to do before you do it.',
     ].join('\n')
@@ -2870,6 +2914,7 @@ export function mount(target: HTMLElement): () => void {
   showAllHistory = false
   expanded.clear()
   painted = null
+  briefing = null
   awaySince = null
   awayFor = null
   offered = null

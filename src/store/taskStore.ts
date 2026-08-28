@@ -1,6 +1,7 @@
 import { ConcurrentWriteError, StaleStateError, ValidationError } from '../domain/errors'
 import { CancelledError } from '../domain/errors'
 import { createTask, findMutation, newTaskId, recordMutation, recordRefusal } from '../domain/task'
+import { cardOf, type TaskCard } from '../domain/card'
 import type { Actor, TaskState } from '../domain/types'
 import {
   deleteTask,
@@ -195,6 +196,15 @@ export async function deleteCurrentTask(): Promise<void> {
 
 export async function allTasks(): Promise<TaskState[]> {
   return listTasks()
+}
+
+/**
+ * La même lecture, réduite à ce que le sélecteur affiche. Les cahiers entiers
+ * deviennent collectables dès le retour : c'est la mémoire retenue qu'on
+ * borne, pas le coût de la lecture.
+ */
+export async function allTaskCards(): Promise<TaskCard[]> {
+  return (await listTasks()).map(cardOf)
 }
 
 export function currentTask(): TaskState | null {

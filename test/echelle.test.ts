@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { buildCoreTask } from '../src/demo/seed'
+import { logStep } from '../src/domain/task'
 import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import type {
@@ -10,7 +11,7 @@ import type {
   Step,
   TaskState,
 } from '../src/domain/types'
-import { clearDatabase } from './helpers'
+import { clearDatabase, waitUntil } from './helpers'
 
 let root: HTMLElement
 let unmount: () => void
@@ -266,5 +267,108 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
     const après = root.querySelector<HTMLInputElement>('#new-constraint')!
     expect(document.activeElement).toBe(après)
     expect(après.selectionStart).toBe(6)
+  })
+})
+
+describe('le poste entier ne fait pas grandir la page non plus', () => {
+  async function poser(nombre: number): Promise<void> {
+    for (let i = 0; i < nombre; i++) {
+      await store.openPreparedTask({
+        ...buildCoreTask(),
+        id: `t${i}`,
+        title: `Task ${i}`,
+        constraints: [],
+        steps: steps(50),
+      })
+    }
+    __renderNow()
+    // La liste des cahiers est relue de façon asynchrone après le rendu.
+    await waitUntil(
+      () => (root.textContent ?? '').includes(`${nombre} tasks on this device`),
+      'la liste des cahiers',
+    )
+    __renderNow()
+  }
+
+  it('borne le sélecteur de cahiers, qui balaie chaque cahier du poste', async () => {
+    // `needsYou` parcourt les étapes de CHAQUE cahier pour sa pastille : la
+    // page coûtait donc le poste entier, et pas seulement le cahier ouvert.
+    await poser(40)
+
+    const switcher = root.querySelector<HTMLElement>('.switcher')!
+    expect(switcher.querySelectorAll('.rows li').length).toBe(12)
+    expect(switcher.textContent).toContain('Show all 39 tasks')
+  })
+})
+
+/**
+ * Le sélecteur gardait les cahiers ENTIERS en mémoire — tout le poste, en
+ * permanence, pour une liste déroulante repliée. Mesuré : 1,5 Mo en tas pour
+ * un cahier de 1000 étapes, 29,6 Mo pour 20 000.
+ */
+describe('la liste des cahiers ne retient pas les cahiers', () => {
+  it('ne rend que ce que le sélecteur affiche', async () => {
+    await store.openPreparedTask({
+      ...buildCoreTask(),
+      id: 'gros',
+      title: 'Gros cahier',
+      steps: steps(300),
+      questions: questions(2),
+    })
+
+    const cards = await store.allTaskCards()
+    const carte = cards.find((c) => c.id === 'gros')!
+
+    expect(carte.title).toBe('Gros cahier')
+    // Ce qui pèse n'est pas là. Un test de mémoire clignoterait ; celui-ci dit
+    // la même chose et ne clignote pas.
+    for (const lourd of ['steps', 'audit', 'mutations', 'decisions', 'rejected', 'constraints']) {
+      expect(Object.keys(carte), lourd).not.toContain(lourd)
+    }
+    // Et ce qui doit survivre à la réduction survit : la pastille est calculée
+    // avant que le cahier ne soit relâché.
+    expect(carte.needs.some((n) => n.kind === 'question')).toBe(true)
+  })
+})
+
+/**
+ * Le panneau technique montre exactement ce que `resume_task` rendrait —
+ * 5 ms sur un cahier de 20 000 étapes, recalculé à chaque frappe. Il est
+ * maintenant mémorisé ; une mémorisation qui rate son invalidation montre un
+ * état périmé, ce qui est pire que lent dans un produit dont c'est le sujet.
+ */
+describe('l’aperçu de ce que lit l’agent reste à jour', () => {
+  function apercu(): string {
+    const pre = [...root.querySelectorAll('pre')].find((p) => p.textContent?.includes('TASK ID'))
+    return pre?.textContent ?? ''
+  }
+
+  it('suit la moindre écriture', async () => {
+    await open({ steps: steps(3) })
+    expect(apercu()).toContain('3 steps logged')
+
+    const before = store.currentTask()!.version
+    await store.mutate((s) =>
+      logStep(s, {
+        action: 'Ran one more shard',
+        result: 'moved',
+        evidence: null,
+        basedOnVersion: s.version,
+      }),
+    )
+    expect(store.currentTask()!.version).toBeGreaterThan(before)
+    __renderNow()
+
+    expect(apercu()).toContain('4 steps logged')
+    expect(apercu()).toContain('Ran one more shard')
+  })
+
+  it('suit un changement de cahier', async () => {
+    await open({ id: 'un', title: 'Premier', steps: steps(1) })
+    expect(apercu()).toContain('Premier')
+
+    await open({ id: 'deux', title: 'Second', steps: steps(2) })
+    expect(apercu()).toContain('Second')
+    expect(apercu()).not.toContain('Premier')
   })
 })
