@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { buildDemoTask } from '../src/demo/seed'
+import { buildCoreTask as buildDemoTask } from '../src/demo/seed'
 import { answerQuestion, askHuman, openQuestions, answeredQuestions } from '../src/domain/task'
 import { renderTaskState, TOKEN_BUDGET, estimateTokens } from '../src/domain/render'
 import { renderDetail } from '../src/domain/detail'

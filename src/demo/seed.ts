@@ -1,16 +1,28 @@
 import {
   addConstraint,
   addDecision,
+  answerQuestion,
+  askHuman,
   createTask,
+  decideApproval,
+  disputeStep,
   logStep,
+  openQuestions,
+  pendingApprovals,
   rejectApproach,
+  requestApproval,
   setConstraintStanding,
   setRejectionStanding,
   verifyEvidence,
 } from '../domain/task'
 import type { TaskState } from '../domain/types'
 
-export function buildDemoTask(): TaskState {
+/**
+ * Le socle : règles, rejets, décisions, travail avec preuves. Sans question,
+ * ni autorisation, ni contestation — c'est sur lui que s'appuient les cas qui
+ * ont besoin d'une page blanche pour ces trois-là.
+ */
+export function buildCoreTask(): TaskState {
   let task = createTask({
     title: 'Refactor the authentication module',
     next: 'Map the existing entry points',
@@ -137,6 +149,65 @@ export function buildDemoTask(): TaskState {
     {
       action: 'Reduced token TTL to 15 minutes',
       result: 'applied in the prototype, not yet measured',
+      basedOnVersion: task.version,
+    },
+    'agent',
+  )
+
+  return task
+}
+
+/**
+ * La démonstration livrée au bouton « Try the demo » : le socle, plus une
+ * question répondue, une autorisation refusée et une étape contestée. Sans
+ * cela, un juré verrait un produit d'il y a trois lots.
+ */
+export function buildDemoTask(): TaskState {
+  let task = buildCoreTask()
+
+  task = askHuman(
+    task,
+    {
+      question: 'Should mobile sessions expire on the same 15-minute window as web?',
+      why: 'It is a product call, not a technical one, and it changes the rollout.',
+      basedOnVersion: task.version,
+    },
+    'agent',
+  )
+  task = answerQuestion(
+    task,
+    openQuestions(task)[0].id,
+    'No — mobile keeps 24 hours. Only web moves to 15 minutes.',
+  )
+
+  task = requestApproval(
+    task,
+    {
+      action: 'Drop the legacy sessions table from staging',
+      why: 'It is not reversible and nothing here has a backup of it.',
+      basedOnVersion: task.version,
+    },
+    'agent',
+  )
+  task = decideApproval(task, pendingApprovals(task)[0].id, 'denied')
+
+  const douteuse = task.steps.find((s) => s.action.startsWith('Benchmarked'))!
+  task = disputeStep(
+    task,
+    douteuse.id,
+    'That run came from the other branch — the issuer had not been extracted yet.',
+  )
+
+  // Le cahier se termine sur une écriture d'AGENT : à l'ouverture, « Undo that »
+  // ne doit pas proposer de révoquer une décision que personne ne vient de
+  // prendre. Et l'agent répondant à la contestation, la démonstration montre
+  // la boucle entière.
+  task = logStep(
+    task,
+    {
+      action: 'Re-ran the benchmark on the extracted issuer',
+      result: 'p95 39ms, still under the 43ms baseline',
+      next: 'Implement approach C — session-bound refresh tokens',
       basedOnVersion: task.version,
     },
     'agent',

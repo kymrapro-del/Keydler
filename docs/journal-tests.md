@@ -823,3 +823,42 @@ faux négatif pour un défaut.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — la démonstration rattrape le produit
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+
+**Constat de départ.** `buildDemoTask()` datait d'avant les questions, les
+autorisations et les contestations. Un juré cliquant « Try the demo » voyait un
+produit d'il y a **trois lots**. C'était le défaut à plus fort levier du dépôt.
+
+**Ce qui a été fait.** Le fichier est désormais en deux couches :
+`buildCoreTask()` — règles, rejets, décisions, travail avec preuves — et
+`buildDemoTask()`, qui y ajoute une question posée puis répondue, une demande
+d'autorisation **refusée**, et une étape **contestée** avec son motif. Les cas
+qui avaient besoin d'une page blanche pointent sur le socle.
+
+**Deux décisions prises en chemin.**
+
+1. La démonstration se termine sur une écriture d'**agent** (il refait le
+   benchmark après la contestation). Sans cela, « Undo that » s'affichait à
+   l'ouverture et proposait de révoquer une décision que personne ne venait de
+   prendre.
+2. Le cahier enrichi poussait `resume_task` à 425 jetons. L'échelle de
+   dégradation sait maintenant **abandonner l'historique tranché** — réponses
+   déjà données, autorisations déjà décidées — avant ce qui attend encore une
+   décision. Ce qui est réglé se relit page par page ; ce qui bloque, non.
+
+**Observé dans le navigateur.** Démo ouverte : la barre **Needs you** annonce
+« 1 proposal · 1 piece of evidence · 2 steps claimed with no evidence », la
+question répondue et l'étape contestée sont visibles, aucun bouton « Undo » à
+l'ouverture. `?` ouvre l'aide clavier, Échap la referme, `s` ouvre le
+formulaire d'étape.
+
+**Mesure.** Le lien partageable de la démo enrichie : **3 587 caractères**
+compressés. Sans `CompressionStream`, 12 255 — d'où la borne portée à 16 000,
+faute de quoi le repli aurait refusé un cahier ordinaire et n'aurait servi à
+rien.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

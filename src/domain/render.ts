@@ -106,7 +106,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   }
 
   const tranchées = decidedApprovals(state)
-  if (tranchées.length > 0) {
+  if (tranchées.length > 0 && recentApprovals > 0) {
     const shown = tranchées.slice(-recentApprovals)
     lines.push('')
     lines.push(
@@ -150,7 +150,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   }
 
   const répondues = answeredQuestions(state)
-  if (répondues.length > 0) {
+  if (répondues.length > 0 && recentAnswers > 0) {
     const shown = répondues.slice(-recentAnswers)
     lines.push('')
     lines.push(
@@ -321,6 +321,23 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentDisputes,
       recentQuestions,
       recentCredentials: Math.max(1, recentCredentials - 1),
+      clipScale,
+    })
+  }
+
+  // Dernier recours : ce qui est déjà tranché est de l'histoire, et se relit
+  // page par page. Ce qui attend une décision, non.
+  if (recentAnswers > 0 || recentApprovals > 0) {
+    return renderTaskState(state, {
+      ...options,
+      recentSteps,
+      recentDecisions,
+      recentProposals,
+      recentAnswers: 0,
+      recentApprovals: 0,
+      recentCredentials,
+      recentQuestions,
+      recentDisputes,
       clipScale,
     })
   }

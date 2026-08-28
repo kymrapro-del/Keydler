@@ -5,6 +5,8 @@ import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeHistory } from './history'
+import { needsYou } from '../domain/attention'
+import { SHORTCUTS } from './shortcuts'
 import { markSeen, seenVersion } from './seen'
 import { attentionTitle } from './attention'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
@@ -178,6 +180,7 @@ let attachKindChosen = false
 let answering: string | null = null
 let attaching: string | null = null
 let disputing: string | null = null
+let showingShortcuts = false
 let showArchived = false
 
 function renderThemeToggle(): string {
@@ -370,6 +373,7 @@ function renderLanding(): string {
       </p>
       ${alertBlock()}
       ${renderOffer()}
+      ${renderShortcuts()}
       ${form}
       <p class="muted landing__note">
         Everything stays in this browser. No account, no server.
@@ -785,6 +789,38 @@ function renderOffer(): string {
         <button type="button" id="decline-link" class="btn">No thanks</button>
       </div>
     </section>`
+}
+
+function renderShortcuts(): string {
+  if (!showingShortcuts) return ''
+  const rows = SHORTCUTS.map(
+    (s) => `<li class="row">
+        <kbd>${escapeHtml(s.key)}</kbd>
+        <span class="row__text">${escapeHtml(s.what)}</span>
+      </li>`,
+  ).join('')
+
+  return `<section id="shortcuts" class="card" aria-labelledby="shortcuts-title">
+      <h2 id="shortcuts-title" class="card__title">Keyboard</h2>
+      <ul class="rows">${rows}</ul>
+      <div class="actions">
+        <button type="button" id="close-shortcuts" class="btn">Close</button>
+      </div>
+    </section>`
+}
+
+function renderNeeds(task: TaskState): string {
+  const needs = needsYou(task)
+  if (needs.length === 0) return ''
+
+  const items = needs
+    .map((n) => `<li><a href="${n.anchor}">${escapeHtml(n.label)}</a></li>`)
+    .join('')
+
+  return `<nav class="needs" aria-label="What needs you">
+      <p class="needs__title">Needs you</p>
+      <ul class="needs__list">${items}</ul>
+    </nav>`
 }
 
 function renderPermission(task: TaskState): string {
@@ -1319,6 +1355,8 @@ function renderDashboard(task: TaskState): string {
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
     ${renderOffer()}
+    ${renderShortcuts()}
+    ${searching() ? '' : renderNeeds(task)}
     ${searching() ? '' : renderPermission(task)}
     ${searching() ? '' : renderAway(task)}
     ${searching() ? '' : renderNext(task)}
@@ -1893,6 +1931,11 @@ function bindSupervision(): void {
     })
   }
 
+  document.querySelector('#close-shortcuts')?.addEventListener('click', () => {
+    showingShortcuts = false
+    renderNow()
+  })
+
   document.querySelector('#accept-link')?.addEventListener('click', () => {
     const task = offered
     if (!task) return
@@ -2310,6 +2353,13 @@ function onVisibilityChange(): void {
 function closeOnEscape(event: KeyboardEvent): void {
   if (event.key !== 'Escape' || event.ctrlKey || event.metaKey || event.altKey) return
 
+  if (showingShortcuts) {
+    showingShortcuts = false
+    event.preventDefault()
+    renderNow()
+    return
+  }
+
   if (creating) {
     creating = false
     humanError = null
@@ -2354,6 +2404,46 @@ function closeOnEscape(event: KeyboardEvent): void {
   }
 }
 
+function onShortcut(event: KeyboardEvent): void {
+  if (event.ctrlKey || event.metaKey || event.altKey) return
+  if (typingSomewhereElse(event.target)) return
+
+  const act = (run: () => void) => {
+    event.preventDefault()
+    run()
+  }
+
+  switch (event.key) {
+    case '?':
+      return act(() => {
+        showingShortcuts = !showingShortcuts
+        renderNow()
+      })
+    case 's':
+      return act(() => {
+        if (store.currentTask()?.status !== 'active') return
+        loggingStep = true
+        editing = null
+        renderNow()
+        document.querySelector<HTMLInputElement>('#step-action')?.focus()
+      })
+    case 'n':
+      return act(() => {
+        creating = true
+        clearNotice()
+        humanError = null
+        renderNow()
+        document.querySelector<HTMLInputElement>('#new-title')?.focus()
+      })
+    case 'e':
+      return act(() => {
+        const task = store.currentTask()
+        if (!task || task.status !== 'active') return
+        startEditing({ kind: 'next' }, task.next ?? '')
+      })
+  }
+}
+
 function focusSearchOnSlash(event: KeyboardEvent): void {
   if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return
   if (typingSomewhereElse(event.target)) return
@@ -2391,6 +2481,7 @@ export function mount(target: HTMLElement): () => void {
   answering = null
   attaching = null
   disputing = null
+  showingShortcuts = false
   showArchived = false
 
   render()
@@ -2402,11 +2493,13 @@ export function mount(target: HTMLElement): () => void {
 
   document.addEventListener('keydown', focusSearchOnSlash)
   document.addEventListener('keydown', closeOnEscape)
+  document.addEventListener('keydown', onShortcut)
   document.addEventListener('visibilitychange', onVisibilityChange)
 
   return () => {
     document.removeEventListener('keydown', focusSearchOnSlash)
     document.removeEventListener('keydown', closeOnEscape)
+    document.removeEventListener('keydown', onShortcut)
     document.removeEventListener('visibilitychange', onVisibilityChange)
     hideRevealed()
     clearNotice()

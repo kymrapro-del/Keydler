@@ -99,6 +99,12 @@ If nobody answers within the window, the call comes back `NO ANSWER` — never
 treat it exactly as a refusal_. The request stays on the page for when you
 return.
 
+**One bar tells you what needs you.** The human-side answer to `resume_task`:
+what is unresolved, in the order it costs to miss, each one a link to the card
+that holds it
+
+![Needs you](docs/assets/needs-you.png)
+
 **You can say an agent is wrong.** Approving evidence was always possible;
 refusing it was not. A disputed step carries your reason forever, stops counting
 as proven, and reaches the next conversation as `DISPUTED BY THE HUMAN — treat
@@ -253,6 +259,15 @@ defend against everything:
   approve it is a form with one exit. “Wrong” sits beside “Approve”, asks for
   your reason, and that reason is what every later conversation reads. Disputing
   drops the step out of the proven count, and it undoes like any other decision.
+- **“Needs you”**, at the top, before you read ten cards: agents blocked on a
+  decision, questions, proposals, evidence to read, work claimed with no
+  evidence — counted, ordered by what it costs to miss, and linked to the card
+  that holds each one. It disappears when there is nothing left.
+- **Keyboard.** `/` search, `s` record a step, `n` new task, `e` change the next
+  action, `?` for the list, `Esc` closes whatever is open. Nothing is captured
+  while you are typing.
+- **Print it.** A print stylesheet drops the buttons and the dark ground, so
+  `Cmd+P` gives a hand-over sheet that reads on paper.
 - **The tab calls you.** When something is waiting on you and the tab is in the
   background, its title carries the count — the same signal every chat app uses,
   and it costs no permission prompt.
