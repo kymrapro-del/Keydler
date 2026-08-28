@@ -2695,7 +2695,11 @@ function render(): void {
   const waiting = openTask ? pendingApprovals(openTask).length + openQuestions(openTask).length : 0
   document.title = attentionTitle(document.title, waiting, looking())
 
-  const listKey = openTask ? `${openTask.id}:${openTask.version}:${store.tasksRevision()}` : ''
+  // Sans la version du cahier ouvert : les lignes du sélecteur n'en dépendent
+  // pas, et l'y mettre faisait relire TOUS les cahiers du poste à chaque
+  // écriture — 61 ms et 15,9 Mo lus pour produire 9 ko de fiches, mesuré sur
+  // 20 cahiers de 2000 étapes.
+  const listKey = openTask ? `${openTask.id}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
   if ((openTask?.id ?? null) !== credentialsFor) {
     credentialsFor = openTask?.id ?? null

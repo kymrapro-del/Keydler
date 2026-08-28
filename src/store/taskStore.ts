@@ -196,7 +196,12 @@ export async function deleteCurrentTask(): Promise<void> {
     // bien présents sur le disque.
     await deleteSecretsForTask(current.id).catch(() => undefined)
     forgetSeen(current.id)
-    tasksChangedEverywhere()
+    tasksChanged()
+    // Nommer le cahier supprimé, et pas seulement « la liste a changé » : sans
+    // cela l'autre onglet gardait un cahier disparu à l'écran, et sa prochaine
+    // écriture le ressuscitait — amputé de ses identifiants scellés, eux bien
+    // effacés.
+    announce(current.id, 0, true)
     const suivant = await loadLastTask()
     if (suivant) {
       await setLastTaskId(suivant.id)
@@ -277,7 +282,7 @@ async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskSta
  */
 const CHANNEL = 'cahier-de-quart'
 
-type Announcement = { id: string | null; version: number }
+type Announcement = { id: string | null; version: number; gone?: boolean }
 
 let channel: BroadcastChannel | null = null
 
@@ -286,13 +291,20 @@ function bus(): BroadcastChannel | null {
   if (!channel) {
     channel = new BroadcastChannel(CHANNEL)
     channel.onmessage = (event: MessageEvent<Announcement>) => {
-      const { id, version } = event.data ?? { id: null, version: 0 }
+      const { id, version, gone } = event.data ?? { id: null, version: 0 }
       // Surtout PAS `tasksChangedEverywhere` ici : réannoncer ce qu'on vient de
       // recevoir ferait rebondir le message entre deux onglets, chacun
       // répondant à l'autre, sans fin.
       tasksChanged()
-      if (id !== null && id === snapshot.boundId && version > (snapshot.task?.version ?? 0)) {
-        void enqueue(() => resyncFromDisk(id))
+
+      if (id !== null && id === snapshot.boundId) {
+        if (gone) {
+          // Le cahier a été supprimé ailleurs. Le taire laissait cet onglet
+          // écrire dessus, et son écriture le ressuscitait.
+          setSnapshot({ status: 'missing', task: null, error: null, boundId: id })
+        } else if (version > (snapshot.task?.version ?? 0)) {
+          planifierRelecture(id, version)
+        }
       }
       for (const listener of listeners) listener()
     }
@@ -300,19 +312,54 @@ function bus(): BroadcastChannel | null {
   return channel
 }
 
-function announce(id: string | null, version: number): void {
+function announce(id: string | null, version: number, gone = false): void {
   try {
-    bus()?.postMessage({ id, version })
+    bus()?.postMessage({ id, version, gone })
   } catch {
     // Un onglet qui se ferme peut fermer le canal sous nos pieds. Ne rien
     // annoncer est un défaut d'affichage ailleurs, pas une écriture perdue.
   }
 }
 
+/**
+ * Une rafale d'annonces ne doit pas produire une rafale de relectures. Mesuré
+ * sur un cahier de 20 000 étapes : 50 annonces coûtaient 50 lectures et
+ * 1702 ms, dont 1668 ms jetés — la désérialisation de l'enregistrement est le
+ * coût, pas la normalisation. Et comme la file d'écriture est partagée avec
+ * les écritures locales, ces relectures retardaient les écritures de cet
+ * onglet d'un facteur 51.
+ *
+ * On ne retient donc qu'une relecture par cahier : la version la plus haute
+ * annoncée suffit à décider s'il faut relire, et le disque rendra de toute
+ * façon ce qu'il porte au moment où l'on y va.
+ */
+const relecturesAttendues = new Map<string, number>()
+
+function planifierRelecture(id: string, version: number): void {
+  const déjàEnFile = relecturesAttendues.has(id)
+  relecturesAttendues.set(id, Math.max(relecturesAttendues.get(id) ?? 0, version))
+  if (déjàEnFile) return
+
+  void enqueue(async () => {
+    const visée = relecturesAttendues.get(id) ?? 0
+    relecturesAttendues.delete(id)
+    // Le cahier ouvert a pu changer entre l'annonce et son tour dans la file.
+    if (id !== snapshot.boundId) return
+    if (visée <= (snapshot.task?.version ?? 0)) return
+    await resyncFromDisk(id)
+  })
+}
+
 async function resyncFromDisk(id: string): Promise<void> {
   try {
     const fresh = await loadTask(id)
+    // Revérifier la liaison APRÈS l'attente : la garde posée à la réception du
+    // message ne dit rien de ce qui s'est passé pendant la lecture, et écrire
+    // ici sans la refaire rebasculait l'écran — et `boundId` — sur le cahier
+    // précédent, juste après que l'utilisateur en a ouvert un autre.
+    if (id !== snapshot.boundId) return
     if (fresh) setSnapshot({ status: 'ready', task: fresh, error: null, boundId: fresh.id })
+    else setSnapshot({ status: 'missing', task: null, error: null, boundId: id })
   } catch {}
 }
 

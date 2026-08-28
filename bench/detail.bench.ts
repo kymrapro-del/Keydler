@@ -82,7 +82,12 @@ describe('détail', () => {
       await timed('saveTask AVEC contrôle de version', () => saveTask(task, task.version))
       await timed('saveTask SANS contrôle de version', () => saveTask(task))
       await timed('loadTask (get + normalize)', () => loadTask('w'))
-      sync('normalizeTask seul', () => normalizeTask(structuredClone(toStored(task))), 5)
+      // Le clone était DANS la mesure : `normalizeTask` paraissait coûter
+      // 26,34 ms là où il en coûte 1,18 — un facteur 22, et il pointait vers
+      // le mauvais correctif (« accélérer normalize » au lieu de « lire moins
+      // souvent »). Le clone est fait une fois, hors du chronomètre.
+      const cloné = structuredClone(toStored(task))
+      sync('normalizeTask seul', () => normalizeTask(cloné), 5)
       sync('structuredClone seul', () => structuredClone(toStored(task)), 5)
     }
   }, 300_000)

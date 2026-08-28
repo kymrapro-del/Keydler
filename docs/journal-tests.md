@@ -1479,3 +1479,81 @@ fait son travail — taper vite ne produit pas un rendu par caractère.
 cahier : `lastTaskId` avait été écrit pendant que la page était déjà montée, et
 le rechargement a rouvert celui d'avant. Le chiffre de 1009 ms que j'ai lu là
 était celui d'un cahier de dix étapes — il ne mesurait rien.
+
+## 28 août 2026 — ce qu'un audit adversarial a trouvé dans le code d'il y a une heure
+
+Neuf agents lancés en parallèle : trois sur le concours, trois en audit du code
+écrit aujourd'hui, deux sur les surfaces non couvertes et le build de
+production, un de synthèse. Ils ont trouvé **quatre défauts dans le
+`BroadcastChannel` posé une heure plus tôt**, dont deux atteignables avec deux
+onglets et un cahier de dix étapes.
+
+### Le pire : une suppression pouvait être annulée par l'autre onglet
+
+La suppression n'annonçait que « la liste a changé », sans nommer le cahier.
+L'onglet d'à côté gardait donc à l'écran un cahier disparu — et sa prochaine
+écriture le **ressuscitait**. `saveTask` traitait « aucun enregistrement » comme
+« pas encore créé » et retombait sur le `put`.
+
+Le cahier revenait avec toutes ses étapes et toutes ses preuves collées, mais
+**sans ses identifiants scellés**, eux réellement effacés : l'humain croyait la
+donnée partie, elle revenait amputée, et chaque référence `${name}` pendait dans
+le vide. Sur l'opération que l'on fait précisément *parce qu'on veut que la
+donnée disparaisse.
+
+Le commit `26501e8` s'intitule « Verify … that deleting a task takes its
+secrets ». Ce défaut le démentait dans le cas à deux onglets.
+
+**Deux correctifs, les deux nécessaires.** La suppression nomme le cahier
+(`{id, gone: true}`), et le récepteur passe en `missing`. Et `saveTask` refuse
+désormais une écriture qui porte une version attendue contre un enregistrement
+absent : une telle écriture est par définition une mise à jour, les créations
+passent par le chemin sans version.
+
+**J'avais écrit l'assertion inverse.** `test/migration-index.test.ts` affirmait
+« laisse passer la toute première écriture d'un cahier qui n'existe pas ».
+C'était mon raisonnement qui était faux, pas le code qui l'a suivi. Le test
+affirme maintenant le contraire, avec la raison.
+
+### Trois autres, dans le même fichier
+
+- **La relecture ne revérifiait pas la liaison.** La garde « est-ce le cahier
+  ouvert ? » était évaluée à la réception du message ; le travail, lui, était
+  différé dans la file. Entre les deux, l'utilisateur peut ouvrir un autre
+  cahier — et la relecture rebasculait l'écran, et `boundId`, sur le précédent.
+  Pire que l'écran périmé que le canal devait supprimer.
+- **Aucun regroupement.** Mesuré par l'agent sur 20 000 étapes : cinquante
+  annonces coûtaient cinquante lectures et 1702 ms, dont 1668 jetés. Et comme la
+  file est partagée avec les écritures locales, elles retardaient les écritures
+  de cet onglet d'un facteur 51. Une seule relecture par cahier désormais.
+- **La liste des cahiers se relisait à chaque écriture.** `listKey` contenait la
+  version du cahier ouvert, qui change à chaque écriture : 61 ms et **15,9 Mo
+  lus pour produire 9 ko de fiches**, sur 20 cahiers de 2000 étapes. Les lignes
+  du sélecteur n'en dépendent pas.
+
+### Vérifié à deux vrais onglets
+
+Onglet 1 supprime. Onglet 2, **sans un clic ni un rechargement** :
+
+> This task does not exist on this device. The address points at suppr0000001,
+> which is not here. No other task has been opened in its place.
+
+Puis un agent tente d'écrire depuis l'onglet 2 : refusé. Et sur le disque :
+`tasks` vide, `secrets` vide. Le cahier ne revient pas.
+
+### Un mutant survivant, non résolu
+
+Retirer la revérification de liaison **à l'intérieur** de `resyncFromDisk` ne
+fait rougir aucun test : la garde de la file la couvre en amont. Les deux ont
+pourtant un rôle distinct — l'une évite la lecture, l'autre évite d'appliquer
+une lecture périmée — et je n'ai pas su construire une course déterministe pour
+la seconde. Elle reste, non couverte, et c'est écrit ici plutôt que maquillé.
+
+### Un chiffre publié par le banc était faux
+
+`bench/detail.bench.ts` chronométrait `normalizeTask(structuredClone(task))`,
+attribuant à la normalisation le coût du clone : **3,94 ms de clone comptés dans
+0,24 ms de normalisation**, à 4000 étapes. Un facteur seize, et il pointait vers
+le mauvais correctif — « accélérer normalize » au lieu de « lire moins
+souvent ». Le clone est sorti du chronomètre. Aucun document publié ne citait ce
+chiffre ; seule la sortie du banc était fausse.

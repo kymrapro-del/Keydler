@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { addConstraint, logStep } from '../src/domain/task'
 import { loadTask, saveTask } from '../src/persistence/taskRepository'
+import { getDb } from '../src/persistence/db'
 import * as store from '../src/store/taskStore'
 import { clearDatabase, waitUntil } from './helpers'
 
@@ -95,7 +96,7 @@ describe('ce qu’un onglet apprend de l’autre', () => {
 
   it('prévient les autres pages de ses propres écritures', async () => {
     const task = await store.createAndOpenTask('Partagée', undefined)
-    const reçues: { id: string | null; version: number }[] = []
+    const reçues: { id: string | null; version: number; gone?: boolean }[] = []
     autreOnglet.onmessage = (e) => reçues.push(e.data)
 
     await store.mutate((s) =>
@@ -105,7 +106,11 @@ describe('ce qu’un onglet apprend de l’autre', () => {
     // On attend l'annonce de CETTE tâche : la création en a déjà émis une pour
     // la liste, qui arrive de façon asynchrone et gagnerait la course.
     await waitUntil(() => reçues.some((m) => m.id === task.id), 'l’annonce de la tâche')
-    expect(reçues).toContainEqual({ id: task.id, version: store.currentTask()!.version })
+    expect(reçues).toContainEqual({
+      id: task.id,
+      version: store.currentTask()!.version,
+      gone: false,
+    })
   })
 
   it('réveille la liste des cahiers quand une autre page en crée un', async () => {
@@ -116,5 +121,74 @@ describe('ce qu’un onglet apprend de l’autre', () => {
     // liste, si.
     autreOnglet.postMessage({ id: null, version: 0 })
     await waitUntil(() => store.tasksRevision() > avant, 'la révision de la liste')
+  })
+})
+
+describe('ce qu’un onglet fait d’une suppression venue d’ailleurs', () => {
+  /**
+   * Trouvé par un audit adversarial, et c'est le défaut le plus grave de cette
+   * série : la suppression n'annonçait que « la liste a changé », sans nommer
+   * le cahier. L'onglet d'à côté gardait donc à l'écran un cahier disparu, et
+   * sa prochaine écriture le RESSUSCITAIT — avec toutes ses étapes et toutes
+   * ses preuves collées, mais sans ses identifiants scellés, eux réellement
+   * effacés. L'humain croyait la donnée partie ; elle revenait amputée.
+   */
+  it('apprend que le cahier ouvert a été supprimé, et cesse de le montrer', async () => {
+    const task = await store.createAndOpenTask('Supprimée ailleurs', undefined)
+    expect(store.getSnapshot().status).toBe('ready')
+
+    autreOnglet.postMessage({ id: task.id, version: 0, gone: true })
+
+    await waitUntil(() => store.getSnapshot().status === 'missing', 'l’état « disparu »')
+    expect(store.currentTask()).toBeNull()
+    expect(store.missingTaskId()).toBe(task.id)
+  })
+
+  it('ne ressuscite pas un cahier supprimé quand il tente d’écrire', async () => {
+    const task = await store.createAndOpenTask('Supprimée ailleurs', undefined)
+    // L'autre onglet supprime pour de bon, puis l'annonce arrive.
+    const db = await getDb()
+    await db.delete('tasks', task.id)
+    autreOnglet.postMessage({ id: task.id, version: 0, gone: true })
+    await waitUntil(() => store.getSnapshot().status === 'missing', 'l’état « disparu »')
+
+    await expect(
+      store.mutate((s) => addConstraint(s, { rule: 'Trop tard', basedOnVersion: null }, 'human')),
+    ).rejects.toThrow()
+    expect(await loadTask(task.id)).toBeUndefined()
+  })
+
+  it('ignore une disparition qui concerne une autre tâche', async () => {
+    await store.createAndOpenTask('La mienne', undefined)
+    autreOnglet.postMessage({ id: 'une-autre', version: 0, gone: true })
+    await new Promise((r) => setTimeout(r, 30))
+    expect(store.getSnapshot().status).toBe('ready')
+  })
+})
+
+describe('la relecture ne va pas écraser le mauvais cahier', () => {
+  /**
+   * La garde « est-ce bien le cahier ouvert ? » était évaluée à la RÉCEPTION du
+   * message, mais la relecture, elle, était différée dans la file d'écriture.
+   * Entre les deux, l'utilisateur peut ouvrir un autre cahier — et la
+   * relecture rebasculait l'écran, et `boundId`, sur le précédent.
+   */
+  it('abandonne si le cahier ouvert a changé entre l’annonce et son tour', async () => {
+    const a = await store.createAndOpenTask('Cahier A', undefined)
+    const b = await store.createAndOpenTask('Cahier B', undefined)
+
+    // Faire avancer A sur le disque, sans passer par ce magasin.
+    const surLeDisque = await loadTask(a.id)
+    await saveTask(
+      addConstraint(surLeDisque!, { rule: 'Posée ailleurs', basedOnVersion: null }, 'human'),
+    )
+
+    // B est ouvert ; l'annonce parle de A.
+    expect(store.currentTask()!.id).toBe(b.id)
+    autreOnglet.postMessage({ id: a.id, version: 99 })
+    await new Promise((r) => setTimeout(r, 60))
+
+    expect(store.currentTask()!.id).toBe(b.id)
+    expect(store.getSnapshot().boundId).toBe(b.id)
   })
 })
