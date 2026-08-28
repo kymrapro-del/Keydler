@@ -1102,3 +1102,30 @@ HTML de la page coûte **0,7 ms** dans Chrome, contre 15 ms sous jsdom. Le rendu
 par sections, qui semblait s'imposer d'après les chiffres jsdom, aurait donc
 gagné moins d'une milliseconde pour une refonte du tableau de bord entier. Non
 fait.
+
+## 28 août 2026 — ce qui voyage avec un lien
+
+**Poste.** Chrome, serveur de développement, cahier portant trois preuves dont
+une sortie de commande contenant un faux jeton et un nom d'hôte interne.
+
+Le lien partageable et l'export emportent les preuves telles qu'elles ont été
+collées. Le README le disait ; l'écran, non — et c'est l'écran qu'on lit avant
+de cliquer. Pire, l'ancien message n'arrivait qu'**après** la copie, quand la
+décision était déjà prise.
+
+**Observé.** Sur ce cahier, sous le bouton de partage : « 3 pieces of evidence
+travel with it, pasted exactly as they were. Command output often holds a token
+or an internal hostname — read what it carries before you send this on. Sealed
+credentials never travel. » Bloc de 820 × 50 px, gris `rgb(160, 160, 172)`,
+aucun débordement horizontal. Les deux champs de preuve portent « Kept exactly
+as pasted, and it travels with every export and shared link. », positionnée sous
+le textarea. Le panneau technique porte la note d'export.
+
+**Ce qui a été refusé.** Un avertissement affiché en permanence. Il ne paraît
+que s'il y a réellement une preuve attachée, et il compte : un avertissement
+montré sans raison s'apprend à ne plus être lu. Un test tient ce silence.
+
+**Une régression évitée de justesse.** La première rédaction du message de
+copie perdait le mot « copy », et avec lui l'idée que le destinataire reçoit un
+exemplaire à lui, qui divergera. Un test existant l'a rattrapée — il ne
+vérifiait pas une chaîne, il vérifiait cette idée.

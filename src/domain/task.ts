@@ -1376,6 +1376,18 @@ export function evidenceCounts(state: TaskState): EvidenceCounts {
   return counts
 }
 
+/**
+ * Ce qui part avec un export ou un lien partageable, et que personne ne relit
+ * avant d'envoyer : une sortie de commande collée entière peut porter un
+ * jeton, un nom de machine interne ou un nom de client.
+ *
+ * Les identifiants scellés, eux, vivent hors de `TaskState` et ne PEUVENT pas
+ * voyager — c'est structurel, pas une précaution. Les preuves, si.
+ */
+export function attachedEvidenceCount(state: TaskState): number {
+  return state.steps.filter((s) => s.evidence !== null).length
+}
+
 export function provenStepCount(state: TaskState): number {
   return state.steps.filter((s) => s.confidence === 'human_verified' || s.confidence === 'evidence')
     .length

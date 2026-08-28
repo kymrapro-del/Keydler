@@ -537,6 +537,12 @@ That also sets the boundaries, and they are real:
   first; the export contains full evidence and the complete write log, refusals
   included. It deliberately contains **no credential**, sealed or otherwise, so
   it is not a backup of those.
+- **Evidence travels, and it is quoted verbatim.** An export and a shared link
+  both carry the evidence exactly as it was pasted — and command output often
+  holds a token, an internal hostname, or a customer name. The page now says
+  this where you paste and again where you share, with a count, rather than
+  leaving it to this file. Sealed credentials cannot travel at all: they live
+  outside the log, which is a structural guarantee rather than a precaution.
 - **This is not a universal memory.** It is a memory for _one supervised task_.
 - **Nothing guarantees an agent will call `resume_task`.** The description is
   written to make it the obvious first move, and the measurement suggests it
