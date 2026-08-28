@@ -823,7 +823,12 @@ const FILTER_LABEL: Record<MatchKind, string> = {
 }
 
 function renderFilters(all: Match[]): string {
-  const present = [...new Set(all.map((m) => m.kind))]
+  // Un seul passage pour compter, plutôt qu'un par catégorie : sur un mot
+  // fréquent dans un gros cahier, les résultats se comptent par milliers, et
+  // il y a huit catégories.
+  const counts = new Map<MatchKind, number>()
+  for (const m of all) counts.set(m.kind, (counts.get(m.kind) ?? 0) + 1)
+  const present = [...counts.keys()]
   if (present.length < 2) return ''
 
   const button = (kind: MatchKind | 'all', label: string, count: number) =>
@@ -832,9 +837,7 @@ function renderFilters(all: Match[]): string {
 
   return `<div class="actions search__filters">
       ${button('all', 'All', all.length)}
-      ${present
-        .map((kind) => button(kind, FILTER_LABEL[kind], all.filter((m) => m.kind === kind).length))
-        .join('')}
+      ${present.map((kind) => button(kind, FILTER_LABEL[kind], counts.get(kind) ?? 0)).join('')}
     </div>`
 }
 

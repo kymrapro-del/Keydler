@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { addConstraint, logStep } from '../src/domain/task'
 import * as store from '../src/store/taskStore'
-import { storeWrite } from './helpers'
+import { clearDatabase, storeWrite } from './helpers'
 import { loadLastTask, loadTask } from '../src/persistence/taskRepository'
 import { getDb } from '../src/persistence/db'
+import { putTask } from '../src/persistence/taskRepository'
+import { buildCoreTask } from '../src/demo/seed'
+import { SCHEMA_VERSION } from '../src/domain/types'
 import type { StoredTask } from '../src/persistence/normalize'
 
 beforeEach(() => {
@@ -44,29 +47,45 @@ describe('persistance', () => {
    * ne lit que ce qu'il rend. Ce qu'il faut vérifier, c'est qu'il rend
    * toujours la même chose : le plus récent, et le suivant si celui-là est
    * illisible.
+   *
+   * Les dates sont posées à la main. Deux cahiers créés dans la même
+   * milliseconde portent la même date, et « le plus récent » n'a alors pas de
+   * réponse — l'épreuve inventerait un ordre que le produit ne promet pas.
    */
-  it('sans dernier cahier connu, prend le plus récent', async () => {
-    await store.createAndOpenTask('Premier', undefined)
-    const second = await store.createAndOpenTask('Second', undefined)
-
+  async function poser(id: string, updatedAt: number, schemaVersion = SCHEMA_VERSION) {
+    await putTask({ ...buildCoreTask(), id, title: id, updatedAt } as never)
     const db = await getDb()
-    await db.delete('meta', 'lastTaskId')
+    const stored = await db.get('tasks', id)
+    await db.put('tasks', { ...stored!, schemaVersion } as StoredTask)
+  }
 
-    expect((await loadLastTask())?.id).toBe(second.id)
+  it('sans dernier cahier connu, prend le plus récent', async () => {
+    await clearDatabase()
+    await poser('ancien', 1_000)
+    await poser('recent', 2_000)
+
+    expect((await loadLastTask())?.id).toBe('recent')
   })
 
   it('descend au suivant quand le plus récent est illisible', async () => {
-    const premier = await store.createAndOpenTask('Premier', undefined)
-    const second = await store.createAndOpenTask('Second', undefined)
-
-    const db = await getDb()
-    await db.delete('meta', 'lastTaskId')
+    await clearDatabase()
+    await poser('ancien', 1_000)
     // Un cahier écrit par une version future : refusé à la lecture, comme il
     // se doit, mais il ne doit pas emporter tout le poste avec lui.
-    const abîmé = await db.get('tasks', second.id)
-    await db.put('tasks', { ...abîmé!, schemaVersion: 999 } as StoredTask)
+    await poser('recent', 2_000, 999)
 
-    expect((await loadLastTask())?.id).toBe(premier.id)
+    expect((await loadLastTask())?.id).toBe('ancien')
+  })
+
+  it('écarte un cahier illisible de la liste, sans emporter les autres', async () => {
+    // Trouvé en mutant : rien ne tenait ce filet. Un cahier venu d'une version
+    // future ne doit pas vider le sélecteur du poste.
+    await clearDatabase()
+    await poser('lisible', 1_000)
+    await poser('futur', 2_000, 999)
+
+    const cartes = await store.allTaskCards()
+    expect(cartes.map((c) => c.id)).toEqual(['lisible'])
   })
 
   it('persiste aussi les écritures refusées', async () => {
