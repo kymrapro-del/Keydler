@@ -44,7 +44,17 @@ function fromBase64Url(value: string): Uint8Array {
   return bytes
 }
 
-async function collect(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
+/**
+ * Le lien est ouvert par la VICTIME : borner l'entrée ne protège de rien, car
+ * gzip laisse quelques kilo-octets devenir plusieurs mégaoctets. C'est la
+ * sortie qu'il faut borner, et l'arrêter dès le dépassement plutôt qu'après.
+ */
+export const MAX_DECOMPRESSED = 2_000_000
+
+async function collect(
+  stream: ReadableStream<Uint8Array>,
+  limit = Number.POSITIVE_INFINITY,
+): Promise<Uint8Array> {
   const chunks: Uint8Array[] = []
   let total = 0
   const reader = stream.getReader()
@@ -54,6 +64,12 @@ async function collect(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> 
     if (done) break
     chunks.push(value)
     total += value.length
+    if (total > limit) {
+      // Le flux peut déjà être en erreur : annuler ne doit pas produire un
+      // rejet non capté par-dessus le refus que l'on est en train de rendre.
+      await reader.cancel().catch(() => undefined)
+      throw new UnreadableLinkError()
+    }
   }
 
   const out = new Uint8Array(total)
@@ -81,7 +97,11 @@ function streamOf(bytes: Uint8Array): ReadableStream<Uint8Array> {
 type ByteTransform = { readable: ReadableStream<Uint8Array>; writable: WritableStream<unknown> }
 
 function through(bytes: Uint8Array, transform: ByteTransform): ReadableStream<Uint8Array> {
-  void streamOf(bytes).pipeTo(transform.writable as WritableStream<Uint8Array>)
+  // Annuler la lecture fait échouer ce `pipeTo`. Sans ce `catch`, chaque lien
+  // refusé laisserait un rejet non capté dans la console du navigateur.
+  void streamOf(bytes)
+    .pipeTo(transform.writable as WritableStream<Uint8Array>)
+    .catch(() => undefined)
   return transform.readable
 }
 
@@ -96,7 +116,7 @@ async function expand(bytes: Uint8Array): Promise<Uint8Array> {
     throw new UnreadableLinkError()
   }
   const gunzip = new DecompressionStream('gzip') as unknown as ByteTransform
-  return collect(through(bytes, gunzip))
+  return collect(through(bytes, gunzip), MAX_DECOMPRESSED)
 }
 
 export async function packTask(task: TaskState): Promise<string> {
@@ -108,6 +128,9 @@ export async function packTask(task: TaskState): Promise<string> {
 }
 
 export async function unpackTask(packed: string): Promise<TaskState> {
+  // La borne n'était vérifiée qu'à la PRODUCTION du lien. Rien n'oblige un
+  // lien reçu à être passé par là : on n'accepte que ce que l'on sait produire.
+  if (packed.length > MAX_LINK_LENGTH) throw new UnreadableLinkError()
   if (!SAFE.test(packed) || packed.length < 2) throw new UnreadableLinkError()
 
   const marker = packed[0]
@@ -115,6 +138,9 @@ export async function unpackTask(packed: string): Promise<TaskState> {
 
   let json: string
   try {
+    // Pas de seconde borne ici : la longueur du fragment plafonne déjà le repli
+    // non compressé à quelques kilo-octets. Seule la décompression peut faire
+    // gonfler la charge, et c'est là qu'elle est bornée.
     const bytes = fromBase64Url(packed.slice(1))
     const plain = marker === 'z' ? await expand(bytes) : bytes
     json = new TextDecoder().decode(plain)

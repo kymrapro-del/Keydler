@@ -333,10 +333,18 @@ defend against everything:
   with no agent to hand can check every claim in this README against the source
   of truth.
 
-## Audit
+## Audits
 
-[`docs/audit-2026-08-28.md`](docs/audit-2026-08-28.md) is a full defect hunt over
-the repository: static review, boundary probes, real-browser sequences including
+[`docs/audit-2-2026-08-28.md`](docs/audit-2-2026-08-28.md) is a second pass
+aimed only at the features built after the first one — the shareable link, the
+blocking approval, undo, the goal, the badges. It found that a link could carry
+a decompression bomb: the size limit was enforced on the link this page
+_produces_, and never on one it _receives_, while the link is opened by the
+person you send it to. It also records two tests that were passing without
+demonstrating anything, both caught by mutation testing.
+
+[`docs/audit-2026-08-28.md`](docs/audit-2026-08-28.md) is the first: a full
+defect hunt over the repository: static review, boundary probes, real-browser sequences including
 two tabs at once, and thirteen mutation tests that break a guarantee in the
 source and check the suite goes red. It lists what was found and fixed — sealed
 credentials outlived the task that held them, the worst of the four — and, at

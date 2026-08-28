@@ -1,6 +1,7 @@
 import {
   CONFIDENCE_ORDER,
   EVIDENCE_KINDS,
+  MAX_AUDIT_ENTRIES,
   MAX_MUTATION_RECORDS,
   SCHEMA_VERSION,
 } from '../domain/types'
@@ -149,20 +150,24 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       decidedAt: typeof a.decidedAt === 'number' ? a.decidedAt : null,
     })),
 
-    audit: asObjects(stored.audit).map((a) => ({
-      id: asId(a.id),
-      operation: asString(a.operation, 'unknown'),
-      actor: a.actor === 'human' ? 'human' : 'agent',
-      versionBefore: asNumber(a.versionBefore, 0),
-      versionAfter: asNumber(a.versionAfter, 0),
-      basedOnVersion: typeof a.basedOnVersion === 'number' ? a.basedOnVersion : null,
-      outcome: a.outcome === 'refused' ? 'refused' : 'applied',
-      detail: asString(a.detail, ''),
-      ...(typeof a.targetId === 'string' && a.targetId !== '' ? { targetId: a.targetId } : {}),
-      ...(typeof a.previous === 'string' ? { previous: a.previous } : {}),
-      ...(typeof a.repeated === 'number' ? { repeated: a.repeated } : {}),
-      at: asNumber(a.at, now),
-    })),
+    // La même borne qu'à l'écriture : un cahier reçu d'ailleurs ne doit pas
+    // pouvoir porter un journal sans fin.
+    audit: asObjects(stored.audit)
+      .slice(-MAX_AUDIT_ENTRIES)
+      .map((a) => ({
+        id: asId(a.id),
+        operation: asString(a.operation, 'unknown'),
+        actor: a.actor === 'human' ? 'human' : 'agent',
+        versionBefore: asNumber(a.versionBefore, 0),
+        versionAfter: asNumber(a.versionAfter, 0),
+        basedOnVersion: typeof a.basedOnVersion === 'number' ? a.basedOnVersion : null,
+        outcome: a.outcome === 'refused' ? 'refused' : 'applied',
+        detail: asString(a.detail, ''),
+        ...(typeof a.targetId === 'string' && a.targetId !== '' ? { targetId: a.targetId } : {}),
+        ...(typeof a.previous === 'string' ? { previous: a.previous } : {}),
+        ...(typeof a.repeated === 'number' ? { repeated: a.repeated } : {}),
+        at: asNumber(a.at, now),
+      })),
 
     mutations: asObjects(stored.mutations)
       .map((m) => ({

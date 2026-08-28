@@ -775,7 +775,10 @@ export function setGoal(state: TaskState, goal: unknown, ctx?: MutationContext):
       actor: 'human',
       basedOnVersion: null,
       detail: value ?? '(cleared)',
-      ...(state.goal === null ? {} : { previous: state.goal }),
+      // Toujours consigné, même vide : « il n'y avait rien » et « rien n'a été
+      // consigné » ne doivent pas se confondre, sinon poser un but pour la
+      // première fois n'est plus annulable.
+      previous: state.goal ?? '',
       patch: { goal: value },
     },
     ctx,
@@ -792,7 +795,7 @@ export function setNext(state: TaskState, next: unknown, ctx?: MutationContext):
       actor: 'human',
       basedOnVersion: null,
       detail: value ?? '(cleared)',
-      ...(state.next === null ? {} : { previous: state.next }),
+      previous: state.next ?? '',
       patch: { next: value },
     },
     ctx,
@@ -971,7 +974,9 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
     }
 
     case 'set_goal': {
-      if (entry.previous === undefined || state.goal === entry.previous) return null
+      // `null` et `''` disent tous deux « rien » : les comparer tels quels
+      // ferait proposer d'annuler ce qui vient de l'être.
+      if (entry.previous === undefined || (state.goal ?? '') === entry.previous) return null
       const back = entry.previous
       return {
         label: `changed what done means to “${state.goal ?? ''}”`,
@@ -980,7 +985,7 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
     }
 
     case 'set_next': {
-      if (entry.previous === undefined || state.next === entry.previous) return null
+      if (entry.previous === undefined || (state.next ?? '') === entry.previous) return null
       const back = entry.previous
       return {
         label: `changed the next action to “${state.next ?? ''}”`,
