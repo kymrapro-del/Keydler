@@ -255,9 +255,12 @@ defend against everything:
   writing anything, and says it is a copy that will not stay in step. A log too
   big for a link is refused with the size, and points at the file export, which
   has no limit.
-- **Installable and offline.** A manifest and a service worker; verified with the
-  server stopped. When the network goes, the page says so — everything here is on
-  the device, so nothing stops.
+- **Installable and offline.** A manifest and a service worker whose precache
+  list is written at build time from the real, hashed asset names — an audit
+  found it had been listing none of them, so offline served a blank page after
+  the first visit. Verified since with the static server stopped and the network
+  emulated off: an uncached fetch fails and the page still renders. When the
+  network goes, the page says so — everything here is on the device.
 - **Will the browser keep this?** Technical details reports whether storage is
   durable and how much room the log takes, and offers to ask the browser for
   durability. It never claims the work is safe: not durable means _may be
@@ -414,6 +417,19 @@ npm run dev
 ```bash
 npm run check
 ```
+
+### Deploying it
+
+The address moves to `/t/:id` as soon as a task is open, so a host without an
+SPA rewrite 404s on every reload, bookmark and shared link. `public/_redirects`
+covers Netlify and Cloudflare Pages, `vercel.json` covers Vercel; anything else
+needs the equivalent. This is invisible locally — `vite preview` rewrites by
+itself, a bare static server does not.
+
+`npm run build` and `npm run build:trial` both run `scripts/precache.mjs`, which
+writes the built asset names into `dist/sw.js`. Without it the service worker
+precached nothing the app is made of, and offline served a blank page after the
+first visit.
 
 `dev` serves on `http://localhost:5173`. `check` runs typecheck, lint,
 formatting, the full test suite and the production build; `npm run coverage`

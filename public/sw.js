@@ -1,5 +1,10 @@
-const CACHE = 'watch-log-v1'
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png']
+// Réécrit à la construction par `scripts/precache.mjs`, qui y met les noms
+// réels des fichiers produits — ils portent une empreinte, donc ils ne peuvent
+// pas être écrits à la main. Le nom du cache porte la même empreinte : sans
+// cela, `activate` ne supprimait jamais rien et une entrée fautive survivait à
+// tous les déploiements.
+const CACHE = 'watch-log-dev'
+const SHELL = ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -31,8 +36,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone()
-          caches.open(CACHE).then((cache) => cache.put('/index.html', copy))
+          // Sans ce contrôle, un hôte qui rend 404 sur une adresse profonde
+          // voyait sa page d'erreur écrite PAR-DESSUS `/index.html` : le repli
+          // hors ligne servait ensuite ce 404 pour toute navigation, y compris
+          // la racine, et rien ne le rattrapait.
+          if (response.ok) {
+            const copy = response.clone()
+            caches.open(CACHE).then((cache) => cache.put('/index.html', copy))
+          }
           return response
         })
         .catch(() =>

@@ -1557,3 +1557,53 @@ attribuant à la normalisation le coût du clone : **3,94 ms de clone comptés d
 le mauvais correctif — « accélérer normalize » au lieu de « lire moins
 souvent ». Le clone est sorti du chronomètre. Aucun document publié ne citait ce
 chiffre ; seule la sortie du banc était fausse.
+
+## 28 août 2026 — le build de production, et une promesse du README qui était fausse
+
+Un agent d'audit a construit puis servi `dist/` depuis un serveur statique NU —
+pas `vite preview`, qui réécrit tout seul et masquait tout. Trois problèmes,
+tous invisibles en local.
+
+### L'adresse profonde tombait sur un 404
+
+La page déplace l'adresse vers `/t/:id` dès qu'un cahier est ouvert. Sur un
+hôte sans réécriture, tout rechargement, tout signet et tout lien partagé
+tombait sur le 404 de l'hébergeur. Vérifié : `curl http://127.0.0.1:8911/t/abc`
+rend **404** sur un serveur nu, **200** sous `vite preview`.
+
+`public/_redirects` et `vercel.json` posés. Un serveur statique nu ne les lit
+pas — ce sont des conventions d'hébergeur — donc ce point reste à vérifier sur
+l'hôte réellement choisi.
+
+### Le service worker ne précachait rien de l'application
+
+`SHELL` listait `/`, `/index.html`, le manifeste et une icône. Les deux
+fichiers dont l'application est faite portent une empreinte dans leur nom : ils
+ne peuvent pas être écrits à la main, et rien ne les injectait. L'enregistrement
+se faisant sur `load`, la première visite ne passe pas non plus par le worker.
+**Après une seule visite, hors ligne rendait une page blanche** — alors que le
+README annonçait l'inverse, « verified with the server stopped ».
+
+`scripts/precache.mjs` écrit désormais les vrais noms dans `dist/sw.js`, et
+donne au cache un nom dérivé de leur contenu — sans quoi `activate` ne
+supprimait jamais rien.
+
+**Vérifié pour de bon, cette fois.** Serveur statique **arrêté**, réseau émulé
+hors ligne, `fetch` d'une ressource non cachée qui **échoue** — et la page rend
+957 caractères de contenu réel. Cache : cinq entrées, dont le JS et le CSS.
+
+### Une page d'erreur pouvait empoisonner le cache pour de bon
+
+La branche de navigation mettait la réponse en cache **sans contrôler son
+statut**. Sur un hôte sans réécriture, le premier `/t/:id` rendait un 404 qui
+était écrit par-dessus `/index.html` : le repli hors ligne servait ensuite ce
+404 pour toute navigation, racine comprise. Et le nom du cache étant figé,
+aucun déploiement ne le nettoyait. Le contrôle `response.ok` existait déjà sur
+la branche des ressources ; il manquait sur celle des navigations.
+
+### La carte de source partait en production
+
+`npm run build` — ce que les hébergeurs détectent tout seuls — produisait une
+carte de source de **519 ko**, plus lourde que tout le reste du site réuni, et
+qui rend la source entière lisible par un agent pilotant le navigateur. Elle est
+maintenant sur demande (`SOURCEMAP=1`). `dist/` passe de ~760 ko à **260 ko**.
