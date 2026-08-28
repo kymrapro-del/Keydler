@@ -1264,3 +1264,218 @@ en suspens pendant que je lançais d'autres outils ; la boîte de dialogue est
 ressortie bien plus tard, derrière un appel sans rapport. Répondue tout de
 suite, la réouverture fonctionne — et les neuf outils d'écriture se
 réenregistrent dans la seconde.
+
+## 28 août 2026 — les deux trouvailles, corrigées et revérifiées
+
+**Poste.** Brave 151, deux onglets sur la même tâche, appels par
+`execute_webmcp_tool`.
+
+### La recherche se remplit maintenant jusqu'au budget
+
+Douze correspondances de 240 caractères faisaient 6296 caractères. La borne
+porte désormais sur les caractères et non sur le compte : **6296 → 1275**, et
+l'en-tête dit « 2 shown of 30 found · 28 more not shown — narrow the query ».
+Rien n'est caché, la recherche sert à trouver.
+
+**Une borne que j'ai posée puis retirée.** J'avais borné `read_task_detail` de
+la même façon. Une épreuve existante l'a refusé — et elle avait raison :
+`resume_task` est le pointeur court, `read_task_detail` est là où l'on va
+chercher du volume. Le borner rendait une à deux entrées par page dès qu'une
+preuve était jointe. Le partage des rôles était délibéré ; je ne l'avais pas
+reconnu avant que le test ne me le dise.
+
+### Deux onglets restent en phase
+
+Un `BroadcastChannel` annonce chaque écriture ; l'onglet qui tient la même tâche
+la relit depuis IndexedDB et se redessine.
+
+**Observé.** Onglet 2 écrit une règle. Onglet 1 passe de v32 à **v33** et
+affiche la règle, **sans un clic ni un rechargement**. Aucune erreur console.
+
+**Deux défauts trouvés en le construisant, dont un que la suite n'a pas vu.**
+
+1. **L'écho.** Une réécriture par numéro de ligne avait transformé le
+   `tasksChanged()` du récepteur en `tasksChangedEverywhere()` : chaque onglet
+   réannonçait ce qu'il recevait, et deux onglets se seraient renvoyé le message
+   sans fin. Attrapé par un test qui vérifiait ce qui était émis.
+
+2. **L'onglet sourd — vu en navigateur seulement.** Le canal était ouvert
+   paresseusement, à la première annonce. Or un onglet qui ne fait que lire
+   n'annonce jamais rien : il restait donc sourd, et c'était exactement celui
+   qu'il fallait réveiller. La suite ne pouvait pas le voir, parce que dans
+   chacun de ses cas le magasin avait écrit avant d'écouter. Le canal s'ouvre
+   maintenant à `init()`, et une épreuve part d'un magasin qui n'écrit pas une
+   seule fois.
+
+C'est la troisième fois dans ce projet qu'un test vert masque un défaut que le
+navigateur montre en une minute.
+
+## 28 août 2026 — passe de sécurité en WebMCP réel
+
+**Poste.** Brave 151, deux onglets, appels par `execute_webmcp_tool`.
+
+### Injection : ce qu'un agent écrit finit dans le DOM de l'humain
+
+Une étape écrite **par un agent**, portant
+`<img src=x onerror="window.__pwned=1">`, `<script>`, un `<iframe>` et un
+`</pre>` destiné à sortir du bloc de preuve.
+
+**Observé.** Rien d'exécuté — les quatre témoins restent `null`. Zéro `<img>`,
+zéro `<script>`, zéro `<iframe>` dans `#app`. Le texte s'affiche tel quel, y
+compris une fois la preuve dépliée. En position d'attribut (`aria-label`), les
+guillemets sont échappés en `&quot;` ; en position de texte, ils ne le sont pas
+— ce qui est correct, et non un oubli.
+
+**Erreur de sonde.** Mon premier contrôle dé-échappait le HTML avant d'y
+chercher des balises, et trouvait donc huit « balises vivantes » qui étaient les
+entités échappées de ma propre charge. Le produit n'y était pour rien.
+
+### Le coffre, jusque dans IndexedDB
+
+Un identifiant scellé depuis l'écran, puis l'enregistrement brut relu.
+
+| Question                           | Réponse                                       |
+| ---------------------------------- | --------------------------------------------- |
+| Champs stockés                     | `id, taskId, name, purpose, kind, sealed, at` |
+| Valeur en clair dans le coffre     | non                                           |
+| Passphrase en clair dans le coffre | non                                           |
+| Valeur en clair dans la tâche      | non                                           |
+| Contenu de `sealed`                | `{ciphertext: "…base64…"}`                    |
+
+`read_task_detail` sur `credentials` rend `${gemini-api-key}` et sa raison
+d'être, jamais la valeur. `search_task` sur la valeur elle-même : `NO MATCH`.
+
+**Le lien partageable non plus.** 7005 caractères, décompressés en
+19 589 caractères de JSON : ni la valeur, **ni même le nom**. Les secrets vivant
+hors de `TaskState`, `packTask` ne peut pas les emporter — la garantie est
+structurelle, et elle se vérifie sur l'octet.
+
+**Passphrase.** Mauvaise : « That passphrase does not open this credential. »
+Bonne : la valeur, avec « Hidden again in under a minute. »
+
+**Le pire moment.** Avec la valeur affichée à l'écran, `resume_task` rend
+toujours `CREDENTIALS — names only, values sealed (1)` et le seul `${nom}`.
+
+**Mais la garantie est bien celle qui est écrite, pas plus.** La page dit :
+« anything you reveal on screen can be read by an agent that drives this
+browser ». C'est exact, et je viens d'en faire la démonstration involontaire :
+j'ai lu la valeur révélée dans le DOM par `evaluate_script`. La promesse est
+« aucun OUTIL ne rend une valeur », pas « aucun agent ne peut la voir ». Le
+produit le dit ; il fallait le vérifier plutôt que le sur-vendre.
+
+### La bombe de décompression, avec le vrai `DecompressionStream`
+
+Corrigée au second audit, jamais vérifiée en navigateur jusqu'ici.
+
+| Charge         | Mesure                                         |
+| -------------- | ---------------------------------------------- |
+| En clair       | 6 000 302 octets                               |
+| Compressée     | 6 069 octets, ratio 989:1                      |
+| Fragment       | 8 093 caractères — **sous** la borne de 16 000 |
+| Verdict        | refusée en ~100 ms                             |
+| Tas après coup | 4 Mo — les 6 Mo n'ont jamais existé            |
+
+Message rendu : « That link does not carry a readable watch log. »
+
+### Durabilité
+
+`navigator.storage.persisted()` vaut `false` sur ce profil ; 0,54 Mo utilisés
+sur 2 Go de quota. La page propose « Ask the browser to keep this » quand ce
+n'est pas accordé, ce qui est le comportement attendu.
+
+## 28 août 2026 — export, import, et la suppression d'un cahier
+
+**Poste.** Brave 151. Le téléchargement est intercepté en enveloppant
+`URL.createObjectURL`, l'import en construisant un `File` et un `DataTransfer` —
+donc par les mêmes chemins que l'utilisateur.
+
+### L'export
+
+34 828 octets de Markdown, un seul bloc JSON. Il porte bien la charge
+d'injection écrite plus tôt (c'est le contenu du cahier, il doit y être), et
+**ni la valeur du secret ni même son nom**. Cohérent avec le lien partageable,
+et pour la même raison structurelle.
+
+### L'import, ses deux branches
+
+| Fichier                              | Résultat                                                 |
+| ------------------------------------ | -------------------------------------------------------- |
+| Identique à ce qui est ici           | « 1 already here. » — rien n'est dupliqué                |
+| Même identifiant, version différente | une COPIE, titrée « … (imported) », identifiant distinct |
+
+Dans les deux cas l'original reste intact, et aucun secret ne revient par le
+fichier.
+
+### La suppression d'un cahier emporte ses identifiants scellés
+
+C'était le défaut le plus grave du premier audit — `deleteSecretsForTask`
+n'était jamais appelé, et un identifiant scellé survivait au cahier qui le
+portait. Corrigé alors, jamais vérifié en navigateur jusqu'ici.
+
+Relevé dans IndexedDB, de part et d'autre de la suppression :
+
+|       | `tasks`                        | `secrets`                         |
+| ----- | ------------------------------ | --------------------------------- |
+| Avant | `289687a53a75`, `a36c38ba83a6` | `gemini-api-key` → `a36c38ba83a6` |
+| Après | `289687a53a75`                 | _(vide)_                          |
+
+Le cahier part, le secret part avec lui, et l'autre cahier n'est pas touché.
+
+## 28 août 2026 — la page sur un écran étroit
+
+**Poste.** Brave 151, viewport émulé 375 × 812, mobile et tactile. Jamais
+vérifié jusqu'ici, et un juge ouvre ce qu'il veut.
+
+**Ce qui tient.** Aucun débordement horizontal : `scrollWidth` vaut exactement
+375, et **aucun** des éléments de `#app` ne dépasse la largeur du viewport. La
+hauteur médiane d'une cible tactile est de 41 px.
+
+**Ce qui ne tient pas, et n'est pas corrigé.** Quatre éléments passent sous une
+cible confortable :
+
+| Élément                                   | Hauteur   |
+| ----------------------------------------- | --------- |
+| `<select>` du type d'identifiant          | **19 px** |
+| Les trois liens de la barre « Needs you » | **22 px** |
+
+Le reste est à 41 px, soit juste sous les 44 px recommandés — un écart que je ne
+compte pas comme un défaut. Les quatre ci-dessus, si. Non corrigé : la mise en
+forme est un domaine où l'on ne touche pas sans décision, et ce n'est pas la
+mienne à prendre.
+
+## 28 août 2026 — sur une machine vingt fois plus lente
+
+**Poste.** Brave 151, throttling CPU ×20 par CDP. Cahier de **3000 étapes,
+60 règles, 1,27 Mo** — les mesures précédentes avaient toutes été prises sur une
+machine rapide, ce qui ne prouve rien pour qui n'en a pas.
+
+**Ce que la page rend.** 409 nœuds, 40 ko de HTML — les bornes tiennent, la
+taille du cahier ne s'y voit pas. Une recherche sur « shard » trouve
+3060 correspondances et n'en montre que ce qui tient dans le budget.
+
+**Le coût réel, séparé de la cadence du compositeur.** Le travail synchrone du
+gestionnaire de frappe est de 0 à 2,9 ms : il ne fait que programmer un rendu.
+Le temps jusqu'à la peinture est de ~1005 ms, mais c'est la cadence d'un
+compositeur à ×20, pas le produit — toute page la subirait.
+
+Ce qu'il fallait mesurer, c'est le fil principal. Un `PerformanceObserver` sur
+les `longtask` pendant six frappes :
+
+|                                   | ms      |
+| --------------------------------- | ------- |
+| Tâche la plus longue              | **147** |
+| Médiane                           | 136     |
+| Tâches observées pour six frappes | **3**   |
+
+147 ms à ×20 correspond à ~7 ms sur ce poste, ce qui recoupe la mesure directe
+de 6,9 ms prise plus tôt sans throttling. Sur une machine vingt fois plus lente,
+une frappe dans la recherche coûte donc ~140 ms de fil principal sur un cahier
+de 1,27 Mo : perceptible, pas cassé.
+
+Et **trois tâches pour six frappes** : le regroupement par `requestAnimationFrame`
+fait son travail — taper vite ne produit pas un rendu par caractère.
+
+**Erreur de sonde, consignée.** La première mesure portait sur le mauvais
+cahier : `lastTaskId` avait été écrit pendant que la page était déjà montée, et
+le rechargement a rouvert celui d'avant. Le chiffre de 1009 ms que j'ai lu là
+était celui d'un cahier de dix étapes — il ne mesurait rien.
