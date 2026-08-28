@@ -382,6 +382,15 @@ the same length, what is known and left alone.
   (Chromium ≥ 153). Below that, tools stay registered and refuse cleanly —
   unregistering a tool that is mid-reply can drop that reply, and no timer trick
   makes that ordering safe.
+- **The tool catalogue fits Chrome's published budgets.** Chrome recommends 30
+  characters per tool name, 500 per tool description, 150 per parameter
+  description and 1.5K per tool output — past those, agents hit their own
+  guardrails. Ten of the thirteen descriptions were over, and one parameter was
+  more than twice the limit, repeated on nine tools. A test now holds all four
+  bounds, including a floor, so nothing is trimmed into silence to fit. Read
+  back through `getTools()` in Brave 151: 16, 499 and 146 against limits of 30,
+  500 and 150. The briefing is the one that does not fit — 1528 characters,
+  1.9% over — and that overage is written down rather than shaved off.
 - **One task, one address.** A task lives at `/t/:id`. A page bound to that
   address returns that task or says it is gone; it never substitutes “whatever
   was touched last on this device”.
@@ -537,6 +546,12 @@ That also sets the boundaries, and they are real:
   first; the export contains full evidence and the complete write log, refusals
   included. It deliberately contains **no credential**, sealed or otherwise, so
   it is not a backup of those.
+- **Evidence travels, and it is quoted verbatim.** An export and a shared link
+  both carry the evidence exactly as it was pasted — and command output often
+  holds a token, an internal hostname, or a customer name. The page now says
+  this where you paste and again where you share, with a count, rather than
+  leaving it to this file. Sealed credentials cannot travel at all: they live
+  outside the log, which is a structural guarantee rather than a precaution.
 - **This is not a universal memory.** It is a memory for _one supervised task_.
 - **Nothing guarantees an agent will call `resume_task`.** The description is
   written to make it the obvious first move, and the measurement suggests it

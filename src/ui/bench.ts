@@ -27,32 +27,33 @@ import {
   acceptedRejections,
   activeConstraints,
   addConstraint,
-  copyRulesInto,
-  answerQuestion,
   answeredQuestions,
+  answerQuestion,
+  attachedEvidenceCount,
+  attachEvidence,
+  copyRulesInto,
   decideApproval,
   disputeStep,
-  pendingApprovals,
-  withdrawDispute,
-  undoLastSupervision,
-  undoable,
-  attachEvidence,
-  openQuestions,
-  setArchived,
   editConstraint,
   editRejection,
   logStep,
-  renameTask,
-  setGoal,
-  setNext,
+  openQuestions,
+  pendingApprovals,
   proposedConstraints,
   proposedRejections,
   rejectApproach,
+  renameTask,
   reopenTask,
+  setArchived,
   setConstraintActive,
   setConstraintStanding,
+  setGoal,
+  setNext,
   setRejectionStanding,
+  undoable,
+  undoLastSupervision,
   verifyEvidence,
+  withdrawDispute,
 } from '../domain/task'
 import {
   EVIDENCE_KINDS,
@@ -523,6 +524,8 @@ function renderStepRow(step: Step, active: boolean): string {
             <label for="attach-content">The evidence, pasted whole</label>
             <textarea id="attach-content" rows="5" autocomplete="off" spellcheck="false"
                       placeholder="Command output, a diff, a test report, a link"></textarea>
+            <p class="muted">Kept exactly as pasted, and it travels with every export and
+               shared link.</p>
           </div>
           <div class="field">
             <label for="attach-kind">What that evidence is</label>
@@ -602,6 +605,8 @@ function renderCompletedWork(task: TaskState): string {
                <label for="step-evidence">Evidence <span class="muted">(optional)</span></label>
                <textarea id="step-evidence" rows="5" autocomplete="off" spellcheck="false"
                          placeholder="Paste the command output, a diff, or a link"></textarea>
+               <p class="muted">Kept exactly as pasted, and it travels with every export and
+                  shared link.</p>
              </div>
              <div class="field">
                <label for="step-kind">What that evidence is</label>
@@ -1240,10 +1245,25 @@ function renderHandoff(task: TaskState): string {
     return undoButton ? `<p class="handoff">${undoButton}</p>` : ''
   }
 
+  // L'avertissement doit tomber AVANT le clic, pas après : une fois l'adresse
+  // dans le presse-papier, la décision est prise. Et il ne paraît que s'il est
+  // vrai — un avertissement affiché sans raison s'apprend à ne plus être lu.
+  const carried = attachedEvidenceCount(task)
+  const carriedNote =
+    carried > 0
+      ? `<span class="muted">${
+          carried === 1
+            ? 'One piece of evidence travels with it, pasted exactly as it was.'
+            : `${carried} pieces of evidence travel with it, pasted exactly as they were.`
+        } Command output often holds a token or an internal hostname — read what it
+           carries before you send this on. Sealed credentials never travel.</span>`
+      : ''
+
   return `<p class="handoff">
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
       <button type="button" id="copy-link" class="btn btn--quiet">Copy a link that carries this log</button>
+      ${carriedNote}
       <button type="button" id="copy-state" class="btn btn--quiet">Copy the log as text</button>
       ${undoButton}
     </p>`
@@ -1631,6 +1651,10 @@ function renderTechnical(task: TaskState | null): string {
           <button type="button" id="reset-witness" class="btn">Clear the call log</button>
           ${task ? '<button type="button" id="delete" class="btn btn--danger">Delete this task</button>' : ''}
         </div>
+        <p class="muted">
+          An export carries the evidence exactly as pasted. Sealed credentials are never
+          included — they are kept outside the log, so they cannot travel with it.
+        </p>
       </div>
     </details>`
 }
@@ -2375,7 +2399,9 @@ function bindSupervision(): void {
       .then(
         () =>
           showNotice(
-            'Link copied. It carries the whole log; the person you send it to gets a copy.',
+            attachedEvidenceCount(task) > 0
+              ? 'Link copied. It carries the whole log, evidence included — the person you send it to gets their own copy of all of it.'
+              : 'Link copied. It carries the whole log; the person you send it to gets a copy.',
           ),
         (error: unknown) => {
           humanError = humanMessage(error, 'Building that link')

@@ -1102,3 +1102,165 @@ HTML de la page coûte **0,7 ms** dans Chrome, contre 15 ms sous jsdom. Le rendu
 par sections, qui semblait s'imposer d'après les chiffres jsdom, aurait donc
 gagné moins d'une milliseconde pour une refonte du tableau de bord entier. Non
 fait.
+
+## 28 août 2026 — ce qui voyage avec un lien
+
+**Poste.** Chrome, serveur de développement, cahier portant trois preuves dont
+une sortie de commande contenant un faux jeton et un nom d'hôte interne.
+
+Le lien partageable et l'export emportent les preuves telles qu'elles ont été
+collées. Le README le disait ; l'écran, non — et c'est l'écran qu'on lit avant
+de cliquer. Pire, l'ancien message n'arrivait qu'**après** la copie, quand la
+décision était déjà prise.
+
+**Observé.** Sur ce cahier, sous le bouton de partage : « 3 pieces of evidence
+travel with it, pasted exactly as they were. Command output often holds a token
+or an internal hostname — read what it carries before you send this on. Sealed
+credentials never travel. » Bloc de 820 × 50 px, gris `rgb(160, 160, 172)`,
+aucun débordement horizontal. Les deux champs de preuve portent « Kept exactly
+as pasted, and it travels with every export and shared link. », positionnée sous
+le textarea. Le panneau technique porte la note d'export.
+
+**Ce qui a été refusé.** Un avertissement affiché en permanence. Il ne paraît
+que s'il y a réellement une preuve attachée, et il compte : un avertissement
+montré sans raison s'apprend à ne plus être lu. Un test tient ce silence.
+
+**Une régression évitée de justesse.** La première rédaction du message de
+copie perdait le mot « copy », et avec lui l'idée que le destinataire reçoit un
+exemplaire à lui, qui divergera. Un test existant l'a rattrapée — il ne
+vérifiait pas une chaîne, il vérifiait cette idée.
+
+## 28 août 2026 — les budgets de caractères de Chrome
+
+Chrome publie des budgets pour les outils WebMCP : 30 caractères par nom, 500
+par description d'outil, 150 par description de paramètre, 1,5 k par sortie —
+des recommandations, pas des limites dures, mais au-delà on « tombe sur les
+garde-fous des agents ».
+
+**Mesuré avant.** Dix descriptions sur treize dépassaient, jusqu'à 801. Une
+description de paramètre — `mutation_id`, 351 caractères — dépassait de plus du
+double, et elle était répétée sur les neuf outils d'écriture. Le catalogue
+entier, ce qu'un agent lit à chaque énumération, pesait 20 378 caractères.
+
+**Après :** 15 576, soit 24 % de moins, et aucune borne dépassée.
+
+**La règle éditoriale.** Une description d'outil instruit, le README explique.
+Ce qui a été coupé, ce sont les justifications — pourquoi la règle existe — et
+les rappels de protocole qui figuraient déjà trois fois : dans le schéma, dans
+le bloc WRITE PROTOCOL de `resume_task`, et dans le texte des refus. Aucune
+instruction n'a été retirée, et un second bloc d'épreuves nomme celles qui
+devaient survivre : « BEFORE doing any work », « Do NOT guess and carry on »,
+« NO ANSWER IS NOT APPROVAL », « does not prove the work was never attempted ».
+
+**Un changement essayé puis retiré.** Descendre `TOKEN_BUDGET` de 400 à 375
+pour tomber pile sur les 1,5 k de Chrome. Mesuré : dix-sept caractères gagnés
+sur une restitution ordinaire, et un nom d'identifiant perdu à l'écran sur un
+cahier chargé. Mauvais échange, annulé. Les restitutions réelles mesurent 1501
+et 1484 caractères — la recommandation est tenue à un caractère près sans
+l'avoir visée, et l'écart de 6,7 % entre le budget du produit et celui de Chrome
+est écrit dans le test plutôt que maquillé.
+
+**Trois tests existants ont refusé la coupe, à raison.** Ils tenaient le contrat
+de rejeu, le fait qu'une preuve jointe n'est pas vérifiée, et le déclencheur de
+`resume_task`. Deux d'entre eux ont échoué non parce que le sens avait disparu,
+mais parce que la phrase enjambait un retour à la ligne du gabarit : les
+nouvelles épreuves comparent donc sur un texte à espaces normalisés, comme le
+lit un agent.
+
+**Vérifié en navigateur, finalement.** J'avais écrit ne pas pouvoir le faire :
+le panneau de cette session n'expose pas `document.modelContext`, et pour cause
+— il tourne sur Chromium 148 (Electron), alors que WebMCP demande 149 et plus.
+Brave 151 est installé sur le poste, et le README documente la commande.
+Lancé sur un profil jetable avec `--enable-features=WebMCP,WebMCPTesting`,
+`document.modelContext` est bien un objet et les treize outils s'enregistrent
+dès qu'une tâche est ouverte — quatre seulement avant, ce qui est le
+comportement attendu : les outils suivent l'état.
+
+Relevé tel qu'un agent le reçoit, par `getTools()` :
+
+| Budget                        | Recommandé | Mesuré |
+| ----------------------------- | ---------- | ------ |
+| Nom d'outil                   | 30         | 16     |
+| Description d'outil           | 500        | 499    |
+| Description de paramètre (46) | 150        | 146    |
+
+Aucun dépassement. Les quatre outils de lecture portent bien
+`untrustedContentHint`.
+
+**Et une erreur dans ma propre garde, trouvée par cette vérification.** J'avais
+mesuré la sortie de `resume_task` par `renderTaskState(task)` sans options, soit
+1484 caractères. Appelé pour de vrai par `execute_webmcp_tool`, il en rend
+**1528** : l'outil passe toujours l'adresse de la tâche, que ma mesure omettait.
+Le test se rassurait donc sur autre chose que ce qui part. Corrigé — il mesure
+maintenant avec l'adresse.
+
+La position réelle est donc : 1528 caractères, soit **1,9 % au-dessus** de la
+recommandation de Chrome et à l'intérieur du budget du produit (400 tokens,
+1600 caractères). Écrit plutôt que rattrapé en rognant de la prose pour tomber
+sur un chiffre rond — c'est le même arbitrage que le `TOKEN_BUDGET` à 375, et
+il se tranche pareil.
+
+## 28 août 2026 — passe de vérification en WebMCP réel
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, profil jetable,
+`--enable-features=WebMCP,WebMCPTesting`, serveur de développement. Les appels
+d'outil passent par `execute_webmcp_tool`, donc par la même surface qu'un agent.
+Deux onglets ouverts sur la même tâche pour les épreuves de concurrence.
+
+### Ce qui tient
+
+| Épreuve                                                          | Résultat                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `document.modelContext` présent, `getTools()` trié par nom       | oui                                                                       |
+| Budgets Chrome : nom / description / paramètre                   | 16 · 499 · 146 sur 30 · 500 · 150                                         |
+| `untrustedContentHint` et `readOnlyHint` sur les quatre lectures | oui                                                                       |
+| Cycle de vie : 0 tâche → 4 outils, tâche ouverte → 13            | oui                                                                       |
+| Rejeu idempotent : même `mutation_id`, mêmes arguments           | réponse d'origine, « Nothing was written twice »                          |
+| Même `mutation_id`, arguments différents                         | refusé, motif explicite                                                   |
+| Version périmée                                                  | refusé, renvoie vers `what_changed`                                       |
+| Conflit entre onglets                                            | message **distinct** : « Another page has since written v30 »             |
+| Règle écrite par un agent                                        | arrive en PROPOSAL, non contraignante, visible à l'écran                  |
+| Autorisation bloquante                                           | ALLOWED et DENIED font l'aller-retour ; le refus dit de ne pas contourner |
+| `complete_task`                                                  | énumère ce qui reste non tranché avant de clore                           |
+| Écriture après clôture                                           | refusée, avec la marche à suivre                                          |
+| Réouverture                                                      | exige un motif écrit, et les outils d'écriture se réenregistrent aussitôt |
+| Section `credentials`                                            | rend des noms, jamais une valeur                                          |
+| Erreurs console sur toute la passe                               | aucune                                                                    |
+
+### Deux trouvailles
+
+**1. Deux outils de lecture débordent la borne de sortie de Chrome.** La garde
+posée plus tôt ne mesurait que `resume_task`.
+
+| Sortie                                 | Mesurée   | Face à 1,5 k |
+| -------------------------------------- | --------- | ------------ |
+| `resume_task`                          | 1528      | +2 %         |
+| `what_changed`                         | 613       | tient        |
+| `search_task`, cas ordinaire           | 811       | tient        |
+| `search_task`, pire cas                | **6 296** | ×4,2         |
+| `read_task_detail`, page de 20         | **1 989** | ×1,3         |
+| `read_task_detail`, une entrée entière | **9 078** | ×6           |
+
+La dernière est délibérée : l'outil existe pour rendre une preuve entière, et
+`MAX_EVIDENCE_LENGTH` vaut 8000. Les deux autres ne sont bornées que par un
+nombre d'entrées, jamais par des caractères — or une entrée peut être vingt fois
+plus grosse qu'une autre.
+
+**2. Aucun rafraîchissement entre onglets.** Le second onglet a rouvert la
+tâche et écrit jusqu'à v31 ; le premier affichait encore v29 et « Task closed ».
+Il ne l'apprend qu'en tentant d'écrire. La garantie de sûreté tient — rien n'est
+écrasé en silence, et le refus nomme même l'autre page — mais l'écran ment
+jusque-là, ce qui est exactement ce que ce produit reproche aux autres.
+`visibilitychange` ne relit pas la base ; il redessine depuis la mémoire.
+
+### Erreurs de sonde, consignées
+
+**Deux versions devinées à tort.** Une décision d'autorisation incrémente
+elle-même la version ; mes appels suivants portaient donc une version périmée.
+Les refus étaient justes, la sonde non.
+
+**« La réouverture ne fait rien » était de moi.** J'avais laissé le `prompt()`
+en suspens pendant que je lançais d'autres outils ; la boîte de dialogue est
+ressortie bien plus tard, derrière un appel sans rapport. Répondue tout de
+suite, la réouverture fonctionne — et les neuf outils d'écriture se
+réenregistrent dans la seconde.

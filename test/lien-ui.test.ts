@@ -59,6 +59,49 @@ describe('offrir le cahier dans un lien', () => {
     expect(copied!.split('#')[0]).toContain('/t/')
   })
 
+  /**
+   * Le lien emporte les preuves telles qu'elles ont été collées, et une sortie
+   * de commande peut porter un jeton ou le nom d'une machine interne. Le
+   * produit se donne pour règle de dire ce qu'il fait ; il ne le disait pas
+   * ici, et pas au bon moment : une fois l'adresse dans le presse-papier, la
+   * décision est déjà prise.
+   */
+  it('prévient de ce qui voyage AVANT le clic, pas après', async () => {
+    const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
+
+    expect(zone).toContain('pieces of evidence travel with it')
+    expect(zone).toContain('token or an internal hostname')
+    // Et il rassure sur ce qui ne peut PAS voyager, parce que c'est structurel.
+    expect(zone).toContain('Sealed credentials never travel')
+  })
+
+  it('se tait quand aucune preuve n’est attachée', async () => {
+    // Un avertissement affiché sans raison s'apprend à ne plus être lu.
+    const nue = { ...buildDemoTask(), id: 'sans-preuve', steps: [] }
+    await store.openPreparedTask(nue)
+    await settled()
+
+    const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
+    expect(zone).not.toContain('evidence travel')
+    expect(zone).not.toContain('internal hostname')
+    // Le bouton, lui, reste offert.
+    expect(root.querySelector('#copy-link')).not.toBeNull()
+  })
+
+  it('compte au singulier quand il n’y a qu’une preuve', async () => {
+    const demo = buildDemoTask()
+    const une = {
+      ...demo,
+      id: 'une-preuve',
+      steps: demo.steps.filter((s) => s.evidence !== null).slice(0, 1),
+    }
+    await store.openPreparedTask(une)
+    await settled()
+
+    const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
+    expect(zone).toContain('One piece of evidence travels with it')
+  })
+
   it('dit ce qu’il vient de copier, et que c’est une copie', async () => {
     root.querySelector<HTMLButtonElement>('#copy-link')!.click()
     await waitUntil(() => !!root.querySelector('.notice--ok'), 'le message')
@@ -66,6 +109,8 @@ describe('offrir le cahier dans un lien', () => {
 
     const message = root.querySelector('.notice--ok')!.textContent!
     expect(message.toLowerCase()).toContain('copy')
+    // Et il nomme ce qui est parti avec, pas seulement « le cahier ».
+    expect(message).toContain('evidence included')
   })
 })
 

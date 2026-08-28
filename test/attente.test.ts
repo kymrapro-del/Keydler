@@ -150,6 +150,18 @@ describe('joindre une preuve après coup', () => {
     expect(root.querySelector(`[data-attach="${id}"]`)).toBeNull()
   })
 
+  it('dit, au moment de joindre, où la preuve ira', async () => {
+    const id = await claimed()
+    root.querySelector<HTMLButtonElement>(`[data-attach="${id}"]`)!.click()
+    __renderNow()
+
+    const note = root
+      .querySelector('#attach-content')!
+      .parentElement!.textContent!.replace(/\s+/g, ' ')
+    expect(note).toContain('Kept exactly as pasted')
+    expect(note).toContain('travels with every export and shared link')
+  })
+
   it('joint une preuve multiligne, validée par vous puisque vous l’avez lue', async () => {
     const id = await claimed()
     root.querySelector<HTMLButtonElement>(`[data-attach="${id}"]`)!.click()

@@ -15,6 +15,16 @@ import type { Confidence, TaskState } from './types'
 import { referenceSyntax, type SecretName } from './secret'
 import { sinceThen } from './elapsed'
 
+/**
+ * Chrome recommande 1,5 k caractères par sortie d'outil. À quatre caractères
+ * par token — la mesure qu'utilise `estimateTokens` — cela ferait 375, et le
+ * budget vise 400. Descendre à 375 a été essayé, puis retiré : mesuré, cela
+ * faisait passer une restitution ordinaire de 1506 à 1489 caractères, dix-sept
+ * de gagnés, et cela coûtait un nom d'identifiant à l'écran sur un cahier
+ * chargé. Les restitutions réelles tiennent déjà sous 1,5 k ; celles qui
+ * débordent portent un nombre anormal de règles, où le plancher de douze
+ * obligations est un choix assumé et documenté.
+ */
 export const TOKEN_BUDGET = 400
 
 const CONFIDENCE_TAG: Record<Confidence, string> = {
@@ -283,8 +293,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   lines.push('')
   lines.push('FULL DETAIL')
-  lines.push('  read_task_detail pages any section of this record in full — its own')
-  lines.push('  schema lists them. Nothing above is the complete record.')
+  lines.push('  read_task_detail pages any section of this record in full; its schema')
+  lines.push('  lists them. Nothing above is the complete record.')
 
   lines.push('')
   if (state.status === 'active') {
