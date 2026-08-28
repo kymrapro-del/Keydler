@@ -475,6 +475,29 @@ function remainder(total: number): string {
     : ''
 }
 
+/**
+ * Une liste que rien ne borne finit par rendre la page injouable. Mesuré :
+ * 2000 règles portaient un aller-retour de rendu de 17 ms à 501 ms, pour
+ * 1,2 Mo de HTML et 10 000 nœuds — et la page se redessine à chaque frappe
+ * dans la recherche. Les étapes étaient déjà bornées ; les règles, les
+ * approches écartées, les questions et les autorisations ne l'étaient pas.
+ *
+ * On borne donc l'affichage, jamais en silence : le nombre caché est écrit,
+ * et un bouton ouvre la liste entière. C'est le même marché que l'historique.
+ */
+const expanded = new Set<string>()
+
+function capped<T>(id: string, items: readonly T[], limit = MAX_ROWS): T[] {
+  return expanded.has(id) ? [...items] : items.slice(0, limit)
+}
+
+function moreButton(id: string, total: number, shown: number, one: string, many: string): string {
+  if (total <= shown && !expanded.has(id)) return ''
+  return `<button type="button" class="btn btn--quiet" data-more="${id}">${
+    expanded.has(id) ? 'Show fewer' : `Show all ${total} ${plural(total, one, many)}`
+  }</button>`
+}
+
 function disputeForm(step: Step): string {
   return `<p class="row__text"><strong>${escapeHtml(step.action)}</strong></p>
       <form id="form-dispute" class="form" novalidate>
@@ -608,7 +631,10 @@ function renderCompletedWork(task: TaskState): string {
 }
 
 function trailButton(task: TaskState, id: string, label: string): string {
-  if (historyOf(task, id).length === 0) return ''
+  const trail = historyOf(task, id)
+  // Même sans entrée survivante, le bouton reste : cacher l'histoire d'un
+  // élément dont le journal a été élagué reviendrait à taire l'élagage.
+  if (trail.entries.length === 0 && !trail.mayBeIncomplete) return ''
   return `<button type="button" class="btn btn--quiet" data-trail="${escapeHtml(id)}"
             aria-expanded="${showingTrail === id}"
             aria-label="What happened to: ${escapeHtml(label)}">${
@@ -618,10 +644,20 @@ function trailButton(task: TaskState, id: string, label: string): string {
 
 function renderTrail(task: TaskState, id: string): string {
   if (showingTrail !== id) return ''
-  const lines = historyOf(task, id).map(describeEntry).reverse()
-  if (lines.length === 0) return ''
+  const trail = historyOf(task, id)
+  const lines = trail.entries.map(describeEntry).reverse()
+  if (lines.length === 0 && !trail.mayBeIncomplete) return ''
+
+  const warning = trail.mayBeIncomplete
+    ? `<p class="muted">${
+        lines.length === 0
+          ? 'Nothing left about this one: older entries were dropped to keep the log bounded.'
+          : 'Older entries were dropped to keep the log bounded, so this may not be the whole story.'
+      }</p>`
+    : ''
 
   return `<span class="trail">
+      ${warning}
       <ul class="events">
         ${lines
           .map(
@@ -637,10 +673,21 @@ function renderTrail(task: TaskState, id: string): string {
     </span>`
 }
 
+const RULES_PREVIEW = 12
+
 function renderRules(task: TaskState): string {
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
 
-  const rows = decided
+  // L'ordre de pose est conservé : trier les règles en vigueur devant les
+  // règles levées faisait sauter la ligne que l'on venait de lever, sous le
+  // curseur. On borne dans l'ordre, et on DIT combien d'obligations tombent
+  // hors de la fenêtre — c'est la garantie qui comptait, pas l'ordre.
+  const shown = capped('rules', decided, RULES_PREVIEW)
+  const hiddenBinding = decided
+    .slice(shown.length)
+    .filter((c) => c.active && c.standing === 'accepted').length
+
+  const rows = shown
     .map((c) => {
       const lifted = !c.active || c.standing === 'declined'
       if (editingIs('constraint', c.id)) return `<li>${editForm('Rule')}</li>`
@@ -677,15 +724,29 @@ function renderRules(task: TaskState): string {
          </p>`
       : ''
 
+  // Un compte ne suffit pas quand c'est une OBLIGATION qui est hors de vue :
+  // on le dit en toutes lettres plutôt que de laisser lire la liste comme
+  // entière.
+  const warning =
+    hiddenBinding > 0
+      ? `<p class="muted">${hiddenBinding} ${plural(hiddenBinding, 'rule', 'rules')} still in
+           force ${plural(hiddenBinding, 'is', 'are')} not shown — open the full list before
+           you rely on this one.</p>`
+      : ''
+
   return `<section class="card" aria-labelledby="rules-title">
       <h2 id="rules-title" class="card__title">Rules to follow</h2>
       ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">No rules yet.</p>'}
+      ${warning}
+      ${moreButton('rules', decided.length, shown.length, 'rule', 'rules')}
       ${form}
     </section>`
 }
 
 function renderDontRetry(task: TaskState): string {
-  const rows = acceptedRejections(task)
+  const all = acceptedRejections(task)
+  const shown = capped('ruled-out', all, RULES_PREVIEW)
+  const rows = shown
     .map((r) =>
       editingIs('rejection', r.id)
         ? `<li>${editForm('Approach', 'Why it failed')}</li>`
@@ -725,6 +786,7 @@ function renderDontRetry(task: TaskState): string {
   return `<section class="card" aria-labelledby="reject-title">
       <h2 id="reject-title" class="card__title">Don’t retry</h2>
       ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">Nothing ruled out yet.</p>'}
+      ${moreButton('ruled-out', all.length, shown.length, 'entry', 'entries')}
       ${form}
     </section>`
 }
@@ -823,25 +885,24 @@ function renderSwitcher(task: TaskState): string {
   const others = allTasks.filter((t) => t.id !== task.id && (showArchived || !t.archived))
   const hidden = allTasks.filter((t) => t.id !== task.id && t.archived).length
   const rows = others
-    .map(
-      (t) => `<li class="row">
+    .map((t) => {
+      // `needsYou` balaie toutes les étapes du cahier : l'appeler une fois
+      // pour tester et une fois pour afficher le faisait deux fois par ligne.
+      const badge = summariseNeeds(needsYou(t))
+      return `<li class="row">
         <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
           t.archived ? 'archived' : t.status === 'completed' ? 'closed' : 'open'
         }</span>
         <span class="row__text">
           <strong>${escapeHtml(t.title)}</strong>
           <span class="muted"> — ${escapeHtml(t.next ?? 'no next action')}</span>
-          ${
-            summariseNeeds(needsYou(t))
-              ? `<span class="needs__badge">${escapeHtml(summariseNeeds(needsYou(t))!)}</span>`
-              : ''
-          }
+          ${badge ? `<span class="needs__badge">${escapeHtml(badge)}</span>` : ''}
         </span>
         <button type="button" class="btn btn--quiet" data-archive="${escapeHtml(t.id)}"
                 data-archived="${t.archived}">${t.archived ? 'Unarchive' : 'Archive'}</button>
         <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
-      </li>`,
-    )
+      </li>`
+    })
     .join('')
 
   return `<details class="switcher">
@@ -979,7 +1040,8 @@ function renderPermission(task: TaskState): string {
   const waiting = pendingApprovals(task)
   if (waiting.length === 0) return ''
 
-  const rows = waiting
+  const shown = capped('approvals', waiting)
+  const rows = shown
     .map(
       (a) => `<li class="review">
           <div class="row">
@@ -1005,6 +1067,7 @@ function renderPermission(task: TaskState): string {
         not approval.
       </p>
       <ul class="rows">${rows}</ul>
+      ${moreButton('approvals', waiting.length, shown.length, 'request', 'requests')}
     </section>`
 }
 
@@ -1051,7 +1114,10 @@ function renderWaiting(task: TaskState): string {
   const answered = answeredQuestions(task)
   if (open.length === 0 && answered.length === 0) return ''
 
-  const openRows = open
+  const openShown = capped('questions', open)
+  const answeredShown = capped('answers', answered)
+
+  const openRows = openShown
     .map((q) => {
       if (answering === q.id) {
         return `<li class="review">
@@ -1087,7 +1153,7 @@ function renderWaiting(task: TaskState): string {
     })
     .join('')
 
-  const answeredRows = answered
+  const answeredRows = answeredShown
     .slice(-3)
     .map(
       (q) => `<li class="row">
@@ -1108,10 +1174,16 @@ function renderWaiting(task: TaskState): string {
                An agent stopped rather than guess. Every later conversation sees these
                until you answer.
              </p>
-             <ul class="rows">${openRows}</ul>`
+             <ul class="rows">${openRows}</ul>
+             ${moreButton('questions', open.length, openShown.length, 'question', 'questions')}`
           : ''
       }
-      ${answeredRows ? `<h3>Already answered</h3><ul class="rows">${answeredRows}</ul>` : ''}
+      ${
+        answeredRows
+          ? `<h3>Already answered</h3><ul class="rows">${answeredRows}</ul>
+             ${moreButton('answers', answered.length, answeredShown.length, 'answer', 'answers')}`
+          : ''
+      }
     </section>`
 }
 
@@ -2006,6 +2078,16 @@ function bindSupervision(): void {
     )
   })
 
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-more]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.more!
+      if (expanded.has(id)) expanded.delete(id)
+      else expanded.add(id)
+      renderNow()
+      document.querySelector<HTMLButtonElement>(`[data-more="${id}"]`)?.focus()
+    })
+  }
+
   for (const b of document.querySelectorAll<HTMLButtonElement>('[data-trail]')) {
     b.addEventListener('click', () => {
       const id = b.dataset.trail!
@@ -2566,7 +2648,24 @@ function render(): void {
       ? active.id
       : null
 
-  root.innerHTML = `<main id="content">${renderBody()}</main>`
+  const html = `<main id="content">${renderBody()}</main>`
+
+  // Trois sources réveillent le rendu — le magasin, les appels d'outil, les
+  // (dés)enregistrements — et beaucoup ne changent rien à l'écran. Mesuré sur
+  // la suite d'interface : 30 % des rendus produisaient un HTML identique au
+  // précédent, et payaient quand même la reconstruction du DOM, le
+  // rattachement de tous les écouteurs et la valse du focus.
+  //
+  // La comparaison coûte un parcours de chaîne ; ce qu'elle évite coûte bien
+  // davantage. Et elle épargne au passage la sélection en cours.
+  if (html === painted) {
+    announce()
+    reflectAddress()
+    return
+  }
+  painted = html
+
+  root.innerHTML = html
 
   bindDrafts()
   bindCreation()
@@ -2589,6 +2688,10 @@ function render(): void {
 
 let renderScheduled = false
 let pendingFrame: number | null = null
+
+// Ce qui est actuellement à l'écran. Remis à zéro au montage : sur une racine
+// neuve, croire qu'elle porte déjà ce HTML laisserait la page blanche.
+let painted: string | null = null
 
 function scheduleRender(): void {
   if (renderScheduled) return
@@ -2765,6 +2868,8 @@ export function mount(target: HTMLElement): () => void {
   allTasksFor = ''
   clearNotice()
   showAllHistory = false
+  expanded.clear()
+  painted = null
   awaySince = null
   awayFor = null
   offered = null

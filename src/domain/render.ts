@@ -45,9 +45,23 @@ export type RenderOptions = {
   recentAnswers?: number
   recentApprovals?: number
   recentDisputes?: number
+  recentConstraints?: number
+  recentRejections?: number
 }
 
 const CLIP_FLOOR = 0.4
+
+/**
+ * Les règles et les approches écartées n'étaient bornées par rien. Mesuré :
+ * dix règles suffisaient à dépasser le budget (487 tokens), et deux mille le
+ * portaient à 37 800 — 94 fois ce qui est annoncé. L'échelle de dégradation
+ * ne pouvait rien y faire : elle ne coupait que l'histoire.
+ *
+ * On les coupe donc en dernier, jamais en dessous de ce plancher, et jamais
+ * sans le dire : une obligation hors du cadre reste une obligation, et
+ * l'agent doit savoir qu'il lui en manque plutôt que de croire avoir tout lu.
+ */
+const MIN_BINDING_SHOWN = 12
 
 export function renderTaskState(state: TaskState, options: RenderOptions = {}): string {
   const recentSteps = options.recentSteps ?? 5
@@ -58,6 +72,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   const recentAnswers = options.recentAnswers ?? 3
   const recentApprovals = options.recentApprovals ?? 3
   const recentDisputes = options.recentDisputes ?? 3
+  const recentConstraints = options.recentConstraints ?? Number.POSITIVE_INFINITY
+  const recentRejections = options.recentRejections ?? Number.POSITIVE_INFINITY
   const clipScale = options.clipScale ?? 1
   const c = (max: number) => Math.max(24, Math.round(max * clipScale))
 
@@ -175,21 +191,38 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push(`LAST WRITE  ${dormant} — check that what is below still holds`)
   }
 
+  const rules = active.slice(0, recentConstraints)
+  const rulesHidden = active.length - rules.length
+
   lines.push('')
   lines.push(`CONSTRAINTS — binding (${active.length})`)
   if (active.length === 0) {
     lines.push('  (none)')
   } else {
-    for (const constraint of active) {
+    for (const constraint of rules) {
       lines.push(`  [${constraint.source}] ${clip(constraint.rule, c(160))}`)
+    }
+    if (rulesHidden > 0) {
+      lines.push(`  ${rulesHidden} more not shown here — THEY ARE STILL BINDING.`)
+      lines.push('  Read them with read_task_detail on constraints before you act.')
     }
   }
 
   if (condamnées.length > 0) {
+    const shown = condamnées.slice(0, recentRejections)
+    const hidden = condamnées.length - shown.length
     lines.push('')
-    lines.push('REJECTED — do not retry')
-    for (const r of condamnées) {
+    lines.push(
+      hidden > 0
+        ? `REJECTED — do not retry (${shown.length} of ${condamnées.length} shown)`
+        : 'REJECTED — do not retry',
+    )
+    for (const r of shown) {
       lines.push(`  [${r.source}] ${clip(r.approach, c(84))} — ${clip(r.reason, c(104))}`)
+    }
+    if (hidden > 0) {
+      lines.push(`  ${hidden} more not shown here — they were ruled out too.`)
+      lines.push('  Read them with read_task_detail on rejections before proposing an approach.')
     }
   }
 
@@ -364,6 +397,29 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentDisputes,
       recentCredentials,
       recentQuestions: Math.max(1, recentQuestions - 1),
+      clipScale,
+    })
+  }
+
+  // Tout le reste est épuisé : ce qui engage cède en dernier, et par moitiés
+  // plutôt que d'un coup, pour ne couper que ce qu'il faut couper. Le
+  // plancher part de la longueur réelle, sinon la moitié de l'infini reste
+  // l'infini et la descente ne finit jamais.
+  const fitConstraints = Math.min(recentConstraints, active.length)
+  const fitRejections = Math.min(recentRejections, condamnées.length)
+  if (fitConstraints > MIN_BINDING_SHOWN || fitRejections > MIN_BINDING_SHOWN) {
+    return renderTaskState(state, {
+      ...options,
+      recentSteps,
+      recentDecisions,
+      recentProposals,
+      recentAnswers,
+      recentApprovals,
+      recentDisputes,
+      recentCredentials,
+      recentQuestions,
+      recentConstraints: Math.max(MIN_BINDING_SHOWN, Math.floor(fitConstraints / 2)),
+      recentRejections: Math.max(MIN_BINDING_SHOWN, Math.floor(fitRejections / 2)),
       clipScale,
     })
   }

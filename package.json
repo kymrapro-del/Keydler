@@ -17,7 +17,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "bench": "vitest run --config vitest.bench.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
