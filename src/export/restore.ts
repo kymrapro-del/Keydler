@@ -4,7 +4,7 @@ import type { TaskState } from '../domain/types'
 export class NothingToImportError extends Error {
   constructor() {
     super(
-      'No watch log found in that file. Use a file produced by “Export this task” ' +
+      'No log found in that file. Use a file produced by “Export this task” ' +
         'or “Export all tasks”.',
     )
     this.name = 'NothingToImportError'

@@ -798,15 +798,21 @@ export function setGoal(state: TaskState, goal: unknown, ctx?: MutationContext):
   )
 }
 
-export function setNext(state: TaskState, next: unknown, ctx?: MutationContext): TaskState {
+export function setNext(
+  state: TaskState,
+  input: { next: unknown; basedOnVersion: number | null },
+  actor: Actor = 'human',
+  ctx?: MutationContext,
+): TaskState {
   assertActive(state, 'set_next')
-  const value = optionalText('next', next, 400)
+  guardVersion(state, input.basedOnVersion)
+  const value = optionalText('next', input.next, 400)
   return apply(
     state,
     {
-      operation: 'set_next',
-      actor: 'human',
-      basedOnVersion: null,
+      operation: 'set_next_action',
+      actor,
+      basedOnVersion: input.basedOnVersion,
       detail: value ?? '(cleared)',
       previous: state.next ?? '',
       patch: { next: value },
@@ -1009,12 +1015,16 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
       }
     }
 
-    case 'set_next': {
+    // `set_next` est l'ancien nom de la même opération. Les cahiers écrits
+    // avant le renommage en portent des entrées : les refuser ici leur
+    // retirerait l'annulation d'un pas déjà consigné.
+    case 'set_next':
+    case 'set_next_action': {
       if (entry.previous === undefined || (state.next ?? '') === entry.previous) return null
       const back = entry.previous
       return {
         label: `changed the next action to “${state.next ?? ''}”`,
-        apply: (s, ctx) => setNext(s, back, ctx),
+        apply: (s, ctx) => setNext(s, { next: back, basedOnVersion: null }, 'human', ctx),
       }
     }
 
@@ -1073,6 +1083,7 @@ const UNDOABLE_OPERATIONS = new Set([
   'withdraw_dispute',
   'rename_task',
   'set_next',
+  'set_next_action',
   'set_goal',
   'edit_constraint',
   'undo',

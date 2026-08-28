@@ -14,7 +14,7 @@ export class FutureSchemaError extends Error {
     super(
       [
         'STORAGE FROM A NEWER VERSION',
-        `This watch log was written with schema v${found}, but this build only understands v${SCHEMA_VERSION}.`,
+        `This log was written with schema v${found}, but this build only understands v${SCHEMA_VERSION}.`,
         'Reading it could silently drop information. Update the page instead.',
       ].join('\n'),
     )

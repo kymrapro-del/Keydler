@@ -18,7 +18,7 @@ const SAFE = /^[A-Za-z0-9_-]+$/
 export class TooLargeForLinkError extends Error {
   constructor(length: number) {
     super(
-      `This watch log needs ${length} characters and a link holds ${MAX_LINK_LENGTH}. ` +
+      `This log needs ${length} characters and a link holds ${MAX_LINK_LENGTH}. ` +
         'Use “Export this task” and send the file instead — it has no limit.',
     )
     this.name = 'TooLargeForLinkError'
@@ -27,7 +27,7 @@ export class TooLargeForLinkError extends Error {
 
 export class UnreadableLinkError extends Error {
   constructor() {
-    super('That link does not carry a readable watch log. Ask for a fresh one.')
+    super('That link does not carry a readable log. Ask for a fresh one.')
     this.name = 'UnreadableLinkError'
   }
 }

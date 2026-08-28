@@ -47,7 +47,8 @@ export function humanSize(bytes: number): string {
 }
 
 export function describeStorage(state: StorageState): string {
-  const place = state.usage === null ? '' : ` This log takes ${humanSize(state.usage)}.`
+  const place =
+    state.usage === null ? '' : ` Everything this site stores here takes ${humanSize(state.usage)}.`
 
   if (state.persisted === null) {
     return `This browser cannot say whether it will keep the data here.${place}`

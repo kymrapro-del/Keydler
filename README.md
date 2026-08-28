@@ -1,4 +1,4 @@
-# Watch Log
+# Keydler
 
 **A shared memory for you and your AI. It keeps completed work, rules to
 follow, and mistakes not to repeat — even when the conversation changes.**
@@ -18,7 +18,7 @@ conversation summary keeps the highlights and sacrifices exactly what
 constrains — because a constraint reads like a detail right up until someone
 breaks it.
 
-The Watch Log takes that constraint out of the conversation and puts it on a web
+Keydler takes that constraint out of the conversation and puts it on a web
 page: rules in force, work done with its evidence, approaches ruled out with the
 reason why, and the next action. A new conversation reads it and continues from
 the right place. You correct it while the agent works.
@@ -40,7 +40,7 @@ Step 3 is the whole product.
 
 ## Why WebMCP is the point
 
-The Watch Log is not a notes app with an API bolted on. **The page is the tool
+Keydler is not a notes app with an API bolted on. **The page is the tool
 surface**, and that is only possible because of WebMCP:
 
 - The task memory lives where the human can see and correct it — a page, not a
@@ -97,7 +97,7 @@ secret, which is a different thing and the strongest thing available without one
 fragment, which browsers never transmit. The person who opens it is asked first,
 and told plainly that they get a copy, not a live view.
 
-![A shared watch log](docs/assets/shared-link.png)
+![A shared log](docs/assets/shared-link.png)
 
 **The agent asks permission, and waits.** `request_approval` blocks until a human
 clicks. This is the one thing a page can do that a server cannot: there is
@@ -180,8 +180,8 @@ agent must read in order to choose, so each has to pay for itself.
 
 An agent often needs to know that a secret _exists_ — which one, and what it is
 for — without ever seeing it. Any secret, not just an API key: tokens,
-passwords, connection strings, webhook URLs, private keys, certificates. The
-Watch Log holds the reference:
+passwords, connection strings, webhook URLs, private keys, certificates.
+Keydler holds the reference:
 
 ```
 CREDENTIALS — names only, values sealed (2)
@@ -412,6 +412,18 @@ the same length, what is known and left alone.
   back through `getTools()` in Brave 151: 16, 499 and 146 against limits of 30,
   500 and 150. The briefing is the one that does not fit — 1528 characters,
   1.9% over — and that overage is written down rather than shaved off.
+- **The page is locked down at the edge.** `public/_headers` (Cloudflare Pages,
+  Netlify) and `vercel.json` carry the same policy, and a test keeps them from
+  drifting apart. The content policy starts at `default-src 'none'` and opens
+  only this origin — the app makes no outbound request, loads no font, uses no
+  `data:` image and sets no `style=` attribute, so nothing has to be opened for
+  it. The one inline script, the theme bootstrap, is allowed by its hash;
+  `unsafe-inline` never appears. Framing is refused outright, which is what
+  stops a hidden frame making someone click **Allow** on an approval they
+  cannot see. Verified in Brave against the built site: an injected inline
+  script, a CDN script, an outbound `fetch`, a beacon image carrying the page
+  title, and framing the page were all refused by the browser, with no console
+  error from the app itself.
 - **Two tabs stay in step.** A write announces itself on a `BroadcastChannel`;
   any other tab holding that task re-reads it from IndexedDB and redraws. The
   refusal machinery was already correct — a stale write is refused, and the
@@ -438,6 +450,23 @@ npm run check
 
 ### Deploying it
 
+It is live at **https://keydler.com**, served by Cloudflare Pages, with
+`www.keydler.com` redirecting to it. The apex is the canonical origin and the
+www address must never serve anything: they are two origins, and everything
+here is origin-scoped — the
+IndexedDB database, the theme preference, "while you were away", the cross-tab
+channel, the service worker cache. A log created on one is invisible from the
+other, and a `/t/:id` link minted here opens an empty page there. The
+origin-trial token is bound to one origin too, so on the wrong one WebMCP never
+activates at all.
+
+`vercel.json` carries that redirect. **Cloudflare Pages cannot** — `_redirects`
+matches paths, not hosts — so there it is a Redirect Rule set by hand in the
+dashboard. Because a forgotten rule is invisible (both addresses answer, each
+with its own data), `src/canonical.ts` also sends www to the apex from the page
+itself. That is a backstop, not a substitute: a 301 happens before the page
+loads, this happens after.
+
 The address moves to `/t/:id` as soon as a task is open, so a host without an
 SPA rewrite 404s on every reload, bookmark and shared link. `public/_redirects`
 covers Netlify and Cloudflare Pages, `vercel.json` covers Vercel; anything else
@@ -445,9 +474,15 @@ needs the equivalent. This is invisible locally — `vite preview` rewrites by
 itself, a bare static server does not.
 
 `npm run build` and `npm run build:trial` both run `scripts/precache.mjs`, which
-writes the built asset names into `dist/sw.js`. Without it the service worker
-precached nothing the app is made of, and offline served a blank page after the
-first visit.
+writes the built asset names into `dist/sw.js`, and `scripts/headers.mjs`, which
+seals the CSP on the hash of the inline theme script. **`vite build` alone
+produces a folder that looks complete and cannot be served**: the policy still
+carries `'__CSP_SCRIPT_HASH__'`, which is not a valid source expression, so the
+inline script is blocked; and the service worker precaches nothing under a fixed
+cache name that never invalidates. Neither is visible in `dist/`.
+
+`npm run artefact` refuses such a folder and names the consequence of each
+fault. `check` runs it, so a half-built `dist/` cannot survive a green check.
 
 `dev` serves on `http://localhost:5173`. `check` runs typecheck, lint,
 formatting, the full test suite and the production build; `npm run coverage`
@@ -527,7 +562,7 @@ so the combined evidence is now **11 PASS, 1 MIXED, and 1 NOT VERIFIED**:
   sessions with no filesystem or shell tools received only “Continue this
   task.” Two discovered the open page, called `resume_task` before working,
   cited the binding rule and rejected approach with its reason, completed the
-  next action, and wrote the result back. One found the Watch Log page but
+  next action, and wrote the result back. One found the Keydler page but
   stopped before discovering its WebMCP tools and asked the human what to do.
 
 An earlier Claude Desktop trial with filesystem access failed to choose the

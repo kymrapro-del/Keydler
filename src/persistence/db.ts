@@ -6,7 +6,7 @@ const DB_NAME = 'cahier-de-quart'
 
 const DB_VERSION = 3
 
-interface WatchLogDB extends DBSchema {
+interface KeydlerDB extends DBSchema {
   tasks: {
     key: string
     value: TaskState
@@ -23,11 +23,11 @@ interface WatchLogDB extends DBSchema {
   }
 }
 
-let dbPromise: Promise<IDBPDatabase<WatchLogDB>> | null = null
+let dbPromise: Promise<IDBPDatabase<KeydlerDB>> | null = null
 
-export function getDb(): Promise<IDBPDatabase<WatchLogDB>> {
+export function getDb(): Promise<IDBPDatabase<KeydlerDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<WatchLogDB>(DB_NAME, DB_VERSION, {
+    dbPromise = openDB<KeydlerDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           const tasks = db.createObjectStore('tasks', { keyPath: 'id' })
@@ -50,7 +50,7 @@ export function getDb(): Promise<IDBPDatabase<WatchLogDB>> {
 
       blocked() {
         console.warn(
-          '[watch-log] Storage upgrade blocked: another tab still holds the older version. Close it, then reload.',
+          '[keydler] Storage upgrade blocked: another tab still holds the older version. Close it, then reload.',
         )
       },
 
@@ -67,4 +67,4 @@ export function getDb(): Promise<IDBPDatabase<WatchLogDB>> {
   return dbPromise
 }
 
-export type { WatchLogDB }
+export type { KeydlerDB }

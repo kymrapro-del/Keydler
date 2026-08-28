@@ -396,12 +396,12 @@ function renderLanding(): string {
 
   return `<section class="landing">
       <div class="eyebrow-row">
-        <p class="landing__eyebrow">Watch Log</p>
+        <p class="landing__eyebrow">Keydler</p>
         ${renderThemeToggle()}
       </div>
       <h1 class="landing__headline">Give your AI a memory that survives the conversation.</h1>
       <p class="landing__lede">
-        The Watch Log keeps completed work, rules to follow, and mistakes not to
+        Keydler keeps completed work, rules to follow, and mistakes not to
         repeat. A new conversation can read it and continue from the right place.
       </p>
       ${alertBlock()}
@@ -947,7 +947,7 @@ function renderSwitcher(task: TaskState): string {
               : ''
           }
           <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown"
-                 aria-label="Choose a watch log file to import" hidden />
+                 aria-label="Choose an exported task file to import" hidden />
         </div>
       </div>
     </details>`
@@ -956,7 +956,7 @@ function renderSwitcher(task: TaskState): string {
 function renderSealedOffer(): string {
   if (!sealedLink) return ''
   return `<section class="card card--away" aria-labelledby="sealed-title">
-      <h2 id="sealed-title" class="card__title">A protected watch log</h2>
+      <h2 id="sealed-title" class="card__title">A protected log</h2>
       <p class="muted">
         Somebody sent you a sealed link. Nothing about the log can be read —
         not even its name — until the passphrase they gave you separately is
@@ -984,7 +984,7 @@ function renderOffer(): string {
   ].join(' · ')
 
   return `<section class="card card--away" aria-labelledby="offer-title">
-      <h2 id="offer-title" class="card__title">A shared watch log</h2>
+      <h2 id="offer-title" class="card__title">A shared log</h2>
       <p class="muted">
         Somebody sent you this link, and the whole log travelled inside it — no
         server saw it. Nothing has been written here yet.
@@ -1701,7 +1701,7 @@ function renderTechnical(task: TaskState | null): string {
 function renderDashboard(task: TaskState): string {
   return `<header class="page-head">
       <div class="eyebrow-row">
-        <p class="page-head__eyebrow">Watch Log</p>
+        <p class="page-head__eyebrow">Keydler</p>
         ${renderThemeToggle()}
       </div>
       ${
@@ -1947,7 +1947,7 @@ function bindSupervision(): void {
         : current.kind === 'goal'
           ? (state) => setGoal(state, value)
           : current.kind === 'next'
-            ? (state) => setNext(state, value)
+            ? (state) => setNext(state, { next: value, basedOnVersion: null })
             : current.kind === 'constraint'
               ? (state) => editConstraint(state, current.id, value)
               : (state) => editRejection(state, current.id, { approach: value, reason })
@@ -2677,7 +2677,7 @@ function bindTechnical(): void {
 
   document.querySelector('#export-all')?.addEventListener('click', () => {
     void store.allTasks().then(
-      (tasks) => download('watch-logs.md', buildFullExport(tasks)),
+      (tasks) => download('keydler-logs.md', buildFullExport(tasks)),
       (error: unknown) => {
         humanError = humanMessage(error, 'Exporting the tasks')
         scheduleRender()

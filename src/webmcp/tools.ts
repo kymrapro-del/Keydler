@@ -121,7 +121,7 @@ async function requireTask(): Promise<TaskState> {
   const task = store.currentTask()
   if (!task) {
     throw new Error(
-      'NO ACTIVE TASK\nNo watch log is open on this device. Ask the human to start a task in the dashboard.',
+      'NO ACTIVE TASK\nNo log is open on this device. Ask the human to start a task in the dashboard.',
     )
   }
   return task
@@ -456,13 +456,12 @@ export const setNextActionTool: ModelContextTool = {
   inputSchema: SET_NEXT_ACTION_SCHEMA,
   annotations: { readOnlyHint: false },
   async execute(input, options) {
-    return runWrite(setNextActionTool, input, options?.signal, (state, basedOnVersion) => {
-      requireVersion('based_on_version', basedOnVersion)
+    return runWrite(setNextActionTool, input, options?.signal, (state, basedOnVersion) =>
       // L'humain peut vider ce champ ; un agent ne le peut pas. Le schéma
       // déclare minLength: 1, et effacer la prochaine action par mégarde
       // priverait la conversation suivante de son point de départ.
-      return setNext(state, requireText('next', input.next, 400))
-    })
+      setNext(state, { next: requireText('next', input.next, 400), basedOnVersion }, 'agent'),
+    )
   },
 }
 

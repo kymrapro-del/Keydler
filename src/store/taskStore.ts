@@ -251,7 +251,7 @@ function enqueue<T>(work: () => Promise<T>): Promise<T> {
 async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskState> {
   const current = snapshot.task
   if (!current) {
-    throw new Error('NO ACTIVE TASK\nNo watch log is open on this device.')
+    throw new Error('NO ACTIVE TASK\nNo log is open on this device.')
   }
   const next = fn(current)
 
@@ -390,7 +390,7 @@ export async function mutateAsAgent(
   return enqueue(async () => {
     const ouvert = snapshot.task
     if (!ouvert) {
-      throw new Error('NO ACTIVE TASK\nNo watch log is open on this device.')
+      throw new Error('NO ACTIVE TASK\nNo log is open on this device.')
     }
 
     let rendu = ''

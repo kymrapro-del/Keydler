@@ -253,7 +253,7 @@ describe('import depuis l’écran', () => {
 
     const incoming = { ...buildDemoTask(), id: 'from-file', title: 'From a file' }
     const field = root.querySelector<HTMLInputElement>('#import-file')!
-    const file = new File([buildTaskExport(incoming)], 'watch-logs.md', { type: 'text/markdown' })
+    const file = new File([buildTaskExport(incoming)], 'keydler-logs.md', { type: 'text/markdown' })
     Object.defineProperty(field, 'files', { configurable: true, value: [file] })
     field.dispatchEvent(new Event('change', { bubbles: true }))
 
@@ -280,7 +280,7 @@ describe('import depuis l’écran', () => {
     field.dispatchEvent(new Event('change', { bubbles: true }))
 
     await waitFor(() => root.querySelector('[role="alert"]') !== null, 'refus')
-    expect(root.querySelector('[role="alert"]')!.textContent).toContain('No watch log found')
+    expect(root.querySelector('[role="alert"]')!.textContent).toContain('No log found')
   })
 })
 

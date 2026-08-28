@@ -4,8 +4,14 @@ dist
 .env
 .env.*
 !.env.example
+# Versionné à dessein : un jeton d origin trial est public par construction,
+# et le dépôt doit pouvoir refaire l artefact déployé pendant le gel.
+!.env.production
 .DS_Store
 *.tsbuildinfo
 *.log
 .vercel
 .netlify
+
+# État local de wrangler (essais de déploiement), jamais versionné.
+.wrangler/
