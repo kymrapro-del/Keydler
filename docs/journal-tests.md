@@ -1040,3 +1040,31 @@ débordement horizontal.
 fois** — une pour lire l'identifiant de la règle, une pour la tâche — donc
 l'identifiant ne correspondait à rien. Le domaine refusait correctement avec
 « no constraint with id … » ; c'est la sonde qui était fausse.
+
+## 28 août 2026 — échelle et coût
+
+**Poste.** Chrome, serveur de développement, cahier de 40 règles et
+30 approches écartées écrit directement dans IndexedDB.
+
+Le rapport complet est dans [échelle](echelle-2026-08-28.md). Ce qui a été vu
+dans le navigateur, et non seulement en jsdom :
+
+**Observé.** 12 lignes de règles sur 40, « 28 rules still in force are not
+shown », « Show all 40 rules » ; 12 approches écartées sur 30. Après clic :
+40 lignes, avertissement disparu, bouton devenu « Show fewer », **focus resté
+sur le bouton**. 360 nœuds repliés, 499 dépliés. Styles calculés réels sur
+l'avertissement comme sur le bouton.
+
+**Pas de capture d'écran.** Le panneau de capture de cet environnement a rendu
+des images vides alors que le DOM répondait. Noté plutôt que remplacé par une
+image qui ne montre rien.
+
+**Anomalie non reproduite.** Au premier essai, la page est restée sur
+« Loading… » après écriture directe dans IndexedDB ; après vidage et réécriture
+du même cahier, chargement normal. Une connexion IndexedDB tenue ouverte ne
+reproduit pas le blocage. Consigné comme non expliqué.
+
+**Erreurs de sonde, consignées.** Deux fois : `.rows li` compté sur toute la
+page alors que la carte visée était « Rules to follow », et une référence DOM
+relue après un rendu qui l'avait remplacée. Dans les deux cas c'est la sonde qui
+était fausse, pas le produit.
