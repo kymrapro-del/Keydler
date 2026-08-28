@@ -753,3 +753,39 @@ récente, jamais la première ; un test rouge reproduit le cas exact.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — contester une étape
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`.
+
+Le produit savait **approuver** une preuve, pas la **refuser**. Dans un produit
+de supervision, c'était une asymétrie : un agent pouvait laisser une affirmation
+fausse que personne ne pouvait marquer comme telle.
+
+**Observé.**
+
+- Depuis **Evidence to review**, la preuve sous les yeux : « Wrong » demande un
+  motif, et l'étape passe à `disputed`.
+- `resume_task` place la contestation **au-dessus des contraintes** :
+  `DISPUTED BY THE HUMAN — treat as wrong (1)` avec le motif de l'humain.
+- Le compte PROGRESS tombe de 3 à 2 « with evidence attached » : une étape
+  contestée ne compte plus comme prouvée.
+- L'annulation rend à l'étape **exactement** le degré qu'elle avait —
+  `evidence`, `human_verified` ou `claimed` selon ce qui y était attaché.
+
+**Défaut visuel trouvé, et seulement dans le navigateur.** Le motif de
+contestation était rendu avec la classe `.quote`, stylée comme un bloc mais
+posée en ligne dans le texte de la ligne : il **chevauchait** l'action de
+l'étape. Aucun test ne pouvait le voir — le garde-fou CSS vérifie qu'une classe
+existe, pas qu'elle se pose bien. Classe dédiée `.row__dispute`, et la sonde
+compare désormais les rectangles.
+
+**Décision.** La phrase FULL DETAIL de `resume_task` énumérait les sections ;
+elle avait déjà pris du retard deux fois, et chaque mot ajouté coûtait un nom
+d'identifiant dans le budget de 400 jetons. Elle renvoie maintenant au schéma de
+`read_task_detail`, qui porte la liste et ne peut pas dériver — un test compare
+l'énumération du schéma à `SECTIONS`.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

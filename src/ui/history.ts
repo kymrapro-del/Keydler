@@ -38,6 +38,8 @@ const BY_HUMAN: Record<string, string> = {
   allow_action: 'allowed an action',
   deny_action: 'refused an action',
   request_approval: 'asked for permission to act',
+  dispute_step: 'disputed a step',
+  withdraw_dispute: 'withdrew a dispute',
 }
 
 const BY_AGENT: Record<string, string> = {
@@ -67,6 +69,8 @@ const ATTEMPTED: Record<string, string> = {
   allow_action: 'allow an action',
   deny_action: 'refuse an action',
   request_approval: 'ask for permission to act',
+  dispute_step: 'dispute a step',
+  withdraw_dispute: 'withdraw a dispute',
 }
 
 export function refusalReason(detail: string): string {

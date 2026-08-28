@@ -55,6 +55,14 @@ function normalizeEvidence(v: unknown): TaskState['steps'][number]['evidence'] {
   }
 }
 
+function normalizeDispute(v: unknown): TaskState['steps'][number]['dispute'] {
+  if (!v || typeof v !== 'object') return null
+  const d = v as Record<string, unknown>
+  const reason = asString(d.reason, '')
+  if (reason === '') return null
+  return { reason, at: asNumber(d.at, 0) }
+}
+
 export function normalizeTask(stored: StoredTask | undefined): TaskState | undefined {
   if (!stored || typeof stored !== 'object') return undefined
 
@@ -89,6 +97,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       action: asString(s.action, ''),
       result: asString(s.result, ''),
       evidence: normalizeEvidence(s.evidence),
+      dispute: normalizeDispute(s.dispute),
       confidence: normalizeConfidence(s.confidence),
       basedOnVersion: asNumber(s.basedOnVersion, 1),
       source: s.source === 'human' ? 'human' : 'agent',

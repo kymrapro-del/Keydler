@@ -16,7 +16,9 @@ import {
   answerQuestion,
   answeredQuestions,
   decideApproval,
+  disputeStep,
   pendingApprovals,
+  withdrawDispute,
   undoLastSupervision,
   undoable,
   attachEvidence,
@@ -90,6 +92,7 @@ const DEFAULT_DRAFTS: Record<string, string> = {
   'attach-content': '',
   'attach-kind': 'command_output',
   'answer-text': '',
+  'dispute-reason': '',
   'new-secret-kind': 'api_key',
   'edit-secret-kind': 'other',
   search: '',
@@ -169,6 +172,7 @@ let kindChosen = false
 let attachKindChosen = false
 let answering: string | null = null
 let attaching: string | null = null
+let disputing: string | null = null
 let showArchived = false
 
 function renderThemeToggle(): string {
@@ -302,6 +306,7 @@ const CONFIDENCE_LABEL: Record<Confidence, string> = {
   human_verified: 'Verified by you',
   evidence: 'Evidence attached',
   claimed: 'Claimed without evidence',
+  disputed: 'You say this is wrong',
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -416,6 +421,21 @@ function remainder(total: number): string {
     : ''
 }
 
+function disputeForm(step: Step): string {
+  return `<p class="row__text"><strong>${escapeHtml(step.action)}</strong></p>
+      <form id="form-dispute" class="form" novalidate>
+        <div class="field">
+          <label for="dispute-reason">Why this is wrong</label>
+          <textarea id="dispute-reason" rows="3" autocomplete="off"
+                    placeholder="What actually happened — every later conversation reads this"></textarea>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn--danger">Mark it wrong</button>
+          <button type="button" id="cancel-dispute" class="btn">Cancel</button>
+        </div>
+      </form>`
+}
+
 function renderStepRow(step: Step, active: boolean): string {
   if (attaching === step.id) {
     return `<li class="review">
@@ -443,16 +463,35 @@ function renderStepRow(step: Step, active: boolean): string {
       </li>`
   }
 
+  if (disputing === step.id) return `<li class="review">${disputeForm(step)}</li>`
+
   return `<li class="row">
       <span class="chip chip--${step.confidence}">${CONFIDENCE_LABEL[step.confidence]}</span>
       <span class="row__text">
         <strong>${escapeHtml(step.action)}</strong>
         <span class="muted"> — ${escapeHtml(step.result)}</span>
+        ${
+          step.dispute
+            ? `<span class="row__dispute">You say: ${escapeHtml(step.dispute.reason)}</span>`
+            : ''
+        }
       </span>
       ${
-        active && step.evidence === null
+        active && step.evidence === null && step.confidence !== 'disputed'
           ? `<button type="button" class="btn btn--quiet" data-attach="${escapeHtml(step.id)}"
                      aria-label="Attach evidence to: ${escapeHtml(step.action)}">Attach evidence</button>`
+          : ''
+      }
+      ${
+        active && step.confidence !== 'disputed'
+          ? `<button type="button" class="btn btn--quiet" data-dispute="${escapeHtml(step.id)}"
+                     aria-label="Mark wrong: ${escapeHtml(step.action)}">Wrong</button>`
+          : ''
+      }
+      ${
+        active && step.confidence === 'disputed'
+          ? `<button type="button" class="btn btn--quiet" data-undispute="${escapeHtml(step.id)}"
+                     aria-label="Withdraw the dispute on: ${escapeHtml(step.action)}">Withdraw</button>`
           : ''
       }
     </li>`
@@ -1034,18 +1073,24 @@ function renderProposals(task: TaskState): string {
 }
 
 function renderEvidence(task: TaskState): string {
-  const waiting = task.steps.filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
+  const waiting = task.steps.filter(
+    (s) => s.evidence !== null && s.confidence !== 'human_verified' && s.confidence !== 'disputed',
+  )
   if (waiting.length === 0) return ''
 
   const rows = waiting
     .slice(0, MAX_ROWS)
-    .map(
-      (s) => `<li class="review">
+    .map((s) =>
+      disputing === s.id
+        ? `<li class="review">${disputeForm(s)}</li>`
+        : `<li class="review">
         <div class="row">
           <span class="chip chip--evidence">${escapeHtml(s.evidence!.kind)}</span>
           <span class="row__text"><strong>${escapeHtml(s.action)}</strong></span>
           <button type="button" class="btn btn--primary" data-verify="${escapeHtml(s.id)}"
                   aria-label="Approve the evidence for: ${escapeHtml(s.action)}">Approve</button>
+          <button type="button" class="btn btn--danger" data-dispute="${escapeHtml(s.id)}"
+                  aria-label="Mark wrong: ${escapeHtml(s.action)}">Wrong</button>
         </div>
         <pre>${escapeHtml(s.evidence!.content)}</pre>
       </li>`,
@@ -1055,8 +1100,9 @@ function renderEvidence(task: TaskState): string {
   return `<section class="card" aria-labelledby="evidence-title">
       <h2 id="evidence-title" class="card__title">Evidence to review</h2>
       <p class="muted">
-        Read it before you approve — your click is what says a human checked this.
-        Nothing an agent attaches counts as verified on its own.
+        Read it before you decide — your click is what says a human checked this.
+        Nothing an agent attaches counts as verified on its own, and “Wrong”
+        marks it so every later conversation sees your reason.
       </p>
       <ul class="rows">${rows}</ul>
       ${remainder(waiting.length)}
@@ -1525,6 +1571,50 @@ function bindSupervision(): void {
         drafts['attach-content'] = ''
         drafts['attach-kind'] = 'command_output'
         attachKindChosen = false
+        renderNow()
+      },
+    )
+  })
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-dispute]')) {
+    b.addEventListener('click', () => {
+      disputing = b.dataset.dispute!
+      attaching = null
+      answering = null
+      editing = null
+      loggingStep = false
+      humanError = null
+      drafts['dispute-reason'] = ''
+      renderNow()
+      document.querySelector<HTMLTextAreaElement>('#dispute-reason')?.focus()
+    })
+  }
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-undispute]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.undispute!
+      humanAction('Withdrawing the dispute', (state) => withdrawDispute(state, id))
+    })
+  }
+
+  document.querySelector('#cancel-dispute')?.addEventListener('click', () => {
+    disputing = null
+    drafts['dispute-reason'] = ''
+    renderNow()
+  })
+
+  document.querySelector<HTMLFormElement>('#form-dispute')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const id = disputing
+    const reason = drafts['dispute-reason'].trim()
+    if (!id || !reason) return
+
+    humanAction(
+      'Marking the step wrong',
+      (state) => disputeStep(state, id, reason),
+      () => {
+        disputing = null
+        drafts['dispute-reason'] = ''
         renderNow()
       },
     )
@@ -2126,13 +2216,20 @@ function closeOnEscape(event: KeyboardEvent): void {
     return
   }
 
-  const openForm = editing !== null || loggingStep || answering !== null || attaching !== null
+  const openForm =
+    editing !== null ||
+    loggingStep ||
+    answering !== null ||
+    attaching !== null ||
+    disputing !== null
   if (openForm) {
     editing = null
     loggingStep = false
     answering = null
     attaching = null
+    disputing = null
     humanError = null
+    drafts['dispute-reason'] = ''
     drafts['edit-value'] = ''
     drafts['edit-reason'] = ''
     drafts['answer-text'] = ''
@@ -2176,6 +2273,7 @@ export function mount(target: HTMLElement): () => void {
   loggingStep = false
   answering = null
   attaching = null
+  disputing = null
   showArchived = false
 
   render()

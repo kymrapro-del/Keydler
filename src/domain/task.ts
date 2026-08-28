@@ -258,6 +258,7 @@ export function logStep(
     action,
     result,
     evidence,
+    dispute: null,
     confidence,
     basedOnVersion: input.basedOnVersion ?? state.version,
     source: actor,
@@ -890,6 +891,16 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
       }
     }
 
+    case 'dispute_step': {
+      if (id === undefined) return null
+      const step = state.steps.find((s) => s.id === id)
+      if (!step || step.confidence !== 'disputed') return null
+      return {
+        label: `disputed the step “${step.action}”`,
+        apply: (s, ctx) => withdrawDispute(s, id, ctx),
+      }
+    }
+
     case 'archive_task':
     case 'unarchive_task': {
       const archived = entry.operation === 'archive_task'
@@ -920,6 +931,8 @@ const UNDOABLE_OPERATIONS = new Set([
   'decline_rejection',
   'archive_task',
   'unarchive_task',
+  'dispute_step',
+  'withdraw_dispute',
   'undo',
 ])
 
@@ -1041,6 +1054,93 @@ export function decideApproval(
   )
 }
 
+export function disputeStep(
+  state: TaskState,
+  stepId: unknown,
+  reason: unknown,
+  ctx?: MutationContext,
+): TaskState {
+  const { now } = resolve(ctx)
+  const id = requireText('stepId', stepId, 200)
+  const step = state.steps.find((s) => s.id === id)
+
+  if (!step) {
+    throw new ValidationError('stepId', `no step with id "${id}".`, {
+      code: 'not-found',
+      retryable: false,
+    })
+  }
+  if (step.confidence === 'disputed') {
+    throw new ValidationError('stepId', 'that step is already disputed.', {
+      code: 'already-answered',
+      retryable: false,
+    })
+  }
+
+  const text = requireText('reason', reason)
+
+  return apply(
+    state,
+    {
+      operation: 'dispute_step',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: `${step.action} — ${text}`,
+      targetId: id,
+      patch: {
+        steps: state.steps.map((s) =>
+          s.id === id
+            ? { ...s, confidence: 'disputed' as const, dispute: { reason: text, at: now } }
+            : s,
+        ),
+      },
+    },
+    ctx,
+  )
+}
+
+export function withdrawDispute(
+  state: TaskState,
+  stepId: string,
+  ctx?: MutationContext,
+): TaskState {
+  const step = state.steps.find((s) => s.id === stepId)
+  if (!step || step.confidence !== 'disputed') {
+    throw new ValidationError('stepId', 'that step is not disputed.', {
+      code: 'not-found',
+      retryable: false,
+    })
+  }
+
+  const restored: Confidence =
+    step.evidence === null
+      ? 'claimed'
+      : step.evidence.verifiedAt !== null
+        ? 'human_verified'
+        : 'evidence'
+
+  return apply(
+    state,
+    {
+      operation: 'withdraw_dispute',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: step.action,
+      targetId: stepId,
+      patch: {
+        steps: state.steps.map((s) =>
+          s.id === stepId ? { ...s, confidence: restored, dispute: null } : s,
+        ),
+      },
+    },
+    ctx,
+  )
+}
+
+export function disputedSteps(state: TaskState): Step[] {
+  return state.steps.filter((s) => s.confidence === 'disputed')
+}
+
 export function pendingApprovals(state: TaskState): ApprovalRequest[] {
   return state.approvals.filter((a) => a.decision === null)
 }
@@ -1084,13 +1184,15 @@ export function evidenceCounts(state: TaskState): EvidenceCounts {
     human_verified: 0,
     evidence: 0,
     claimed: 0,
+    disputed: 0,
   }
   for (const step of state.steps) counts[step.confidence] += 1
   return counts
 }
 
 export function provenStepCount(state: TaskState): number {
-  return state.steps.filter((s) => s.confidence !== 'claimed').length
+  return state.steps.filter((s) => s.confidence === 'human_verified' || s.confidence === 'evidence')
+    .length
 }
 
 export { requireVersion }

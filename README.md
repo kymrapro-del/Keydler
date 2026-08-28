@@ -93,6 +93,13 @@ If nobody answers within the window, the call comes back `NO ANSWER` — never
 treat it exactly as a refusal_. The request stays on the page for when you
 return.
 
+**You can say an agent is wrong.** Approving evidence was always possible;
+refusing it was not. A disputed step carries your reason forever, stops counting
+as proven, and reaches the next conversation as `DISPUTED BY THE HUMAN — treat
+as wrong`
+
+![A disputed step](docs/assets/disputed-step.png)
+
 **An agent stops rather than guess.** Its question sits between the next action
 and the work, with the reason it is blocked. Your answer goes back into
 `resume_task`, so the next conversation reads it instead of guessing again. Note
@@ -229,6 +236,10 @@ defend against everything:
   since you last had it in front of you — the human-side mirror of
   `what_changed`. A hidden tab counts as away, so switching to your agent and
   back is enough to trigger it.
+- **Dispute what an agent claimed.** Reading evidence and only being able to
+  approve it is a form with one exit. “Wrong” sits beside “Approve”, asks for
+  your reason, and that reason is what every later conversation reads. Disputing
+  drops the step out of the proven count, and it undoes like any other decision.
 - **The tab calls you.** When something is waiting on you and the tab is in the
   background, its title carries the count — the same signal every chat app uses,
   and it costs no permission prompt.

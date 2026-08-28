@@ -3,6 +3,7 @@ import {
   activeConstraints,
   answeredQuestions,
   decidedApprovals,
+  disputedSteps,
   pendingApprovals,
   evidenceCounts,
   openQuestions,
@@ -19,6 +20,7 @@ const CONFIDENCE_TAG: Record<Confidence, string> = {
   human_verified: '[human]   ',
   evidence: '[evidence]',
   claimed: '[claimed] ',
+  disputed: '[DISPUTED]',
 }
 
 export function estimateTokens(text: string): number {
@@ -41,6 +43,7 @@ export type RenderOptions = {
   recentQuestions?: number
   recentAnswers?: number
   recentApprovals?: number
+  recentDisputes?: number
 }
 
 const CLIP_FLOOR = 0.4
@@ -53,6 +56,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   const recentQuestions = options.recentQuestions ?? 5
   const recentAnswers = options.recentAnswers ?? 3
   const recentApprovals = options.recentApprovals ?? 3
+  const recentDisputes = options.recentDisputes ?? 3
   const clipScale = options.clipScale ?? 1
   const c = (max: number) => Math.max(24, Math.round(max * clipScale))
 
@@ -112,6 +116,21 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     )
     for (const a of shown) {
       lines.push(`  ${a.decision === 'allowed' ? 'ALLOWED' : 'DENIED'}: ${clip(a.action, c(140))}`)
+    }
+  }
+
+  const contestées = disputedSteps(state)
+  if (contestées.length > 0) {
+    const shown = contestées.slice(-recentDisputes)
+    lines.push('')
+    lines.push(
+      contestées.length > shown.length
+        ? `DISPUTED BY THE HUMAN — treat as wrong (${shown.length} of ${contestées.length})`
+        : `DISPUTED BY THE HUMAN — treat as wrong (${contestées.length})`,
+    )
+    for (const s of shown) {
+      lines.push(`  ${clip(s.action, c(120))}`)
+      lines.push(`     they say: ${clip(s.dispute?.reason ?? '', c(140))}`)
     }
   }
 
@@ -220,9 +239,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
 
   lines.push('')
   lines.push('FULL DETAIL')
-  lines.push('  read_task_detail returns whole steps, decisions, rejections,')
-  lines.push('  evidence, questions and credentials, one page at a time. Nothing')
-  lines.push('  above is the complete record.')
+  lines.push('  read_task_detail pages any section of this record in full — its own')
+  lines.push('  schema lists them. Nothing above is the complete record.')
 
   lines.push('')
   if (state.status === 'active') {
@@ -245,7 +263,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     recentDecisions > 1 ||
     recentProposals > 1 ||
     recentAnswers > 1 ||
-    recentApprovals > 1
+    recentApprovals > 1 ||
+    recentDisputes > 1
   ) {
     return renderTaskState(state, {
       ...options,
@@ -254,6 +273,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentProposals: Math.max(1, recentProposals - 1),
       recentAnswers: Math.max(1, recentAnswers - 1),
       recentApprovals: Math.max(1, recentApprovals - 1),
+      recentDisputes: Math.max(1, recentDisputes - 1),
       recentCredentials,
       recentQuestions,
       clipScale,
@@ -268,6 +288,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentProposals,
       recentAnswers,
       recentApprovals,
+      recentDisputes,
       recentCredentials,
       recentQuestions,
       clipScale: Math.max(CLIP_FLOOR, clipScale - 0.2),
@@ -282,6 +303,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentProposals,
       recentAnswers,
       recentApprovals,
+      recentDisputes,
       recentCredentials,
       recentQuestions,
       clipScale,
@@ -296,6 +318,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentProposals,
       recentAnswers,
       recentApprovals,
+      recentDisputes,
       recentQuestions,
       recentCredentials: Math.max(1, recentCredentials - 1),
       clipScale,
@@ -310,6 +333,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       recentProposals,
       recentAnswers,
       recentApprovals,
+      recentDisputes,
       recentCredentials,
       recentQuestions: Math.max(1, recentQuestions - 1),
       clipScale,

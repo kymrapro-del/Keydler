@@ -106,6 +106,9 @@ function renderStep(step: Step, full: boolean): string[] {
     `  confidence: ${step.confidence} · by ${step.source} · based on v${step.basedOnVersion}`,
     `  action: ${step.action}`,
     `  result: ${step.result}`,
+    ...(step.dispute
+      ? [`  DISPUTED by the human — treat this as wrong: ${step.dispute.reason}`]
+      : []),
     ...evidenceLines(step, full),
   ]
 }
