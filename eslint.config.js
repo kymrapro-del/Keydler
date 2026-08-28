@@ -25,4 +25,9 @@ export default tseslint.config(
       'no-empty': ['error', { allowEmptyCatch: true }],
     },
   },
+  {
+    // Le banc d'essai n'existe que pour imprimer des mesures.
+    files: ['bench/**/*.ts'],
+    rules: { 'no-console': 'off' },
+  },
 )

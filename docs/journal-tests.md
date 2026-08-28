@@ -1040,3 +1040,65 @@ débordement horizontal.
 fois** — une pour lire l'identifiant de la règle, une pour la tâche — donc
 l'identifiant ne correspondait à rien. Le domaine refusait correctement avec
 « no constraint with id … » ; c'est la sonde qui était fausse.
+
+## 28 août 2026 — échelle et coût
+
+**Poste.** Chrome, serveur de développement, cahier de 40 règles et
+30 approches écartées écrit directement dans IndexedDB.
+
+Le rapport complet est dans [échelle](echelle-2026-08-28.md). Ce qui a été vu
+dans le navigateur, et non seulement en jsdom :
+
+**Observé.** 12 lignes de règles sur 40, « 28 rules still in force are not
+shown », « Show all 40 rules » ; 12 approches écartées sur 30. Après clic :
+40 lignes, avertissement disparu, bouton devenu « Show fewer », **focus resté
+sur le bouton**. 360 nœuds repliés, 499 dépliés. Styles calculés réels sur
+l'avertissement comme sur le bouton.
+
+**Pas de capture d'écran.** Le panneau de capture de cet environnement a rendu
+des images vides alors que le DOM répondait. Noté plutôt que remplacé par une
+image qui ne montre rien.
+
+**Anomalie non reproduite.** Au premier essai, la page est restée sur
+« Loading… » après écriture directe dans IndexedDB ; après vidage et réécriture
+du même cahier, chargement normal. Une connexion IndexedDB tenue ouverte ne
+reproduit pas le blocage. Consigné comme non expliqué.
+
+**Sélecteur de cahiers, vérifié aussi.** 41 cahiers sur le poste, 12 lignes
+affichées, « Show all 40 tasks », 457 nœuds ; après clic, 40 lignes et
+681 nœuds. C'est la dimension que le test de garde manquait : il faisait varier
+le contenu d'un cahier, jamais le nombre de cahiers.
+
+**Erreurs de sonde, consignées.** Deux fois : `.rows li` compté sur toute la
+page alors que la carte visée était « Rules to follow », et une référence DOM
+relue après un rendu qui l'avait remplacée. Dans les deux cas c'est la sonde qui
+était fausse, pas le produit.
+
+## 28 août 2026 — second tour d'échelle, en navigateur
+
+**Poste.** Chrome, serveur de développement, cahier de 2000 étapes (798 ko en
+base) avec preuves attachées.
+
+**Migration de base observée sur place.** La base est passée de la version 2 à
+la 3 sans être vidée : `db.version === 3`, les deux index présents
+(`by-id-version`, `by-updatedAt`), et le cahier de 2000 étapes intact. C'est le
+point qui compte : une migration ratée perdrait les données de vraies personnes.
+
+**L'index répond juste.** `getKey(['perf01', 2100])` rend `'perf01'` ;
+`getKey(['perf01', 9999])` ne rend rien. 0,1 ms contre 2,3 ms pour la relecture
+complète qu'il remplace.
+
+**Écriture réelle depuis l'écran.** Une règle ajoutée par le formulaire, écrite
+et affichée en 20,5 ms de bout en bout.
+
+**Repli de démarrage.** `lastTaskId` effacé de la base, rechargement : la page a
+retrouvé « Shard migration » seule.
+
+**Frappe dans la recherche.** 6,9 ms de médiane, image comprise, sur ce même
+cahier — sous la barre d'une image à 60 Hz.
+
+**Une décision prise sur la mesure, contre l'intuition.** Réécrire les 58 ko de
+HTML de la page coûte **0,7 ms** dans Chrome, contre 15 ms sous jsdom. Le rendu
+par sections, qui semblait s'imposer d'après les chiffres jsdom, aurait donc
+gagné moins d'une milliseconde pour une refonte du tableau de bord entier. Non
+fait.

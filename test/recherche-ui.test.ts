@@ -292,6 +292,43 @@ describe('filtrer les résultats par nature', () => {
     }
   })
 
+  /**
+   * Les comptes portés par les filtres n'étaient vérifiés nulle part : deux
+   * mutants les faussaient sans que la suite bronche. Ils disent pourtant à
+   * l'utilisateur ce qu'il trouvera en cliquant.
+   */
+  it('porte le compte exact de chaque nature, et leur somme', () => {
+    const trouvés = searchTask(store.currentTask()!, 'token')
+    const attendu = new Map<string, number>()
+    for (const m of trouvés) attendu.set(m.kind, (attendu.get(m.kind) ?? 0) + 1)
+
+    const compte = (bouton: HTMLButtonElement) =>
+      Number(/\((\d+)\)\s*$/.exec(bouton.textContent!.trim())![1])
+
+    for (const bouton of root.querySelectorAll<HTMLButtonElement>('[data-filter]')) {
+      const nature = bouton.dataset.filter!
+      expect(compte(bouton), nature).toBe(
+        nature === 'all' ? trouvés.length : (attendu.get(nature) ?? 0),
+      )
+    }
+
+    // Et « All » est bien la somme des autres, pas un nombre à part.
+    const parNature = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
+      .filter((b) => b.dataset.filter !== 'all')
+      .reduce((n, b) => n + compte(b), 0)
+    expect(parNature).toBe(trouvés.length)
+  })
+
+  it('range les natures dans l’ordre où le cahier les présente', () => {
+    // Une règle passe avant une étape parce que c'est l'ordre du cahier ; un
+    // ordre tiré d'ailleurs ferait danser les boutons d'une frappe à l'autre.
+    const ordre = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
+      .map((b) => b.dataset.filter!)
+      .filter((k) => k !== 'all')
+    const attendu = [...new Set(searchTask(store.currentTask()!, 'token').map((m) => m.kind))]
+    expect(ordre).toEqual(attendu)
+  })
+
   it('réduit aux seules lignes de la nature choisie', async () => {
     const avant = rows().length
     const bouton = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')].find(

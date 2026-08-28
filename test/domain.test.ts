@@ -310,27 +310,62 @@ describe('budget de restitution sous pression', () => {
     return task
   }
 
-  it('n’escamote jamais un rejet, même très au-delà du budget', () => {
-    const task = chargé(30, 10)
-    const output = renderTaskState(task)
-
-    for (let i = 0; i < 30; i++) {
-      expect(output).toContain(`Approche condamnée numéro ${i}`)
-    }
-    for (let i = 0; i < 10; i++) {
-      expect(output).toContain(`Contrainte ${i}`)
-    }
-  })
-
-  it('raccourcit les lignes plutôt que d’en supprimer', () => {
+  it('raccourcit les lignes avant d’en retirer', () => {
     const léger = renderTaskState(chargé(2, 2))
-    const lourd = renderTaskState(chargé(30, 10))
+    const moyen = renderTaskState(chargé(8, 6))
 
     expect(léger).toContain('détaillé à dessein pour occuper')
-    expect(lourd).toContain('Approche condamnée numéro 29')
-    expect(lourd).not.toContain(
-      'Motif 29, détaillé à dessein pour occuper de la place dans la restitution',
+    // Chargé, tout est encore là — mais coupé.
+    for (let i = 0; i < 8; i++) expect(moyen).toContain(`Approche condamnée numéro ${i}`)
+    expect(moyen).not.toContain(
+      'Motif 7, détaillé à dessein pour occuper de la place dans la restitution',
     )
+  })
+
+  /**
+   * L'ancienne promesse était de ne JAMAIS retirer une obligation. Mesurée,
+   * elle rendait 37 800 tokens pour deux mille règles — 94 fois le budget
+   * annoncé. Une restitution pareille n'est pas lue : elle est tronquée par
+   * la fenêtre de contexte du modèle, en silence et hors de notre portée.
+   *
+   * Le choix n'est donc pas « tout garder ou couper », mais « couper ici en
+   * le disant, ou laisser couper ailleurs sans que personne le sache ».
+   */
+  it('en dernier recours retire des obligations, et le dit sans détour', () => {
+    const output = renderTaskState(chargé(30, 10))
+
+    expect(output).toContain('Approche condamnée numéro 0')
+    expect(output).toContain('REJECTED — do not retry (12 of 30 shown)')
+    expect(output).toContain('18 more not shown here — they were ruled out too.')
+    expect(output).toContain('read_task_detail on rejections')
+  })
+
+  it('dit d’une règle retirée qu’elle engage TOUJOURS', () => {
+    const output = renderTaskState(chargé(0, 40))
+
+    expect(output).toContain('CONSTRAINTS — binding (40)')
+    expect(output).toContain('THEY ARE STILL BINDING')
+    expect(output).toContain('read_task_detail on constraints')
+  })
+
+  it('garde un plancher d’obligations, et borne vraiment la restitution', () => {
+    const output = renderTaskState(chargé(0, 300))
+
+    const montrées = output.split('\n').filter((l) => l.includes('Contrainte ')).length
+    expect(montrées).toBeGreaterThanOrEqual(12)
+    // Sans cette borne, la même mesure donnait 37 800 tokens à 2000 règles.
+    expect(estimateTokens(output)).toBeLessThan(1000)
+  })
+
+  it('montre les mêmes obligations d’un appel à l’autre', () => {
+    // Couper par la fin ferait glisser la fenêtre à chaque ajout : l'agent
+    // verrait disparaître une règle qu'il avait lue, sans qu'elle change.
+    const avant = renderTaskState(chargé(0, 40))
+    const après = renderTaskState(chargé(0, 60))
+
+    expect(avant).toContain('Contrainte 0')
+    expect(après).toContain('Contrainte 0')
+    expect(après).toContain('Contrainte 11')
   })
 
   it('respecte le budget tant que les contraintes le permettent', () => {

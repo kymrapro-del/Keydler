@@ -42,10 +42,13 @@ describe('le journal retient ce qui a été remplacé', () => {
     expect(line.detail).toContain(task.title)
   })
 
-  it('n’ajoute rien là où il n’y a rien à remplacer', () => {
+  it('consigne une valeur vide plutôt que rien, quand il n’y avait rien', () => {
+    // Confondre « il n'y avait rien » avec « rien n'a été consigné » rendait
+    // impossible d'annuler la toute première pose d'un champ.
     const sansNext = { ...task, next: null }
     const next = setNext(sansNext, 'First next action')
-    expect(next.audit.at(-1)!.previous).toBeUndefined()
+    expect(next.audit.at(-1)!.previous).toBe('')
+    expect(undoLastSupervision(next).next).toBeNull()
   })
 })
 

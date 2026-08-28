@@ -1,11 +1,29 @@
 import type { AuditEntry, TaskState } from './types'
 
+export type Trail = {
+  entries: AuditEntry[]
+  mayBeIncomplete: boolean
+}
+
 /**
  * Tout ce que le journal retient d'UN élément. Rendu possible par `targetId`,
  * qui avait été ajouté pour l'annulation : la même donnée sert ici à répondre
  * « qu'est-il arrivé à cette règle ? », question qu'aucune carte ne posait.
+ *
+ * L'incomplétude voyage AVEC les entrées, et non dans une fonction séparée :
+ * on ne doit pas pouvoir afficher les unes sans avoir l'autre en main. Le
+ * journal étant borné, une histoire ancienne s'appauvrit — et se taire
+ * là-dessus reviendrait à affirmer qu'il ne s'est rien passé.
  */
-export function historyOf(state: TaskState, targetId: string): AuditEntry[] {
-  if (!targetId) return []
-  return state.audit.filter((e) => e.targetId === targetId && e.outcome === 'applied')
+export function historyOf(state: TaskState, targetId: string): Trail {
+  const trimmed = state.audit.some((e) => e.operation === 'audit_trimmed')
+  if (!targetId) return { entries: [], mayBeIncomplete: trimmed }
+
+  return {
+    entries: state.audit.filter((e) => e.targetId === targetId && e.outcome === 'applied'),
+    // On ne sait pas ce qui a été écarté pour CET élément — le marqueur
+    // d'élagage compte des entrées, pas des cibles. D'où « peut être », et non
+    // un nombre que l'on n'a pas.
+    mayBeIncomplete: trimmed,
+  }
 }

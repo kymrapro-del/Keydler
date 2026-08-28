@@ -228,7 +228,9 @@ defend against everything:
 - **The history of one rule.** Every rule carries a History button: what was
   reworded, when it was lifted, when it came back. It falls out of the `targetId`
   the audit already keeps for undo — the same field answering a second question
-  no card was asking.
+  no card was asking. The log is bounded, so when older entries have been
+  dropped it says so rather than showing a short history as if it were the whole
+  one — an empty history would otherwise read as “nothing happened”.
 - **History** in words — _“You lifted a rule”_, _“Agent tried to record a step —
   refused — the task had changed since it was read”_. The audit trail was always
   complete; this is the screen for it.
@@ -333,10 +335,29 @@ defend against everything:
   with no agent to hand can check every claim in this README against the source
   of truth.
 
-## Audit
+## Audits
 
-[`docs/audit-2026-08-28.md`](docs/audit-2026-08-28.md) is a full defect hunt over
-the repository: static review, boundary probes, real-browser sequences including
+[`docs/echelle-2026-08-28.md`](docs/echelle-2026-08-28.md) is a cost pass rather
+than a defect pass: what grows without bound, what redoes work, what stops being
+usable as the log fills. It found that `resume_task` was overshooting its own
+400-token budget by a factor of 94 on a task carrying two thousand rules —
+because the degradation ladder trimmed history and never obligations. Keeping
+every rule sounds principled until you measure it: a 37 800-token briefing is
+truncated by the model's context window instead, in silence and out of reach.
+Four dashboard lists had the same shape of problem. Every figure in it is
+reproducible with `npm run bench`, and the "before" column comes from that same
+harness run against the previous commit.
+
+[`docs/audit-2-2026-08-28.md`](docs/audit-2-2026-08-28.md) is a second pass
+aimed only at the features built after the first one — the shareable link, the
+blocking approval, undo, the goal, the badges. It found that a link could carry
+a decompression bomb: the size limit was enforced on the link this page
+_produces_, and never on one it _receives_, while the link is opened by the
+person you send it to. It also records two tests that were passing without
+demonstrating anything, both caught by mutation testing.
+
+[`docs/audit-2026-08-28.md`](docs/audit-2026-08-28.md) is the first: a full
+defect hunt over the repository: static review, boundary probes, real-browser sequences including
 two tabs at once, and thirteen mutation tests that break a guarantee in the
 source and check the suite goes red. It lists what was found and fixed — sealed
 credentials outlived the task that held them, the worst of the four — and, at
@@ -382,6 +403,16 @@ npm run check
 `dev` serves on `http://localhost:5173`. `check` runs typecheck, lint,
 formatting, the full test suite and the production build; `npm run coverage`
 adds the coverage report.
+
+```bash
+npm run bench
+```
+
+`bench` is the scaling harness behind [`docs/echelle-2026-08-28.md`](docs/echelle-2026-08-28.md).
+It is kept out of `npm test` on purpose: it runs for minutes, and a duration is
+not an assertion — a time threshold in the suite starts blinking on the first
+loaded machine. What the bench finds becomes an ordinary test instead: a node
+bound, a token count, a bounded list.
 
 The page works without WebMCP: the state is real and persistent, only the agent
 connection is missing.
@@ -522,6 +553,7 @@ That also sets the boundaries, and they are real:
 | `src/persistence` | IndexedDB, with defensive reads and schema migration                       |
 | `src/webmcp`      | API adapter, schemas, descriptions, thirteen tools, registration lifecycle |
 | `src/ui`          | The dashboard                                                              |
+| `bench`           | The scaling harness — `npm run bench`, never part of `npm test`            |
 | `docs`            | Protocols, test journal, measurement, demo script                          |
 
 Internal documents and code comments are in French; the product is in English.
