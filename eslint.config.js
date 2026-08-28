@@ -30,4 +30,10 @@ export default tseslint.config(
     files: ['bench/**/*.ts'],
     rules: { 'no-console': 'off' },
   },
+  {
+    // Scripts de construction : Node, pas navigateur.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } },
+    rules: { 'no-console': 'off' },
+  },
 )

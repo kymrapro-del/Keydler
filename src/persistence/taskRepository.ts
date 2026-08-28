@@ -1,4 +1,4 @@
-import { ConcurrentWriteError } from '../domain/errors'
+import { ConcurrentWriteError, TaskGoneError } from '../domain/errors'
 import { getDb } from './db'
 import { normalizeTask, toStored } from './normalize'
 import type { TaskState } from '../domain/types'
@@ -23,16 +23,20 @@ export async function saveTask(state: TaskState, expectedVersion?: number): Prom
     // champs du cahier : aucun miroir à maintenir, donc rien qui dérive.
     const àJour = await tasks.index('by-id-version').getKey([state.id, expectedVersion])
     if (àJour === undefined) {
-      // Deux cas se ressemblent ici : le cahier n'existe pas encore, ou il a
-      // bougé. Seul le second est un conflit, et lui seul paie la relecture —
-      // parce qu'il faut dire à quelle version on est vraiment.
+      // Deux cas se ressemblent ici : le cahier a bougé, ou il a DISPARU. Le
+      // second passait pour « pas encore créé » et retombait sur le `put` —
+      // ce qui ressuscitait un cahier supprimé dans un autre onglet, sans les
+      // identifiants scellés, eux bel et bien effacés. Une écriture qui porte
+      // une version attendue est une mise à jour ; une création passe par le
+      // chemin sans version.
       const existe = await tasks.getKey(state.id)
-      if (existe !== undefined) {
-        const stored = await tasks.get(state.id)
-        tx.abort()
-        tx.done.catch(() => undefined)
-        throw new ConcurrentWriteError(expectedVersion, stored?.version ?? -1)
-      }
+      tx.abort()
+      tx.done.catch(() => undefined)
+      if (existe === undefined) throw new TaskGoneError(state.id)
+
+      const relecture = db.transaction('tasks', 'readonly')
+      const stored = await relecture.objectStore('tasks').get(state.id)
+      throw new ConcurrentWriteError(expectedVersion, stored?.version ?? -1)
     }
   }
 

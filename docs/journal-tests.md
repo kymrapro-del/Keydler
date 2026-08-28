@@ -1102,3 +1102,545 @@ HTML de la page coûte **0,7 ms** dans Chrome, contre 15 ms sous jsdom. Le rendu
 par sections, qui semblait s'imposer d'après les chiffres jsdom, aurait donc
 gagné moins d'une milliseconde pour une refonte du tableau de bord entier. Non
 fait.
+
+## 28 août 2026 — ce qui voyage avec un lien
+
+**Poste.** Chrome, serveur de développement, cahier portant trois preuves dont
+une sortie de commande contenant un faux jeton et un nom d'hôte interne.
+
+Le lien partageable et l'export emportent les preuves telles qu'elles ont été
+collées. Le README le disait ; l'écran, non — et c'est l'écran qu'on lit avant
+de cliquer. Pire, l'ancien message n'arrivait qu'**après** la copie, quand la
+décision était déjà prise.
+
+**Observé.** Sur ce cahier, sous le bouton de partage : « 3 pieces of evidence
+travel with it, pasted exactly as they were. Command output often holds a token
+or an internal hostname — read what it carries before you send this on. Sealed
+credentials never travel. » Bloc de 820 × 50 px, gris `rgb(160, 160, 172)`,
+aucun débordement horizontal. Les deux champs de preuve portent « Kept exactly
+as pasted, and it travels with every export and shared link. », positionnée sous
+le textarea. Le panneau technique porte la note d'export.
+
+**Ce qui a été refusé.** Un avertissement affiché en permanence. Il ne paraît
+que s'il y a réellement une preuve attachée, et il compte : un avertissement
+montré sans raison s'apprend à ne plus être lu. Un test tient ce silence.
+
+**Une régression évitée de justesse.** La première rédaction du message de
+copie perdait le mot « copy », et avec lui l'idée que le destinataire reçoit un
+exemplaire à lui, qui divergera. Un test existant l'a rattrapée — il ne
+vérifiait pas une chaîne, il vérifiait cette idée.
+
+## 28 août 2026 — les budgets de caractères de Chrome
+
+Chrome publie des budgets pour les outils WebMCP : 30 caractères par nom, 500
+par description d'outil, 150 par description de paramètre, 1,5 k par sortie —
+des recommandations, pas des limites dures, mais au-delà on « tombe sur les
+garde-fous des agents ».
+
+**Mesuré avant.** Dix descriptions sur treize dépassaient, jusqu'à 801. Une
+description de paramètre — `mutation_id`, 351 caractères — dépassait de plus du
+double, et elle était répétée sur les neuf outils d'écriture. Le catalogue
+entier, ce qu'un agent lit à chaque énumération, pesait 20 378 caractères.
+
+**Après :** 15 576, soit 24 % de moins, et aucune borne dépassée.
+
+**La règle éditoriale.** Une description d'outil instruit, le README explique.
+Ce qui a été coupé, ce sont les justifications — pourquoi la règle existe — et
+les rappels de protocole qui figuraient déjà trois fois : dans le schéma, dans
+le bloc WRITE PROTOCOL de `resume_task`, et dans le texte des refus. Aucune
+instruction n'a été retirée, et un second bloc d'épreuves nomme celles qui
+devaient survivre : « BEFORE doing any work », « Do NOT guess and carry on »,
+« NO ANSWER IS NOT APPROVAL », « does not prove the work was never attempted ».
+
+**Un changement essayé puis retiré.** Descendre `TOKEN_BUDGET` de 400 à 375
+pour tomber pile sur les 1,5 k de Chrome. Mesuré : dix-sept caractères gagnés
+sur une restitution ordinaire, et un nom d'identifiant perdu à l'écran sur un
+cahier chargé. Mauvais échange, annulé. Les restitutions réelles mesurent 1501
+et 1484 caractères — la recommandation est tenue à un caractère près sans
+l'avoir visée, et l'écart de 6,7 % entre le budget du produit et celui de Chrome
+est écrit dans le test plutôt que maquillé.
+
+**Trois tests existants ont refusé la coupe, à raison.** Ils tenaient le contrat
+de rejeu, le fait qu'une preuve jointe n'est pas vérifiée, et le déclencheur de
+`resume_task`. Deux d'entre eux ont échoué non parce que le sens avait disparu,
+mais parce que la phrase enjambait un retour à la ligne du gabarit : les
+nouvelles épreuves comparent donc sur un texte à espaces normalisés, comme le
+lit un agent.
+
+**Vérifié en navigateur, finalement.** J'avais écrit ne pas pouvoir le faire :
+le panneau de cette session n'expose pas `document.modelContext`, et pour cause
+— il tourne sur Chromium 148 (Electron), alors que WebMCP demande 149 et plus.
+Brave 151 est installé sur le poste, et le README documente la commande.
+Lancé sur un profil jetable avec `--enable-features=WebMCP,WebMCPTesting`,
+`document.modelContext` est bien un objet et les treize outils s'enregistrent
+dès qu'une tâche est ouverte — quatre seulement avant, ce qui est le
+comportement attendu : les outils suivent l'état.
+
+Relevé tel qu'un agent le reçoit, par `getTools()` :
+
+| Budget                        | Recommandé | Mesuré |
+| ----------------------------- | ---------- | ------ |
+| Nom d'outil                   | 30         | 16     |
+| Description d'outil           | 500        | 499    |
+| Description de paramètre (46) | 150        | 146    |
+
+Aucun dépassement. Les quatre outils de lecture portent bien
+`untrustedContentHint`.
+
+**Et une erreur dans ma propre garde, trouvée par cette vérification.** J'avais
+mesuré la sortie de `resume_task` par `renderTaskState(task)` sans options, soit
+1484 caractères. Appelé pour de vrai par `execute_webmcp_tool`, il en rend
+**1528** : l'outil passe toujours l'adresse de la tâche, que ma mesure omettait.
+Le test se rassurait donc sur autre chose que ce qui part. Corrigé — il mesure
+maintenant avec l'adresse.
+
+La position réelle est donc : 1528 caractères, soit **1,9 % au-dessus** de la
+recommandation de Chrome et à l'intérieur du budget du produit (400 tokens,
+1600 caractères). Écrit plutôt que rattrapé en rognant de la prose pour tomber
+sur un chiffre rond — c'est le même arbitrage que le `TOKEN_BUDGET` à 375, et
+il se tranche pareil.
+
+## 28 août 2026 — passe de vérification en WebMCP réel
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, profil jetable,
+`--enable-features=WebMCP,WebMCPTesting`, serveur de développement. Les appels
+d'outil passent par `execute_webmcp_tool`, donc par la même surface qu'un agent.
+Deux onglets ouverts sur la même tâche pour les épreuves de concurrence.
+
+### Ce qui tient
+
+| Épreuve                                                          | Résultat                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `document.modelContext` présent, `getTools()` trié par nom       | oui                                                                       |
+| Budgets Chrome : nom / description / paramètre                   | 16 · 499 · 146 sur 30 · 500 · 150                                         |
+| `untrustedContentHint` et `readOnlyHint` sur les quatre lectures | oui                                                                       |
+| Cycle de vie : 0 tâche → 4 outils, tâche ouverte → 13            | oui                                                                       |
+| Rejeu idempotent : même `mutation_id`, mêmes arguments           | réponse d'origine, « Nothing was written twice »                          |
+| Même `mutation_id`, arguments différents                         | refusé, motif explicite                                                   |
+| Version périmée                                                  | refusé, renvoie vers `what_changed`                                       |
+| Conflit entre onglets                                            | message **distinct** : « Another page has since written v30 »             |
+| Règle écrite par un agent                                        | arrive en PROPOSAL, non contraignante, visible à l'écran                  |
+| Autorisation bloquante                                           | ALLOWED et DENIED font l'aller-retour ; le refus dit de ne pas contourner |
+| `complete_task`                                                  | énumère ce qui reste non tranché avant de clore                           |
+| Écriture après clôture                                           | refusée, avec la marche à suivre                                          |
+| Réouverture                                                      | exige un motif écrit, et les outils d'écriture se réenregistrent aussitôt |
+| Section `credentials`                                            | rend des noms, jamais une valeur                                          |
+| Erreurs console sur toute la passe                               | aucune                                                                    |
+
+### Deux trouvailles
+
+**1. Deux outils de lecture débordent la borne de sortie de Chrome.** La garde
+posée plus tôt ne mesurait que `resume_task`.
+
+| Sortie                                 | Mesurée   | Face à 1,5 k |
+| -------------------------------------- | --------- | ------------ |
+| `resume_task`                          | 1528      | +2 %         |
+| `what_changed`                         | 613       | tient        |
+| `search_task`, cas ordinaire           | 811       | tient        |
+| `search_task`, pire cas                | **6 296** | ×4,2         |
+| `read_task_detail`, page de 20         | **1 989** | ×1,3         |
+| `read_task_detail`, une entrée entière | **9 078** | ×6           |
+
+La dernière est délibérée : l'outil existe pour rendre une preuve entière, et
+`MAX_EVIDENCE_LENGTH` vaut 8000. Les deux autres ne sont bornées que par un
+nombre d'entrées, jamais par des caractères — or une entrée peut être vingt fois
+plus grosse qu'une autre.
+
+**2. Aucun rafraîchissement entre onglets.** Le second onglet a rouvert la
+tâche et écrit jusqu'à v31 ; le premier affichait encore v29 et « Task closed ».
+Il ne l'apprend qu'en tentant d'écrire. La garantie de sûreté tient — rien n'est
+écrasé en silence, et le refus nomme même l'autre page — mais l'écran ment
+jusque-là, ce qui est exactement ce que ce produit reproche aux autres.
+`visibilitychange` ne relit pas la base ; il redessine depuis la mémoire.
+
+### Erreurs de sonde, consignées
+
+**Deux versions devinées à tort.** Une décision d'autorisation incrémente
+elle-même la version ; mes appels suivants portaient donc une version périmée.
+Les refus étaient justes, la sonde non.
+
+**« La réouverture ne fait rien » était de moi.** J'avais laissé le `prompt()`
+en suspens pendant que je lançais d'autres outils ; la boîte de dialogue est
+ressortie bien plus tard, derrière un appel sans rapport. Répondue tout de
+suite, la réouverture fonctionne — et les neuf outils d'écriture se
+réenregistrent dans la seconde.
+
+## 28 août 2026 — les deux trouvailles, corrigées et revérifiées
+
+**Poste.** Brave 151, deux onglets sur la même tâche, appels par
+`execute_webmcp_tool`.
+
+### La recherche se remplit maintenant jusqu'au budget
+
+Douze correspondances de 240 caractères faisaient 6296 caractères. La borne
+porte désormais sur les caractères et non sur le compte : **6296 → 1275**, et
+l'en-tête dit « 2 shown of 30 found · 28 more not shown — narrow the query ».
+Rien n'est caché, la recherche sert à trouver.
+
+**Une borne que j'ai posée puis retirée.** J'avais borné `read_task_detail` de
+la même façon. Une épreuve existante l'a refusé — et elle avait raison :
+`resume_task` est le pointeur court, `read_task_detail` est là où l'on va
+chercher du volume. Le borner rendait une à deux entrées par page dès qu'une
+preuve était jointe. Le partage des rôles était délibéré ; je ne l'avais pas
+reconnu avant que le test ne me le dise.
+
+### Deux onglets restent en phase
+
+Un `BroadcastChannel` annonce chaque écriture ; l'onglet qui tient la même tâche
+la relit depuis IndexedDB et se redessine.
+
+**Observé.** Onglet 2 écrit une règle. Onglet 1 passe de v32 à **v33** et
+affiche la règle, **sans un clic ni un rechargement**. Aucune erreur console.
+
+**Deux défauts trouvés en le construisant, dont un que la suite n'a pas vu.**
+
+1. **L'écho.** Une réécriture par numéro de ligne avait transformé le
+   `tasksChanged()` du récepteur en `tasksChangedEverywhere()` : chaque onglet
+   réannonçait ce qu'il recevait, et deux onglets se seraient renvoyé le message
+   sans fin. Attrapé par un test qui vérifiait ce qui était émis.
+
+2. **L'onglet sourd — vu en navigateur seulement.** Le canal était ouvert
+   paresseusement, à la première annonce. Or un onglet qui ne fait que lire
+   n'annonce jamais rien : il restait donc sourd, et c'était exactement celui
+   qu'il fallait réveiller. La suite ne pouvait pas le voir, parce que dans
+   chacun de ses cas le magasin avait écrit avant d'écouter. Le canal s'ouvre
+   maintenant à `init()`, et une épreuve part d'un magasin qui n'écrit pas une
+   seule fois.
+
+C'est la troisième fois dans ce projet qu'un test vert masque un défaut que le
+navigateur montre en une minute.
+
+## 28 août 2026 — passe de sécurité en WebMCP réel
+
+**Poste.** Brave 151, deux onglets, appels par `execute_webmcp_tool`.
+
+### Injection : ce qu'un agent écrit finit dans le DOM de l'humain
+
+Une étape écrite **par un agent**, portant
+`<img src=x onerror="window.__pwned=1">`, `<script>`, un `<iframe>` et un
+`</pre>` destiné à sortir du bloc de preuve.
+
+**Observé.** Rien d'exécuté — les quatre témoins restent `null`. Zéro `<img>`,
+zéro `<script>`, zéro `<iframe>` dans `#app`. Le texte s'affiche tel quel, y
+compris une fois la preuve dépliée. En position d'attribut (`aria-label`), les
+guillemets sont échappés en `&quot;` ; en position de texte, ils ne le sont pas
+— ce qui est correct, et non un oubli.
+
+**Erreur de sonde.** Mon premier contrôle dé-échappait le HTML avant d'y
+chercher des balises, et trouvait donc huit « balises vivantes » qui étaient les
+entités échappées de ma propre charge. Le produit n'y était pour rien.
+
+### Le coffre, jusque dans IndexedDB
+
+Un identifiant scellé depuis l'écran, puis l'enregistrement brut relu.
+
+| Question                           | Réponse                                       |
+| ---------------------------------- | --------------------------------------------- |
+| Champs stockés                     | `id, taskId, name, purpose, kind, sealed, at` |
+| Valeur en clair dans le coffre     | non                                           |
+| Passphrase en clair dans le coffre | non                                           |
+| Valeur en clair dans la tâche      | non                                           |
+| Contenu de `sealed`                | `{ciphertext: "…base64…"}`                    |
+
+`read_task_detail` sur `credentials` rend `${gemini-api-key}` et sa raison
+d'être, jamais la valeur. `search_task` sur la valeur elle-même : `NO MATCH`.
+
+**Le lien partageable non plus.** 7005 caractères, décompressés en
+19 589 caractères de JSON : ni la valeur, **ni même le nom**. Les secrets vivant
+hors de `TaskState`, `packTask` ne peut pas les emporter — la garantie est
+structurelle, et elle se vérifie sur l'octet.
+
+**Passphrase.** Mauvaise : « That passphrase does not open this credential. »
+Bonne : la valeur, avec « Hidden again in under a minute. »
+
+**Le pire moment.** Avec la valeur affichée à l'écran, `resume_task` rend
+toujours `CREDENTIALS — names only, values sealed (1)` et le seul `${nom}`.
+
+**Mais la garantie est bien celle qui est écrite, pas plus.** La page dit :
+« anything you reveal on screen can be read by an agent that drives this
+browser ». C'est exact, et je viens d'en faire la démonstration involontaire :
+j'ai lu la valeur révélée dans le DOM par `evaluate_script`. La promesse est
+« aucun OUTIL ne rend une valeur », pas « aucun agent ne peut la voir ». Le
+produit le dit ; il fallait le vérifier plutôt que le sur-vendre.
+
+### La bombe de décompression, avec le vrai `DecompressionStream`
+
+Corrigée au second audit, jamais vérifiée en navigateur jusqu'ici.
+
+| Charge         | Mesure                                         |
+| -------------- | ---------------------------------------------- |
+| En clair       | 6 000 302 octets                               |
+| Compressée     | 6 069 octets, ratio 989:1                      |
+| Fragment       | 8 093 caractères — **sous** la borne de 16 000 |
+| Verdict        | refusée en ~100 ms                             |
+| Tas après coup | 4 Mo — les 6 Mo n'ont jamais existé            |
+
+Message rendu : « That link does not carry a readable watch log. »
+
+### Durabilité
+
+`navigator.storage.persisted()` vaut `false` sur ce profil ; 0,54 Mo utilisés
+sur 2 Go de quota. La page propose « Ask the browser to keep this » quand ce
+n'est pas accordé, ce qui est le comportement attendu.
+
+## 28 août 2026 — export, import, et la suppression d'un cahier
+
+**Poste.** Brave 151. Le téléchargement est intercepté en enveloppant
+`URL.createObjectURL`, l'import en construisant un `File` et un `DataTransfer` —
+donc par les mêmes chemins que l'utilisateur.
+
+### L'export
+
+34 828 octets de Markdown, un seul bloc JSON. Il porte bien la charge
+d'injection écrite plus tôt (c'est le contenu du cahier, il doit y être), et
+**ni la valeur du secret ni même son nom**. Cohérent avec le lien partageable,
+et pour la même raison structurelle.
+
+### L'import, ses deux branches
+
+| Fichier                              | Résultat                                                 |
+| ------------------------------------ | -------------------------------------------------------- |
+| Identique à ce qui est ici           | « 1 already here. » — rien n'est dupliqué                |
+| Même identifiant, version différente | une COPIE, titrée « … (imported) », identifiant distinct |
+
+Dans les deux cas l'original reste intact, et aucun secret ne revient par le
+fichier.
+
+### La suppression d'un cahier emporte ses identifiants scellés
+
+C'était le défaut le plus grave du premier audit — `deleteSecretsForTask`
+n'était jamais appelé, et un identifiant scellé survivait au cahier qui le
+portait. Corrigé alors, jamais vérifié en navigateur jusqu'ici.
+
+Relevé dans IndexedDB, de part et d'autre de la suppression :
+
+|       | `tasks`                        | `secrets`                         |
+| ----- | ------------------------------ | --------------------------------- |
+| Avant | `289687a53a75`, `a36c38ba83a6` | `gemini-api-key` → `a36c38ba83a6` |
+| Après | `289687a53a75`                 | _(vide)_                          |
+
+Le cahier part, le secret part avec lui, et l'autre cahier n'est pas touché.
+
+## 28 août 2026 — la page sur un écran étroit
+
+**Poste.** Brave 151, viewport émulé 375 × 812, mobile et tactile. Jamais
+vérifié jusqu'ici, et un juge ouvre ce qu'il veut.
+
+**Ce qui tient.** Aucun débordement horizontal : `scrollWidth` vaut exactement
+375, et **aucun** des éléments de `#app` ne dépasse la largeur du viewport. La
+hauteur médiane d'une cible tactile est de 41 px.
+
+**Ce qui ne tient pas, et n'est pas corrigé.** Quatre éléments passent sous une
+cible confortable :
+
+| Élément                                   | Hauteur   |
+| ----------------------------------------- | --------- |
+| `<select>` du type d'identifiant          | **19 px** |
+| Les trois liens de la barre « Needs you » | **22 px** |
+
+Le reste est à 41 px, soit juste sous les 44 px recommandés — un écart que je ne
+compte pas comme un défaut. Les quatre ci-dessus, si. Non corrigé : la mise en
+forme est un domaine où l'on ne touche pas sans décision, et ce n'est pas la
+mienne à prendre.
+
+## 28 août 2026 — sur une machine vingt fois plus lente
+
+**Poste.** Brave 151, throttling CPU ×20 par CDP. Cahier de **3000 étapes,
+60 règles, 1,27 Mo** — les mesures précédentes avaient toutes été prises sur une
+machine rapide, ce qui ne prouve rien pour qui n'en a pas.
+
+**Ce que la page rend.** 409 nœuds, 40 ko de HTML — les bornes tiennent, la
+taille du cahier ne s'y voit pas. Une recherche sur « shard » trouve
+3060 correspondances et n'en montre que ce qui tient dans le budget.
+
+**Le coût réel, séparé de la cadence du compositeur.** Le travail synchrone du
+gestionnaire de frappe est de 0 à 2,9 ms : il ne fait que programmer un rendu.
+Le temps jusqu'à la peinture est de ~1005 ms, mais c'est la cadence d'un
+compositeur à ×20, pas le produit — toute page la subirait.
+
+Ce qu'il fallait mesurer, c'est le fil principal. Un `PerformanceObserver` sur
+les `longtask` pendant six frappes :
+
+|                                   | ms      |
+| --------------------------------- | ------- |
+| Tâche la plus longue              | **147** |
+| Médiane                           | 136     |
+| Tâches observées pour six frappes | **3**   |
+
+147 ms à ×20 correspond à ~7 ms sur ce poste, ce qui recoupe la mesure directe
+de 6,9 ms prise plus tôt sans throttling. Sur une machine vingt fois plus lente,
+une frappe dans la recherche coûte donc ~140 ms de fil principal sur un cahier
+de 1,27 Mo : perceptible, pas cassé.
+
+Et **trois tâches pour six frappes** : le regroupement par `requestAnimationFrame`
+fait son travail — taper vite ne produit pas un rendu par caractère.
+
+**Erreur de sonde, consignée.** La première mesure portait sur le mauvais
+cahier : `lastTaskId` avait été écrit pendant que la page était déjà montée, et
+le rechargement a rouvert celui d'avant. Le chiffre de 1009 ms que j'ai lu là
+était celui d'un cahier de dix étapes — il ne mesurait rien.
+
+## 28 août 2026 — ce qu'un audit adversarial a trouvé dans le code d'il y a une heure
+
+Neuf agents lancés en parallèle : trois sur le concours, trois en audit du code
+écrit aujourd'hui, deux sur les surfaces non couvertes et le build de
+production, un de synthèse. Ils ont trouvé **quatre défauts dans le
+`BroadcastChannel` posé une heure plus tôt**, dont deux atteignables avec deux
+onglets et un cahier de dix étapes.
+
+### Le pire : une suppression pouvait être annulée par l'autre onglet
+
+La suppression n'annonçait que « la liste a changé », sans nommer le cahier.
+L'onglet d'à côté gardait donc à l'écran un cahier disparu — et sa prochaine
+écriture le **ressuscitait**. `saveTask` traitait « aucun enregistrement » comme
+« pas encore créé » et retombait sur le `put`.
+
+Le cahier revenait avec toutes ses étapes et toutes ses preuves collées, mais
+**sans ses identifiants scellés**, eux réellement effacés : l'humain croyait la
+donnée partie, elle revenait amputée, et chaque référence `${name}` pendait dans
+le vide. Sur l'opération que l'on fait précisément *parce qu'on veut que la
+donnée disparaisse.
+
+Le commit `26501e8` s'intitule « Verify … that deleting a task takes its
+secrets ». Ce défaut le démentait dans le cas à deux onglets.
+
+**Deux correctifs, les deux nécessaires.** La suppression nomme le cahier
+(`{id, gone: true}`), et le récepteur passe en `missing`. Et `saveTask` refuse
+désormais une écriture qui porte une version attendue contre un enregistrement
+absent : une telle écriture est par définition une mise à jour, les créations
+passent par le chemin sans version.
+
+**J'avais écrit l'assertion inverse.** `test/migration-index.test.ts` affirmait
+« laisse passer la toute première écriture d'un cahier qui n'existe pas ».
+C'était mon raisonnement qui était faux, pas le code qui l'a suivi. Le test
+affirme maintenant le contraire, avec la raison.
+
+### Trois autres, dans le même fichier
+
+- **La relecture ne revérifiait pas la liaison.** La garde « est-ce le cahier
+  ouvert ? » était évaluée à la réception du message ; le travail, lui, était
+  différé dans la file. Entre les deux, l'utilisateur peut ouvrir un autre
+  cahier — et la relecture rebasculait l'écran, et `boundId`, sur le précédent.
+  Pire que l'écran périmé que le canal devait supprimer.
+- **Aucun regroupement.** Mesuré par l'agent sur 20 000 étapes : cinquante
+  annonces coûtaient cinquante lectures et 1702 ms, dont 1668 jetés. Et comme la
+  file est partagée avec les écritures locales, elles retardaient les écritures
+  de cet onglet d'un facteur 51. Une seule relecture par cahier désormais.
+- **La liste des cahiers se relisait à chaque écriture.** `listKey` contenait la
+  version du cahier ouvert, qui change à chaque écriture : 61 ms et **15,9 Mo
+  lus pour produire 9 ko de fiches**, sur 20 cahiers de 2000 étapes. Les lignes
+  du sélecteur n'en dépendent pas.
+
+### Vérifié à deux vrais onglets
+
+Onglet 1 supprime. Onglet 2, **sans un clic ni un rechargement** :
+
+> This task does not exist on this device. The address points at suppr0000001,
+> which is not here. No other task has been opened in its place.
+
+Puis un agent tente d'écrire depuis l'onglet 2 : refusé. Et sur le disque :
+`tasks` vide, `secrets` vide. Le cahier ne revient pas.
+
+### Un mutant survivant, non résolu
+
+Retirer la revérification de liaison **à l'intérieur** de `resyncFromDisk` ne
+fait rougir aucun test : la garde de la file la couvre en amont. Les deux ont
+pourtant un rôle distinct — l'une évite la lecture, l'autre évite d'appliquer
+une lecture périmée — et je n'ai pas su construire une course déterministe pour
+la seconde. Elle reste, non couverte, et c'est écrit ici plutôt que maquillé.
+
+### Un chiffre publié par le banc était faux
+
+`bench/detail.bench.ts` chronométrait `normalizeTask(structuredClone(task))`,
+attribuant à la normalisation le coût du clone : **3,94 ms de clone comptés dans
+0,24 ms de normalisation**, à 4000 étapes. Un facteur seize, et il pointait vers
+le mauvais correctif — « accélérer normalize » au lieu de « lire moins
+souvent ». Le clone est sorti du chronomètre. Aucun document publié ne citait ce
+chiffre ; seule la sortie du banc était fausse.
+
+## 28 août 2026 — le build de production, et une promesse du README qui était fausse
+
+Un agent d'audit a construit puis servi `dist/` depuis un serveur statique NU —
+pas `vite preview`, qui réécrit tout seul et masquait tout. Trois problèmes,
+tous invisibles en local.
+
+### L'adresse profonde tombait sur un 404
+
+La page déplace l'adresse vers `/t/:id` dès qu'un cahier est ouvert. Sur un
+hôte sans réécriture, tout rechargement, tout signet et tout lien partagé
+tombait sur le 404 de l'hébergeur. Vérifié : `curl http://127.0.0.1:8911/t/abc`
+rend **404** sur un serveur nu, **200** sous `vite preview`.
+
+`public/_redirects` et `vercel.json` posés. Un serveur statique nu ne les lit
+pas — ce sont des conventions d'hébergeur — donc ce point reste à vérifier sur
+l'hôte réellement choisi.
+
+### Le service worker ne précachait rien de l'application
+
+`SHELL` listait `/`, `/index.html`, le manifeste et une icône. Les deux
+fichiers dont l'application est faite portent une empreinte dans leur nom : ils
+ne peuvent pas être écrits à la main, et rien ne les injectait. L'enregistrement
+se faisant sur `load`, la première visite ne passe pas non plus par le worker.
+**Après une seule visite, hors ligne rendait une page blanche** — alors que le
+README annonçait l'inverse, « verified with the server stopped ».
+
+`scripts/precache.mjs` écrit désormais les vrais noms dans `dist/sw.js`, et
+donne au cache un nom dérivé de leur contenu — sans quoi `activate` ne
+supprimait jamais rien.
+
+**Vérifié pour de bon, cette fois.** Serveur statique **arrêté**, réseau émulé
+hors ligne, `fetch` d'une ressource non cachée qui **échoue** — et la page rend
+957 caractères de contenu réel. Cache : cinq entrées, dont le JS et le CSS.
+
+### Une page d'erreur pouvait empoisonner le cache pour de bon
+
+La branche de navigation mettait la réponse en cache **sans contrôler son
+statut**. Sur un hôte sans réécriture, le premier `/t/:id` rendait un 404 qui
+était écrit par-dessus `/index.html` : le repli hors ligne servait ensuite ce
+404 pour toute navigation, racine comprise. Et le nom du cache étant figé,
+aucun déploiement ne le nettoyait. Le contrôle `response.ok` existait déjà sur
+la branche des ressources ; il manquait sur celle des navigations.
+
+### La carte de source partait en production
+
+`npm run build` — ce que les hébergeurs détectent tout seuls — produisait une
+carte de source de **519 ko**, plus lourde que tout le reste du site réuni, et
+qui rend la source entière lisible par un agent pilotant le navigateur. Elle est
+maintenant sur demande (`SOURCEMAP=1`). `dist/` passe de ~760 ko à **260 ko**.
+
+## 29 août 2026 — le lien protégé par une phrase de passe
+
+Un lien porte le cahier entier, et sa vraie fuite n'est pas le fragment — que
+le navigateur ne transmet jamais — mais **l'endroit où on le colle** : un fil
+Slack, un mail, une conversation qui garde le message.
+
+**Ce qui a été construit.** Un second bouton, « Copy a protected link », qui
+scelle le lien par une phrase de passe. Aucune cryptographie nouvelle : c'est
+`seal`/`unseal` du coffre, AES-GCM 256 et PBKDF2-SHA256 à 600 000 itérations,
+sel et IV tirés au hasard à chaque scellement. On chiffre **après** avoir
+compressé, un chiffré ne se compressant pas.
+
+**Ce que ça ne fait pas, et l'écran le dit.** Cela ne vérifie pas une identité.
+Un fragment d'URL est une capacité au porteur, et authentifier quelqu'un
+demanderait un serveur. Ce qu'une phrase prouve, c'est la connaissance d'un
+secret — autre chose, et le maximum disponible sans serveur. Un mutant qui
+remplace cette phrase par « We check who opens it » fait rougir la suite.
+
+**Vérifié dans Brave 151, de bout en bout.**
+
+| Étape                       | Observé                                                                                                         |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Lien copié                  | 6852 caractères, marqueur `#log=s`, titre du cahier absent                                                      |
+| Destinataire, appareil vide | « A protected watch log » — **rien n'est lisible, pas même le nom**                                             |
+| Mauvaise phrase             | « That passphrase does not open this link. Ask them to repeat it — the link itself is fine. » et le champ reste |
+| Bonne phrase                | l'offre ordinaire, titre visible, « Take a copy »                                                               |
+| Après ouverture             | le fragment a quitté la barre d'adresse                                                                         |
+
+Taille : **1,82×** le lien ordinaire (3747 → 6821 caractères sur le cahier de
+démonstration), très en deçà de la borne de 16 000.
+
+**Erreur de sonde, consignée.** Ma première tentative montrait le cahier au
+lieu de demander la phrase. J'avais vidé IndexedDB depuis la page **encore
+montée** : le magasin, toujours en mémoire, a réécrit la tâche avant la
+navigation. En passant d'abord par une page neuve, le comportement attendu
+apparaît. Le produit n'y était pour rien.

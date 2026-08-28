@@ -1,4 +1,6 @@
 import { normalizeTask } from '../persistence/normalize'
+import { seal, unseal } from '../persistence/vault'
+import { requirePassphrase, type SealedValue } from '../domain/secret'
 import type { TaskState } from '../domain/types'
 
 export const FRAGMENT_KEY = 'log='
@@ -119,11 +121,80 @@ async function expand(bytes: Uint8Array): Promise<Uint8Array> {
   return collect(through(bytes, gunzip), MAX_DECOMPRESSED)
 }
 
-export async function packTask(task: TaskState): Promise<string> {
+/**
+ * Un lien porte le cahier entier. Personne ne peut savoir qui l'ouvre : un
+ * fragment d'URL est une capacité au porteur, et vérifier une identité
+ * demanderait un serveur, que ce produit n'a pas et ne veut pas.
+ *
+ * Ce qui est possible sans serveur, c'est d'exiger la connaissance d'un
+ * secret. Ce n'est pas la même chose qu'authentifier quelqu'un, et il ne faut
+ * pas le vendre comme tel — mais cela règle la fuite qui compte vraiment : un
+ * lien oublié dans un fil de discussion devient un bloc de chiffré inutile.
+ *
+ * Le chiffrement est celui du coffre, sans une ligne de crypto nouvelle :
+ * AES-GCM 256, clé dérivée par PBKDF2-SHA256 à 600 000 itérations, sel et IV
+ * tirés au hasard à chaque scellement. On chiffre APRÈS avoir compressé — un
+ * chiffré ne se compresse pas.
+ */
+export const SEALED_MARKER = 's'
+
+export async function packSealedTask(task: TaskState, passphrase: string): Promise<string> {
+  const clair = await packTask(task, { unbounded: true })
+  const scellé = await seal(clair, requirePassphrase(passphrase))
+  const packed = `${SEALED_MARKER}${toBase64Url(bytesOf(JSON.stringify(scellé)))}`
+  if (packed.length > MAX_LINK_LENGTH) throw new TooLargeForLinkError(packed.length)
+  return packed
+}
+
+export function isSealedLink(packed: string): boolean {
+  return packed.startsWith(SEALED_MARKER)
+}
+
+/**
+ * Rendu séparément de `unpackTask` : le destinataire doit d'abord savoir qu'une
+ * phrase de passe est attendue, avant qu'on la lui demande.
+ */
+export async function unsealTask(packed: string, passphrase: string): Promise<TaskState> {
+  if (!isSealedLink(packed)) throw new UnreadableLinkError()
+  if (packed.length > MAX_LINK_LENGTH) throw new UnreadableLinkError()
+  if (!SAFE.test(packed)) throw new UnreadableLinkError()
+
+  let scellé: SealedValue
+  try {
+    const json = new TextDecoder().decode(fromBase64Url(packed.slice(1)))
+    const lu = JSON.parse(json) as Partial<SealedValue>
+    if (
+      typeof lu?.ciphertext !== 'string' ||
+      typeof lu.iv !== 'string' ||
+      typeof lu.salt !== 'string' ||
+      typeof lu.iterations !== 'number'
+    ) {
+      throw new UnreadableLinkError()
+    }
+    scellé = lu as SealedValue
+  } catch {
+    throw new UnreadableLinkError()
+  }
+
+  // `unseal` lève `WrongPassphraseError`, qui doit remonter telle quelle :
+  // « la phrase est fausse » et « ce lien est illisible » ne se disent pas
+  // pareil à quelqu'un qui vient de taper une phrase.
+  const clair = await unseal(scellé, requirePassphrase(passphrase))
+  return unpackTask(clair)
+}
+
+export async function packTask(task: TaskState): Promise<string>
+export async function packTask(task: TaskState, options: { unbounded: boolean }): Promise<string>
+export async function packTask(task: TaskState, options?: { unbounded: boolean }): Promise<string> {
   const raw = bytesOf(JSON.stringify(task))
   const { bytes, gzipped } = await squeeze(raw)
   const packed = `${gzipped ? 'z' : 'p'}${toBase64Url(bytes)}`
-  if (packed.length > MAX_LINK_LENGTH) throw new TooLargeForLinkError(packed.length)
+  // Le lien scellé mesure sa propre longueur APRÈS chiffrement ; borner ici en
+  // plus refuserait des cahiers qui tiennent, sur un compte qui n'est pas le
+  // bon.
+  if (!options?.unbounded && packed.length > MAX_LINK_LENGTH) {
+    throw new TooLargeForLinkError(packed.length)
+  }
   return packed
 }
 

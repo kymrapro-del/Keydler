@@ -183,7 +183,8 @@ describe('échelle', () => {
       bench('searchTask (mot fréquent)', () => searchTask(task, 'shard'))
       bench('renderTaskState', () => renderTaskState(task))
       bench('needsYou', () => needsYou(task))
-      bench('normalizeTask', () => normalizeTask(structuredClone(task)), 3)
+      const cloné = structuredClone(task)
+      bench('normalizeTask', () => normalizeTask(cloné), 3)
     }
   }, 300_000)
 

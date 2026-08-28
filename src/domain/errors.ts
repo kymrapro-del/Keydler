@@ -81,6 +81,31 @@ export class ConcurrentWriteError extends Error {
   }
 }
 
+/**
+ * Une écriture qui porte une version attendue est, par définition, une MISE À
+ * JOUR : les créations passent par le chemin sans version. Si l'enregistrement
+ * a disparu, c'est donc qu'une autre page a supprimé le cahier — et le
+ * réécrire le ressusciterait, amputé de ses identifiants scellés, qui eux ont
+ * bien été effacés. L'humain croirait la donnée partie ; elle serait revenue
+ * sans ses secrets, chaque référence `${name}` pendant dans le vide.
+ */
+export class TaskGoneError extends Error {
+  readonly taskId: string
+
+  constructor(taskId: string) {
+    super(
+      [
+        'TASK GONE',
+        `Task ${taskId} was deleted, on this device, while you held it.`,
+        'No write took place, and it was not recreated.',
+        'Call resume_task: it will tell you which task is open now, if any.',
+      ].join('\n'),
+    )
+    this.name = 'TaskGoneError'
+    this.taskId = taskId
+  }
+}
+
 export class CancelledError extends Error {
   constructor(operation: string) {
     super(

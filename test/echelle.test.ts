@@ -372,3 +372,21 @@ describe('l’aperçu de ce que lit l’agent reste à jour', () => {
     expect(apercu()).not.toContain('Premier')
   })
 })
+
+/**
+ * L'export emporte les preuves telles quelles. Le README le disait ; l'écran,
+ * non — et c'est l'écran qu'on lit avant de cliquer.
+ */
+describe('l’export dit ce qu’il emporte', () => {
+  it('nomme les preuves, et ce qui ne peut pas partir', async () => {
+    await open({ steps: steps(2) })
+
+    const panneau = [...root.querySelectorAll('details')]
+      .map((d) => d.textContent?.replace(/\s+/g, ' ') ?? '')
+      .find((t) => t.includes('Export this task'))
+
+    expect(panneau).toContain('carries the evidence exactly as pasted')
+    expect(panneau).toContain('Sealed credentials are never included')
+    expect(panneau).toContain('kept outside the log')
+  })
+})

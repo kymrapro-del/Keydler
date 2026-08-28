@@ -82,6 +82,17 @@ and the whole history
 
 ![Active task](docs/assets/active-task.png)
 
+**Or send it sealed.** A protected link is encrypted with a passphrase you give
+the other person another way — the same AES-GCM 256 and PBKDF2-SHA256 at 600 000
+iterations the credential vault uses, no new cryptography. Until the phrase is
+entered, nothing about the log can be read, not even its name. A sealed link
+left in a chat log is a block of ciphertext.
+
+What it does **not** do, and the screen says so: it cannot tell who opens it.
+A URL fragment is a bearer capability, and checking an identity would need a
+server this product does not have. What a passphrase proves is knowledge of a
+secret, which is a different thing and the strongest thing available without one.
+
 **Send the whole log in a link.** No server sees it — the log rides in the URL
 fragment, which browsers never transmit. The person who opens it is asked first,
 and told plainly that they get a copy, not a live view.
@@ -255,9 +266,12 @@ defend against everything:
   writing anything, and says it is a copy that will not stay in step. A log too
   big for a link is refused with the size, and points at the file export, which
   has no limit.
-- **Installable and offline.** A manifest and a service worker; verified with the
-  server stopped. When the network goes, the page says so — everything here is on
-  the device, so nothing stops.
+- **Installable and offline.** A manifest and a service worker whose precache
+  list is written at build time from the real, hashed asset names — an audit
+  found it had been listing none of them, so offline served a blank page after
+  the first visit. Verified since with the static server stopped and the network
+  emulated off: an uncached fetch fails and the page still renders. When the
+  network goes, the page says so — everything here is on the device.
 - **Will the browser keep this?** Technical details reports whether storage is
   durable and how much room the log takes, and offers to ask the browser for
   durability. It never claims the work is safe: not durable means _may be
@@ -337,6 +351,13 @@ defend against everything:
 
 ## Audits
 
+[`docs/concours-2026-08-28.md`](docs/concours-2026-08-28.md) is what nine agents
+established about the challenge itself from primary sources — the deadline
+freeze that is not on the rules page, the video requirements that are stricter
+than they look, and the uncomfortable finding that "the agent proposes, the
+human decides" is the single most crowded pitch in the field rather than a
+differentiator. It also lists, at length, what could not be established.
+
 [`docs/echelle-2026-08-28.md`](docs/echelle-2026-08-28.md) is a cost pass rather
 than a defect pass: what grows without bound, what redoes work, what stops being
 usable as the log fills. It found that `resume_task` was overshooting its own
@@ -382,6 +403,21 @@ the same length, what is known and left alone.
   (Chromium ≥ 153). Below that, tools stay registered and refuse cleanly —
   unregistering a tool that is mid-reply can drop that reply, and no timer trick
   makes that ordering safe.
+- **The tool catalogue fits Chrome's published budgets.** Chrome recommends 30
+  characters per tool name, 500 per tool description, 150 per parameter
+  description and 1.5K per tool output — past those, agents hit their own
+  guardrails. Ten of the thirteen descriptions were over, and one parameter was
+  more than twice the limit, repeated on nine tools. A test now holds all four
+  bounds, including a floor, so nothing is trimmed into silence to fit. Read
+  back through `getTools()` in Brave 151: 16, 499 and 146 against limits of 30,
+  500 and 150. The briefing is the one that does not fit — 1528 characters,
+  1.9% over — and that overage is written down rather than shaved off.
+- **Two tabs stay in step.** A write announces itself on a `BroadcastChannel`;
+  any other tab holding that task re-reads it from IndexedDB and redraws. The
+  refusal machinery was already correct — a stale write is refused, and the
+  message even names the other page — but until this, the second tab's screen
+  went on showing a state that had moved. A page that lets a screen lie is the
+  thing this product exists to object to.
 - **One task, one address.** A task lives at `/t/:id`. A page bound to that
   address returns that task or says it is gone; it never substitutes “whatever
   was touched last on this device”.
@@ -399,6 +435,19 @@ npm run dev
 ```bash
 npm run check
 ```
+
+### Deploying it
+
+The address moves to `/t/:id` as soon as a task is open, so a host without an
+SPA rewrite 404s on every reload, bookmark and shared link. `public/_redirects`
+covers Netlify and Cloudflare Pages, `vercel.json` covers Vercel; anything else
+needs the equivalent. This is invisible locally — `vite preview` rewrites by
+itself, a bare static server does not.
+
+`npm run build` and `npm run build:trial` both run `scripts/precache.mjs`, which
+writes the built asset names into `dist/sw.js`. Without it the service worker
+precached nothing the app is made of, and offline served a blank page after the
+first visit.
 
 `dev` serves on `http://localhost:5173`. `check` runs typecheck, lint,
 formatting, the full test suite and the production build; `npm run coverage`
@@ -537,6 +586,12 @@ That also sets the boundaries, and they are real:
   first; the export contains full evidence and the complete write log, refusals
   included. It deliberately contains **no credential**, sealed or otherwise, so
   it is not a backup of those.
+- **Evidence travels, and it is quoted verbatim.** An export and a shared link
+  both carry the evidence exactly as it was pasted — and command output often
+  holds a token, an internal hostname, or a customer name. The page now says
+  this where you paste and again where you share, with a count, rather than
+  leaving it to this file. Sealed credentials cannot travel at all: they live
+  outside the log, which is a structural guarantee rather than a precaution.
 - **This is not a universal memory.** It is a memory for _one supervised task_.
 - **Nothing guarantees an agent will call `resume_task`.** The description is
   written to make it the obvious first move, and the measurement suggests it

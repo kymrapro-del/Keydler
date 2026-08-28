@@ -96,6 +96,19 @@ describe('consigner une étape à la main', () => {
     history.replaceState(null, '', '/')
   })
 
+  /**
+   * Une preuve collée part avec chaque export et chaque lien partageable, et
+   * une sortie de commande porte volontiers un jeton. Le champ le dit là où on
+   * colle, pas dans une page d'aide.
+   */
+  it('dit, au moment de coller, où la preuve ira', () => {
+    const champ = root.querySelector('#step-evidence')!
+    const note = champ.parentElement!.textContent!.replace(/\s+/g, ' ')
+
+    expect(note).toContain('Kept exactly as pasted')
+    expect(note).toContain('travels with every export and shared link')
+  })
+
   it('accueille une preuve sur plusieurs lignes', async () => {
     // Un <input type="text"> écrase les retours à la ligne : une sortie de
     // commande ou un diff collé y arrivait sur une seule ligne, illisible pour

@@ -1,7 +1,15 @@
 import { buildMeasureTask } from '../demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from '../export/notebook'
 import { parseExport } from '../export/restore'
-import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
+import {
+  isSealedLink,
+  linkFor,
+  packSealedTask,
+  packTask,
+  readLinkFragment,
+  unpackTask,
+  unsealTask,
+} from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeEntry, describeHistory } from './history'
@@ -27,32 +35,33 @@ import {
   acceptedRejections,
   activeConstraints,
   addConstraint,
-  copyRulesInto,
-  answerQuestion,
   answeredQuestions,
+  answerQuestion,
+  attachedEvidenceCount,
+  attachEvidence,
+  copyRulesInto,
   decideApproval,
   disputeStep,
-  pendingApprovals,
-  withdrawDispute,
-  undoLastSupervision,
-  undoable,
-  attachEvidence,
-  openQuestions,
-  setArchived,
   editConstraint,
   editRejection,
   logStep,
-  renameTask,
-  setGoal,
-  setNext,
+  openQuestions,
+  pendingApprovals,
   proposedConstraints,
   proposedRejections,
   rejectApproach,
+  renameTask,
   reopenTask,
+  setArchived,
   setConstraintActive,
   setConstraintStanding,
+  setGoal,
+  setNext,
   setRejectionStanding,
+  undoable,
+  undoLastSupervision,
   verifyEvidence,
+  withdrawDispute,
 } from '../domain/task'
 import {
   EVIDENCE_KINDS,
@@ -179,6 +188,8 @@ let awayFor: string | null = null
 let offered: TaskState | null = null
 let linkRead = false
 let linkPending = false
+// Un lien scellé attend une phrase avant même de pouvoir être décrit.
+let sealedLink: string | null = null
 
 type Editing =
   | { kind: 'title' }
@@ -395,6 +406,7 @@ function renderLanding(): string {
       </p>
       ${alertBlock()}
       ${renderOffline()}
+      ${renderSealedOffer()}
       ${renderOffer()}
       ${renderShortcuts()}
       ${form}
@@ -523,6 +535,8 @@ function renderStepRow(step: Step, active: boolean): string {
             <label for="attach-content">The evidence, pasted whole</label>
             <textarea id="attach-content" rows="5" autocomplete="off" spellcheck="false"
                       placeholder="Command output, a diff, a test report, a link"></textarea>
+            <p class="muted">Kept exactly as pasted, and it travels with every export and
+               shared link.</p>
           </div>
           <div class="field">
             <label for="attach-kind">What that evidence is</label>
@@ -602,6 +616,8 @@ function renderCompletedWork(task: TaskState): string {
                <label for="step-evidence">Evidence <span class="muted">(optional)</span></label>
                <textarea id="step-evidence" rows="5" autocomplete="off" spellcheck="false"
                          placeholder="Paste the command output, a diff, or a link"></textarea>
+               <p class="muted">Kept exactly as pasted, and it travels with every export and
+                  shared link.</p>
              </div>
              <div class="field">
                <label for="step-kind">What that evidence is</label>
@@ -937,6 +953,28 @@ function renderSwitcher(task: TaskState): string {
     </details>`
 }
 
+function renderSealedOffer(): string {
+  if (!sealedLink) return ''
+  return `<section class="card card--away" aria-labelledby="sealed-title">
+      <h2 id="sealed-title" class="card__title">A protected watch log</h2>
+      <p class="muted">
+        Somebody sent you a sealed link. Nothing about the log can be read —
+        not even its name — until the passphrase they gave you separately is
+        entered here. It is checked on this device; no server sees it.
+      </p>
+      <form id="form-sealed" class="form" novalidate>
+        <div class="field">
+          <label for="sealed-passphrase">The passphrase they gave you</label>
+          <input id="sealed-passphrase" type="password" autocomplete="off" />
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn--primary">Open it</button>
+          <button type="button" id="decline-sealed" class="btn">No thanks</button>
+        </div>
+      </form>
+    </section>`
+}
+
 function renderOffer(): string {
   if (!offered) return ''
   const counts = [
@@ -1240,10 +1278,31 @@ function renderHandoff(task: TaskState): string {
     return undoButton ? `<p class="handoff">${undoButton}</p>` : ''
   }
 
+  // L'avertissement doit tomber AVANT le clic, pas après : une fois l'adresse
+  // dans le presse-papier, la décision est prise. Et il ne paraît que s'il est
+  // vrai — un avertissement affiché sans raison s'apprend à ne plus être lu.
+  const carried = attachedEvidenceCount(task)
+  const carriedNote =
+    carried > 0
+      ? `<span class="muted">${
+          carried === 1
+            ? 'One piece of evidence travels with it, pasted exactly as it was.'
+            : `${carried} pieces of evidence travel with it, pasted exactly as they were.`
+        } Command output often holds a token or an internal hostname — read what it
+           carries before you send this on. Sealed credentials never travel.</span>`
+      : ''
+
   return `<p class="handoff">
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
       <button type="button" id="copy-link" class="btn btn--quiet">Copy a link that carries this log</button>
+      <button type="button" id="copy-sealed-link" class="btn btn--quiet">Copy a protected link</button>
+      <span class="muted">
+        A protected link is sealed with a passphrase you give them another way.
+        Nobody can tell who opens a link — that would need a server — but a
+        sealed one is useless to anyone who does not know the phrase.
+      </span>
+      ${carriedNote}
       <button type="button" id="copy-state" class="btn btn--quiet">Copy the log as text</button>
       ${undoButton}
     </p>`
@@ -1631,6 +1690,10 @@ function renderTechnical(task: TaskState | null): string {
           <button type="button" id="reset-witness" class="btn">Clear the call log</button>
           ${task ? '<button type="button" id="delete" class="btn btn--danger">Delete this task</button>' : ''}
         </div>
+        <p class="muted">
+          An export carries the evidence exactly as pasted. Sealed credentials are never
+          included — they are kept outside the log, so they cannot travel with it.
+        </p>
       </div>
     </details>`
 }
@@ -1660,7 +1723,8 @@ function renderDashboard(task: TaskState): string {
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
     ${renderOffline()}
-    ${renderOffer()}
+    ${renderSealedOffer()}
+      ${renderOffer()}
     ${renderShortcuts()}
     ${searching() ? '' : renderNeeds(task)}
     ${searching() ? '' : renderPermission(task)}
@@ -2375,13 +2439,76 @@ function bindSupervision(): void {
       .then(
         () =>
           showNotice(
-            'Link copied. It carries the whole log; the person you send it to gets a copy.',
+            attachedEvidenceCount(task) > 0
+              ? 'Link copied. It carries the whole log, evidence included — the person you send it to gets their own copy of all of it.'
+              : 'Link copied. It carries the whole log; the person you send it to gets a copy.',
           ),
         (error: unknown) => {
           humanError = humanMessage(error, 'Building that link')
           scheduleRender()
         },
       )
+  })
+
+  document.querySelector('#copy-sealed-link')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    const phrase = window.prompt(
+      'Passphrase for this link? Give it to them another way — not in the same message.',
+    )
+    if (!phrase?.trim()) return
+    humanError = null
+    void packSealedTask(task, phrase)
+      .then((packed) =>
+        navigator.clipboard?.writeText(linkFor(location.origin, taskPath(task.id), packed)),
+      )
+      .then(
+        () =>
+          showNotice(
+            'Protected link copied. Without the passphrase it is unreadable — send the phrase another way.',
+          ),
+        (error: unknown) => {
+          humanError = humanMessage(error, 'Building that protected link')
+          scheduleRender()
+        },
+      )
+  })
+
+  document.querySelector('#decline-sealed')?.addEventListener('click', () => {
+    sealedLink = null
+    clearLinkFragment()
+    renderNow()
+  })
+
+  document.querySelector<HTMLFormElement>('#form-sealed')?.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const packed = sealedLink
+    const champ = document.querySelector<HTMLInputElement>('#sealed-passphrase')
+    if (!packed || !champ?.value.trim()) return
+    const phrase = champ.value
+    humanError = null
+    linkPending = true
+    renderNow()
+    void unsealTask(packed, phrase).then(
+      (task) => {
+        linkPending = false
+        sealedLink = null
+        offered = task
+        clearLinkFragment()
+        renderNow()
+      },
+      (error: unknown) => {
+        linkPending = false
+        // « La phrase est fausse » et « ce lien est illisible » ne se disent
+        // pas pareil à quelqu'un qui vient de taper une phrase : l'un se
+        // corrige en réessayant, l'autre non.
+        humanError =
+          error instanceof WrongPassphraseError
+            ? 'That passphrase does not open this link. Ask them to repeat it — the link itself is fine.'
+            : humanMessage(error, 'Opening that protected link')
+        renderNow()
+      },
+    )
   })
 
   document.querySelector('#seen')?.addEventListener('click', () => {
@@ -2648,7 +2775,11 @@ function render(): void {
   if (!linkRead) {
     linkRead = true
     const packed = readLinkFragment()
-    if (packed) {
+    if (packed && isSealedLink(packed)) {
+      // On ne tente rien : sans la phrase, il n'y a rien à lire, pas même le
+      // titre. C'est la propriété qu'on vend.
+      sealedLink = packed
+    } else if (packed) {
       linkPending = true
       void unpackTask(packed).then(
         (task) => {
@@ -2669,7 +2800,11 @@ function render(): void {
   const waiting = openTask ? pendingApprovals(openTask).length + openQuestions(openTask).length : 0
   document.title = attentionTitle(document.title, waiting, looking())
 
-  const listKey = openTask ? `${openTask.id}:${openTask.version}:${store.tasksRevision()}` : ''
+  // Sans la version du cahier ouvert : les lignes du sélecteur n'en dépendent
+  // pas, et l'y mettre faisait relire TOUS les cahiers du poste à chaque
+  // écriture — 61 ms et 15,9 Mo lus pour produire 9 ko de fiches, mesuré sur
+  // 20 cahiers de 2000 étapes.
+  const listKey = openTask ? `${openTask.id}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
   if ((openTask?.id ?? null) !== credentialsFor) {
     credentialsFor = openTask?.id ?? null
@@ -2920,6 +3055,7 @@ export function mount(target: HTMLElement): () => void {
   offered = null
   linkRead = false
   linkPending = false
+  sealedLink = null
   editing = null
   loggingStep = false
   answering = null
