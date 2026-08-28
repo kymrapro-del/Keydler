@@ -5,6 +5,15 @@ follow, and mistakes not to repeat — even when the conversation changes.**
 
 > Conversations reset. The work should not.
 
+**[keydler.com](https://keydler.com)** · [How it works](#why-webmcp-is-the-point)
+· [The thirteen tools](#the-tools) · [Documentation](docs/) ·
+[Security](SECURITY.md)
+
+No account, no server, no network calls. Everything stays in the browser, and
+the page is the tool surface an agent talks to.
+
+![Keydler — a shared memory for you and your AI.](public/og.png)
+
 ---
 
 ## The problem
@@ -224,141 +233,20 @@ defend against everything:
 
 ## What else is on the page
 
-- **Every task is reachable**, and the list says which of them need you. The
-  header lists them all and switches between them; each lives at its own
-  `/t/:id`, and each carries a badge naming what is unresolved — _“1 agent is
-  blocked on your decision +3 more”_ — so “which one is waiting on me?” is a
-  glance, not five clicks.
-- **An agent just called a tool.** When one has, the header says which tool and
-  how long ago. It reports a call the page observed, never a connection: nothing
-  in WebMCP tells a page an agent is present, and the wording does not pretend
-  otherwise.
-- **Search** across the open task and the others at once, from the box or by
-  pressing `/`. It matches a rejection by its reason and a step by the content of
-  its evidence, and says which. Agents get the same search as `search_task`.
-- **The history of one rule.** Every rule carries a History button: what was
-  reworded, when it was lifted, when it came back. It falls out of the `targetId`
-  the audit already keeps for undo — the same field answering a second question
-  no card was asking. The log is bounded, so when older entries have been
-  dropped it says so rather than showing a short history as if it were the whole
-  one — an empty history would otherwise read as “nothing happened”.
-- **History** in words — _“You lifted a rule”_, _“Agent tried to record a step —
-  refused — the task had changed since it was read”_. The audit trail was always
-  complete; this is the screen for it.
-- **Correct anything.** Rename the task, change the next action, reword a rule or
-  a ruled-out approach, rename a credential or fix what it is for. All human
-  writes: never refused, always audited.
-- **Record a step you did yourself**, with evidence pasted whole — several lines,
-  a diff, a test report. You say what the evidence _is_; the page guesses and you
-  correct it, so a diff is never filed as command output. You can also attach
-  evidence later to a step that was only claimed.
-- **Answer what the agent is waiting on.** When an agent stops rather than guess,
-  its question sits at the top of the page with the reason it is blocked. Your
-  answer goes back into `resume_task`, so the next conversation reads it.
-- **Archive** what is done, without deleting it. `resume_task` says so, in case
-  an agent arrives on an old link.
-- **Import and export.** Import never overwrites: a task already here at a
-  different version is added as a copy.
-- **A link that carries the log.** “Copy a link that carries this log” packs the
-  whole task — gzipped through `CompressionStream`, no dependency — into the URL
-  fragment. Fragments are never sent to a server, so the log goes from your
-  browser to theirs and touches nothing in between. Opening it asks before
-  writing anything, and says it is a copy that will not stay in step. A log too
-  big for a link is refused with the size, and points at the file export, which
-  has no limit.
-- **Installable and offline.** A manifest and a service worker whose precache
-  list is written at build time from the real, hashed asset names — an audit
-  found it had been listing none of them, so offline served a blank page after
-  the first visit. Verified since with the static server stopped and the network
-  emulated off: an uncached fetch fails and the page still renders. When the
-  network goes, the page says so — everything here is on the device.
-- **Will the browser keep this?** Technical details reports whether storage is
-  durable and how much room the log takes, and offers to ask the browser for
-  durability. It never claims the work is safe: not durable means _may be
-  cleared when space runs short_, durable means _the browser will not clear it
-  on its own_ — you still can, and so can a site-data wipe. If the browser
-  declines the request, the page says that too rather than doing nothing
-  visible.
-- **What “done” means.** A title is not a definition of done, and the next action
-  is not a destination. `DONE WHEN` sits beside `NEXT` in what every agent reads,
-  it is yours to write — an agent can ask for it but not set it, because the
-  definition of success is the one thing the human must own — and `complete_task`
-  quotes it back so the closing summary has to say whether it was reached.
-- **Copy the log as text.** Most assistants have no WebMCP today. One button
-  copies the exact `resume_task` output, framed with “read this before doing
-  anything” and “continue this task”, ready to paste into any conversation. It is
-  the same text the tool returns, not a version written for the screen.
-- **Carry the rules over.** Creating a task offers to bring the rules in force
-  from the one you are on. They arrive binding and attributed to you, and
-  nothing else follows — not the work, not the rejections, not the history.
-- **How long since anything happened.** The header says when the log was last
-  written, and `resume_task` warns an agent when a notebook has sat untouched
-  for a day or more, so it checks that what it is reading still holds.
-- **Did the agent read before writing?** The page counts it, from the calls it
-  actually observed. Every write after a read says so; a write that arrived
-  before any read is called out — that agent was working from its own memory,
-  not from this log. It is the product's central claim, reported as observed
-  data rather than asserted.
-- **Escape closes whatever is open**, and `/` reaches search. One thing closes at
-  a time, and it is always the thing on screen.
-- **While you were away.** Come back to the page and it lists what was written
-  since you last had it in front of you — the human-side mirror of
-  `what_changed`. A hidden tab counts as away, so switching to your agent and
-  back is enough to trigger it.
-- **Dispute what an agent claimed.** Reading evidence and only being able to
-  approve it is a form with one exit. “Wrong” sits beside “Approve”, asks for
-  your reason, and that reason is what every later conversation reads. Disputing
-  drops the step out of the proven count, and it undoes like any other decision.
-- **“Needs you”**, at the top, before you read ten cards: agents blocked on a
-  decision, questions, proposals, evidence to read, work claimed with no
-  evidence — counted, ordered by what it costs to miss, and linked to the card
-  that holds each one. It disappears when there is nothing left.
-- **Keyboard.** `/` search, `s` record a step, `n` new task, `e` change the next
-  action, `?` for the list, `Esc` closes whatever is open. Nothing is captured
-  while you are typing.
-- **Print it.** A print stylesheet drops the buttons and the dark ground, so
-  `Cmd+P` gives a hand-over sheet that reads on paper.
-- **No repeating what is already written.** An agent proposing a rule, a
-  rejection, a question or a request word for word identical to one already on
-  the task is refused, and told so — it compares strings, not meanings, and the
-  message says exactly that. It keeps the log from filling with duplicates the
-  human then has to decline one by one.
-- **Closing is not settling.** `complete_task` succeeds, then lists what was
-  never resolved — questions nobody answered, proposals nobody decided, steps
-  still claimed, steps you called wrong — and tells the agent to say so in its
-  hand-over rather than imply it was all handled.
-- **The tab calls you.** When something is waiting on you and the tab is in the
-  background, its title carries the count — the same signal every chat app uses,
-  and it costs no permission prompt.
-- **Undo that.** Lifting a rule, accepting a proposal, archiving a task,
-  disputing a step, renaming, rewording a rule, changing the next action — each
-  is one click, so each is one click back. It undoes only your own last
-  decision, only while that decision is still in force, and never reaches past
-  an agent's work. An answer to a question and a logged step stay outside it: an
-  agent may already have acted on the answer, and a step is a record of work,
-  not a decision. Nothing is erased — the undo is a write of its own, and the
-  audit entry now keeps what was replaced, so the history reads _“renamed: X →
-  Y”_ rather than just _“renamed”_.
-- **Filter what you searched.** When results span rules, steps, decisions and
-  rejections, one button per kind narrows them, with a count each. The filter
-  resets when the query changes, so a stale filter never makes a hit look like a
-  miss.
-- **See exactly what an agent reads.** Technical details holds the thirteen
-  registered tool objects verbatim — the same descriptions and JSON schemas that
-  reach an agent through WebMCP, not a summary written for the page. A reader
-  with no agent to hand can check every claim in this README against the source
-  of truth.
+Credentials the agent can name but never read, the activity counter, search
+across every task, the history of refused writes — every panel and the reason
+it exists are laid out in **[docs/interface.md](docs/interface.md)**.
 
 ## Audits
 
-[`docs/concours-2026-08-28.md`](docs/concours-2026-08-28.md) is what nine agents
+[`docs/concours.md`](docs/concours.md) is what nine agents
 established about the challenge itself from primary sources — the deadline
 freeze that is not on the rules page, the video requirements that are stricter
 than they look, and the uncomfortable finding that "the agent proposes, the
 human decides" is the single most crowded pitch in the field rather than a
 differentiator. It also lists, at length, what could not be established.
 
-[`docs/echelle-2026-08-28.md`](docs/echelle-2026-08-28.md) is a cost pass rather
+[`docs/echelle.md`](docs/echelle.md) is a cost pass rather
 than a defect pass: what grows without bound, what redoes work, what stops being
 usable as the log fills. It found that `resume_task` was overshooting its own
 400-token budget by a factor of 94 on a task carrying two thousand rules —
@@ -369,7 +257,7 @@ Four dashboard lists had the same shape of problem. Every figure in it is
 reproducible with `npm run bench`, and the "before" column comes from that same
 harness run against the previous commit.
 
-[`docs/audit-2-2026-08-28.md`](docs/audit-2-2026-08-28.md) is a second pass
+[`docs/audits/second.md`](docs/audits/second.md) is a second pass
 aimed only at the features built after the first one — the shareable link, the
 blocking approval, undo, the goal, the badges. It found that a link could carry
 a decompression bomb: the size limit was enforced on the link this page
@@ -377,7 +265,7 @@ _produces_, and never on one it _receives_, while the link is opened by the
 person you send it to. It also records two tests that were passing without
 demonstrating anything, both caught by mutation testing.
 
-[`docs/audit-2026-08-28.md`](docs/audit-2026-08-28.md) is the first: a full
+[`docs/audits/premier.md`](docs/audits/premier.md) is the first: a full
 defect hunt over the repository: static review, boundary probes, real-browser sequences including
 two tabs at once, and thirteen mutation tests that break a guarantee in the
 source and check the suite goes red. It lists what was found and fixed — sealed
@@ -448,107 +336,16 @@ npm run dev
 npm run check
 ```
 
-### Deploying it
+### Deploying it, and connecting an agent
 
-It is live at **https://keydler.com**, served by Cloudflare Pages, with
-`www.keydler.com` redirecting to it. The apex is the canonical origin and the
-www address must never serve anything: they are two origins, and everything
-here is origin-scoped — the
-IndexedDB database, the theme preference, "while you were away", the cross-tab
-channel, the service worker cache. A log created on one is invisible from the
-other, and a `/t/:id` link minted here opens an empty page there. The
-origin-trial token is bound to one origin too, so on the wrong one WebMCP never
-activates at all.
-
-`vercel.json` carries that redirect. **Cloudflare Pages cannot** — `_redirects`
-matches paths, not hosts — so there it is a Redirect Rule set by hand in the
-dashboard. Because a forgotten rule is invisible (both addresses answer, each
-with its own data), `src/canonical.ts` also sends www to the apex from the page
-itself. That is a backstop, not a substitute: a 301 happens before the page
-loads, this happens after.
-
-The address moves to `/t/:id` as soon as a task is open, so a host without an
-SPA rewrite 404s on every reload, bookmark and shared link. `public/_redirects`
-covers Netlify and Cloudflare Pages, `vercel.json` covers Vercel; anything else
-needs the equivalent. This is invisible locally — `vite preview` rewrites by
-itself, a bare static server does not.
-
-`npm run build` and `npm run build:trial` both run `scripts/precache.mjs`, which
-writes the built asset names into `dist/sw.js`, and `scripts/headers.mjs`, which
-seals the CSP on the hash of the inline theme script. **`vite build` alone
-produces a folder that looks complete and cannot be served**: the policy still
-carries `'__CSP_SCRIPT_HASH__'`, which is not a valid source expression, so the
-inline script is blocked; and the service worker precaches nothing under a fixed
-cache name that never invalidates. Neither is visible in `dist/`.
-
-`npm run artefact` refuses such a folder and names the consequence of each
-fault. `check` runs it, so a half-built `dist/` cannot survive a green check.
-
-`dev` serves on `http://localhost:5173`. `check` runs typecheck, lint,
-formatting, the full test suite and the production build; `npm run coverage`
-adds the coverage report.
-
-```bash
-npm run bench
-```
-
-`bench` is the scaling harness behind [`docs/echelle-2026-08-28.md`](docs/echelle-2026-08-28.md).
-It is kept out of `npm test` on purpose: it runs for minutes, and a duration is
-not an assertion — a time threshold in the suite starts blinking on the first
-loaded machine. What the bench finds becomes an ordinary test instead: a node
-bound, a token count, a bounded list.
-
-The page works without WebMCP: the state is real and persistent, only the agent
-connection is missing.
-
-### Enabling WebMCP
-
-In origin trial since Chrome 149. Locally, no token is needed:
-
-1. open `chrome://flags/#enable-webmcp-testing`
-2. set it to **Enabled**
-3. restart the browser and reload the page
-
-**Brave works.** Verified on Brave 151 / Chromium 151 on Linux.
-
-For a deployed origin, put a token in `.env`:
-
-```
-VITE_WEBMCP_ORIGIN_TRIAL_TOKEN=your-token
-```
-
-It is written into the `<head>` at build time, which is the documented route:
-`document.modelContext` is an accessor whose existence is decided while the
-document is parsed, so a token injected later may unblock nothing.
-
-### Connecting an agent
-
-```bash
-npm run trial
-```
-
-```bash
-brave --remote-debugging-port=9222 --user-data-dir=/tmp/brave-webmcp --enable-features=WebMCP,WebMCPTesting http://localhost:5174
-```
-
-```bash
-claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest --browserUrl http://127.0.0.1:9222 --categoryExperimentalWebmcp
-```
-
-Two non-obvious points: the toggle in `brave://inspect/#remote-debugging` opens
-no port, and Chromium ≥ 136 refuses remote debugging on the default profile. The
-feature is called `WebMCPTesting` in Brave 151 while `chrome-devtools-mcp`
-advertises `WebMCP` — pass both.
-
-The trial build is **required** for a valid run: the dev server serves the whole
-source over HTTP, and a browser-only agent can then read the entire project with
-`fetch`.
+Putting it on a host, enabling WebMCP in a browser, and pointing an agent at
+it are covered in **[docs/deploiement.md](docs/deploiement.md)**.
 
 ## Native WebMCP verification
 
 The manual protocol is
-[`docs/protocole-webmcp-manuel.md`](docs/protocole-webmcp-manuel.md); the
-results are in [`docs/journal-tests.md`](docs/journal-tests.md).
+[`docs/protocoles/webmcp-manuel.md`](docs/protocoles/webmcp-manuel.md); the
+results are in [`docs/verification.md`](docs/verification.md).
 
 Last run: **Brave 151.1.93.137 / Chromium 151**, driven through
 `chrome-devtools-mcp` — a real MCP client, not `tool.execute()` typed into a
@@ -582,7 +379,7 @@ explicitly ruled-out approach proposed again?**
 
 > **Without the log: 8 out of 8. With the log: 0 out of 8.**
 
-Protocol in [`docs/protocole-mesure.md`](docs/protocole-mesure.md), tasks in
+Protocol in [`docs/protocoles/mesure.md`](docs/protocoles/mesure.md), tasks in
 [`docs/mesures/taches.md`](docs/mesures/taches.md), raw results in
 [`docs/mesures/resultats.md`](docs/mesures/resultats.md).
 

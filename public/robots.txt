@@ -1,0 +1,21 @@
+# Ce fichier n'est pas seul : la zone Cloudflare PRÉFIXE sa propre politique
+# gérée au nôtre — vérifié en production, le fichier servi fait 2 378 octets
+# contre 400 ici. Elle pose `Content-Signal: search=yes,ai-train=no,use=reference`
+# et refuse explicitement GPTBot, ClaudeBot, Google-Extended, CCBot, Bytespider,
+# Amazonbot, Applebot-Extended et meta-externalagent.
+#
+# Cela ne gêne rien de fonctionnel : WebMCP passe par le navigateur d'une
+# personne, jamais par un robot d'exploration, et `ChatGPT-User` n'est pas
+# refusé. Mais c'est une décision de la zone, pas du dépôt — et elle mérite
+# d'être choisie plutôt que subie. Elle se change dans le tableau de bord
+# Cloudflare, pas ici.
+#
+# Nos propres directives suivent. Tout est indexable : le produit ne sert
+# aucune donnée, les cahiers vivent dans le navigateur du visiteur et
+# n'existent sur aucun serveur. `/t/:id` ne rend donc rien de personnel à un
+# robot — seulement la coquille de l'application.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://keydler.com/sitemap.xml

@@ -37,7 +37,7 @@ après rechargement complet.
 **Protocole visé.** Agent sans historique, consigne réduite à `continue`.
 
 **Ce qui s'est passé.** L'agent avait accès au système de fichiers du dépôt. Il a
-lu `README.md` et `docs/plan-developpement.md` **avant** de toucher au
+lu `README.md` et `docs/plan.md` **avant** de toucher au
 navigateur, y a trouvé le protocole de test énoncé mot pour mot, et s'est
 appuyé dessus. Il l'a rapporté lui-même.
 
@@ -89,7 +89,7 @@ correctement.
 
 ## 26 août 2026 — J3, essais du contrat de reprise
 
-Protocole : [`protocole-reprise.md`](protocole-reprise.md). État de départ
+Protocole : [`protocole-reprise.md`](protocoles/reprise.md). État de départ
 identique à chaque essai — cahier de démonstration en v12, témoin remis à zéro.
 Consigne unique : `continue`.
 
@@ -1047,7 +1047,7 @@ l'identifiant ne correspondait à rien. Le domaine refusait correctement avec
 **Poste.** Chrome, serveur de développement, cahier de 40 règles et
 30 approches écartées écrit directement dans IndexedDB.
 
-Le rapport complet est dans [échelle](echelle-2026-08-28.md). Ce qui a été vu
+Le rapport complet est dans [échelle](echelle.md). Ce qui a été vu
 dans le navigateur, et non seulement en jsdom :
 
 **Observé.** 12 lignes de règles sur 40, « 28 rules still in force are not
@@ -2027,3 +2027,44 @@ trial n'est pas un secret — il est imprimé dans le HTML de chaque page servie
 Ce que le versionner protège, c'est la capacité à reconstruire exactement
 l'artefact déployé à partir du seul dépôt, ce qui compte pendant un gel où l'on
 ne peut plus rien rattraper.
+
+### 29 août 2026, tard — `/workspace` est en ligne
+
+Ce que doit atteindre un bouton « Sign in » sur un produit sans compte ni
+serveur. Déployé et vérifié à froid sur `https://keydler.com/workspace`, dans
+un Brave lancé **sans aucun drapeau WebMCP** — profil neuf, supprimé après.
+
+| Vérification                                 | Résultat                        |
+| -------------------------------------------- | ------------------------------- |
+| L'adresse survit au rechargement direct      | `/workspace`, titre correct     |
+| Export et import présents hors d'un cahier   | les deux                        |
+| Dit qu'il n'y a ni compte ni serveur         | oui                             |
+| Avertit que vider le navigateur efface tout  | oui                             |
+| Ne dit plus « not even us »                  | oui                             |
+| Outils WebMCP (origine vierge, aucun cahier) | 4 — les lectures, comme attendu |
+| Messages de console                          | aucun                           |
+
+Le rechargement direct est le cas qui compte : c'est ainsi qu'arrive quelqu'un
+depuis une page d'accueil, et c'est ce que `reflectAddress` écrasait.
+
+**Ce que la mesure a tranché.** La page conseille un fichier plutôt qu'un lien,
+et ce n'est pas une préférence : un cahier de 60 pas fait 17 349 caractères
+scellés contre 16 000 que tient une adresse ; le même en fichier fait 85 657,
+sans limite. Un lien ne porte pas un cahier réellement utilisé, encore moins un
+espace de travail. Toute conception qui aurait reposé sur « emporte ton compte
+dans un lien » était morte avant d'être écrite.
+
+**Deux affirmations retirées en cours d'écriture.** « Nobody else can read it —
+not even us » est une promesse sur la confiance : nous servons le code, donc
+nous pourrions le changer. Ce qui est démontrable — et vérifié dans le
+navigateur, **zéro** requête `xhr`, `fetch` ou `websocket` — c'est qu'il n'y a
+aucune destination et que la politique bloque les autres origines. Et rien ne
+prétend que les cahiers sont chiffrés : seuls le coffre d'identifiants et les
+liens scellés le sont, IndexedDB garde les cahiers en clair. Les deux sont
+tenues par des épreuves.
+
+**Une branche retirée plutôt que défendue.** Le rafraîchissement de la liste
+portait un cas « aucun cahier ouvert alors qu'il en existe ». Cet état est
+inatteignable — `init()` rouvre le dernier, `deleteCurrentTask()` en rouvre un
+autre — et un mutant y a survécu. La branche est partie, et l'épreuve qui
+prétendait la couvrir dit maintenant ce qu'elle prouve réellement.

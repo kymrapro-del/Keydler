@@ -1,6 +1,6 @@
 # Second audit — 28 août 2026
 
-Le [premier audit](audit-2026-08-28.md) portait sur le produit tel qu'il était
+Le [premier audit](../audits/premier.md) portait sur le produit tel qu'il était
 alors. Une dizaine de lots de fonctionnalités ont suivi sans jamais être
 éprouvés adversairement. Celui-ci ne vise qu'eux.
 

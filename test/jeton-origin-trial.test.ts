@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-// @ts-expect-error — script de construction en JavaScript simple, hors du programme TypeScript.
 import { lireJeton, tokensDe } from '../scripts/jeton.mjs'
 
 /**
@@ -43,7 +42,10 @@ describe('la lecture d’un jeton', () => {
     expect(j.erreur).toBeUndefined()
     expect(j.origine).toBe('https://keydler.com:443')
     expect(j.fonctionnalite).toBe('WebMCP')
-    expect(j.expire.getTime()).toBe(DANS_UN_AN * 1000)
+    // `expire` vaut null sur une charge utile sans date : l'affirmer d'abord
+    // fait échouer ici plutôt qu'à la ligne suivante, avec un meilleur message.
+    expect(j.expire).toBeInstanceOf(Date)
+    expect(j.expire?.getTime()).toBe(DANS_UN_AN * 1000)
   })
 
   it('lit aussi la version 2', () => {
