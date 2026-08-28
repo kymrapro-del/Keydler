@@ -3,7 +3,7 @@ import type { TaskState } from './types'
 export const MIN_QUERY = 2
 
 export type MatchKind =
-  'rule' | 'rejection' | 'step' | 'decision' | 'evidence' | 'question' | 'history'
+  'rule' | 'rejection' | 'step' | 'decision' | 'evidence' | 'question' | 'approval' | 'history'
 
 export type Match = {
   kind: MatchKind
@@ -101,6 +101,16 @@ export function searchTask(task: TaskState, query: string): Match[] {
       label: q.answer === null ? 'Question, still open' : 'Question, answered',
       text: q.answer === null ? q.question : `${q.question} — ${q.answer}`,
       context: q.why,
+    })
+  }
+
+  for (const a of task.approvals) {
+    if (!matches(a.action, q_) && !matches(a.why, q_)) continue
+    found.push({
+      kind: 'approval',
+      label: a.decision === null ? 'Approval, still waiting' : `Approval, ${a.decision} by you`,
+      text: a.action,
+      context: a.why,
     })
   }
 

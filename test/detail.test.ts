@@ -3,7 +3,7 @@ import { ALL_TOOLS, readTaskDetailTool, resumeTaskTool } from '../src/webmcp/too
 import * as store from '../src/store/taskStore'
 import { EVIDENCE_PREVIEW, MAX_LIMIT, SECTIONS, renderDetail } from '../src/domain/detail'
 import { buildDemoTask } from '../src/demo/seed'
-import { TOKEN_BUDGET, estimateTokens } from '../src/domain/render'
+import { TOKEN_BUDGET, estimateTokens, renderTaskState } from '../src/domain/render'
 import { call, clearDatabase, currentTask, textOf, writeArgs } from './helpers'
 
 const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
@@ -160,6 +160,24 @@ describe('le pointeur reste court, et dit où trouver le reste', () => {
     expect(après.version).toBe(avant.version)
     expect(après.audit).toHaveLength(avant.audit.length)
     expect(readTaskDetailTool.annotations?.readOnlyHint).toBe(true)
+  })
+})
+
+describe('ce que resume_task annonce du détail', () => {
+  it('renvoie au schéma plutôt que de recopier la liste des sections', () => {
+    // Une énumération en prose a déjà pris du retard deux fois, et chaque mot
+    // ajouté ici coûte un nom d'identifiant dans un budget de 400 jetons.
+    // L'énumération du schéma, elle, ne peut pas dériver.
+    const rendered = renderTaskState(buildDemoTask())
+    expect(rendered).toContain('read_task_detail')
+    expect(rendered).toContain('schema')
+  })
+
+  it('déclare chaque section dans le schéma de l’outil, sans en oublier', () => {
+    const schema = readTaskDetailTool.inputSchema as {
+      properties: { section: { enum: string[] } }
+    }
+    expect([...schema.properties.section.enum].sort()).toEqual([...SECTIONS].sort())
   })
 })
 

@@ -9,6 +9,8 @@ import {
   addDecision,
   askHuman,
   attachEvidence,
+  pendingApprovals,
+  requestApproval,
   completeTask,
   logStep,
   rejectApproach,
@@ -37,6 +39,7 @@ import {
   LOG_STEP_SCHEMA,
   READ_DETAIL_SCHEMA,
   REJECT_APPROACH_SCHEMA,
+  REQUEST_APPROVAL_SCHEMA,
   RESUME_TASK_SCHEMA,
   SEARCH_TASK_SCHEMA,
   SET_NEXT_ACTION_SCHEMA,
@@ -51,6 +54,7 @@ import {
   LOG_STEP_DESCRIPTION,
   READ_DETAIL_DESCRIPTION,
   REJECT_APPROACH_DESCRIPTION,
+  REQUEST_APPROVAL_DESCRIPTION,
   RESUME_TASK_DESCRIPTION,
   SEARCH_TASK_DESCRIPTION,
   SET_NEXT_ACTION_DESCRIPTION,
@@ -455,6 +459,134 @@ export const setNextActionTool: ModelContextTool = {
   },
 }
 
+export const APPROVAL_TIMEOUT = 120_000
+
+let approvalTimeout = APPROVAL_TIMEOUT
+
+export function __setApprovalTimeout(ms: number): void {
+  approvalTimeout = ms
+}
+
+type Decided = { decision: 'allowed' | 'denied'; action: string }
+
+/**
+ * Attendre qu'un humain tranche. C'est le seul endroit du produit où un appel
+ * d'outil bloque : sans page ouverte devant quelqu'un, cette attente n'aurait
+ * aucun sens — et c'est précisément ce que WebMCP rend possible.
+ */
+function waitForDecision(
+  approvalId: string,
+  signal: AbortSignal | undefined,
+): Promise<Decided | null> {
+  return new Promise((resolve) => {
+    let done = false
+
+    const finish = (value: Decided | null) => {
+      if (done) return
+      done = true
+      clearTimeout(timer)
+      unsubscribe()
+      signal?.removeEventListener('abort', onAbort)
+      resolve(value)
+    }
+
+    const look = () => {
+      const task = store.currentTask()
+      const found = task?.approvals.find((a) => a.id === approvalId)
+      if (found && found.decision !== null) {
+        finish({ decision: found.decision, action: found.action })
+      }
+    }
+
+    const onAbort = () => finish(null)
+    const timer = setTimeout(() => finish(null), approvalTimeout)
+    const unsubscribe = store.subscribe(look)
+    signal?.addEventListener('abort', onAbort, { once: true })
+
+    if (signal?.aborted) finish(null)
+    else look()
+  })
+}
+
+export const requestApprovalTool: ModelContextTool = {
+  name: 'request_approval',
+  title: 'Ask the human for permission to act',
+  description: REQUEST_APPROVAL_DESCRIPTION,
+  inputSchema: REQUEST_APPROVAL_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    const written = await runWrite(
+      requestApprovalTool,
+      input,
+      options?.signal,
+      (state, basedOnVersion) =>
+        requestApproval(state, { action: input.action, why: input.why, basedOnVersion }, 'agent'),
+    )
+    if (written.isError) return written
+
+    // La PLUS RÉCENTE, jamais la première : deux demandes peuvent porter le même
+    // libellé, et rendre la décision d'hier autoriserait une action que personne
+    // n'a validée.
+    const task = store.currentTask()
+    const matching = (task?.approvals ?? []).filter(
+      (a) => a.action === String(input.action) && a.why === String(input.why),
+    )
+    const mine = matching[matching.length - 1]
+    if (!mine) return written
+
+    if (mine.decision !== null) {
+      return decisionResult(mine.decision, mine.action)
+    }
+
+    if (options?.signal?.aborted) return toToolError(new CancelledError('request_approval'))
+
+    const decided = await waitForDecision(mine.id, options?.signal)
+    if (decided) return decisionResult(decided.decision, decided.action)
+
+    if (options?.signal?.aborted) return toToolError(new CancelledError('request_approval'))
+
+    const stillWaiting = pendingApprovals(store.currentTask() ?? task!).some(
+      (a) => a.id === mine.id,
+    )
+    return failure(
+      [
+        'NO ANSWER',
+        `Nobody decided within ${Math.round(approvalTimeout / 1000)} seconds:`,
+        `  ${mine.action}`,
+        '',
+        'NO ANSWER IS NOT APPROVAL. Nobody was there — treat this exactly as a',
+        'refusal. Do not do it. Say plainly that you asked and got no answer.',
+        stillWaiting
+          ? 'The request is still on the page; the human will see it when they return.'
+          : 'The request has since been decided — call resume_task to read it.',
+      ].join('\n'),
+    )
+  },
+}
+
+function decisionResult(decision: 'allowed' | 'denied', action: string): ToolResult {
+  if (decision === 'allowed') {
+    return text(
+      [
+        'ALLOWED by the human.',
+        `  ${action}`,
+        '',
+        'They allowed exactly this. Do not widen it, and log what you did with',
+        'log_step once it is done.',
+      ].join('\n'),
+    )
+  }
+  return failure(
+    [
+      'DENIED by the human.',
+      `  ${action}`,
+      '',
+      'Do not do it, and do not look for another way to do the same thing.',
+      'Say so, and ask what they would like instead.',
+    ].join('\n'),
+  )
+}
+
 export const completeTaskTool: ModelContextTool = {
   name: 'complete_task',
   title: 'Complete the task',
@@ -483,6 +615,7 @@ export const WRITE_TOOLS: readonly ModelContextTool[] = [
   rejectApproachTool,
   addDecisionTool,
   askHumanTool,
+  requestApprovalTool,
   completeTaskTool,
 ] as const
 

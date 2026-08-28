@@ -14,6 +14,8 @@ import type {
   Constraint,
   Decision,
   Evidence,
+  ApprovalDecision,
+  ApprovalRequest,
   MutationRecord,
   OpenQuestion,
   Rejection,
@@ -66,6 +68,7 @@ export function createTask(
     decisions: [],
     rejected: [],
     questions: [],
+    approvals: [],
     mutations: [],
     audit: [
       {
@@ -255,6 +258,7 @@ export function logStep(
     action,
     result,
     evidence,
+    dispute: null,
     confidence,
     basedOnVersion: input.basedOnVersion ?? state.version,
     source: actor,
@@ -887,6 +891,16 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
       }
     }
 
+    case 'dispute_step': {
+      if (id === undefined) return null
+      const step = state.steps.find((s) => s.id === id)
+      if (!step || step.confidence !== 'disputed') return null
+      return {
+        label: `disputed the step “${step.action}”`,
+        apply: (s, ctx) => withdrawDispute(s, id, ctx),
+      }
+    }
+
     case 'archive_task':
     case 'unarchive_task': {
       const archived = entry.operation === 'archive_task'
@@ -917,6 +931,8 @@ const UNDOABLE_OPERATIONS = new Set([
   'decline_rejection',
   'archive_task',
   'unarchive_task',
+  'dispute_step',
+  'withdraw_dispute',
   'undo',
 ])
 
@@ -959,6 +975,180 @@ export function undoLastSupervision(state: TaskState, ctx?: MutationContext): Ta
   return { ...next, audit }
 }
 
+export function requestApproval(
+  state: TaskState,
+  input: { action: unknown; why: unknown; basedOnVersion: number | null },
+  actor: Actor = 'agent',
+  ctx?: MutationContext,
+): TaskState {
+  assertActive(state, 'request_approval')
+  guardVersion(state, input.basedOnVersion)
+  const { now, newId } = resolve(ctx)
+
+  const action = requireText('action', input.action)
+  const why = requireText('why', input.why)
+
+  const entry: ApprovalRequest = {
+    id: newId(),
+    action,
+    why,
+    source: actor,
+    addedAtVersion: state.version,
+    at: now,
+    decision: null,
+    decidedAt: null,
+  }
+
+  return apply(
+    state,
+    {
+      operation: 'request_approval',
+      actor,
+      basedOnVersion: input.basedOnVersion,
+      detail: action,
+      targetId: entry.id,
+      patch: { approvals: [...state.approvals, entry] },
+    },
+    ctx,
+  )
+}
+
+export function decideApproval(
+  state: TaskState,
+  approvalId: unknown,
+  decision: ApprovalDecision,
+  ctx?: MutationContext,
+): TaskState {
+  const { now } = resolve(ctx)
+  const id = requireText('approvalId', approvalId, 200)
+  const found = state.approvals.find((a) => a.id === id)
+
+  if (!found) {
+    throw new ValidationError('approvalId', 'no request for approval with that id.', {
+      code: 'not-found',
+      retryable: false,
+    })
+  }
+  if (found.decision !== null) {
+    throw new ValidationError('approvalId', 'that request has already been decided.', {
+      code: 'already-answered',
+      retryable: false,
+    })
+  }
+
+  return apply(
+    state,
+    {
+      operation: decision === 'allowed' ? 'allow_action' : 'deny_action',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: found.action,
+      targetId: id,
+      patch: {
+        approvals: state.approvals.map((a) =>
+          a.id === id ? { ...a, decision, decidedAt: now } : a,
+        ),
+      },
+    },
+    ctx,
+  )
+}
+
+export function disputeStep(
+  state: TaskState,
+  stepId: unknown,
+  reason: unknown,
+  ctx?: MutationContext,
+): TaskState {
+  const { now } = resolve(ctx)
+  const id = requireText('stepId', stepId, 200)
+  const step = state.steps.find((s) => s.id === id)
+
+  if (!step) {
+    throw new ValidationError('stepId', `no step with id "${id}".`, {
+      code: 'not-found',
+      retryable: false,
+    })
+  }
+  if (step.confidence === 'disputed') {
+    throw new ValidationError('stepId', 'that step is already disputed.', {
+      code: 'already-answered',
+      retryable: false,
+    })
+  }
+
+  const text = requireText('reason', reason)
+
+  return apply(
+    state,
+    {
+      operation: 'dispute_step',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: `${step.action} — ${text}`,
+      targetId: id,
+      patch: {
+        steps: state.steps.map((s) =>
+          s.id === id
+            ? { ...s, confidence: 'disputed' as const, dispute: { reason: text, at: now } }
+            : s,
+        ),
+      },
+    },
+    ctx,
+  )
+}
+
+export function withdrawDispute(
+  state: TaskState,
+  stepId: string,
+  ctx?: MutationContext,
+): TaskState {
+  const step = state.steps.find((s) => s.id === stepId)
+  if (!step || step.confidence !== 'disputed') {
+    throw new ValidationError('stepId', 'that step is not disputed.', {
+      code: 'not-found',
+      retryable: false,
+    })
+  }
+
+  const restored: Confidence =
+    step.evidence === null
+      ? 'claimed'
+      : step.evidence.verifiedAt !== null
+        ? 'human_verified'
+        : 'evidence'
+
+  return apply(
+    state,
+    {
+      operation: 'withdraw_dispute',
+      actor: 'human',
+      basedOnVersion: null,
+      detail: step.action,
+      targetId: stepId,
+      patch: {
+        steps: state.steps.map((s) =>
+          s.id === stepId ? { ...s, confidence: restored, dispute: null } : s,
+        ),
+      },
+    },
+    ctx,
+  )
+}
+
+export function disputedSteps(state: TaskState): Step[] {
+  return state.steps.filter((s) => s.confidence === 'disputed')
+}
+
+export function pendingApprovals(state: TaskState): ApprovalRequest[] {
+  return state.approvals.filter((a) => a.decision === null)
+}
+
+export function decidedApprovals(state: TaskState): ApprovalRequest[] {
+  return state.approvals.filter((a) => a.decision !== null)
+}
+
 export function openQuestions(state: TaskState): OpenQuestion[] {
   return state.questions.filter((q) => q.answer === null)
 }
@@ -994,13 +1184,15 @@ export function evidenceCounts(state: TaskState): EvidenceCounts {
     human_verified: 0,
     evidence: 0,
     claimed: 0,
+    disputed: 0,
   }
   for (const step of state.steps) counts[step.confidence] += 1
   return counts
 }
 
 export function provenStepCount(state: TaskState): number {
-  return state.steps.filter((s) => s.confidence !== 'claimed').length
+  return state.steps.filter((s) => s.confidence === 'human_verified' || s.confidence === 'evidence')
+    .length
 }
 
 export { requireVersion }

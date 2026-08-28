@@ -21,7 +21,12 @@ const BINDING_OPERATIONS = new Set([
   'reopen_task',
   'archive_task',
   'unarchive_task',
+  'dispute_step',
+  'withdraw_dispute',
   'undo',
+  'request_approval',
+  'allow_action',
+  'deny_action',
 ])
 
 const BY_HUMAN: Record<string, string> = {
@@ -42,6 +47,8 @@ const BY_HUMAN: Record<string, string> = {
   log_step: 'recorded a step they did themselves',
   attach_evidence: 'attached evidence to a step',
   verify_evidence: 'checked evidence and marked it verified',
+  dispute_step: 'DISPUTED a step — they say it is wrong, do not build on it',
+  withdraw_dispute: 'withdrew their dispute on a step',
   set_next: 'changed the next action',
   set_next_action: 'changed the next action',
   rename_task: 'renamed this task',
@@ -50,6 +57,9 @@ const BY_HUMAN: Record<string, string> = {
   archive_task: 'archived this task',
   unarchive_task: 'brought this task back',
   undo: 'undid their own last decision',
+  allow_action: 'ALLOWED an action you asked about',
+  deny_action: 'DENIED an action you asked about — do not do it',
+  request_approval: 'asked for permission to act',
 }
 
 const BY_AGENT: Record<string, string> = {
@@ -61,6 +71,7 @@ const BY_AGENT: Record<string, string> = {
   ask_human: 'left a question for the human',
   set_next_action: 'changed the next action',
   complete_task: 'closed this task',
+  request_approval: 'asked the human for permission to act',
 }
 
 function phrase(entry: AuditEntry): string {

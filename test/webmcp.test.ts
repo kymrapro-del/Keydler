@@ -32,7 +32,7 @@ afterEach(() => {
 })
 
 describe('inventaire', () => {
-  it('expose quatre outils de lecture et huit d’écriture', () => {
+  it('expose quatre outils de lecture et neuf d’écriture', () => {
     expect(READ_TOOLS.map((t) => t.name)).toEqual([
       'resume_task',
       'what_changed',
@@ -47,9 +47,10 @@ describe('inventaire', () => {
       'reject_approach',
       'add_decision',
       'ask_human',
+      'request_approval',
       'complete_task',
     ])
-    expect(ALL_TOOLS).toHaveLength(12)
+    expect(ALL_TOOLS).toHaveLength(13)
   })
 
   it('n’annonce jamais une annotation que WebMCP ne transporte pas', () => {
@@ -222,6 +223,7 @@ describe('cycle de vie des outils', () => {
       'log_step',
       'read_task_detail',
       'reject_approach',
+      'request_approval',
       'resume_task',
       'search_task',
       'set_next_action',

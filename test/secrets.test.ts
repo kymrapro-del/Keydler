@@ -5,7 +5,7 @@ import { buildFullExport, buildTaskExport } from '../src/export/notebook'
 import { addSecret, listSecretNames } from '../src/persistence/vault'
 import { getDb } from '../src/persistence/db'
 import * as store from '../src/store/taskStore'
-import { ALL_TOOLS, resumeTaskTool } from '../src/webmcp/tools'
+import { ALL_TOOLS, readTaskDetailTool, resumeTaskTool } from '../src/webmcp/tools'
 import { __renderNow, mount } from '../src/ui/bench'
 import { call, clearDatabase, textOf } from './helpers'
 
@@ -191,7 +191,7 @@ describe('ce que l’agent reçoit', () => {
     expect(estimateTokens(avec)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
-  it('dit où lire les noms qu’il a dû cacher', () => {
+  it('dit clairement qu’il en cache, plutôt que de paraître complet', () => {
     const rendu = renderTaskState(buildDemoTask(), {
       credentials: Array.from({ length: 8 }, (_, i) => ({
         id: `s${i}`,
@@ -201,11 +201,16 @@ describe('ce que l’agent reçoit', () => {
       })),
     })
 
-    // Un nom caché sans moyen de le retrouver est perdu pour la conversation :
-    // aucun autre outil ne les portait.
+    // Le compte est ce qui compte : « 2 of 8 » dit à l'agent qu'il lui en manque
+    // six. La section où les lire est déclarée par le schéma de
+    // read_task_detail, qui ne peut pas dériver — et n'occupe pas le budget.
     expect(rendu).toMatch(/CREDENTIALS — names only, values sealed \(\d+ of 8\)/)
     expect(rendu).toContain('read_task_detail')
-    expect(rendu).toContain('credentials')
+
+    const schema = readTaskDetailTool.inputSchema as {
+      properties: { section: { enum: string[] } }
+    }
+    expect(schema.properties.section.enum).toContain('credentials')
   })
 
   it('rend une restitution sans identifiants identique à avant', async () => {

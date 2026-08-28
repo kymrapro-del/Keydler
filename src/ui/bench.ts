@@ -1,19 +1,26 @@
 import { buildMeasureTask } from '../demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from '../export/notebook'
 import { parseExport } from '../export/restore'
+import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
 import { describeHistory } from './history'
 import { markSeen, seenVersion } from './seen'
+import { attentionTitle } from './attention'
 import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { buildDemoTask } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
 import { MIN_QUERY, searchTask, searchTasks, type Match } from '../domain/search'
 import {
   acceptedRejections,
+  activeConstraints,
   addConstraint,
   answerQuestion,
   answeredQuestions,
+  decideApproval,
+  disputeStep,
+  pendingApprovals,
+  withdrawDispute,
   undoLastSupervision,
   undoable,
   attachEvidence,
@@ -87,6 +94,7 @@ const DEFAULT_DRAFTS: Record<string, string> = {
   'attach-content': '',
   'attach-kind': 'command_output',
   'answer-text': '',
+  'dispute-reason': '',
   'new-secret-kind': 'api_key',
   'edit-secret-kind': 'other',
   search: '',
@@ -152,6 +160,9 @@ function showNotice(message: string): void {
 let showAllHistory = false
 let awaySince: number | null = null
 let awayFor: string | null = null
+let offered: TaskState | null = null
+let linkRead = false
+let linkPending = false
 
 type Editing =
   | { kind: 'title' }
@@ -166,6 +177,7 @@ let kindChosen = false
 let attachKindChosen = false
 let answering: string | null = null
 let attaching: string | null = null
+let disputing: string | null = null
 let showArchived = false
 
 function renderThemeToggle(): string {
@@ -299,6 +311,7 @@ const CONFIDENCE_LABEL: Record<Confidence, string> = {
   human_verified: 'Verified by you',
   evidence: 'Evidence attached',
   claimed: 'Claimed without evidence',
+  disputed: 'You say this is wrong',
 }
 
 function plural(n: number, one: string, many: string): string {
@@ -356,6 +369,7 @@ function renderLanding(): string {
         repeat. A new conversation can read it and continue from the right place.
       </p>
       ${alertBlock()}
+      ${renderOffer()}
       ${form}
       <p class="muted landing__note">
         Everything stays in this browser. No account, no server.
@@ -413,6 +427,21 @@ function remainder(total: number): string {
     : ''
 }
 
+function disputeForm(step: Step): string {
+  return `<p class="row__text"><strong>${escapeHtml(step.action)}</strong></p>
+      <form id="form-dispute" class="form" novalidate>
+        <div class="field">
+          <label for="dispute-reason">Why this is wrong</label>
+          <textarea id="dispute-reason" rows="3" autocomplete="off"
+                    placeholder="What actually happened — every later conversation reads this"></textarea>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn--danger">Mark it wrong</button>
+          <button type="button" id="cancel-dispute" class="btn">Cancel</button>
+        </div>
+      </form>`
+}
+
 function renderStepRow(step: Step, active: boolean): string {
   if (attaching === step.id) {
     return `<li class="review">
@@ -440,16 +469,35 @@ function renderStepRow(step: Step, active: boolean): string {
       </li>`
   }
 
+  if (disputing === step.id) return `<li class="review">${disputeForm(step)}</li>`
+
   return `<li class="row">
       <span class="chip chip--${step.confidence}">${CONFIDENCE_LABEL[step.confidence]}</span>
       <span class="row__text">
         <strong>${escapeHtml(step.action)}</strong>
         <span class="muted"> — ${escapeHtml(step.result)}</span>
+        ${
+          step.dispute
+            ? `<span class="row__dispute">You say: ${escapeHtml(step.dispute.reason)}</span>`
+            : ''
+        }
       </span>
       ${
-        active && step.evidence === null
+        active && step.evidence === null && step.confidence !== 'disputed'
           ? `<button type="button" class="btn btn--quiet" data-attach="${escapeHtml(step.id)}"
                      aria-label="Attach evidence to: ${escapeHtml(step.action)}">Attach evidence</button>`
+          : ''
+      }
+      ${
+        active && step.confidence !== 'disputed'
+          ? `<button type="button" class="btn btn--quiet" data-dispute="${escapeHtml(step.id)}"
+                     aria-label="Mark wrong: ${escapeHtml(step.action)}">Wrong</button>`
+          : ''
+      }
+      ${
+        active && step.confidence === 'disputed'
+          ? `<button type="button" class="btn btn--quiet" data-undispute="${escapeHtml(step.id)}"
+                     aria-label="Withdraw the dispute on: ${escapeHtml(step.action)}">Withdraw</button>`
           : ''
       }
     </li>`
@@ -705,6 +753,73 @@ function renderSwitcher(task: TaskState): string {
     </details>`
 }
 
+function renderOffer(): string {
+  if (!offered) return ''
+  const counts = [
+    `${offered.steps.length} ${plural(offered.steps.length, 'step', 'steps')}`,
+    `${activeConstraints(offered).length} ${plural(activeConstraints(offered).length, 'rule', 'rules')}`,
+    `v${offered.version}`,
+  ].join(' · ')
+
+  return `<section class="card card--away" aria-labelledby="offer-title">
+      <h2 id="offer-title" class="card__title">A shared watch log</h2>
+      <p class="muted">
+        Somebody sent you this link, and the whole log travelled inside it — no
+        server saw it. Nothing has been written here yet.
+      </p>
+      <ul class="rows">
+        <li class="row">
+          <span class="chip chip--human">shared</span>
+          <span class="row__text">
+            <strong>${escapeHtml(offered.title)}</strong>
+            <span class="muted"> — ${escapeHtml(counts)}</span>
+          </span>
+        </li>
+      </ul>
+      <p class="muted">
+        Taking it makes a <strong>copy on this device</strong>. It does not stay in
+        step with theirs: from then on, the two are separate logs.
+      </p>
+      <div class="actions">
+        <button type="button" id="accept-link" class="btn btn--primary">Take a copy</button>
+        <button type="button" id="decline-link" class="btn">No thanks</button>
+      </div>
+    </section>`
+}
+
+function renderPermission(task: TaskState): string {
+  const waiting = pendingApprovals(task)
+  if (waiting.length === 0) return ''
+
+  const rows = waiting
+    .map(
+      (a) => `<li class="review">
+          <div class="row">
+            <span class="chip chip--claimed">blocked</span>
+            <span class="row__text">
+              <strong>${escapeHtml(a.action)}</strong>
+              <span class="muted"> — ${escapeHtml(a.why)}</span>
+            </span>
+            <button type="button" class="btn btn--primary" data-allow="${escapeHtml(a.id)}"
+                    aria-label="Allow: ${escapeHtml(a.action)}">Allow</button>
+            <button type="button" class="btn btn--danger" data-deny="${escapeHtml(a.id)}"
+                    aria-label="Deny: ${escapeHtml(a.action)}">Deny</button>
+          </div>
+        </li>`,
+    )
+    .join('')
+
+  return `<section class="card card--permission" aria-labelledby="permission-title">
+      <h2 id="permission-title" class="card__title">Permission to act</h2>
+      <p class="muted">
+        An agent is <strong>waiting on this right now</strong> — it stopped before doing
+        something it cannot undo. If nobody answers, it is told plainly that silence is
+        not approval.
+      </p>
+      <ul class="rows">${rows}</ul>
+    </section>`
+}
+
 function renderAway(task: TaskState): string {
   const since = awaySince
   if (since === null || since >= task.version) return ''
@@ -827,6 +942,7 @@ function renderHandoff(task: TaskState): string {
   return `<p class="handoff">
       <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
       <span class="muted">Copies this page’s address and “Continue this task.”</span>
+      <button type="button" id="copy-link" class="btn btn--quiet">Copy a link that carries this log</button>
       ${undoButton}
     </p>`
 }
@@ -998,18 +1114,24 @@ function renderProposals(task: TaskState): string {
 }
 
 function renderEvidence(task: TaskState): string {
-  const waiting = task.steps.filter((s) => s.evidence !== null && s.confidence !== 'human_verified')
+  const waiting = task.steps.filter(
+    (s) => s.evidence !== null && s.confidence !== 'human_verified' && s.confidence !== 'disputed',
+  )
   if (waiting.length === 0) return ''
 
   const rows = waiting
     .slice(0, MAX_ROWS)
-    .map(
-      (s) => `<li class="review">
+    .map((s) =>
+      disputing === s.id
+        ? `<li class="review">${disputeForm(s)}</li>`
+        : `<li class="review">
         <div class="row">
           <span class="chip chip--evidence">${escapeHtml(s.evidence!.kind)}</span>
           <span class="row__text"><strong>${escapeHtml(s.action)}</strong></span>
           <button type="button" class="btn btn--primary" data-verify="${escapeHtml(s.id)}"
                   aria-label="Approve the evidence for: ${escapeHtml(s.action)}">Approve</button>
+          <button type="button" class="btn btn--danger" data-dispute="${escapeHtml(s.id)}"
+                  aria-label="Mark wrong: ${escapeHtml(s.action)}">Wrong</button>
         </div>
         <pre>${escapeHtml(s.evidence!.content)}</pre>
       </li>`,
@@ -1019,8 +1141,9 @@ function renderEvidence(task: TaskState): string {
   return `<section class="card" aria-labelledby="evidence-title">
       <h2 id="evidence-title" class="card__title">Evidence to review</h2>
       <p class="muted">
-        Read it before you approve — your click is what says a human checked this.
-        Nothing an agent attaches counts as verified on its own.
+        Read it before you decide — your click is what says a human checked this.
+        Nothing an agent attaches counts as verified on its own, and “Wrong”
+        marks it so every later conversation sees your reason.
       </p>
       <ul class="rows">${rows}</ul>
       ${remainder(waiting.length)}
@@ -1195,6 +1318,8 @@ function renderDashboard(task: TaskState): string {
     ${alertBlock()}
     ${searching() ? renderSearchResults(task) : ''}
     ${renderHandoff(task)}
+    ${renderOffer()}
+    ${searching() ? '' : renderPermission(task)}
     ${searching() ? '' : renderAway(task)}
     ${searching() ? '' : renderNext(task)}
     ${searching() ? '' : renderWaiting(task)}
@@ -1222,12 +1347,17 @@ function renderBody(): string {
   }
 
   if (status === 'missing') {
-    return `<div class="notice notice--warn" role="alert">
-        <p><strong>This task does not exist on this device.</strong></p>
-        <p>The address points at <code>${escapeHtml(boundId ?? '')}</code>, which is not here.
-           No other task has been opened in its place.</p>
-      </div>
-      ${renderLanding()}`
+    // Quand un lien porte le cahier, dire « il n'existe pas ici » en même temps
+    // qu'on propose de le prendre est une contradiction à l'écran.
+    const alarm =
+      offered || linkPending
+        ? ''
+        : `<div class="notice notice--warn" role="alert">
+             <p><strong>This task does not exist on this device.</strong></p>
+             <p>The address points at <code>${escapeHtml(boundId ?? '')}</code>, which is not here.
+                No other task has been opened in its place.</p>
+           </div>`
+    return `${alarm}${renderLanding()}`
   }
 
   // Le formulaire de création prend toute la place, même quand un cahier est
@@ -1493,6 +1623,50 @@ function bindSupervision(): void {
     )
   })
 
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-dispute]')) {
+    b.addEventListener('click', () => {
+      disputing = b.dataset.dispute!
+      attaching = null
+      answering = null
+      editing = null
+      loggingStep = false
+      humanError = null
+      drafts['dispute-reason'] = ''
+      renderNow()
+      document.querySelector<HTMLTextAreaElement>('#dispute-reason')?.focus()
+    })
+  }
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-undispute]')) {
+    b.addEventListener('click', () => {
+      const id = b.dataset.undispute!
+      humanAction('Withdrawing the dispute', (state) => withdrawDispute(state, id))
+    })
+  }
+
+  document.querySelector('#cancel-dispute')?.addEventListener('click', () => {
+    disputing = null
+    drafts['dispute-reason'] = ''
+    renderNow()
+  })
+
+  document.querySelector<HTMLFormElement>('#form-dispute')?.addEventListener('submit', (e) => {
+    e.preventDefault()
+    const id = disputing
+    const reason = drafts['dispute-reason'].trim()
+    if (!id || !reason) return
+
+    humanAction(
+      'Marking the step wrong',
+      (state) => disputeStep(state, id, reason),
+      () => {
+        disputing = null
+        drafts['dispute-reason'] = ''
+        renderNow()
+      },
+    )
+  })
+
   document.querySelector('#log-step')?.addEventListener('click', () => {
     loggingStep = true
     editing = null
@@ -1707,6 +1881,57 @@ function bindSupervision(): void {
       .finally(() => {
         fileField.value = ''
       })
+  })
+
+  for (const b of document.querySelectorAll<HTMLButtonElement>('[data-allow], [data-deny]')) {
+    b.addEventListener('click', () => {
+      const allow = b.dataset.allow !== undefined
+      const id = (allow ? b.dataset.allow : b.dataset.deny)!
+      humanAction(allow ? 'Allowing the action' : 'Refusing the action', (state) =>
+        decideApproval(state, id, allow ? 'allowed' : 'denied'),
+      )
+    })
+  }
+
+  document.querySelector('#accept-link')?.addEventListener('click', () => {
+    const task = offered
+    if (!task) return
+    offered = null
+    clearLinkFragment()
+    humanError = null
+    void store.importTasks([task]).then(
+      () => store.openTask(task.id).catch(() => undefined),
+      (error: unknown) => {
+        humanError = humanMessage(error, 'Taking that copy')
+        scheduleRender()
+      },
+    )
+  })
+
+  document.querySelector('#decline-link')?.addEventListener('click', () => {
+    offered = null
+    clearLinkFragment()
+    renderNow()
+  })
+
+  document.querySelector('#copy-link')?.addEventListener('click', () => {
+    const task = store.currentTask()
+    if (!task) return
+    humanError = null
+    void packTask(task)
+      .then((packed) =>
+        navigator.clipboard?.writeText(linkFor(location.origin, taskPath(task.id), packed)),
+      )
+      .then(
+        () =>
+          showNotice(
+            'Link copied. It carries the whole log; the person you send it to gets a copy.',
+          ),
+        (error: unknown) => {
+          humanError = humanMessage(error, 'Building that link')
+          scheduleRender()
+        },
+      )
   })
 
   document.querySelector('#seen')?.addEventListener('click', () => {
@@ -1962,6 +2187,30 @@ function render(): void {
   // digest doit rapporter.
   if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
 
+  if (!linkRead) {
+    linkRead = true
+    const packed = readLinkFragment()
+    if (packed) {
+      linkPending = true
+      void unpackTask(packed).then(
+        (task) => {
+          linkPending = false
+          offered = task
+          scheduleRender()
+        },
+        (error: unknown) => {
+          linkPending = false
+          humanError = humanMessage(error, 'Reading that link')
+          clearLinkFragment()
+          scheduleRender()
+        },
+      )
+    }
+  }
+
+  const waiting = openTask ? pendingApprovals(openTask).length + openQuestions(openTask).length : 0
+  document.title = attentionTitle(document.title, waiting, looking())
+
   const listKey = openTask ? `${openTask.id}:${openTask.version}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
   if ((openTask?.id ?? null) !== credentialsFor) {
@@ -2039,6 +2288,11 @@ function typingSomewhereElse(target: EventTarget | null): boolean {
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
+function clearLinkFragment(): void {
+  if (typeof history === 'undefined') return
+  history.replaceState(null, '', `${location.pathname}${location.search}`)
+}
+
 function looking(): boolean {
   return typeof document.visibilityState !== 'string' || document.visibilityState === 'visible'
 }
@@ -2076,13 +2330,20 @@ function closeOnEscape(event: KeyboardEvent): void {
     return
   }
 
-  const openForm = editing !== null || loggingStep || answering !== null || attaching !== null
+  const openForm =
+    editing !== null ||
+    loggingStep ||
+    answering !== null ||
+    attaching !== null ||
+    disputing !== null
   if (openForm) {
     editing = null
     loggingStep = false
     answering = null
     attaching = null
+    disputing = null
     humanError = null
+    drafts['dispute-reason'] = ''
     drafts['edit-value'] = ''
     drafts['edit-reason'] = ''
     drafts['answer-text'] = ''
@@ -2122,10 +2383,14 @@ export function mount(target: HTMLElement): () => void {
   showAllHistory = false
   awaySince = null
   awayFor = null
+  offered = null
+  linkRead = false
+  linkPending = false
   editing = null
   loggingStep = false
   answering = null
   attaching = null
+  disputing = null
   showArchived = false
 
   render()

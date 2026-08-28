@@ -689,3 +689,31 @@ mark {
   border-color: var(--c-accent);
   border-style: dashed;
 }
+
+.card--permission {
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+  border-color: currentColor;
+  border-width: 2px;
+}
+
+.card--permission .card__title,
+.card--permission .muted {
+  color: currentColor;
+  opacity: 0.92;
+}
+
+.chip--disputed {
+  background: var(--c-warn-bg);
+  color: var(--c-warn-text);
+}
+
+.row__dispute {
+  display: block;
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 3px solid var(--c-warn-text);
+  border-radius: var(--radius-sm);
+  background: var(--c-bg);
+  color: var(--c-text);
+}

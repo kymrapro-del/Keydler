@@ -719,3 +719,107 @@ l'humain.
 
 **Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
 de ce poste.
+
+## 28 août 2026 — `request_approval` : un appel d'outil qui attend un humain
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+
+C'est le seul appel du produit qui **bloque**. Sans page ouverte devant
+quelqu'un, cette attente n'aurait aucun sens : c'est précisément ce que WebMCP
+rend possible et qu'un serveur MCP classique ne peut pas faire.
+
+**Observé, par la vraie surface WebMCP.**
+
+- **Délai dépassé** : appel lancé sans personne pour répondre. Retour au bout de
+  120 s : `NO ANSWER … NO ANSWER IS NOT APPROVAL … treat this exactly as a
+refusal`, avec `isError: true`. La demande reste ouverte sur la page.
+- **Refus** : un clic sur **Deny** débloque l'appel, qui rend `DENIED by the
+human`, en erreur, avec l'instruction de ne pas contourner.
+- **Autorisation** : un clic sur **Allow** débloque l'appel, qui rend `ALLOWED by
+the human` avec l'action citée mot pour mot.
+
+Les clics sont de vrais clics sur les vrais boutons de la page ; seul leur
+déclenchement est programmé, faute de deux mains disponibles pendant qu'un
+appel bloque.
+
+**Défaut trouvé, et c'était le pire possible pour cet outil.** Une seconde
+demande portant **exactement le même libellé** qu'une demande déjà tranchée
+recevait la décision de la première. Relevé dans le navigateur : une demande
+refusée plus tôt a fait revenir `DENIED` instantanément pour une demande neuve.
+Avec un `allowed` à la place, le produit aurait **autorisé une action que
+personne n'avait validée**. La recherche prend désormais la demande la plus
+récente, jamais la première ; un test rouge reproduit le cas exact.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.
+
+## 28 août 2026 — contester une étape
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`.
+
+Le produit savait **approuver** une preuve, pas la **refuser**. Dans un produit
+de supervision, c'était une asymétrie : un agent pouvait laisser une affirmation
+fausse que personne ne pouvait marquer comme telle.
+
+**Observé.**
+
+- Depuis **Evidence to review**, la preuve sous les yeux : « Wrong » demande un
+  motif, et l'étape passe à `disputed`.
+- `resume_task` place la contestation **au-dessus des contraintes** :
+  `DISPUTED BY THE HUMAN — treat as wrong (1)` avec le motif de l'humain.
+- Le compte PROGRESS tombe de 3 à 2 « with evidence attached » : une étape
+  contestée ne compte plus comme prouvée.
+- L'annulation rend à l'étape **exactement** le degré qu'elle avait —
+  `evidence`, `human_verified` ou `claimed` selon ce qui y était attaché.
+
+**Défaut visuel trouvé, et seulement dans le navigateur.** Le motif de
+contestation était rendu avec la classe `.quote`, stylée comme un bloc mais
+posée en ligne dans le texte de la ligne : il **chevauchait** l'action de
+l'étape. Aucun test ne pouvait le voir — le garde-fou CSS vérifie qu'une classe
+existe, pas qu'elle se pose bien. Classe dédiée `.row__dispute`, et la sonde
+compare désormais les rectangles.
+
+**Décision.** La phrase FULL DETAIL de `resume_task` énumérait les sections ;
+elle avait déjà pris du retard deux fois, et chaque mot ajouté coûtait un nom
+d'identifiant dans le budget de 400 jetons. Elle renvoie maintenant au schéma de
+`read_task_detail`, qui porte la liste et ne peut pas dériver — un test compare
+l'énumération du schéma à `SECTIONS`.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.
+
+## 28 août 2026 — un cahier qui voyage dans un lien
+
+**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+`http://localhost:5174`.
+
+Un jury demandera : « j'envoie le lien à un collègue, il voit quoi ? » Jusqu'ici,
+une page vide. Le cahier voyage maintenant **dans le fragment de l'adresse**,
+que les navigateurs n'envoient jamais au serveur.
+
+**Observé.**
+
+- « Copy a link that carries this log » sur le cahier de démonstration :
+  **2 833 caractères**, marqueur `z` et signature gzip présents — la compression
+  passe bien par `CompressionStream`, sans aucune dépendance.
+- Cahier supprimé de l'appareil, puis ouverture du lien : la carte **A shared
+  watch log** annonce le titre, `4 steps · 3 rules · v15`, et dit que prendre
+  le cahier en fait **une copie qui ne restera pas en phase**.
+- Rien n'est écrit avant le clic. « Take a copy » importe et ouvre le cahier ;
+  la charge disparaît de l'adresse pour qu'un rechargement ne repropose pas.
+
+**Défaut trouvé.** À la réception, le bandeau « This task does not exist on this
+device » s'affichait **au-dessus de l'offre** : deux messages qui se
+contredisent à l'écran, dont l'un affole pour rien. Le bandeau est supprimé tant
+qu'un lien est en cours de lecture, et revient si l'on refuse — un test couvre
+les deux sens.
+
+**Note de méthode.** Une première tentative a semblé échouer : `location.href`
+vers la même adresse ne change que le fragment et **ne recharge pas la page**,
+donc l'ancien bundle tournait encore. Relevé ici pour ne pas reprendre ce
+faux négatif pour un défaut.
+
+**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
+de ce poste.

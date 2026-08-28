@@ -151,6 +151,27 @@ rather than retaking. Both paths work, and one is cheaper.
 
 ---
 
+## Optional beat · It asks permission, and waits
+
+Only if the run reaches something genuinely irreversible.
+
+The agent calls `request_approval` before acting. **Its call blocks.** On the
+page, **Permission to act** appears above everything, with the action and why it
+cannot decide alone. Leave it there for a beat, so the room sees the agent is
+stopped.
+
+Click **Deny**. The agent's call returns `DENIED`, and it says what it will not
+do.
+
+> “There is somebody at the other end. That is the whole difference between a
+> page an agent reads and a server it calls.”
+
+Do not stage a fake irreversible action. If the run has none, cut the beat — and
+never let the framing imply the agent is prevented from acting: it is asked to
+stop, and it complies. Nothing here enforces it.
+
+---
+
 ## Optional beat · When it does not know, it asks
 
 Only if the conversation reaches a genuine unknown — do not manufacture one.

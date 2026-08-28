@@ -1,9 +1,10 @@
-export type Confidence = 'human_verified' | 'evidence' | 'claimed'
+export type Confidence = 'human_verified' | 'evidence' | 'claimed' | 'disputed'
 
 export const CONFIDENCE_ORDER: readonly Confidence[] = [
   'human_verified',
   'evidence',
   'claimed',
+  'disputed',
 ] as const
 
 export type EvidenceKind = 'command_output' | 'diff' | 'url' | 'hash' | 'test_report'
@@ -37,11 +38,17 @@ export type Constraint = {
   standing: Standing
 }
 
+export type Dispute = {
+  reason: string
+  at: number
+}
+
 export type Step = {
   id: string
   action: string
   result: string
   evidence: Evidence | null
+  dispute: Dispute | null
   confidence: Confidence
   basedOnVersion: number
   source: Actor
@@ -76,6 +83,19 @@ export type OpenQuestion = {
   at: number
   answer: string | null
   answeredAt: number | null
+}
+
+export type ApprovalDecision = 'allowed' | 'denied'
+
+export type ApprovalRequest = {
+  id: string
+  action: string
+  why: string
+  source: Actor
+  addedAtVersion: number
+  at: number
+  decision: ApprovalDecision | null
+  decidedAt: number | null
 }
 
 export type AuditEntry = {
@@ -118,10 +138,11 @@ export type TaskState = {
   decisions: Decision[]
   rejected: Rejection[]
   questions: OpenQuestion[]
+  approvals: ApprovalRequest[]
   audit: AuditEntry[]
   mutations: MutationRecord[]
   createdAt: number
   updatedAt: number
 }
 
-export const SCHEMA_VERSION = 6
+export const SCHEMA_VERSION = 8
