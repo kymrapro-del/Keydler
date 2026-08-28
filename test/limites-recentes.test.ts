@@ -117,7 +117,7 @@ describe('bornes des surfaces récentes', () => {
     const id = proposée.constraints.at(-1)!.id
     const acceptée = setConstraintStanding(proposée, id, 'accepted')
 
-    expect(historyOf(acceptée, id).map((e) => e.operation)).toEqual(['accept_constraint'])
+    expect(historyOf(acceptée, id).entries.map((e) => e.operation)).toEqual(['accept_constraint'])
   })
 })
 

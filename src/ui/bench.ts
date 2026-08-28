@@ -608,7 +608,10 @@ function renderCompletedWork(task: TaskState): string {
 }
 
 function trailButton(task: TaskState, id: string, label: string): string {
-  if (historyOf(task, id).length === 0) return ''
+  const trail = historyOf(task, id)
+  // Même sans entrée survivante, le bouton reste : cacher l'histoire d'un
+  // élément dont le journal a été élagué reviendrait à taire l'élagage.
+  if (trail.entries.length === 0 && !trail.mayBeIncomplete) return ''
   return `<button type="button" class="btn btn--quiet" data-trail="${escapeHtml(id)}"
             aria-expanded="${showingTrail === id}"
             aria-label="What happened to: ${escapeHtml(label)}">${
@@ -618,10 +621,20 @@ function trailButton(task: TaskState, id: string, label: string): string {
 
 function renderTrail(task: TaskState, id: string): string {
   if (showingTrail !== id) return ''
-  const lines = historyOf(task, id).map(describeEntry).reverse()
-  if (lines.length === 0) return ''
+  const trail = historyOf(task, id)
+  const lines = trail.entries.map(describeEntry).reverse()
+  if (lines.length === 0 && !trail.mayBeIncomplete) return ''
+
+  const warning = trail.mayBeIncomplete
+    ? `<p class="muted">${
+        lines.length === 0
+          ? 'Nothing left about this one: older entries were dropped to keep the log bounded.'
+          : 'Older entries were dropped to keep the log bounded, so this may not be the whole story.'
+      }</p>`
+    : ''
 
   return `<span class="trail">
+      ${warning}
       <ul class="events">
         ${lines
           .map(

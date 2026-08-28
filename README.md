@@ -228,7 +228,9 @@ defend against everything:
 - **The history of one rule.** Every rule carries a History button: what was
   reworded, when it was lifted, when it came back. It falls out of the `targetId`
   the audit already keeps for undo — the same field answering a second question
-  no card was asking.
+  no card was asking. The log is bounded, so when older entries have been
+  dropped it says so rather than showing a short history as if it were the whole
+  one — an empty history would otherwise read as “nothing happened”.
 - **History** in words — _“You lifted a rule”_, _“Agent tried to record a step —
   refused — the task had changed since it was read”_. The audit trail was always
   complete; this is the screen for it.

@@ -126,7 +126,10 @@ describe('l’histoire d’un élément quand le journal a été élagué', () =
     }
 
     // La levée est tombée hors du journal borné.
-    expect(historyOf(task, rule.id)).toHaveLength(0)
+    const trail = historyOf(task, rule.id)
+    expect(trail.entries).toHaveLength(0)
+    // Et il le dit, plutôt que de laisser croire qu'il ne s'est rien passé.
+    expect(trail.mayBeIncomplete).toBe(true)
     expect(task.audit.some((e) => e.operation === 'audit_trimmed')).toBe(true)
   })
 })
