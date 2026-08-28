@@ -391,6 +391,12 @@ the same length, what is known and left alone.
   back through `getTools()` in Brave 151: 16, 499 and 146 against limits of 30,
   500 and 150. The briefing is the one that does not fit — 1528 characters,
   1.9% over — and that overage is written down rather than shaved off.
+- **Two tabs stay in step.** A write announces itself on a `BroadcastChannel`;
+  any other tab holding that task re-reads it from IndexedDB and redraws. The
+  refusal machinery was already correct — a stale write is refused, and the
+  message even names the other page — but until this, the second tab's screen
+  went on showing a state that had moved. A page that lets a screen lie is the
+  thing this product exists to object to.
 - **One task, one address.** A task lives at `/t/:id`. A page bound to that
   address returns that task or says it is gone; it never substitutes “whatever
   was touched last on this device”.

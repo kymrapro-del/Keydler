@@ -1264,3 +1264,48 @@ en suspens pendant que je lançais d'autres outils ; la boîte de dialogue est
 ressortie bien plus tard, derrière un appel sans rapport. Répondue tout de
 suite, la réouverture fonctionne — et les neuf outils d'écriture se
 réenregistrent dans la seconde.
+
+## 28 août 2026 — les deux trouvailles, corrigées et revérifiées
+
+**Poste.** Brave 151, deux onglets sur la même tâche, appels par
+`execute_webmcp_tool`.
+
+### La recherche se remplit maintenant jusqu'au budget
+
+Douze correspondances de 240 caractères faisaient 6296 caractères. La borne
+porte désormais sur les caractères et non sur le compte : **6296 → 1275**, et
+l'en-tête dit « 2 shown of 30 found · 28 more not shown — narrow the query ».
+Rien n'est caché, la recherche sert à trouver.
+
+**Une borne que j'ai posée puis retirée.** J'avais borné `read_task_detail` de
+la même façon. Une épreuve existante l'a refusé — et elle avait raison :
+`resume_task` est le pointeur court, `read_task_detail` est là où l'on va
+chercher du volume. Le borner rendait une à deux entrées par page dès qu'une
+preuve était jointe. Le partage des rôles était délibéré ; je ne l'avais pas
+reconnu avant que le test ne me le dise.
+
+### Deux onglets restent en phase
+
+Un `BroadcastChannel` annonce chaque écriture ; l'onglet qui tient la même tâche
+la relit depuis IndexedDB et se redessine.
+
+**Observé.** Onglet 2 écrit une règle. Onglet 1 passe de v32 à **v33** et
+affiche la règle, **sans un clic ni un rechargement**. Aucune erreur console.
+
+**Deux défauts trouvés en le construisant, dont un que la suite n'a pas vu.**
+
+1. **L'écho.** Une réécriture par numéro de ligne avait transformé le
+   `tasksChanged()` du récepteur en `tasksChangedEverywhere()` : chaque onglet
+   réannonçait ce qu'il recevait, et deux onglets se seraient renvoyé le message
+   sans fin. Attrapé par un test qui vérifiait ce qui était émis.
+
+2. **L'onglet sourd — vu en navigateur seulement.** Le canal était ouvert
+   paresseusement, à la première annonce. Or un onglet qui ne fait que lire
+   n'annonce jamais rien : il restait donc sourd, et c'était exactement celui
+   qu'il fallait réveiller. La suite ne pouvait pas le voir, parce que dans
+   chacun de ses cas le magasin avait écrit avant d'écouter. Le canal s'ouvre
+   maintenant à `init()`, et une épreuve part d'un magasin qui n'écrit pas une
+   seule fois.
+
+C'est la troisième fois dans ce projet qu'un test vert masque un défaut que le
+navigateur montre en une minute.

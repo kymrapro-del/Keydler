@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { buildCoreTask, buildDemoTask } from '../src/demo/seed'
+import { MAX_TOOL_OUTPUT } from '../src/domain/budget'
 import { renderTaskState } from '../src/domain/render'
+import { MAX_MATCHES, renderSearch } from '../src/domain/searchResult'
+import type { TaskState } from '../src/domain/types'
 import { ALL_TOOLS } from '../src/webmcp/tools'
 
 /**
@@ -84,6 +87,57 @@ describe('les budgets de caractères que Chrome recommande', () => {
         expect((prop.description ?? '').length, `${tool.name}.${name}`).toBeGreaterThan(8)
       }
     }
+  })
+
+  it('borne la recherche par les caractères, pas par le compte', () => {
+    // Douze correspondances de 240 caractères font 6296 caractères : le compte
+    // de correspondances ne borne rien tant que les extraits sont libres.
+    const longue = (mot: string, n: number) => `${mot} ` + 'x'.repeat(n)
+    const task: TaskState = {
+      ...buildCoreTask(),
+      steps: Array.from({ length: 30 }, (_, i) => ({
+        id: `s${i}`,
+        action: longue('zebra', 400),
+        result: longue('zebra', 400),
+        evidence: null,
+        dispute: null,
+        confidence: 'evidence' as const,
+        basedOnVersion: i,
+        source: 'agent' as const,
+        at: 1_700_000_000_000 + i,
+      })),
+    }
+
+    const texte = renderSearch(task, 'zebra', MAX_MATCHES)
+    expect(texte.length).toBeLessThanOrEqual(MAX_TOOL_OUTPUT)
+
+    // Et rien n'est caché : l'en-tête compte ce qui est montré sur ce qui a été
+    // trouvé, et dit quoi faire du reste.
+    expect(texte).toMatch(/MATCHES {5}\d+ shown of 30 found/)
+    expect(texte).toContain('more not shown — narrow the query')
+  })
+
+  it('rend au moins une correspondance, même démesurée', () => {
+    // Sinon une seule entrée plus grosse que le budget rendrait une réponse
+    // vide, et la recherche ne trouverait plus rien du tout.
+    const task: TaskState = {
+      ...buildCoreTask(),
+      steps: [
+        {
+          id: 's0',
+          action: 'zebra ' + 'x'.repeat(4000),
+          result: 'zebra ' + 'x'.repeat(4000),
+          evidence: null,
+          dispute: null,
+          confidence: 'evidence' as const,
+          basedOnVersion: 1,
+          source: 'agent' as const,
+          at: 1_700_000_000_000,
+        },
+      ],
+    }
+    const texte = renderSearch(task, 'zebra', MAX_MATCHES)
+    expect(texte).toContain('1 shown of 1 found')
   })
 
   it('rend une restitution ordinaire dans le budget du produit', () => {

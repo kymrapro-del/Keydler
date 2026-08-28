@@ -39,6 +39,12 @@ export function tasksRevision(): number {
 function tasksChanged(): void {
   tasksRevisionCounter += 1
 }
+
+/** Le nombre de cahiers a changé — les autres onglets doivent relire la liste. */
+function tasksChangedEverywhere(): void {
+  tasksChanged()
+  announce(null, 0)
+}
 let initPromise: Promise<void> | null = null
 
 function setSnapshot(next: Snapshot): void {
@@ -62,6 +68,13 @@ export function boundTaskId(): string | null {
 }
 
 export async function init(taskId?: string): Promise<void> {
+  // Ouvrir le canal ICI, et pas à la première annonce. Un onglet qui ne fait
+  // que lire n'annonce jamais rien : créé paresseusement, il restait sourd, et
+  // c'était précisément l'onglet à réveiller. Trouvé en navigateur, avec deux
+  // onglets — la suite ne l'a pas vu, parce que chacun de ses magasins avait
+  // écrit avant d'écouter.
+  bus()
+
   if (!initPromise || (taskId !== undefined && taskId !== snapshot.boundId)) {
     initPromise = enqueue(async () => {
       try {
@@ -108,7 +121,7 @@ export async function importTasks(incoming: readonly TaskState[]): Promise<Impor
 
       if (!existing) {
         await putTask(task)
-        tasksChanged()
+        tasksChangedEverywhere()
         outcome.imported.push(task.title)
         continue
       }
@@ -124,7 +137,7 @@ export async function importTasks(incoming: readonly TaskState[]): Promise<Impor
         title: `${task.title} (imported)`,
       }
       await putTask(copy)
-      tasksChanged()
+      tasksChangedEverywhere()
       outcome.copied.push(copy.title)
     }
 
@@ -151,7 +164,7 @@ export async function updateTask(
 
     const next = fn(current)
     await saveTask(next, current.version)
-    tasksChanged()
+    tasksChangedEverywhere()
     if (snapshot.task) await setLastTaskId(snapshot.task.id)
     return next
   })
@@ -160,14 +173,14 @@ export async function updateTask(
 export async function createAndOpenTask(title: string, next?: string): Promise<TaskState> {
   const task = createTask({ title, next })
   await saveTask(task)
-  tasksChanged()
+  tasksChangedEverywhere()
   setSnapshot({ status: 'ready', task, error: null, boundId: task.id })
   return task
 }
 
 export async function openPreparedTask(task: TaskState): Promise<TaskState> {
   await saveTask(task)
-  tasksChanged()
+  tasksChangedEverywhere()
   setSnapshot({ status: 'ready', task, error: null, boundId: task.id })
   return task
 }
@@ -183,7 +196,7 @@ export async function deleteCurrentTask(): Promise<void> {
     // bien présents sur le disque.
     await deleteSecretsForTask(current.id).catch(() => undefined)
     forgetSeen(current.id)
-    tasksChanged()
+    tasksChangedEverywhere()
     const suivant = await loadLastTask()
     if (suivant) {
       await setLastTaskId(suivant.id)
@@ -247,7 +260,53 @@ async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskSta
   }
 
   setSnapshot({ status: 'ready', task: next, error: null, boundId: next.id })
+  announce(next.id, next.version)
   return next
+}
+
+/**
+ * Deux onglets sur la même tâche : l'un écrivait, l'autre gardait son écran
+ * d'avant. Mesuré, un second onglet a rouvert la tâche et écrit jusqu'à v31
+ * pendant que le premier affichait encore v29 et « Task closed ». Il ne
+ * l'apprenait qu'en tentant d'écrire — la sûreté tenait, l'écran mentait.
+ *
+ * `BroadcastChannel` ne livre pas au contexte qui poste : personne ne réagit
+ * donc à sa propre annonce, et il n'y a pas d'écho à filtrer. La relecture
+ * passe par la file d'écriture, sinon elle pourrait s'intercaler au milieu
+ * d'une écriture en cours et remettre en place un état déjà dépassé.
+ */
+const CHANNEL = 'cahier-de-quart'
+
+type Announcement = { id: string | null; version: number }
+
+let channel: BroadcastChannel | null = null
+
+function bus(): BroadcastChannel | null {
+  if (typeof BroadcastChannel !== 'function') return null
+  if (!channel) {
+    channel = new BroadcastChannel(CHANNEL)
+    channel.onmessage = (event: MessageEvent<Announcement>) => {
+      const { id, version } = event.data ?? { id: null, version: 0 }
+      // Surtout PAS `tasksChangedEverywhere` ici : réannoncer ce qu'on vient de
+      // recevoir ferait rebondir le message entre deux onglets, chacun
+      // répondant à l'autre, sans fin.
+      tasksChanged()
+      if (id !== null && id === snapshot.boundId && version > (snapshot.task?.version ?? 0)) {
+        void enqueue(() => resyncFromDisk(id))
+      }
+      for (const listener of listeners) listener()
+    }
+  }
+  return channel
+}
+
+function announce(id: string | null, version: number): void {
+  try {
+    bus()?.postMessage({ id, version })
+  } catch {
+    // Un onglet qui se ferme peut fermer le canal sous nos pieds. Ne rien
+    // annoncer est un défaut d'affichage ailleurs, pas une écriture perdue.
+  }
 }
 
 async function resyncFromDisk(id: string): Promise<void> {
@@ -372,6 +431,8 @@ export async function recordAgentRefusal(
 }
 
 export function __resetStore(): void {
+  channel?.close()
+  channel = null
   tasksRevisionCounter = 0
   listeners.clear()
   writeQueue = Promise.resolve()
