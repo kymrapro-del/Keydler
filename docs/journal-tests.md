@@ -1442,3 +1442,40 @@ Le reste est à 41 px, soit juste sous les 44 px recommandés — un écart que 
 compte pas comme un défaut. Les quatre ci-dessus, si. Non corrigé : la mise en
 forme est un domaine où l'on ne touche pas sans décision, et ce n'est pas la
 mienne à prendre.
+
+## 28 août 2026 — sur une machine vingt fois plus lente
+
+**Poste.** Brave 151, throttling CPU ×20 par CDP. Cahier de **3000 étapes,
+60 règles, 1,27 Mo** — les mesures précédentes avaient toutes été prises sur une
+machine rapide, ce qui ne prouve rien pour qui n'en a pas.
+
+**Ce que la page rend.** 409 nœuds, 40 ko de HTML — les bornes tiennent, la
+taille du cahier ne s'y voit pas. Une recherche sur « shard » trouve
+3060 correspondances et n'en montre que ce qui tient dans le budget.
+
+**Le coût réel, séparé de la cadence du compositeur.** Le travail synchrone du
+gestionnaire de frappe est de 0 à 2,9 ms : il ne fait que programmer un rendu.
+Le temps jusqu'à la peinture est de ~1005 ms, mais c'est la cadence d'un
+compositeur à ×20, pas le produit — toute page la subirait.
+
+Ce qu'il fallait mesurer, c'est le fil principal. Un `PerformanceObserver` sur
+les `longtask` pendant six frappes :
+
+|                                   | ms      |
+| --------------------------------- | ------- |
+| Tâche la plus longue              | **147** |
+| Médiane                           | 136     |
+| Tâches observées pour six frappes | **3**   |
+
+147 ms à ×20 correspond à ~7 ms sur ce poste, ce qui recoupe la mesure directe
+de 6,9 ms prise plus tôt sans throttling. Sur une machine vingt fois plus lente,
+une frappe dans la recherche coûte donc ~140 ms de fil principal sur un cahier
+de 1,27 Mo : perceptible, pas cassé.
+
+Et **trois tâches pour six frappes** : le regroupement par `requestAnimationFrame`
+fait son travail — taper vite ne produit pas un rendu par caractère.
+
+**Erreur de sonde, consignée.** La première mesure portait sur le mauvais
+cahier : `lastTaskId` avait été écrit pendant que la page était déjà montée, et
+le rechargement a rouvert celui d'avant. Le chiffre de 1009 ms que j'ai lu là
+était celui d'un cahier de dix étapes — il ne mesurait rien.
