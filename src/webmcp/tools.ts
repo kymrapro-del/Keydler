@@ -476,9 +476,8 @@ export function __setApprovalTimeout(ms: number): void {
 type Decided = { decision: 'allowed' | 'denied'; action: string }
 
 /**
- * Wait for a human to decide. This is the only place in the product where a
- * tool call blocks: without a page open in front of someone this wait would
- * make no sense, and that is exactly what WebMCP makes possible.
+ * Wait for a human to decide, the only place in the product where a tool call
+ * blocks. It needs a page open in front of someone, which is what WebMCP gives.
  */
 function waitForDecision(
   approvalId: string,
@@ -530,7 +529,7 @@ export const requestApprovalTool: ModelContextTool = {
     )
     if (written.isError) return written
 
-    // The MOST RECENT one, never the first: two requests can carry the same
+    // The most recent one, never the first: two requests can carry the same
     // wording, and returning yesterday's decision would allow an action nobody
     // approved.
     const task = store.currentTask()

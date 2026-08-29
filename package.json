@@ -1,5 +1,5 @@
 {
-  "name": "cahier-de-quart",
+  "name": "keydler",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -11,7 +11,7 @@
     "preview": "vite preview --host",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "tsc --noEmit && npm run lint && npm run format:check && npm test && ALLOW_NO_ORIGIN_TRIAL=1 npm run build && ALLOW_NO_ORIGIN_TRIAL=1 npm run artefact && npm run liens",
+    "check": "tsc --noEmit && npm run lint && npm run format:check && npm test && ALLOW_NO_ORIGIN_TRIAL=1 npm run build && ALLOW_NO_ORIGIN_TRIAL=1 npm run artifact && npm run links",
     "build:trial": "TRIAL=1 tsc --noEmit && TRIAL=1 vite build && node scripts/precache.mjs && node scripts/headers.mjs",
     "trial": "npm run build:trial && vite preview --port 5174",
     "lint": "eslint .",
@@ -19,13 +19,14 @@
     "format:check": "prettier --check .",
     "coverage": "vitest run --coverage",
     "bench": "vitest run --config vitest.bench.config.ts",
-    "artefact": "node scripts/artefact.mjs",
-    "sonde": "node scripts/sonde-production.mjs",
-    "carte": "node scripts/carte-sociale.mjs",
-    "liens": "node scripts/liens.mjs"
+    "artifact": "node scripts/artifact.mjs",
+    "probe": "node scripts/production-probe.mjs",
+    "social-card": "node scripts/social-card.mjs",
+    "links": "node scripts/links.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.1",
     "@vitest/coverage-v8": "^3.2.7",
     "eslint": "^10.9.1",
     "fake-indexeddb": "^6.2.2",

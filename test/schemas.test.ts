@@ -96,8 +96,8 @@ describe('hardening', () => {
 
   it('describes every field: a name alone does not say what to put in it', () => {
     for (const tool of ALL_TOOLS) {
-      for (const [nom, prop] of Object.entries((tool.inputSchema as Schema).properties ?? {})) {
-        expect(prop.description, `${tool.name}.${nom}`).toBeTruthy()
+      for (const [name, prop] of Object.entries((tool.inputSchema as Schema).properties ?? {})) {
+        expect(prop.description, `${tool.name}.${name}`).toBeTruthy()
       }
     }
   })
@@ -106,15 +106,15 @@ describe('hardening', () => {
 describe('what the description must carry for lack of an annotation', () => {
   it('states the replay contract, which WebMCP cannot carry', () => {
     for (const tool of WRITE_TOOLS) {
-      // The contract lives in the PARAMETER description, not the tool's: that
+      // The contract lives in the parameter description, not the tool's: that
       // is where an agent reads it while filling in the call, and repeating it
       // in both only inflated a budget Chrome recommends holding to. What
       // matters is that it is said once.
       const theSchema = tool.inputSchema as Schema
       expect(theSchema.required, tool.name).toContain('mutation_id')
-      const jeton = theSchema.properties!.mutation_id.description!
-      expect(jeton, tool.name).toContain('retry with the SAME mutation_id')
-      expect(jeton, tool.name).toContain('the write happens once')
+      const token = theSchema.properties!.mutation_id.description!
+      expect(token, tool.name).toContain('retry with the SAME mutation_id')
+      expect(token, tool.name).toContain('the write happens once')
     }
   })
 

@@ -9,7 +9,7 @@ function ctx(seed = 0) {
 }
 
 function task(): TaskState {
-  return createTask({ title: 'Tâche', next: 'Continuer' }, ctx())
+  return createTask({ title: 'Task', next: 'Continue' }, ctx())
 }
 
 const refusal = (state: TaskState, version: number | null, offset = 0) =>
@@ -43,7 +43,7 @@ describe('the audit trail', () => {
 
   it('never merges a success with what comes before it', () => {
     let t = task()
-    // Two DIFFERENT rules: a word-for-word repeat has been refused ever since a
+    // Two different rules: a word-for-word repeat has been refused ever since a
     // guard exists, and this case is about merging entries, not about
     // duplicates.
     t = addConstraint(t, { rule: 'R one', basedOnVersion: 1 }, 'human', ctx(10))
@@ -60,7 +60,7 @@ describe('the audit trail', () => {
     for (let i = 0; i < MAX_AUDIT_ENTRIES + 40; i++) {
       t = logStep(
         t,
-        { action: `étape ${i}`, result: 'r', basedOnVersion: v },
+        { action: `step ${i}`, result: 'r', basedOnVersion: v },
         'agent',
         ctx(2000 + i),
       )
@@ -84,7 +84,7 @@ describe('the audit trail', () => {
     for (let i = 0; i < MAX_AUDIT_ENTRIES + 10; i++) {
       t = logStep(
         t,
-        { action: `étape ${i}`, result: 'r', basedOnVersion: v },
+        { action: `step ${i}`, result: 'r', basedOnVersion: v },
         'agent',
         ctx(3000 + i),
       )

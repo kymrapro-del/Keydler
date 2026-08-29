@@ -21,7 +21,7 @@ export async function readStorage(): Promise<StorageState> {
     const estimate = await api.estimate?.()
     return { persisted, usage: estimate?.usage ?? null, quota: estimate?.quota ?? null }
   } catch {
-    // Durability is known, the space is not: we return what we know.
+    // Durability is known, the space is not.
     return { persisted, usage: null, quota: null }
   }
 }

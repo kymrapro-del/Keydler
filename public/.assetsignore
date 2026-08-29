@@ -1,15 +1,7 @@
-# Lu par Cloudflare Workers (assets statiques), et par lui seul. Syntaxe .gitignore.
+# Read only by Cloudflare Workers static assets. Uses gitignore syntax.
 #
-# `_redirects` porte la réécriture SPA `/*  /index.html  200`, dont Cloudflare
-# Pages a besoin pour que les liens profonds `/t/:id` rendent l'application
-# plutôt qu'un 404. Le validateur de Workers, plus strict que celui de Pages,
-# la REFUSE : combinée à sa propre suppression de `.html` et `/index`, elle
-# formerait une boucle, et il fait échouer le déploiement.
+# Cloudflare Pages needs `_redirects` for SPA deep links. Workers provides the
+# same behavior through `not_found_handling` and rejects this rewrite as a loop.
 #
-# Le Worker n'en a pas l'usage : `not_found_handling: "single-page-application"`
-# dans `wrangler.jsonc` fait exactement la même chose. On retire donc le fichier
-# de cette livraison-là, sans toucher à celle de Pages, qui n'envoie pas les
-# fichiers commençant par un point, et ne verra donc jamais celui-ci.
-#
-# `_headers` n'est PAS exclu : Workers l'applique, vérifié.
+# `_headers` remains included and is applied by Workers.
 _redirects

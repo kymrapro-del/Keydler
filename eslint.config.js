@@ -41,7 +41,7 @@ export default tseslint.config(
     },
   },
   {
-    // Scripts de construction : Node, pas navigateur.
+    // Build scripts run in Node, not in the browser.
     files: ['scripts/**/*.mjs'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } },
     rules: { 'no-console': 'off' },

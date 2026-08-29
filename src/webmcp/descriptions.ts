@@ -144,8 +144,8 @@ Write the summary for someone who was not present: what was done, what
 was decided, and what remains out of scope.`
 
 /**
- * The full protocol is taught where it is used: the WRITE PROTOCOL block of
- * `resume_task`, and the text of the refusals. Here we only say what to put in.
+ * The full protocol is stated where it is used: the WRITE PROTOCOL block of
+ * `resume_task`, and the text of the refusals. This says only what to put in.
  */
 export const BASED_ON_VERSION_DESCRIPTION =
   'The version from your most recent resume_task. If the task has moved since, ' +

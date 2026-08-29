@@ -20,14 +20,14 @@ async function waitFor(condition: () => boolean, label: string, timeout = 5_000)
     await settled(2)
     if (condition()) return
   }
-  throw new Error(`délai dépassé : ${label}`)
+  throw new Error(`timed out : ${label}`)
 }
 
 function button(label: string): HTMLButtonElement {
   const found = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
     (b) => b.textContent?.trim() === label,
   )
-  if (!found) throw new Error(`bouton « ${label} » absent`)
+  if (!found) throw new Error(`button “${label}” is missing`)
   return found
 }
 
@@ -36,7 +36,7 @@ beforeEach(async () => {
   await clearDatabase()
   await store.init()
   history.replaceState(null, '', '/')
-  document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+  document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
   root = document.querySelector<HTMLElement>('#app')!
   unmount = mount(root)
 })
@@ -50,7 +50,7 @@ describe('several logs', () => {
   it('makes the other tasks reachable from the one that is open', async () => {
     const first = await store.createAndOpenTask('First task', 'Do the first thing')
     const second = await store.createAndOpenTask('Second task', 'Do the second thing')
-    await waitFor(() => root.querySelector('[data-open]') !== null, 'liste des tâches')
+    await waitFor(() => root.querySelector('[data-open]') !== null, 'task list')
 
     // Without this switcher, the first task was reachable only by its address:
     // creating a second one made it disappear from the interface.
@@ -60,7 +60,7 @@ describe('several logs', () => {
     expect(store.currentTask()!.id).toBe(second.id)
 
     root.querySelector<HTMLButtonElement>(`[data-open="${first.id}"]`)!.click()
-    await waitFor(() => store.currentTask()?.id === first.id, 'ouverture de la première')
+    await waitFor(() => store.currentTask()?.id === first.id, 'open the first task')
 
     expect(store.currentTask()!.title).toBe('First task')
     expect(location.pathname).toBe(`/t/${first.id}`)
@@ -68,7 +68,7 @@ describe('several logs', () => {
 
   it('does not offer to open the task that is already open', async () => {
     const only = await store.createAndOpenTask('Only task', 'Do it')
-    await waitFor(() => root.querySelector('.switcher') !== null, 'sélecteur')
+    await waitFor(() => root.querySelector('.switcher') !== null, 'switcher')
 
     expect(root.querySelector(`[data-open="${only.id}"]`)).toBeNull()
     expect(root.querySelector('.switcher')!.textContent).toContain('This is the only one.')
@@ -86,7 +86,7 @@ describe('several logs', () => {
 
   it('opens the creation form from an existing task', async () => {
     await store.createAndOpenTask('Existing', 'Continue')
-    await waitFor(() => root.querySelector('#new-task') !== null, 'bouton')
+    await waitFor(() => root.querySelector('#new-task') !== null, 'button')
 
     button('New task').click()
     await settled()
@@ -198,7 +198,7 @@ describe('import', () => {
 describe('handing off to the agent', () => {
   it('copies the address and the instruction in one click', async () => {
     const task = await store.createAndOpenTask('Hand off', 'Continue')
-    await waitFor(() => root.querySelector('#copy-handoff') !== null, 'bouton')
+    await waitFor(() => root.querySelector('#copy-handoff') !== null, 'button')
 
     const written: string[] = []
     Object.defineProperty(navigator, 'clipboard', {
@@ -224,7 +224,7 @@ describe('handing off to the agent', () => {
 
   it('says what to do when the clipboard is refused', async () => {
     await store.createAndOpenTask('Hand off', 'Continue')
-    await waitFor(() => root.querySelector('#copy-handoff') !== null, 'bouton')
+    await waitFor(() => root.querySelector('#copy-handoff') !== null, 'button')
 
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -249,7 +249,7 @@ describe('handing off to the agent', () => {
 describe('import from the screen', () => {
   it('reads a file and reports what it did', async () => {
     await store.createAndOpenTask('Existing', 'Continue')
-    await waitFor(() => root.querySelector('#import-file') !== null, 'champ de fichier')
+    await waitFor(() => root.querySelector('#import-file') !== null, 'file field')
 
     const incoming = { ...buildDemoTask(), id: 'from-file', title: 'From a file' }
     const field = root.querySelector<HTMLInputElement>('#import-file')!
@@ -259,7 +259,7 @@ describe('import from the screen', () => {
 
     await waitFor(
       () => root.querySelector('[role="status"]')?.textContent?.includes('imported') === true,
-      'compte rendu',
+      'compte rendered',
     )
 
     const message = root.querySelector('[role="status"]')!.textContent!
@@ -272,7 +272,7 @@ describe('import from the screen', () => {
 
   it('refuses a file that is not an export, without jargon', async () => {
     await store.createAndOpenTask('Existing', 'Continue')
-    await waitFor(() => root.querySelector('#import-file') !== null, 'champ de fichier')
+    await waitFor(() => root.querySelector('#import-file') !== null, 'file field')
 
     const field = root.querySelector<HTMLInputElement>('#import-file')!
     const file = new File(['just some notes'], 'notes.md', { type: 'text/markdown' })

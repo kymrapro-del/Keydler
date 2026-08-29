@@ -16,16 +16,15 @@ export async function saveTask(state: TaskState, expectedVersion?: number): Prom
   const tasks = tx.objectStore('tasks')
 
   if (expectedVersion !== undefined) {
-    // The check is about one integer only, and it re-read the whole task to get
-    // it: 2 ms for 800 KB in Chrome, against 0.1 ms for a key. The
-    // `by-id-version` index answers “is this task at THIS version” without
-    // fetching its content back. IndexedDB maintains it from the task's own
-    // fields: no mirror to keep in step, so nothing that drifts.
+    // The check is about one integer and it re-read the whole task to get it: 2
+    // ms for 800 KB in Chrome against 0.1 ms for a key. The `by-id-version`
+    // index answers "is this task at this version" without fetching content.
+    // IndexedDB maintains it from the task's own fields, so nothing drifts.
     const upToDate = await tasks.index('by-id-version').getKey([state.id, expectedVersion])
     if (upToDate === undefined) {
-      // The task moved, or it is GONE: the second case passed for “not created
-      // yet” and fell back on the `put`, resurrecting a task deleted in another
-      // tab without its sealed credentials, which really were erased.
+      // The task moved, or it is gone. The second case read as "not created
+      // yet" and fell back on the `put`, bringing back a task deleted in
+      // another tab without its sealed credentials, which were erased.
       const existe = await tasks.getKey(state.id)
       tx.abort()
       tx.done.catch(() => undefined)
@@ -77,10 +76,10 @@ export async function loadLastTask(): Promise<TaskState | undefined> {
     if (task) return task
   }
 
-  // The fallback (no last known task) fetched back EVERY task on the device to
-  // keep just one: 22 ms for thirty. The index is already sorted by write date;
-  // only its keys are needed, and we walk down to the next one only if the most
-  // recent is unreadable, as before.
+  // The fallback with no last known task fetched every task on the device to
+  // keep one: 22 ms for thirty. The index is already sorted by write date and
+  // only its keys are needed, walking down only if the most recent is
+  // unreadable.
   const keys = await db.getAllKeysFromIndex('tasks', 'by-updatedAt')
   for (let i = keys.length - 1; i >= 0; i--) {
     try {

@@ -10,12 +10,12 @@ function ctx(seed = 0) {
 }
 
 function close(): TaskState {
-  let t = createTask({ title: 'Refactoriser', next: 'Cartographier' }, ctx())
+  let t = createTask({ title: 'Refactor', next: 'Map the system' }, ctx())
   t = logStep(
     t,
     {
       action: 'Suite de tests',
-      result: '183 passés',
+      result: '183 passed',
       evidence: { kind: 'test_report', content: '183 passed' },
       basedOnVersion: t.version,
     },
@@ -24,7 +24,7 @@ function close(): TaskState {
   )
   return completeTask(
     t,
-    { summary: 'Refactorisation terminée.', basedOnVersion: t.version },
+    { summary: 'Refactoring complete.', basedOnVersion: t.version },
     'agent',
     ctx(20),
   )
@@ -43,18 +43,18 @@ describe('closing and reopening', () => {
     const closed = close()
     expect(closed.status).toBe('completed')
 
-    const rouverte = reopenTask(closed, 'Le flux de rafraîchissement reste à faire', ctx(30))
+    const reopened = reopenTask(closed, 'The refresh flow still needs work', ctx(30))
 
-    expect(rouverte.status).toBe('active')
-    expect(rouverte.next).toBe('Le flux de rafraîchissement reste à faire')
-    expect(rouverte.version).toBe(closed.version + 1)
-    expect(rouverte.audit.at(-1)).toMatchObject({ operation: 'reopen_task', actor: 'human' })
+    expect(reopened.status).toBe('active')
+    expect(reopened.next).toBe('The refresh flow still needs work')
+    expect(reopened.version).toBe(closed.version + 1)
+    expect(reopened.audit.at(-1)).toMatchObject({ operation: 'reopen_task', actor: 'human' })
   })
 
   it('keeps the closing summary: it is a trace, not a lie to erase', () => {
     const closed = close()
-    const rouverte = reopenTask(closed, 'Il reste du travail', ctx(30))
-    expect(rouverte.summary).toBe('Refactorisation terminée.')
+    const reopened = reopenTask(closed, 'Work remains', ctx(30))
+    expect(reopened.summary).toBe('Refactoring complete.')
   })
 
   it('requires a reason to reopen', () => {
@@ -63,11 +63,11 @@ describe('closing and reopening', () => {
 
   it('refuses to reopen a task that is already active', () => {
     const active = createTask({ title: 'T' }, ctx())
-    expect(() => reopenTask(active, 'motif', ctx(10))).toThrow(ValidationError)
+    expect(() => reopenTask(active, 'pattern', ctx(10))).toThrow(ValidationError)
   })
 
   it('makes writes possible again after reopening', () => {
-    let t = reopenTask(close(), 'Il reste du travail', ctx(30))
+    let t = reopenTask(close(), 'Work remains', ctx(30))
     t = logStep(t, { action: 'Reprise', result: 'ok', basedOnVersion: t.version }, 'agent', ctx(40))
     expect(t.steps).toHaveLength(2)
     expect(renderTaskState(t)).toContain('WRITE PROTOCOL')

@@ -42,7 +42,7 @@ export const MEASURES: readonly MeasureSpec[] = [
     title: 'Insert an uploaded CSV of customer records into the database',
     next: 'Choose and implement the ingestion mechanism',
     condemned: 'COPY into a staging table',
-    reason: 'the database user has no COPY privilege on this cluster',
+    reason: 'the database user has no COPY privilege on this creadter',
     constraint: 'Stay under a 512 MB memory ceiling',
   },
   {
@@ -69,7 +69,7 @@ export const MEASURES: readonly MeasureSpec[] = [
     next: 'Choose and implement the deduplication mechanism',
     condemned: 'Unique index with ON CONFLICT',
     reason:
-      'the table is partitioned by month, and a unique index across partitions is not supported on this cluster',
+      'the table is partitioned by month, and a unique index across partitions is not supported on this creadter',
     constraint: 'Keep the existing table',
   },
   {
@@ -85,9 +85,9 @@ export const MEASURES: readonly MeasureSpec[] = [
 
 export function buildMeasureTask(n: number): TaskState {
   const spec = MEASURES.find((m) => m.n === n)
-  if (!spec) throw new Error(`Aucune tâche de mesure numéro ${n}.`)
+  if (!spec) throw new Error(`No measurement task number ${n}.`)
 
-  let task = createTask({ title: spec.title, next: spec.next, id: `mesure-${spec.n}` })
+  let task = createTask({ title: spec.title, next: spec.next, id: `measure-${spec.n}` })
   task = addConstraint(task, { rule: spec.constraint, basedOnVersion: null }, 'human')
   task = rejectApproach(
     task,

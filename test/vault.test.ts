@@ -53,7 +53,7 @@ describe('sealing', () => {
   })
 
   it('carries a non-ASCII value without corrupting it', async () => {
-    const value = 'clé-secrète-🔐-Ω'
+    const value = 'secret-key-🔐-Ω'
     expect(await unseal(await seal(value, 'passphrase!'), 'passphrase!')).toBe(value)
   })
 })

@@ -20,7 +20,7 @@ beforeEach(async () => {
 
 describe('refusals on the record', () => {
   it('records a missing version, which never reaches the mutation', async () => {
-    await store.createAndOpenTask('Tâche', 'Continuer')
+    await store.createAndOpenTask('Task', 'Continue')
     const before = store.currentTask()!.audit.length
 
     const result = await logStep().execute({ action: 'a', result: 'b' }, exec())
@@ -33,10 +33,10 @@ describe('refusals on the record', () => {
   })
 
   it('records an unreadable version', async () => {
-    await store.createAndOpenTask('Tâche', undefined)
+    await store.createAndOpenTask('Task', undefined)
 
     const result = await logStep().execute(
-      { action: 'a', result: 'b', mutation_id: mutationId(), based_on_version: 'plus tard' },
+      { action: 'a', result: 'b', mutation_id: mutationId(), based_on_version: 'pread tard' },
       exec(),
     )
 
@@ -45,7 +45,7 @@ describe('refusals on the record', () => {
   })
 
   it('does not record twice a refusal the store already logged', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
     const before = store.currentTask()!.audit.length
 
     const result = await rejectApproach().execute(
@@ -63,7 +63,7 @@ describe('refusals on the record', () => {
   })
 
   it('says nothing was written and gives the version to retry with', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
 
     const result = await rejectApproach().execute(
       { approach: 'JWT B', reason: '', mutation_id: mutationId(), based_on_version: task.version },
@@ -77,7 +77,7 @@ describe('refusals on the record', () => {
   })
 
   it('leaves that reminder off a stale state refusal', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
     await store.mutateAsAgent(
       storeWrite('add_constraint', task.version, { rule: 'x' }, (s) => ({
         ...s,
@@ -104,10 +104,10 @@ describe('refusals on the record', () => {
 
 describe('retry advice', () => {
   it('does not suggest retrying on a closed task', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
     const complete = ALL_TOOLS.find((t) => t.name === 'complete_task')!
     await complete.execute(
-      { summary: 'Terminé.', mutation_id: mutationId(), based_on_version: task.version },
+      { summary: 'Done.', mutation_id: mutationId(), based_on_version: task.version },
       exec(),
     )
 
@@ -129,7 +129,7 @@ describe('retry advice', () => {
   })
 
   it('still suggests the retry when the input simply needs fixing', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
 
     const result = await rejectApproach().execute(
       { approach: 'JWT B', reason: '', mutation_id: mutationId(), based_on_version: task.version },

@@ -26,7 +26,7 @@ async function waitFor(condition: () => boolean, label: string, timeout = 15_000
     await settled(2)
     if (condition()) return
   }
-  throw new Error(`délai dépassé : ${label}`)
+  throw new Error(`timed out : ${label}`)
 }
 
 async function clearVault() {
@@ -41,7 +41,7 @@ beforeEach(async () => {
   await clearVault()
   await store.init()
   history.replaceState(null, '', '/')
-  document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+  document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
   root = document.querySelector<HTMLElement>('#app')!
   unmount = mount(root)
 })
@@ -52,7 +52,7 @@ afterEach(() => {
 })
 
 async function withSecret() {
-  // The secret exists BEFORE the task is opened: that is the real order, and it
+  // The secret exists before the task is opened: that is the real order, and it
   // is also the only one that guarantees the first render sees it.
   const task = buildDemoTask()
   await addSecret({
@@ -63,9 +63,9 @@ async function withSecret() {
     passphrase: PASSPHRASE,
   })
   await store.openPreparedTask(task)
-  // The condition targets the ROW, not the name: `gemini-api-key` is also the
+  // The condition targets the row, not the name: `gemini-api-key` is also the
   // form's placeholder text, and the wait ended on it straight away.
-  await waitFor(() => root.querySelector('[data-reveal]') !== null, 'affichage du nom scellé')
+  await waitFor(() => root.querySelector('[data-reveal]') !== null, 'sealed name display')
   return task
 }
 
@@ -75,7 +75,7 @@ describe('what the agent receives', () => {
 
     const rendered = textOf(await call(resumeTaskTool))
     expect(rendered).toContain('CREDENTIALS')
-    // The NAME is exact, always: it is what the agent copies out.
+    // The name is exact, always: it is what the agent copies out.
     expect(rendered).toContain('${gemini-api-key}')
     // The purpose is prose, and can be shortened under the budget.
     expect(rendered).toContain('Calls the Gemini API')
@@ -153,32 +153,30 @@ describe('what the agent receives', () => {
         kind: 'api_key' as const,
       }))
 
-    const deux = estimateTokens(renderTaskState(task, { credentials: creds(2) }))
-    const trente = estimateTokens(renderTaskState(task, { credentials: creds(30) }))
+    const twoTokens = estimateTokens(renderTaskState(task, { credentials: creds(2) }))
+    const thirtyTokens = estimateTokens(renderTaskState(task, { credentials: creds(30) }))
 
-    // The cost is bounded, not proportional. It is compared against what the
-    // twenty-eight extra names would cost if they were all rendered, and we
-    // require staying under a fifth of that. Measured: 17 tokens against 131,
-    // that is 13%. A hardcoded threshold would not say why and would drift with
-    // every rewording: this one already had to go from 5 to 20 the day a
-    // sentence shortened and let one more name fit.
+    // The cost is bounded, not proportional: compared against what the
+    // twenty-eight extra names would cost if all rendered, and required to stay
+    // under a fifth. 17 tokens against 131, 13%. A hardcoded threshold would
+    // not say why and would drift with every rewording; this one already went
+    // from 5 to 20 when a shortened sentence let one more name fit.
     //
-    // We do NOT measure a unit price by difference: the output for two
-    // credentials is SHORTER than the output for one, because the degradation
-    // ladder trims elsewhere as soon as room runs out. That is exactly what
-    // bounds the cost.
-    const vingtHuitNoms = estimateTokens(
+    // No unit price by difference: the output for two credentials is shorter
+    // than for one, the degradation ladder trimming elsewhere as room runs out.
+    // That is what bounds the cost.
+    const twentyEightNames = estimateTokens(
       creds(30)
         .slice(2)
         .map((c) => c.name)
         .join('\n'),
     )
-    expect(trente).toBeLessThanOrEqual(TOKEN_BUDGET)
-    expect(trente - deux).toBeLessThan(vingtHuitNoms * 0.2)
+    expect(thirtyTokens).toBeLessThanOrEqual(TOKEN_BUDGET)
+    expect(thirtyTokens - twoTokens).toBeLessThan(twentyEightNames * 0.2)
 
-    // A NAME is never truncated: an agent quoting `${service-1-api-k…}` would
-    // write a false reference. Under pressure we show fewer of them, we do not
-    // shorten them, and we say how many are hidden.
+    // A name is never truncated: an agent quoting `${service-1-api-k…}` writes
+    // a false reference. Under pressure, fewer names, not shorter ones, and a
+    // count of what is hidden.
     const output = renderTaskState(task, { credentials: creds(30) })
     expect(output).toMatch(/CREDENTIALS: names only, values sealed \(\d+ of 30\)/)
     expect(output).not.toMatch(/\$\{service-\d+-api-k…/)
@@ -266,7 +264,7 @@ describe('what the screen shows', () => {
 
     prompt.mockReturnValue(PASSPHRASE)
     root.querySelector<HTMLButtonElement>('[data-reveal]')!.click()
-    await waitFor(() => root.querySelector('[data-revealed]') !== null, 'révélation')
+    await waitFor(() => root.querySelector('[data-revealed]') !== null, 'reveal')
 
     expect(root.querySelector('[data-revealed]')?.textContent).toBe(VALUE)
     prompt.mockRestore()
@@ -277,7 +275,7 @@ describe('what the screen shows', () => {
     const prompt = vi.spyOn(window, 'prompt').mockReturnValue(PASSPHRASE)
 
     root.querySelector<HTMLButtonElement>('[data-reveal]')!.click()
-    await waitFor(() => root.innerHTML.includes(VALUE), 'révélation')
+    await waitFor(() => root.innerHTML.includes(VALUE), 'reveal')
 
     root.querySelector<HTMLButtonElement>('[data-reveal]')!.click()
     await waitFor(() => !root.innerHTML.includes(VALUE), 'repli')
@@ -298,13 +296,13 @@ describe('what the screen shows', () => {
     set('new-secret-value', VALUE)
     set('new-secret-passphrase', PASSPHRASE)
     root.querySelector<HTMLFormElement>('#form-secret')!.requestSubmit()
-    await waitFor(() => root.innerHTML.includes('stripe-secret'), 'scellement')
+    await waitFor(() => root.innerHTML.includes('stripe-secret'), 'sealing')
 
     expect((await listSecretNames(task.id)).map((s) => s.name)).toContain('stripe-secret')
 
-    // The value field is NOT kept between two renders, unlike the other inputs:
-    // a value that a render put back into the DOM would be readable by an agent
-    // driving the browser.
+    // The value field is not kept between renders, unlike the other inputs: a
+    // value put back into the DOM would be readable by an agent driving the
+    // browser.
     expect(root.querySelector<HTMLInputElement>('#new-secret-value')!.value).toBe('')
     expect(root.querySelector<HTMLInputElement>('#new-secret-passphrase')!.value).toBe('')
     expect(root.innerHTML).not.toContain(VALUE)
@@ -324,7 +322,7 @@ describe('what the screen shows', () => {
     set('new-secret-value', 'v')
     set('new-secret-passphrase', PASSPHRASE)
     root.querySelector<HTMLFormElement>('#form-secret')!.requestSubmit()
-    await waitFor(() => root.querySelector('[role="alert"]') !== null, 'refus du nom')
+    await waitFor(() => root.querySelector('[role="alert"]') !== null, 'name refusal')
 
     expect(root.querySelector('[role="alert"]')?.textContent).toBeTruthy()
     expect(root.querySelector('[role="alert"]')?.textContent).not.toContain('INVALID INPUT')
@@ -334,10 +332,10 @@ describe('what the screen shows', () => {
     await withSecret()
     const prompt = vi.spyOn(window, 'prompt').mockReturnValue(PASSPHRASE)
     root.querySelector<HTMLButtonElement>('[data-reveal]')!.click()
-    await waitFor(() => root.innerHTML.includes(VALUE), 'révélation')
+    await waitFor(() => root.innerHTML.includes(VALUE), 'reveal')
 
     await store.createAndOpenTask('Another task', 'Do something else')
-    await waitFor(() => !root.innerHTML.includes(VALUE), 'changement de cahier')
+    await waitFor(() => !root.innerHTML.includes(VALUE), 'changement de task')
     expect(root.textContent).toContain('No credentials yet.')
     prompt.mockRestore()
   })

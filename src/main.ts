@@ -8,11 +8,10 @@ import * as store from './store/taskStore'
 import { mount } from './ui/bench'
 import { currentTaskIdFromLocation } from './webmcp/location'
 
-// Before anything else: on the wrong origin, nothing that follows must run.
-// Mounting the page there would create a parallel database that nobody will
-// ever find again.
+// On the wrong origin nothing below must run: mounting the page there creates a
+// second database, unreachable from the canonical one.
 if (redirectToCanonical()) {
-  throw new Error('redirection vers l’origine canonique')
+  throw new Error('redirecting to the canonical origin')
 }
 
 const root = document.querySelector<HTMLElement>('#app')
@@ -25,11 +24,11 @@ mount(root)
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     // `updateViaCache: 'none'` makes the update check ignore the HTTP cache,
-    // without depending on a header we do not control. Measured in production:
+    // without depending on a header set elsewhere. In production
     // `public/_headers` asks for `no-cache` on `/sw.js` and Cloudflare serves
-    // `max-age=14400` (four hours), the worker being the only thing cached at
-    // the edge (`cf-cache-status: REVALIDATED` against `DYNAMIC`). A visitor
-    // who came back kept the old worker, and with it the old application.
+    // `max-age=14400`, the worker being the only thing edge-cached
+    // (`cf-cache-status: REVALIDATED` against `DYNAMIC`). A returning visitor
+    // kept the old worker, and with it the old application.
     void navigator.serviceWorker
       .register('/sw.js', { updateViaCache: 'none' })
       .catch(() => undefined)
@@ -39,7 +38,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 void (async () => {
   await store.init(bound ?? undefined)
 
-  const n = Number(new URLSearchParams(location.search).get('mesure'))
+  const n = Number(new URLSearchParams(location.search).get('measure'))
   if (!n) return
 
   const wanted = buildMeasureTask(n)

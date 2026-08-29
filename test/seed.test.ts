@@ -17,15 +17,18 @@ describe('the demo log', () => {
 
   it('leaves one agent proposal pending, without it forbidding anything', () => {
     const task = buildDemoTask()
-    const enAttente = proposedRejections(task)
-    expect(enAttente).toHaveLength(1)
-    expect(enAttente[0].source).toBe('agent')
+    const pendingRejections = proposedRejections(task)
+    expect(pendingRejections).toHaveLength(1)
+    expect(pendingRejections[0].source).toBe('agent')
 
     const output = renderTaskState(task)
     expect(output).toContain('PROPOSED BY AN AGENT: NOT binding')
-    expect(output).toContain(enAttente[0].approach)
-    const condamnations = output.slice(output.indexOf('REJECTED'), output.indexOf('PROPOSED BY'))
-    expect(condamnations).not.toContain(enAttente[0].approach)
+    expect(output).toContain(pendingRejections[0].approach)
+    const recordedRejections = output.slice(
+      output.indexOf('REJECTED'),
+      output.indexOf('PROPOSED BY'),
+    )
+    expect(recordedRejections).not.toContain(pendingRejections[0].approach)
   })
 
   it('separates the human constraints from the agent ones', () => {

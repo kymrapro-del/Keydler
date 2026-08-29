@@ -14,9 +14,9 @@ beforeEach(async () => {
 
 describe('replay of the same call', () => {
   it('writes once and returns the answer of the first call, word for word', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
-    const args = writeArgs(task, { action: 'Lu le module', result: 'trois entrées' }, id)
+    const args = writeArgs(task, { action: 'Read the module', result: 'three entries' }, id)
 
     const first = await call(logStep, args)
     const second = await call(logStep, args)
@@ -33,7 +33,7 @@ describe('replay of the same call', () => {
   })
 
   it('says it is a replay, rather than letting it believe in a duplicate', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const args = writeArgs(task, { action: 'a', result: 'b' })
 
     await call(logStep, args)
@@ -44,7 +44,7 @@ describe('replay of the same call', () => {
   })
 
   it('runs BEFORE the version check, or it would never serve', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const args = writeArgs(task, { action: 'a', result: 'b' })
     await call(logStep, args)
 
@@ -58,12 +58,12 @@ describe('replay of the same call', () => {
   })
 
   it('does not confuse two distinct writes with identical content', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
 
-    await call(logStep, writeArgs(task, { action: 'Relancé les tests', result: 'ok' }))
+    await call(logStep, writeArgs(task, { action: 'Reran the tests', result: 'ok' }))
     const v = currentTask().version
     const second = await call(logStep, {
-      action: 'Relancé les tests',
+      action: 'Reran the tests',
       result: 'ok',
       based_on_version: v,
       mutation_id: mutationId(),
@@ -74,14 +74,14 @@ describe('replay of the same call', () => {
   })
 
   it('refuses to return the answer of another operation under the same token', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
 
     const v = currentTask().version
     const result = await call(addDecision, {
-      choice: 'Approche C',
-      rationale: 'moins coûteuse',
+      choice: 'Approach C',
+      rationale: 'less expensive',
       based_on_version: v,
       mutation_id: id,
     })
@@ -93,7 +93,7 @@ describe('replay of the same call', () => {
   })
 
   it('does not consume the token of a refused write', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
 
     const refused = await call(logStep, {
@@ -114,7 +114,7 @@ describe('replay of the same call', () => {
   })
 
   it('survives a page reload', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const args = writeArgs(task, { action: 'a', result: 'b' })
     const first = await call(logStep, args)
 
@@ -128,12 +128,12 @@ describe('replay of the same call', () => {
   })
 
   it('bounds its memory, and then falls back on a readable refusal rather than a duplicate', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const first = mutationId()
-    await call(logStep, writeArgs(task, { action: 'la toute première', result: 'r' }, first))
+    await call(logStep, writeArgs(task, { action: 'the very first', result: 'r' }, first))
 
     for (let i = 0; i < MAX_MUTATION_RECORDS + 2; i++) {
-      await call(logStep, writeArgs(currentTask(), { action: `étape ${i}`, result: 'r' }))
+      await call(logStep, writeArgs(currentTask(), { action: `step ${i}`, result: 'r' }))
     }
 
     const final = currentTask()
@@ -142,7 +142,7 @@ describe('replay of the same call', () => {
 
     const tardif = await call(
       logStep,
-      writeArgs(task, { action: 'la toute première', result: 'r' }, first),
+      writeArgs(task, { action: 'the very first', result: 'r' }, first),
     )
     expect(tardif.isError).toBe(true)
     expect(textOf(tardif)).toContain('STALE STATE')
@@ -151,14 +151,17 @@ describe('replay of the same call', () => {
 
 describe('mutation_id collision', () => {
   it('refuses the same token carried by different arguments, writing nothing', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
 
-    const first = await call(logStep, writeArgs(task, { action: 'Lu le module', result: 'ok' }, id))
+    const first = await call(
+      logStep,
+      writeArgs(task, { action: 'Read the module', result: 'ok' }, id),
+    )
     expect(first.isError).toBeUndefined()
 
     const second = await call(logStep, {
-      action: 'Supprimé le cache',
+      action: 'Cleared the cache',
       result: 'ok',
       based_on_version: currentTask().version,
       mutation_id: id,
@@ -168,16 +171,16 @@ describe('mutation_id collision', () => {
     expect(textOf(second)).not.toContain('OK: log_step recorded')
     expect(textOf(second)).toContain('mutation_id')
     expect(currentTask().steps).toHaveLength(1)
-    expect(currentTask().steps[0].action).toBe('Lu le module')
+    expect(currentTask().steps[0].action).toBe('Read the module')
   })
 
   it('replays when the arguments are the same up to key order', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
 
     const first = await call(logStep, {
-      action: 'Lancé la suite',
-      result: '183 passés',
+      action: 'Ran the suite',
+      result: '183 passed',
       evidence: { kind: 'command_output', content: '$ npm test' },
       based_on_version: task.version,
       mutation_id: id,
@@ -187,8 +190,8 @@ describe('mutation_id collision', () => {
       mutation_id: id,
       evidence: { content: '$ npm test', kind: 'command_output' },
       based_on_version: task.version,
-      result: '183 passés',
-      action: 'Lancé la suite',
+      result: '183 passed',
+      action: 'Ran the suite',
     })
 
     expect(rejeu.isError).toBeUndefined()
@@ -197,12 +200,12 @@ describe('mutation_id collision', () => {
   })
 
   it('ignores the differences validation erases anyway', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
 
-    await call(logStep, writeArgs(task, { action: 'Lu le module', result: 'ok' }, id))
+    await call(logStep, writeArgs(task, { action: 'Read the module', result: 'ok' }, id))
     const rejeu = await call(logStep, {
-      action: '  Lu le module  ',
+      action: '  Read the module  ',
       result: 'ok',
       based_on_version: task.version,
       mutation_id: id,
@@ -213,13 +216,13 @@ describe('mutation_id collision', () => {
   })
 
   it('tells an argument collision from an operation collision', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
 
     const otherOperation = await call(addDecision, {
-      choice: 'Approche C',
-      rationale: 'moins coûteuse',
+      choice: 'Approach C',
+      rationale: 'less expensive',
       based_on_version: currentTask().version,
       mutation_id: id,
     })
@@ -238,13 +241,13 @@ describe('mutation_id collision', () => {
   })
 
   it('records the collision in the log, with no mutation and no version change', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
-    await call(logStep, writeArgs(task, { action: 'Lu le module', result: 'ok' }, id))
+    await call(logStep, writeArgs(task, { action: 'Read the module', result: 'ok' }, id))
 
     const before = currentTask()
     const result = await call(logStep, {
-      action: 'Supprimé le cache',
+      action: 'Cleared the cache',
       result: 'ok',
       based_on_version: before.version,
       mutation_id: id,
@@ -263,14 +266,14 @@ describe('mutation_id collision', () => {
   })
 
   it('records the reuse for another tool too', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
 
     const before = currentTask()
     await call(addDecision, {
-      choice: 'Approche C',
-      rationale: 'moins coûteuse',
+      choice: 'Approach C',
+      rationale: 'less expensive',
       based_on_version: before.version,
       mutation_id: id,
     })
@@ -282,7 +285,7 @@ describe('mutation_id collision', () => {
   })
 
   it('does not dirty the log for a replay, which refuses nothing', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const args = writeArgs(task, { action: 'a', result: 'b' })
     await call(logStep, args)
 
@@ -293,7 +296,7 @@ describe('mutation_id collision', () => {
   })
 
   it('does not accept a record without a fingerprint as a basis for replay', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
 

@@ -757,7 +757,7 @@ export function reopenTask(state: TaskState, reason: unknown, ctx?: MutationCont
       retryable: false,
     })
   }
-  const motif = requireText('reason', reason, 400)
+  const pattern = requireText('reason', reason, 400)
 
   return apply(
     state,
@@ -765,8 +765,8 @@ export function reopenTask(state: TaskState, reason: unknown, ctx?: MutationCont
       operation: 'reopen_task',
       actor: 'human',
       basedOnVersion: null,
-      detail: motif,
-      patch: { status: 'active', next: motif },
+      detail: pattern,
+      patch: { status: 'active', next: pattern },
     },
     ctx,
   )
@@ -788,9 +788,8 @@ export function setGoal(state: TaskState, goal: unknown, ctx?: MutationContext):
       actor: 'human',
       basedOnVersion: null,
       detail: value ?? '(cleared)',
-      // Always recorded, even when empty: “there was nothing” and “nothing was
-      // recorded” must not be confused, or setting a goal for the first time
-      // stops being undoable.
+      // Recorded even when empty: "there was nothing" and "nothing was
+      // recorded" must not merge, or a first goal stops being undoable.
       previous: state.goal ?? '',
       patch: { goal: value },
     },
@@ -822,9 +821,8 @@ export function setNext(
 }
 
 /**
- * STRING comparison, not meaning: two different wordings of the same ban will
- * both get through. The message says so, so that nobody takes this guard rail
- * for understanding.
+ * String comparison, not meaning: two wordings of the same ban both get
+ * through. The message says so.
  */
 function wordsOf(value: string): string {
   return fold(value)
@@ -834,10 +832,9 @@ function wordsOf(value: string): string {
 }
 
 /**
- * The guard compares the new entry to EVERYTHING already recorded; folding it
- * once per comparison folded it as many times as there are entries. Measured,
- * adding a rule went from 0.051 ms at 100 rules to 1.789 ms at 2000. The scan
- * stays linear, which is the question being asked.
+ * The guard compares the new entry to every one already recorded; folding it
+ * per comparison folded it once per entry. Adding a rule: 0.051 ms at 100
+ * rules, 1.789 ms at 2000. The scan stays linear.
  */
 function repeats(existing: readonly string[], candidate: string): boolean {
   const words = wordsOf(candidate)
@@ -947,9 +944,9 @@ type Undoable = {
 }
 
 /**
- * Only what is STILL VISIBLE in the current state can be undone. Without that
- * condition, undoing twice would replay the same action backwards, and a
- * correction made by hand in the meantime would be overwritten.
+ * Only what is still visible in the current state can be undone. Otherwise a
+ * second undo replays the same action backwards, overwriting any correction
+ * made by hand in between.
  */
 function invert(state: TaskState, entry: AuditEntry): Undoable | null {
   const id = entry.targetId
@@ -1004,7 +1001,7 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
     }
 
     case 'set_goal': {
-      // `null` and `''` both say “nothing”: comparing them as they are would
+      // `null` and `''` both say "nothing": comparing them as they are would
       // offer to undo what has just been undone.
       if (entry.previous === undefined || (state.goal ?? '') === entry.previous) return null
       const back = entry.previous
@@ -1015,8 +1012,7 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
     }
 
     // `set_next` is the old name of the same operation. Logs written before the
-    // rename carry such entries: refusing them here would take away the undo of
-    // a step already recorded.
+    // rename carry it, and refusing it here would drop their undo.
     case 'set_next':
     case 'set_next_action': {
       if (entry.previous === undefined || (state.next ?? '') === entry.previous) return null
@@ -1064,9 +1060,9 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
 }
 
 /**
- * Only the tail of the log is walked back, stopping at the first write that is
- * not an undoable human decision: walking back over an agent's work would
- * revoke a week-old decision in one click.
+ * Walks back the tail only, stopping at the first write that is not an undoable
+ * human decision. Walking over an agent's work would revoke a week-old decision
+ * in one click.
  */
 const UNDOABLE_OPERATIONS = new Set([
   'deactivate_constraint',
@@ -1386,10 +1382,9 @@ export function evidenceCounts(state: TaskState): EvidenceCounts {
 }
 
 /**
- * What leaves with an export or a shareable link without anyone re-reading it:
- * a command output pasted whole can carry a token, an internal machine name, a
- * customer name. Sealed credentials, for their part, live outside `TaskState`
- * and structurally cannot travel; evidence can.
+ * What leaves with an export or a link without anyone re-reading it: a command
+ * output pasted whole can carry a token, a machine name, a customer name.
+ * Sealed credentials live outside `TaskState` and cannot travel; evidence can.
  */
 export function attachedEvidenceCount(state: TaskState): number {
   return state.steps.filter((s) => s.evidence !== null).length

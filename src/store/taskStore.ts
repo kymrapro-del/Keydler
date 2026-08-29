@@ -68,10 +68,9 @@ export function boundTaskId(): string | null {
 }
 
 export async function init(taskId?: string): Promise<void> {
-  // Open the channel HERE, and not on the first announcement. A tab that only
-  // reads never announces anything: created lazily, it stayed deaf, and it was
-  // exactly the tab to wake. Found in the browser, with two tabs. The suite did
-  // not see it, because every one of its stores had written before listening.
+  // Opened here, not on the first announcement. A tab that only reads never
+  // announces, so a lazily created channel never listened. The suite missed it:
+  // each of its stores wrote before listening.
   bus()
 
   if (!initPromise || (taskId !== undefined && taskId !== snapshot.boundId)) {
@@ -191,14 +190,13 @@ export async function deleteCurrentTask(): Promise<void> {
   await enqueue(async () => {
     await deleteTask(current.id)
     // Sealed credentials live outside the task state: without this call they
-    // survived the deletion, out of reach of the screen but very much present
-    // on disk.
+    // survived the deletion, off screen but still on disk.
     await deleteSecretsForTask(current.id).catch(() => undefined)
     forgetSeen(current.id)
     tasksChanged()
-    // Name the deleted task, and not only "the list changed": without that the
-    // other tab kept a vanished task on screen, and its next write brought it
-    // back, stripped of its sealed credentials, which had been erased.
+    // Name the deleted task, not just "the list changed": the other tab kept a
+    // vanished task on screen, and its next write brought it back without the
+    // sealed credentials, which were gone.
     announce(current.id, 0, true)
     const following = await loadLastTask()
     if (following) {
@@ -216,8 +214,8 @@ export async function allTasks(): Promise<TaskState[]> {
 
 /**
  * The same read, cut down to what the picker displays. Whole tasks become
- * collectable as soon as it returns: it is the retained memory that is bounded,
- * not the cost of the read.
+ * collectable as soon as it returns: this bounds retained memory, not the cost
+ * of the read.
  */
 export async function allTaskCards(): Promise<TaskCard[]> {
   return (await listTasks()).map(cardOf)
@@ -267,10 +265,10 @@ async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskSta
   return next
 }
 
-// Two tabs on the same task: measured, the second wrote up to v31 while the
-// first still displayed v29 and "Task closed". `BroadcastChannel` does not
-// deliver to the context that posts, so there is no echo to filter. The re-read
-// goes through the write queue, otherwise it would slot into a write in flight.
+// Two tabs on the same task: the second wrote up to v31 while the first still
+// displayed v29 and "Task closed". `BroadcastChannel` does not deliver to the
+// posting context, so there is no echo to filter. The re-read goes through the
+// write queue, or it would slot into a write in flight.
 const CHANNEL = 'cahier-de-quart'
 
 type Announcement = { id: string | null; version: number; gone?: boolean }
@@ -283,9 +281,8 @@ function bus(): BroadcastChannel | null {
     channel = new BroadcastChannel(CHANNEL)
     channel.onmessage = (event: MessageEvent<Announcement>) => {
       const { id, version, gone } = event.data ?? { id: null, version: 0 }
-      // Never `tasksChangedEverywhere` here: re-announcing what we have just
-      // received would bounce the message between two tabs, each answering the
-      // other, endlessly.
+      // Never `tasksChangedEverywhere` here: re-announcing what just arrived
+      // bounces the message between two tabs without end.
       tasksChanged()
 
       if (id !== null && id === snapshot.boundId) {
@@ -307,16 +304,15 @@ function announce(id: string | null, version: number, gone = false): void {
   try {
     bus()?.postMessage({ id, version, gone })
   } catch {
-    // A tab that closes can close the channel under our feet. Announcing
-    // nothing is a display defect elsewhere, not a lost write.
+    // A tab that closes can close the channel underneath. Announcing nothing is
+    // a display defect elsewhere, not a lost write.
   }
 }
 
-// A burst of announcements must not produce a burst of re-reads: measured on a
-// 20,000 step task, 50 announcements cost 1702 ms of which 1668 thrown away
-// (deserializing the record, not normalizing it) and delayed local writes,
-// which share the queue, by a factor of 51. One re-read per task is enough: the
-// highest version announced decides whether to re-read.
+// A burst of announcements must not become a burst of re-reads. On a 20,000
+// step task, 50 announcements cost 1702 ms, 1668 of them thrown away, and
+// delayed local writes sharing the queue by a factor of 51. One re-read per
+// task: the highest version announced decides.
 const pendingRereads = new Map<string, number>()
 
 function scheduleReread(id: string, version: number): void {
@@ -338,10 +334,9 @@ function scheduleReread(id: string, version: number): void {
 async function resyncFromDisk(id: string): Promise<void> {
   try {
     const fresh = await loadTask(id)
-    // Recheck the binding AFTER the await: the guard set when the message
-    // arrived says nothing about what happened during the read, and writing
-    // here without redoing it flipped the screen (and `boundId`) back to the
-    // previous task, just after the user had opened another one.
+    // Recheck the binding after the await: the guard set when the message
+    // arrived says nothing about the read. Without it the screen and `boundId`
+    // flipped back to the previous task, just after another was opened.
     if (id !== snapshot.boundId) return
     if (fresh) setSnapshot({ status: 'ready', task: fresh, error: null, boundId: fresh.id })
     else setSnapshot({ status: 'missing', task: null, error: null, boundId: id })

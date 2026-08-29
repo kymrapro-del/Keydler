@@ -21,9 +21,9 @@ beforeEach(clear)
 
 describe('normalizing on read', () => {
   it('survives a record with no audit log and no arrays', async () => {
-    await writeRaw({ id: 'ancien', title: 'Cahier d’hier', version: 7, updatedAt: 1 })
+    await writeRaw({ id: 'old', title: "Yesterday's task", version: 7, updatedAt: 1 })
 
-    const task = await loadTask('ancien')
+    const task = await loadTask('old')
     expect(task).toBeDefined()
     expect(task!.version).toBe(7)
     expect(task!.audit).toEqual([])
@@ -37,7 +37,7 @@ describe('normalizing on read', () => {
     const task = normalizeTask({
       id: 'x',
       version: 1,
-      constraints: [{ id: 'c1', rule: 'Ne pas toucher au schéma' }],
+      constraints: [{ id: 'c1', rule: 'Do not touch the schema' }],
     } as never)
 
     expect(task!.constraints[0].active).toBe(true)
@@ -47,7 +47,7 @@ describe('normalizing on read', () => {
     const task = normalizeTask({
       id: 'x',
       version: 1,
-      steps: [{ id: 's1', action: 'a', result: 'b', confidence: 'totalement_prouvé' }],
+      steps: [{ id: 's1', action: 'a', result: 'b', confidence: 'fully_proven' }],
     } as never)
 
     expect(task!.steps[0].confidence).toBe('claimed')
@@ -58,7 +58,7 @@ describe('normalizing on read', () => {
       id: 'x',
       version: 1,
       steps: [
-        { id: 's1', action: 'a', result: 'b', evidence: { kind: 'télépathie', content: 'x' } },
+        { id: 's1', action: 'a', result: 'b', evidence: { kind: 'telepathy', content: 'x' } },
       ],
     } as never)
 
@@ -67,11 +67,11 @@ describe('normalizing on read', () => {
 
   it('keeps an id exactly as given: it is the primary key', async () => {
     const bizarre = 'x" onload="alert(1)'
-    await writeRaw({ id: bizarre, title: 'Cahier', version: 3, updatedAt: 1 })
+    await writeRaw({ id: bizarre, title: 'Task', version: 3, updatedAt: 1 })
 
-    const relu = await loadTask(bizarre)
-    expect(relu?.id).toBe(bizarre)
-    expect(relu?.version).toBe(3)
+    const reread = await loadTask(bizarre)
+    expect(reread?.id).toBe(bizarre)
+    expect(reread?.version).toBe(3)
   })
 
   it('defuses a hostile id at render, not at storage', () => {
@@ -87,15 +87,15 @@ describe('normalizing on read', () => {
   })
 
   it('refuses a record written by a newer version', async () => {
-    await writeRaw({ id: 'futur', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
+    await writeRaw({ id: 'future', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
 
-    await expect(loadTask('futur')).rejects.toBeInstanceOf(FutureSchemaError)
+    await expect(loadTask('future')).rejects.toBeInstanceOf(FutureSchemaError)
   })
 
   it('does not take the whole list down for one unreadable record', async () => {
-    const sain = createTask({ title: 'Sain', next: 'Continuer' })
+    const sain = createTask({ title: 'Sain', next: 'Continue' })
     await saveTask(sain)
-    await writeRaw({ id: 'futur', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
+    await writeRaw({ id: 'future', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
 
     const tasks = await listTasks()
     expect(tasks.map((t) => t.title)).toEqual(['Sain'])
@@ -105,14 +105,14 @@ describe('normalizing on read', () => {
     const task = normalizeTask({
       id: 'x',
       version: 2,
-      decisions: [{ id: 'd1', choice: 'Approche C' }, null],
+      decisions: [{ id: 'd1', choice: 'Approach C' }, null],
       rejected: [{ id: 'r1', approach: 'JWT B', source: 'human' }, null],
       audit: [{ id: 'a1', operation: 'log_step', outcome: 'refused', repeated: 3 }, { id: 'a2' }],
     } as never)
 
     expect(task!.decisions).toHaveLength(1)
     expect(task!.decisions[0]).toMatchObject({
-      choice: 'Approche C',
+      choice: 'Approach C',
       rationale: '',
       source: 'agent',
     })
@@ -128,29 +128,29 @@ describe('normalizing on read', () => {
     const original = createTask({ title: 'Normal', next: 'Suite' })
     await saveTask(original)
 
-    const relu = await loadTask(original.id)
-    expect(relu).toMatchObject({
+    const reread = await loadTask(original.id)
+    expect(reread).toMatchObject({
       id: original.id,
       title: 'Normal',
       version: original.version,
       next: 'Suite',
       status: 'active',
     })
-    expect(relu!.audit).toHaveLength(original.audit.length)
+    expect(reread!.audit).toHaveLength(original.audit.length)
   })
 })
 
 describe('schema v1 migration', () => {
   function v1(): Record<string, unknown> {
     return {
-      id: 'ancien-1',
-      title: 'Tâche d’avant',
+      id: 'old-1',
+      title: 'Task from before',
       version: 4,
       status: 'active',
       schemaVersion: 1,
       constraints: [
-        { id: 'c1', rule: 'Règle humaine', source: 'human', addedAtVersion: 2, active: true },
-        { id: 'c2', rule: 'Règle d’agent', source: 'agent', addedAtVersion: 3, active: true },
+        { id: 'c1', rule: 'Human rule', source: 'human', addedAtVersion: 2, active: true },
+        { id: 'c2', rule: 'Agent rule', source: 'agent', addedAtVersion: 3, active: true },
       ],
       rejected: [
         { id: 'r1', approach: 'A', reason: 'r', source: 'human', addedAtVersion: 2 },
@@ -159,7 +159,7 @@ describe('schema v1 migration', () => {
       steps: [
         {
           id: 's1',
-          action: 'Lancé les tests',
+          action: 'Ran the tests',
           result: 'ok',
           confidence: 'machine_verified',
           evidence: { kind: 'test_report', content: '183 passed', verifiedAt: null },
@@ -218,13 +218,20 @@ describe('schema v1 migration', () => {
       ...v1(),
       schemaVersion: 2,
       mutations: [
-        { id: 'm-avec', operation: 'log_step', version: 2, fingerprint: 'f', result: 'ok', at: 1 },
-        { id: 'm-sans', operation: 'log_step', version: 3, result: 'ok', at: 2 },
+        {
+          id: 'm-with-fingerprint',
+          operation: 'log_step',
+          version: 2,
+          fingerprint: 'f',
+          result: 'ok',
+          at: 1,
+        },
+        { id: 'm-without-fingerprint', operation: 'log_step', version: 3, result: 'ok', at: 2 },
       ],
     }
     const task = normalizeTask(stored as never)!
 
-    expect(task.mutations.map((m) => m.id)).toEqual(['m-avec'])
+    expect(task.mutations.map((m) => m.id)).toEqual(['m-with-fingerprint'])
   })
 
   it('still refuses a record newer than the code reading it', () => {

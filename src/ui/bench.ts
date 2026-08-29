@@ -135,9 +135,8 @@ function resetDrafts(): void {
 
 let creating = false
 
-// The `/workspace` view: until now the log list, the export and the import
-// lived in folded panels inside an open log, so invisible to whoever arrives
-// from outside without one.
+// The `/workspace` view. List, export and import used to sit in folded panels
+// inside an open log, unreachable to a visitor arriving without one.
 let atWorkspace = false
 
 let credentials: SecretName[] = []
@@ -502,10 +501,9 @@ function remainder(total: number): string {
     : ''
 }
 
-// 2000 rules took a render round trip from 17 ms to 501 ms, for 1.2 MB of HTML
-// and 10,000 nodes, and the page redraws on every keystroke in the search. So
-// the display is bounded, never in silence: the hidden count is written out,
-// and a button opens the whole list.
+// 2000 rules: 17 ms to 501 ms per render, 1.2 MB of HTML, 10,000 nodes, on
+// every keystroke in the search. Bounded, with the hidden count written out and
+// a button to open the full list.
 const expanded = new Set<string>()
 
 function capped<T>(id: string, items: readonly T[], limit = MAX_ROWS): T[] {
@@ -657,8 +655,8 @@ function renderCompletedWork(task: TaskState): string {
 
 function trailButton(task: TaskState, id: string, label: string): string {
   const trail = historyOf(task, id)
-  // Even with no surviving entry the button stays: hiding the history of an
-  // item whose log was pruned would amount to hiding the pruning.
+  // The button stays with no surviving entry: hiding a pruned item's history
+  // hides the pruning.
   if (trail.entries.length === 0 && !trail.mayBeIncomplete) return ''
   return `<button type="button" class="btn btn--quiet" data-trail="${escapeHtml(id)}"
             aria-expanded="${showingTrail === id}"
@@ -703,10 +701,9 @@ const LIST_PREVIEW = 12
 function renderRules(task: TaskState): string {
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
 
-  // The order they were added in is kept: sorting the rules in force ahead of
-  // the lifted ones made the row you had just lifted jump, under the cursor.
-  // The bound is applied in order, and it SAYS how many obligations fall
-  // outside the window: the guarantee was what counted, not the order.
+  // Insertion order. Sorting live rules ahead of lifted ones made the row just
+  // lifted jump under the cursor. The bound applies in order and says how many
+  // obligations fall outside the window.
   const shown = capped('rules', decided, LIST_PREVIEW)
   const hiddenBinding = decided
     .slice(shown.length)
@@ -749,9 +746,8 @@ function renderRules(task: TaskState): string {
          </p>`
       : ''
 
-  // A count is not enough when what is out of sight is an OBLIGATION: it is
-  // said in full words rather than letting the list be read as though it were
-  // the whole of it.
+  // A count is not enough when what is out of sight is an obligation: said in
+  // words, so the list is not read as the whole of it.
   const warning =
     hiddenBinding > 0
       ? `<p class="muted">${hiddenBinding} ${plural(hiddenBinding, 'rule', 'rules')} still in
@@ -847,9 +843,8 @@ const FILTER_LABEL: Record<MatchKind, string> = {
 }
 
 function renderFilters(all: Match[]): string {
-  // One pass to count, rather than one per category: on a word that is frequent
-  // in a big log the results run into the thousands, and there are eight
-  // categories.
+  // One pass, not one per category: a frequent word in a big log returns
+  // thousands of results, and there are eight categories.
   const counts = new Map<MatchKind, number>()
   for (const m of all) counts.set(m.kind, (counts.get(m.kind) ?? 0) + 1)
   const present = [...counts.keys()]
@@ -912,8 +907,8 @@ function renderSearchResults(task: TaskState | null): string {
 function renderSwitcher(task: TaskState): string {
   const others = allTasks.filter((t) => t.id !== task.id && (showArchived || !t.archived))
   const hidden = allTasks.filter((t) => t.id !== task.id && t.archived).length
-  // Every row has `needsYou` sweep the steps of ITS OWN log: the switcher
-  // therefore costs the whole device, not just the open log.
+  // Each row runs `needsYou` over its own log, so the switcher costs the whole
+  // device, not just the open one.
   const shown = capped('tasks', others, LIST_PREVIEW)
   const rows = shown
     .map((t) => {
@@ -1241,11 +1236,10 @@ function renderWaiting(task: TaskState): string {
     </section>`
 }
 
-// The `resume_task` text costs 5 ms on a log of 20,000 steps, and it was
-// recomputed on every render, so on every keystroke in the search, for a panel
-// that is folded most of the time. The log being immutable and replaced whole,
-// comparing identities is enough; the minute goes into the key because the
-// rendering carries a line that depends on the time ("LAST WRITE …").
+// The `resume_task` text costs 5 ms on a 20,000 step log and was recomputed on
+// every render, for a panel that is folded most of the time. The log is
+// immutable and replaced whole, so identity comparison suffices. The minute is
+// in the key because the text carries a "LAST WRITE" line.
 let briefing: {
   task: TaskState
   credentials: readonly SecretName[]
@@ -1280,9 +1274,8 @@ function renderHandoff(task: TaskState): string {
     return undoButton ? `<p class="handoff">${undoButton}</p>` : ''
   }
 
-  // The warning has to land BEFORE the click, not after: once the address is in
-  // the clipboard the decision is made. And it only appears when it is true: a
-  // warning shown for no reason teaches people to stop reading it.
+  // Before the click, not after: once the address is in the clipboard the
+  // decision is made. Shown only when true, so it keeps being read.
   const carried = attachedEvidenceCount(task)
   const carriedNote =
     carried > 0
@@ -1582,9 +1575,9 @@ function renderActivity(task: TaskState): string {
 const HISTORY_PREVIEW = 12
 
 function renderHistory(task: TaskState): string {
-  // Describing the 200 entries of the log to show twelve of them, on every
-  // render. `describeHistory` reverses then describes one by one, so take the
-  // TAIL of the log, which becomes the head once reversed.
+  // Was describing 200 entries to show twelve, on every render.
+  // `describeHistory` reverses then describes one by one, so pass the tail,
+  // which becomes the head after reversing.
   const total = task.audit.length
   const shown = describeHistory(showAllHistory ? task.audit : task.audit.slice(-HISTORY_PREVIEW))
 
@@ -1749,15 +1742,14 @@ function renderDashboard(task: TaskState): string {
     </footer>`
 }
 
-// What a "Sign in" button is replaced by here: the browser IS the account, but
-// nothing said so. The second device is served by a file and not by a link,
-// because a log in real use does not fit in one: 60 steps make 17,349 sealed
-// characters against 16,000 for a URL, and 85,657 as a file.
+// What replaces a "Sign in" button: the browser is the account, and nothing
+// said so. A second device gets a file, not a link: 60 steps seal to 17,349
+// characters against a 16,000 URL limit, and 85,657 as a file.
 function renderWorkspace(): string {
   const n = allTasks.length
-  // `TaskCard` carries neither the step count nor the version, by design:
-  // putting them back would re-read every log on the device to draw a list. The
-  // next action is what helps you recognise your own one anyway.
+  // `TaskCard` carries neither step count nor version: either would re-read
+  // every log on the device to draw a list. The next action identifies a task
+  // well enough.
   const rows = allTasks
     .map(
       (t) => `<li class="row">
@@ -1836,12 +1828,6 @@ function renderWorkspace(): string {
       <div class="actions">
         <button type="button" id="leave-workspace" class="btn btn--quiet">Back</button>
       </div>
-      <p class="muted landing__credits">
-        Google Fonts · Material Design 3 · Google Icons
-      </p>
-      <p class="muted landing__credits landing__credits--models">
-        Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna
-      </p>
     </section>`
 }
 
@@ -1857,8 +1843,8 @@ function renderBody(): string {
   }
 
   if (status === 'missing') {
-    // When a link carries the log, saying "it does not exist here" at the same
-    // time as offering to take it is a contradiction on screen.
+    // With a link carrying the log, "it does not exist here" alongside an offer
+    // to take it contradicts itself.
     const alarm =
       offered || linkPending
         ? ''
@@ -1870,9 +1856,9 @@ function renderBody(): string {
     return `${alarm}${renderLanding()}`
   }
 
-  // The creation form takes the whole screen, even when a log is already open:
-  // without this, "New task" showed nothing from a dashboard, the form living
-  // only in the landing screen.
+  // The creation form takes the whole screen even with a log open. Without
+  // this, "New task" from a dashboard showed nothing: the form lived only in
+  // the landing screen.
   if (creating) return renderLanding()
   if (atWorkspace) return renderWorkspace()
   return task ? renderDashboard(task) : renderLanding()
@@ -1937,7 +1923,7 @@ function bindCreation(): void {
     }
 
     humanError = null
-    // Read BEFORE creating: opening the new task replaces the current one.
+    // Read before creating: opening the new task replaces the current one.
     const source = carryRules ? store.currentTask() : null
 
     void store
@@ -1967,7 +1953,7 @@ function bindCreation(): void {
   })
 
   document.querySelector('#seed')?.addEventListener('click', () => {
-    const n = Number(new URLSearchParams(location.search).get('mesure'))
+    const n = Number(new URLSearchParams(location.search).get('measure'))
     void store.openPreparedTask(n ? buildMeasureTask(n) : buildDemoTask())
   })
 }
@@ -2400,9 +2386,8 @@ function bindSupervision(): void {
   }
 
   document.querySelector('#new-task')?.addEventListener('click', () => {
-    // From `/workspace`, creating a log has to LEAVE it: the creation form and
-    // the workspace are two views, and staying on the second would hide the
-    // first.
+    // Creating from `/workspace` has to leave it: form and workspace are two
+    // views, and staying on one hides the other.
     atWorkspace = false
     creating = true
     clearNotice()
@@ -2592,9 +2577,9 @@ function bindSupervision(): void {
   document.querySelector<HTMLFormElement>('#form-sealed')?.addEventListener('submit', (event) => {
     event.preventDefault()
     const packed = sealedLink
-    const champ = document.querySelector<HTMLInputElement>('#sealed-passphrase')
-    if (!packed || !champ?.value.trim()) return
-    const phrase = champ.value
+    const field = document.querySelector<HTMLInputElement>('#sealed-passphrase')
+    if (!packed || !field?.value.trim()) return
+    const phrase = field.value
     humanError = null
     linkPending = true
     renderNow()
@@ -2608,9 +2593,8 @@ function bindSupervision(): void {
       },
       (error: unknown) => {
         linkPending = false
-        // "The passphrase is wrong" and "this link is unreadable" are not said
-        // the same way to someone who has just typed a passphrase: one is fixed
-        // by trying again, the other is not.
+        // "Wrong passphrase" and "unreadable link" are different messages to
+        // someone who just typed one: retrying fixes the first, not the second.
         humanError =
           error instanceof WrongPassphraseError
             ? 'That passphrase does not open this link. Ask them to repeat it: the link itself is fine.'
@@ -2779,10 +2763,9 @@ function bindTechnical(): void {
 
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
 
-  // A link rather than a button: it changes the address, so middle-click,
-  // Ctrl+click and "open in a new tab" have to work, and a screen reader has to
-  // announce it as a destination. It is also the only <a href> on the page, so
-  // the only crawl path a search engine sees.
+  // A link, not a button: it changes the address, so middle-click, Ctrl+click
+  // and "open in a new tab" must work, and a screen reader must announce a
+  // destination. Also the only <a href> on the page, so the only crawl path.
   document.querySelector('#go-workspace')?.addEventListener('click', (e) => {
     // Only the plain click is intercepted: modifiers and the middle button must
     // keep the browser's native behaviour.
@@ -2794,7 +2777,7 @@ function bindTechnical(): void {
   })
 
   document.querySelector('#leave-workspace')?.addEventListener('click', () => {
-    // Back where you came from: to a log if a log is open, to the landing page
+    // Back to where the visit started: a log if one is open, the landing page
     // otherwise. `reflectAddress` brings the address back in step.
     atWorkspace = false
     renderNow()
@@ -2846,7 +2829,7 @@ function download(name: string, content: string): void {
 let lastAnnouncement = ''
 
 function announce(): void {
-  const region = document.querySelector('#annonces')
+  const region = document.querySelector('#announcements')
   if (!region) return
 
   const task = store.getSnapshot().task
@@ -2889,8 +2872,8 @@ function render(): void {
     if (known === null) markSeen(openTask.id, openTask.version)
   }
 
-  // Marked "seen" only if the tab is really on screen. A tab in the background
-  // while an agent is working is exactly the absence this digest has to report.
+  // Marked "seen" only if the tab is really on screen. A backgrounded tab while
+  // an agent works is the absence this digest reports.
   if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
 
   if (!storageRead) {
@@ -2906,7 +2889,7 @@ function render(): void {
     const packed = readLinkFragment()
     if (packed && isSealedLink(packed)) {
       // Nothing is attempted: without the passphrase there is nothing to read,
-      // not even the title. That is the property being sold.
+      // not even the title.
       sealedLink = packed
     } else if (packed) {
       linkPending = true
@@ -2929,10 +2912,9 @@ function render(): void {
   const waiting = openTask ? pendingApprovals(openTask).length + openQuestions(openTask).length : 0
   document.title = attentionTitle(document.title, waiting, looking())
 
-  // Without the open log's version: the switcher rows do not depend on it, and
-  // putting it in there re-read EVERY log on the device on every write: 61 ms
-  // and 15.9 MB read to produce 9 kB of cards, measured on 20 logs of 2000
-  // steps.
+  // Not keyed on the open log's version: the rows do not depend on it, and
+  // including it re-read every log on the device on every write. 61 ms and 15.9
+  // MB to produce 9 kB of cards, on 20 logs of 2000 steps.
   const listKey = openTask ? `${openTask.id}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
   if ((openTask?.id ?? null) !== credentialsFor) {
@@ -2948,9 +2930,9 @@ function render(): void {
 
   const headingFocused = active !== null && active === root.querySelector('.page-head h1')
 
-  // Any element with an id, not just the fields: an agent write redraws the
-  // page, and without this the focus fell back to `body` from any button: on a
-  // keyboard, you start again from the top of the page.
+  // Any element with an id, not just fields: an agent write redraws the page,
+  // and focus fell back to `body` from any button, sending a keyboard user back
+  // to the top.
   const focusedId =
     !focused && active instanceof HTMLElement && active.id && root.contains(active)
       ? active.id
@@ -3069,8 +3051,8 @@ function closeOnEscape(event: KeyboardEvent): void {
     return
   }
 
-  // The search hides the dashboard: a form left open underneath it is
-  // invisible. We close what is on screen, not what is held in memory.
+  // The search hides the dashboard, so a form left open underneath is
+  // invisible. Close what is on screen, not what is held in memory.
   if (searching()) {
     drafts['search'] = ''
     event.preventDefault()

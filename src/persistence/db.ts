@@ -39,7 +39,7 @@ export function getDb(): Promise<IDBPDatabase<KeydlerDB>> {
           secrets.createIndex('by-taskId', 'taskId')
         }
         if (oldVersion < 3) {
-          // Concurrency control needs ONLY the version, and read it by reading
+          // Concurrency control needs only the version, and read it by reading
           // the whole log back, 2 ms for 800 kB in Chrome, against 0.1 ms for a
           // key. The index carries the two fields of the log itself: no mirror
           // to keep up to date, so nothing that can drift from what it holds.

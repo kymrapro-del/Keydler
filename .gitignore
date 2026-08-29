@@ -4,8 +4,8 @@ dist
 .env
 .env.*
 !.env.example
-# Versionné à dessein : un jeton d origin trial est public par construction,
-# et le dépôt doit pouvoir refaire l artefact déployé pendant le gel.
+# Intentionally tracked : origin trial tokens are public and the repository
+# must reproduce the deployed artifact during the freeze.
 !.env.production
 .DS_Store
 *.tsbuildinfo
@@ -13,5 +13,5 @@ dist
 .vercel
 .netlify
 
-# État local de wrangler (essais de déploiement), jamais versionné.
+# Local Wrangler deployment state.
 .wrangler/

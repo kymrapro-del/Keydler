@@ -40,7 +40,7 @@ describe('measurement notebooks', () => {
   })
 
   it('carries a stable id, so it does not stack one row per load', () => {
-    expect(buildMeasureTask(3).id).toBe('mesure-3')
+    expect(buildMeasureTask(3).id).toBe('measure-3')
     expect(buildMeasureTask(3).id).toBe(buildMeasureTask(3).id)
   })
 

@@ -83,14 +83,14 @@ describe('inventory', () => {
 
 describe('availability', () => {
   it('tells an insecure context apart from a missing API', async () => {
-    const vrai = Object.getOwnPropertyDescriptor(window, 'isSecureContext')
+    const original = Object.getOwnPropertyDescriptor(window, 'isSecureContext')
     Object.defineProperty(window, 'isSecureContext', { configurable: true, value: false })
 
     expect(checkAvailability()).toEqual({ supported: false, reason: 'insecure-context' })
     const state = await registerTools()
     expect(state.phase).toBe('unsupported')
 
-    if (vrai) Object.defineProperty(window, 'isSecureContext', vrai)
+    if (original) Object.defineProperty(window, 'isSecureContext', original)
     else Reflect.deleteProperty(window, 'isSecureContext')
   })
 
@@ -128,22 +128,22 @@ describe('availability', () => {
 
 describe('tools end to end', () => {
   it('renders a readable state and then refuses a stale write', async () => {
-    const task = await store.createAndOpenTask('Refactoriser l’authentification', 'Cartographier')
+    const task = await store.createAndOpenTask('Refactor authentication', 'Map the system')
 
     const rendered = textOf(await call(resumeTaskTool))
-    expect(rendered).toContain('Refactoriser l’authentification')
+    expect(rendered).toContain('Refactor authentication')
     expect(rendered).toContain(`VERSION     ${task.version}`)
     expect(rendered).toContain(`TASK ID     ${task.id}`)
 
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     const ok = await call(
       logStep,
-      writeArgs(task, { action: 'Lu le module', result: 'trois entrées' }),
+      writeArgs(task, { action: 'Read the module', result: 'three entries' }),
     )
     expect(ok.isError).toBeUndefined()
     expect(textOf(ok)).toContain('OK: log_step recorded.')
 
-    const stale = await call(logStep, writeArgs(task, { action: 'Encore', result: 'raté' }))
+    const stale = await call(logStep, writeArgs(task, { action: 'Again', result: 'failed' }))
     expect(stale.isError).toBe(true)
     expect(textOf(stale)).toContain('STALE STATE')
     expect(textOf(stale)).toContain('what_changed')
@@ -154,7 +154,7 @@ describe('tools end to end', () => {
   })
 
   it('requires a reason to reject, and says so to the agent', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Prochaine')
+    const task = await store.createAndOpenTask('Task', 'Prochaine')
     const rejectApproach = ALL_TOOLS.find((t) => t.name === 'reject_approach')!
 
     const result = await call(
@@ -167,15 +167,15 @@ describe('tools end to end', () => {
   })
 
   it('refuses a mutation_id that could not serve a replay', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Prochaine')
+    const task = await store.createAndOpenTask('Task', 'Prochaine')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
-    for (const mauvais of ['', 'court', 'avec espace ici', 'x'.repeat(65)]) {
+    for (const invalid of ['', 'short', 'value with spaces here', 'x'.repeat(65)]) {
       const result = await call(logStep, {
         action: 'a',
         result: 'b',
         based_on_version: task.version,
-        mutation_id: mauvais,
+        mutation_id: invalid,
       })
       expect(result.isError).toBe(true)
       expect(textOf(result)).toContain('mutation_id')
@@ -211,7 +211,7 @@ describe('tool lifecycle', () => {
       void fake.getTools().then((t) => changements.push(t.map((x) => x.name)))
     })
 
-    await store.createAndOpenTask('Tâche', 'Continuer')
+    await store.createAndOpenTask('Task', 'Continue')
     await settle()
 
     expect(fake.names()).toEqual([
@@ -240,12 +240,12 @@ describe('tool lifecycle', () => {
 
   it('keeps the writes in place at closing, for lack of a removal guarantee', async () => {
     const fake = installModelContext()
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     await registerTools()
     expect(fake.names()).toContain('log_step')
 
     const complete = ALL_TOOLS.find((t) => t.name === 'complete_task')!
-    const outcome = await call(complete, writeArgs(task, { summary: 'Terminé, rien ne reste.' }))
+    const outcome = await call(complete, writeArgs(task, { summary: 'Done, nothing remains.' }))
     await settle(6)
 
     expect(getRegistrationState().lifecycle.mode).toBe('static')
@@ -257,7 +257,7 @@ describe('tool lifecycle', () => {
 
   it('unregisters through AbortController, never re-registering a taken name', async () => {
     const fake = installModelContext()
-    await store.createAndOpenTask('Tâche', 'Continuer')
+    await store.createAndOpenTask('Task', 'Continue')
     await registerTools()
 
     const before = [...fake.attempts]
@@ -271,7 +271,7 @@ describe('tool lifecycle', () => {
   it('keeps the registered tools when a single one fails', async () => {
     const fake = installModelContext()
     fake.failOn.add('reject_approach')
-    await store.createAndOpenTask('Tâche', 'Continuer')
+    await store.createAndOpenTask('Task', 'Continue')
 
     const snapshotState = await registerTools()
 
@@ -288,7 +288,7 @@ describe('tool lifecycle', () => {
   it('keeps announcing the missing tool, even when a round has nothing to place', async () => {
     const fake = installModelContext()
     fake.failOn.add('reject_approach')
-    await store.createAndOpenTask('Tâche', 'Continuer')
+    await store.createAndOpenTask('Task', 'Continue')
     await registerTools()
 
     await store.mutate((s) => ({ ...s, updatedAt: s.updatedAt + 1 }))
@@ -304,7 +304,7 @@ describe('tool lifecycle', () => {
   it('puts back a tool whose failure was temporary', async () => {
     const fake = installModelContext()
     fake.failOn.add('reject_approach')
-    await store.createAndOpenTask('Tâche', 'Continuer')
+    await store.createAndOpenTask('Task', 'Continue')
     await registerTools()
     expect(fake.names()).not.toContain('reject_approach')
 
@@ -321,13 +321,13 @@ describe('tool lifecycle', () => {
     const fake = installModelContext()
     await registerTools()
 
-    fake.lent = true
-    await store.createAndOpenTask('Une', 'A')
+    fake.slow = true
+    await store.createAndOpenTask('One', 'A')
     await store.openPreparedTask({ ...store.currentTask()!, updatedAt: Date.now() + 1 })
     await settle(2)
 
-    fake.lent = false
-    fake.reprendre()
+    fake.slow = false
+    fake.resume()
     await settle(8)
 
     const doublons = fake.attempts.filter((n, i) => fake.attempts.indexOf(n) !== i)
@@ -340,7 +340,7 @@ describe('tool lifecycle', () => {
 
   it('never registers twice, even when called twice', async () => {
     const fake = installModelContext()
-    await store.createAndOpenTask('Tâche', 'Continuer')
+    await store.createAndOpenTask('Task', 'Continue')
 
     const first = await registerTools()
     const second = await registerTools()
@@ -364,7 +364,7 @@ describe('tool lifecycle', () => {
 
 describe('cancellation', () => {
   it('writes nothing when the signal is already aborted', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
     const controller = new AbortController()
@@ -383,15 +383,15 @@ describe('cancellation', () => {
   })
 
   it('writes nothing either when the cancellation lands while waiting in the queue', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     const controller = new AbortController()
 
-    const firstOne = call(logStep, writeArgs(task, { action: 'première', result: 'ok' }))
-    const seconde = call(
+    const firstOne = call(logStep, writeArgs(task, { action: 'first', result: 'ok' }))
+    const second = call(
       logStep,
       {
-        action: 'seconde',
+        action: 'second',
         result: 'ko',
         based_on_version: task.version + 1,
         mutation_id: mutationId(),
@@ -401,13 +401,13 @@ describe('cancellation', () => {
     controller.abort()
 
     await firstOne
-    const result = await seconde
+    const result = await second
 
     expect(result.isError).toBe(true)
     expect(textOf(result)).toContain('CANCELLED')
 
     const final = store.currentTask()!
-    expect(final.steps.map((s) => s.action)).toEqual(['première'])
+    expect(final.steps.map((s) => s.action)).toEqual(['first'])
     expect(final.version).toBe(task.version + 1)
 
     const last = final.audit.at(-1)!
@@ -418,19 +418,19 @@ describe('cancellation', () => {
   })
 
   it('leaves a trace of the refusal, so the screen can show it', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     const controller = new AbortController()
     controller.abort()
 
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }), controller.signal)
 
-    const journal = store.currentTask()!.audit
-    expect(journal.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
+    const auditLog = store.currentTask()!.audit
+    expect(auditLog.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
   })
 
   it('refuses a cancelled read too rather than serving it', async () => {
-    await store.createAndOpenTask('Tâche', 'Continuer')
+    await store.createAndOpenTask('Task', 'Continue')
     const controller = new AbortController()
     controller.abort()
 

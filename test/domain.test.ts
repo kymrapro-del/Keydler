@@ -25,7 +25,7 @@ function ctx(seed = 0) {
 }
 
 function seedTask(): TaskState {
-  return createTask({ title: 'Refactoriser l’authentification', next: 'Cartographier' }, ctx())
+  return createTask({ title: 'Refactor authentication', next: 'Map the system' }, ctx())
 }
 
 describe('the version invariant', () => {
@@ -35,7 +35,7 @@ describe('the version invariant', () => {
 
     task = addConstraint(
       task,
-      { rule: 'Ne pas toucher au schéma', basedOnVersion: 1 },
+      { rule: 'Do not touch the schema', basedOnVersion: 1 },
       'agent',
       ctx(10),
     )
@@ -43,7 +43,7 @@ describe('the version invariant', () => {
 
     task = logStep(
       task,
-      { action: 'Lu le module', result: 'trois entrées', basedOnVersion: 2 },
+      { action: 'Read the module', result: 'three entries', basedOnVersion: 2 },
       'agent',
       ctx(20),
     )
@@ -60,13 +60,13 @@ describe('the version invariant', () => {
 
   it('refuses a write based on a stale version', () => {
     let task = seedTask()
-    task = addConstraint(task, { rule: 'Aucune dépendance', basedOnVersion: 1 }, 'human', ctx(10))
+    task = addConstraint(task, { rule: 'No dependency', basedOnVersion: 1 }, 'human', ctx(10))
     expect(task.version).toBe(2)
 
     expect(() =>
       logStep(
         task,
-        { action: 'Ajouté une lib', result: 'ok', basedOnVersion: 1 },
+        { action: 'Added a library', result: 'ok', basedOnVersion: 1 },
         'agent',
         ctx(20),
       ),
@@ -197,7 +197,7 @@ describe('degrees of evidence', () => {
 describe('the lifecycle', () => {
   it('refuses every write after completion', () => {
     let task = seedTask()
-    task = completeTask(task, { summary: 'Terminé.', basedOnVersion: 1 }, 'agent', ctx(10))
+    task = completeTask(task, { summary: 'Done.', basedOnVersion: 1 }, 'agent', ctx(10))
     expect(task.status).toBe('completed')
     expect(task.next).toBeNull()
     expect(() =>
@@ -207,9 +207,9 @@ describe('the lifecycle', () => {
 
   it('refuses to set a next action on a closed task', () => {
     let task = seedTask()
-    task = completeTask(task, { summary: 'Terminé.', basedOnVersion: 1 }, 'agent', ctx(10))
+    task = completeTask(task, { summary: 'Done.', basedOnVersion: 1 }, 'agent', ctx(10))
     expect(() =>
-      setNext(task, { next: 'encore une chose', basedOnVersion: null }, 'human', ctx(20)),
+      setNext(task, { next: 'one more thing', basedOnVersion: null }, 'human', ctx(20)),
     ).toThrow(ValidationError)
     expect(task.next).toBeNull()
   })
@@ -227,7 +227,7 @@ describe('the briefing', () => {
     let task = seedTask()
     task = addConstraint(
       task,
-      { rule: 'Ne jamais modifier le schéma', basedOnVersion: 1 },
+      { rule: 'Never change the schema', basedOnVersion: 1 },
       'human',
       ctx(10),
     )
@@ -239,7 +239,7 @@ describe('the briefing', () => {
     )
 
     const output = renderTaskState(task)
-    expect(output).toContain('Ne jamais modifier le schéma')
+    expect(output).toContain('Never change the schema')
     expect(output).toContain('REJECTED: do not retry')
     expect(output).toContain('JWT variante B')
     expect(output).toContain('based_on_version: 3')
@@ -247,9 +247,9 @@ describe('the briefing', () => {
 
   it('omits a deactivated constraint', () => {
     let task = seedTask()
-    task = addConstraint(task, { rule: 'Règle levée', basedOnVersion: 1 }, 'human', ctx(10))
+    task = addConstraint(task, { rule: 'Lifted rule', basedOnVersion: 1 }, 'human', ctx(10))
     task = setConstraintActive(task, task.constraints[0].id, false, ctx(20))
-    expect(renderTaskState(task)).not.toContain('Règle levée')
+    expect(renderTaskState(task)).not.toContain('Lifted rule')
   })
 
   it('stays under the token budget on a loaded log', () => {
@@ -258,8 +258,8 @@ describe('the briefing', () => {
       task = logStep(
         task,
         {
-          action: `Étape numéro ${i} avec un libellé volontairement long pour peser`,
-          result: `Résultat ${i}, lui aussi verbeux, afin de mesurer la dégradation`,
+          action: `Step number ${i} with a deliberately long label for weight`,
+          result: `Result ${i}, also verbose enough to measure degradation`,
           evidence: { kind: 'command_output', content: 'x'.repeat(400) },
           basedOnVersion: task.version,
         },
@@ -270,7 +270,7 @@ describe('the briefing', () => {
     for (let i = 0; i < 6; i++) {
       task = addConstraint(
         task,
-        { rule: `Contrainte ${i}`, basedOnVersion: task.version },
+        { rule: `Constraint ${i}`, basedOnVersion: task.version },
         'human',
         ctx(900 + i),
       )
@@ -278,19 +278,19 @@ describe('the briefing', () => {
 
     const output = renderTaskState(task)
     expect(estimateTokens(output)).toBeLessThanOrEqual(TOKEN_BUDGET)
-    for (let i = 0; i < 6; i++) expect(output).toContain(`Contrainte ${i}`)
+    for (let i = 0; i < 6; i++) expect(output).toContain(`Constraint ${i}`)
   })
 })
 
 describe('the briefing budget under pressure', () => {
-  function loaded(nbRejets: number, nbContraintes: number): TaskState {
+  function loaded(nbRejets: number, nbConstraints: number): TaskState {
     let task = seedTask()
     let n = 0
-    for (let i = 0; i < nbContraintes; i++) {
+    for (let i = 0; i < nbConstraints; i++) {
       task = addConstraint(
         task,
         {
-          rule: `Contrainte ${i} : énoncée assez longuement pour peser sur le budget`,
+          rule: `Constraint ${i} : worded at length to consume the budget`,
           basedOnVersion: task.version,
         },
         'human',
@@ -301,8 +301,8 @@ describe('the briefing budget under pressure', () => {
       task = rejectApproach(
         task,
         {
-          approach: `Approche condamnée numéro ${i}`,
-          reason: `Motif ${i}, détaillé à dessein pour occuper de la place dans la restitution`,
+          approach: `Rejected approach number ${i}`,
+          reason: `Reason ${i}, deliberately detailed to occupy room in the output`,
           basedOnVersion: null,
         },
         'human',
@@ -316,21 +316,19 @@ describe('the briefing budget under pressure', () => {
     const light = renderTaskState(loaded(2, 2))
     const moyen = renderTaskState(loaded(8, 6))
 
-    expect(light).toContain('détaillé à dessein pour occuper')
+    expect(light).toContain('deliberately detailed to occupy')
     // Loaded, everything is still there, but cut short.
-    for (let i = 0; i < 8; i++) expect(moyen).toContain(`Approche condamnée numéro ${i}`)
-    expect(moyen).not.toContain(
-      'Motif 7, détaillé à dessein pour occuper de la place dans la restitution',
-    )
+    for (let i = 0; i < 8; i++) expect(moyen).toContain(`Rejected approach number ${i}`)
+    expect(moyen).not.toContain('Reason 7, deliberately detailed to occupy room in the output')
   })
 
-  // NEVER dropping a binding rule rendered 37,800 tokens for two thousand
+  // never dropping a binding rule rendered 37,800 tokens for two thousand
   // rules, 94 times the budget, and a render the context window truncates in
   // silence. Cut here and say so, or let it be cut elsewhere.
   it('drops obligations as a last resort, and says so plainly', () => {
     const output = renderTaskState(loaded(30, 10))
 
-    expect(output).toContain('Approche condamnée numéro 0')
+    expect(output).toContain('Rejected approach number 0')
     expect(output).toContain('REJECTED: do not retry (12 of 30 shown)')
     expect(output).toContain('18 more not shown here. They were ruled out too.')
     expect(output).toContain('read_task_detail on rejections')
@@ -347,7 +345,7 @@ describe('the briefing budget under pressure', () => {
   it('keeps a floor of obligations, and really bounds the briefing', () => {
     const output = renderTaskState(loaded(0, 300))
 
-    const shown = output.split('\n').filter((l) => l.includes('Contrainte ')).length
+    const shown = output.split('\n').filter((l) => l.includes('Constraint ')).length
     expect(shown).toBeGreaterThanOrEqual(12)
     // Without this bound, the same measurement gave 37,800 tokens at 2000
     // rules.
@@ -360,9 +358,9 @@ describe('the briefing budget under pressure', () => {
     const before = renderTaskState(loaded(0, 40))
     const afterState = renderTaskState(loaded(0, 60))
 
-    expect(before).toContain('Contrainte 0')
-    expect(afterState).toContain('Contrainte 0')
-    expect(afterState).toContain('Contrainte 11')
+    expect(before).toContain('Constraint 0')
+    expect(afterState).toContain('Constraint 0')
+    expect(afterState).toContain('Constraint 11')
   })
 
   it('holds the budget as long as the constraints allow', () => {
@@ -375,7 +373,7 @@ describe('the briefing budget under pressure', () => {
     for (let i = 0; i < 6; i++) {
       task = addDecision(
         task,
-        { choice: `Choix ${i}`, rationale: `Motif ${i}`, basedOnVersion: task.version },
+        { choice: `Choix ${i}`, rationale: `Reason ${i}`, basedOnVersion: task.version },
         'agent',
         ctx(7000 + i * 10),
       )

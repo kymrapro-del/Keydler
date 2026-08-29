@@ -1,19 +1,15 @@
-# En-têtes de sécurité, lus par Cloudflare Pages et Netlify.
+# Security headers read by Cloudflare Pages and Netlify.
 #
-# Ce site est un cas rare : il ne fait AUCUNE requête réseau sortante, ne
-# charge aucune police, n'utilise aucune image `data:` et ne pose pas un seul
-# attribut `style=`. La politique peut donc partir de `default-src 'none'` et
-# n'ouvrir que ce qui est réellement servi depuis cette origine.
+# The application makes no outbound request, loads no remote font, uses no
+# data image and sets no inline style. The policy can start from
+# `default-src 'none'` and open only resources served by this origin.
 #
-# Ce que cela protège, concrètement : la page tient un coffre d'identifiants
-# chiffrés et expose treize outils qu'un agent peut appeler. Un script injecté
-# y aurait accès à tout ce que l'humain voit, et un cadrage invisible
-# (clickjacking) ferait cliquer « Allow » sur une demande d'autorisation à
-# quelqu'un qui croit cliquer ailleurs.
+# The page holds encrypted credentials and thirteen agent tools. An injected
+# script could reach everything the user sees, while framing could disguise an
+# approval click.
 #
-# `__CSP_SCRIPT_HASH__` est remplacé à la construction par `scripts/headers.mjs`
-# avec l'empreinte du seul script en ligne, l'amorce de thème, qui doit
-# s'exécuter avant la première peinture sous peine de faire clignoter la page.
+# The build replaces `__CSP_SCRIPT_HASH__` with the hash of the single inline
+# theme bootstrap script.
 
 /*
   Content-Security-Policy: default-src 'none'; script-src 'self' '__CSP_SCRIPT_HASH__'; style-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; upgrade-insecure-requests
@@ -25,14 +21,11 @@
   Cross-Origin-Resource-Policy: same-origin
   Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=()
 
-# Les noms de fichiers portent une empreinte : ils ne changent jamais de
-# contenu, donc ils peuvent être gardés indéfiniment.
+# Fingerprinted assets are immutable.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Ceux-là changent à chaque déploiement et ne portent pas d'empreinte. Les
-# mettre en cache ferait servir une ancienne page qui réclame des fichiers
-# supprimés : l'écran blanc classique.
+# These files change between deployments and must be revalidated.
 /index.html
   Cache-Control: no-cache
 /sw.js

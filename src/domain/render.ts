@@ -59,11 +59,9 @@ export type RenderOptions = {
 const CLIP_FLOOR = 0.4
 
 /**
- * Nothing bounded the rules or the ruled-out approaches: ten rules were enough
- * to blow the budget (487 tokens), two thousand took it to 37,800 (94 times
- * what is advertised) and the degradation ladder cut only the history. So they
- * are cut last, never below this floor and never silently: the agent must know
- * that some are missing.
+ * Nothing bounded the rules or the ruled-out approaches: ten rules blew the
+ * budget at 487 tokens, two thousand reached 37,800, and the degradation ladder
+ * cut only the history. Cut last, never below this floor, never silently.
  */
 const MIN_BINDING_SHOWN = 12
 
@@ -114,14 +112,14 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push(`DONE WHEN   ${clip(state.goal, c(220))}`)
   }
 
-  const attente = pendingApprovals(state)
-  if (attente.length > 0) {
-    const shown = attente.slice(0, recentApprovals)
+  const pending = pendingApprovals(state)
+  if (pending.length > 0) {
+    const shown = pending.slice(0, recentApprovals)
     lines.push('')
     lines.push(
-      attente.length > shown.length
-        ? `AWAITING YOUR APPROVAL: the agent is blocked (${shown.length} of ${attente.length})`
-        : `AWAITING YOUR APPROVAL: the agent is blocked (${attente.length})`,
+      pending.length > shown.length
+        ? `AWAITING YOUR APPROVAL: the agent is blocked (${shown.length} of ${pending.length})`
+        : `AWAITING YOUR APPROVAL: the agent is blocked (${pending.length})`,
     )
     for (const a of shown) {
       lines.push(`  ${clip(a.action, c(150))}`)
@@ -405,10 +403,9 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     })
   }
 
-  // Everything else is exhausted: what binds gives way last, and by halves
-  // rather than all at once, to cut only what has to be cut. The floor starts
-  // from the real length, otherwise half of infinity is still infinity and the
-  // descent never ends.
+  // Everything else is exhausted: what binds gives way last, by halves rather
+  // than at once. The floor starts from the real length, or half of infinity is
+  // still infinity and the descent never ends.
   const fitConstraints = Math.min(recentConstraints, active.length)
   const fitRejections = Math.min(recentRejections, ruledOut.length)
   if (fitConstraints > MIN_BINDING_SHOWN || fitRejections > MIN_BINDING_SHOWN) {

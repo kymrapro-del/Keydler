@@ -1,7 +1,7 @@
 import { renderTaskState } from '../domain/render'
 import type { TaskState } from '../domain/types'
 
-function horodatage(at: number): string {
+function timestamp(at: number): string {
   try {
     return new Date(at).toISOString()
   } catch {
@@ -9,21 +9,21 @@ function horodatage(at: number): string {
   }
 }
 
-function bloc(contenu: string, langue = ''): string[] {
-  const plusLongue = (contenu.match(/`+/g) ?? []).reduce((n, m) => Math.max(n, m.length), 0)
-  const fence = '`'.repeat(Math.max(3, plusLongue + 1))
-  return [`${fence}${langue}`, contenu, fence]
+function codeBlock(content: string, language = ''): string[] {
+  const longestRun = (content.match(/`+/g) ?? []).reduce((n, m) => Math.max(n, m.length), 0)
+  const fence = '`'.repeat(Math.max(3, longestRun + 1))
+  return [`${fence}${language}`, content, fence]
 }
 
-function enTete(task: TaskState): string[] {
+function header(task: TaskState): string[] {
   return [
     `# ${task.title}`,
     '',
     `- Task id: \`${task.id}\``,
     `- Version: ${task.version}`,
     `- Status: ${task.status}${task.archived ? ' (archived)' : ''}`,
-    `- Created: ${horodatage(task.createdAt)}`,
-    `- Last write: ${horodatage(task.updatedAt)}`,
+    `- Created: ${timestamp(task.createdAt)}`,
+    `- Last write: ${timestamp(task.updatedAt)}`,
     '',
     'Credentials are never exported. This file carries names and work, never a',
     'sealed value.',
@@ -34,13 +34,13 @@ function enTete(task: TaskState): string[] {
 function questions(task: TaskState): string[] {
   if (task.questions.length === 0) return []
 
-  const blocs = task.questions.flatMap((q) => [
+  const blocks = task.questions.flatMap((q) => [
     `### ${q.question}`,
     '',
     `- Asked by: ${q.source} at v${q.addedAtVersion}`,
     `- Why it blocks: ${q.why}`,
     `- Answer: ${q.answer === null ? '**still open, nobody has answered**' : q.answer}`,
-    ...(q.answeredAt === null ? [] : [`- Answered: ${horodatage(q.answeredAt)}`]),
+    ...(q.answeredAt === null ? [] : [`- Answered: ${timestamp(q.answeredAt)}`]),
     '',
   ])
 
@@ -49,20 +49,20 @@ function questions(task: TaskState): string[] {
     '',
     'What an agent stopped for rather than guess, and what a human answered.',
     '',
-    ...blocs,
+    ...blocks,
   ]
 }
 
-function autorisations(task: TaskState): string[] {
+function approvals(task: TaskState): string[] {
   if (task.approvals.length === 0) return []
 
-  const blocs = task.approvals.flatMap((a) => [
+  const blocks = task.approvals.flatMap((a) => [
     `### ${a.action}`,
     '',
     `- Asked by: ${a.source} at v${a.addedAtVersion}`,
     `- Why it needed a human: ${a.why}`,
     `- Decision: ${a.decision === null ? '**never decided, nobody answered**' : a.decision}`,
-    ...(a.decidedAt === null ? [] : [`- Decided: ${horodatage(a.decidedAt)}`]),
+    ...(a.decidedAt === null ? [] : [`- Decided: ${timestamp(a.decidedAt)}`]),
     '',
   ])
 
@@ -71,11 +71,11 @@ function autorisations(task: TaskState): string[] {
     '',
     'What an agent stopped to ask before acting, and what was decided.',
     '',
-    ...blocs,
+    ...blocks,
   ]
 }
 
-function journal(task: TaskState): string[] {
+function writeLog(task: TaskState): string[] {
   if (task.audit.length === 0) return []
   return [
     '## Write log',
@@ -90,25 +90,25 @@ function journal(task: TaskState): string[] {
       const issue = e.outcome === 'refused' ? '**refused**' : 'applied'
       const repeated = e.repeated && e.repeated > 1 ? ` (×${e.repeated})` : ''
       const detail = e.detail.replace(/\|/g, '\\|').replace(/\n/g, ' ')
-      return `| ${horodatage(e.at)} | ${e.actor} | \`${e.operation}\` | ${versions} | ${issue}${repeated} | ${detail} |`
+      return `| ${timestamp(e.at)} | ${e.actor} | \`${e.operation}\` | ${versions} | ${issue}${repeated} | ${detail} |`
     }),
     '',
   ]
 }
 
 function evidence(task: TaskState): string[] {
-  const avecPreuve = task.steps.filter((s) => s.evidence !== null)
-  if (avecPreuve.length === 0) return []
+  const stepsWithEvidence = task.steps.filter((s) => s.evidence !== null)
+  if (stepsWithEvidence.length === 0) return []
 
-  const blocs = avecPreuve.flatMap((s) => [
+  const blocks = stepsWithEvidence.flatMap((s) => [
     `### ${s.action}`,
     '',
     `- Confidence: \`${s.confidence}\``,
     ...(s.dispute ? [`- **DISPUTED by the human:** ${s.dispute.reason}`] : []),
     `- Evidence kind: \`${s.evidence!.kind}\``,
-    `- Checked by a human: ${s.evidence!.verifiedAt ? horodatage(s.evidence!.verifiedAt) : 'no'}`,
+    `- Checked by a human: ${s.evidence!.verifiedAt ? timestamp(s.evidence!.verifiedAt) : 'no'}`,
     '',
-    ...bloc(s.evidence!.content),
+    ...codeBlock(s.evidence!.content),
     '',
   ])
 
@@ -118,16 +118,16 @@ function evidence(task: TaskState): string[] {
     'The compact state shows only how much each step is trusted. Here is the',
     'evidence in full: this is where a claim holds up, or does not.',
     '',
-    ...blocs,
+    ...blocks,
   ]
 }
 
 export function buildTaskExport(task: TaskState): string {
   return [
-    ...enTete(task),
+    ...header(task),
     '## What `resume_task` returns',
     '',
-    ...bloc(
+    ...codeBlock(
       renderTaskState(task, {
         recentSteps: task.steps.length,
         recentDecisions: task.decisions.length,
@@ -136,13 +136,13 @@ export function buildTaskExport(task: TaskState): string {
     '',
     ...evidence(task),
     ...questions(task),
-    ...autorisations(task),
-    ...journal(task),
+    ...approvals(task),
+    ...writeLog(task),
     '## Full state',
     '',
     'This block is what an import reads. Everything above is for you.',
     '',
-    ...bloc(JSON.stringify(task, null, 2), 'json'),
+    ...codeBlock(JSON.stringify(task, null, 2), 'json'),
     '',
   ].join('\n')
 }

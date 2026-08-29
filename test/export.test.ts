@@ -64,9 +64,9 @@ describe('exporting a log', () => {
     task = logStep(
       task,
       {
-        action: 'Sortie contenant une clôture de bloc',
+        action: 'Output containing a closing fence',
         result: 'r',
-        evidence: { kind: 'command_output', content: '```\n# Faux titre injecté\n```' },
+        evidence: { kind: 'command_output', content: '```\n# Fake injected heading\n```' },
         basedOnVersion: task.version,
       },
       'agent',
@@ -74,7 +74,7 @@ describe('exporting a log', () => {
 
     const output = buildTaskExport(task)
 
-    expect(output).toContain('````\n```\n# Faux titre injecté\n```\n````')
+    expect(output).toContain('````\n```\n# Fake injected heading\n```\n````')
   })
 
   it('survives an out-of-range timestamp rather than taking the export down', () => {
@@ -85,9 +85,9 @@ describe('exporting a log', () => {
 
   it('gives a stable filename with no risky character', () => {
     const task = buildMeasureTask(5)
-    const nom = exportFilename(task)
-    expect(nom).toMatch(/^keydler-[a-z0-9-]+-v\d+\.md$/)
-    expect(exportFilename(task)).toBe(nom)
+    const name = exportFilename(task)
+    expect(name).toMatch(/^keydler-[a-z0-9-]+-v\d+\.md$/)
+    expect(exportFilename(task)).toBe(name)
   })
 })
 
@@ -103,12 +103,12 @@ describe('export: edge cases', () => {
   it('renders the closing summary of a completed task', () => {
     const task = completeTask(
       buildMeasureTask(2),
-      { summary: 'Approche retenue et livrée.', basedOnVersion: buildMeasureTask(2).version },
+      { summary: 'Selected approach delivered.', basedOnVersion: buildMeasureTask(2).version },
       'agent',
     )
     const output = buildTaskExport(task)
     expect(output).toContain('- Status: completed')
-    expect(output).toContain('Approche retenue et livrée.')
+    expect(output).toContain('Selected approach delivered.')
   })
 
   it('marks one piece of evidence as checked by a human, and another not', () => {
@@ -117,6 +117,6 @@ describe('export: edge cases', () => {
     expect(output).toContain('- Checked by a human: no')
     expect(output).toMatch(/- Checked by a human: \d{4}-/)
     task = { ...task, steps: [] }
-    expect(buildTaskExport(task)).not.toContain('- Validée :')
+    expect(buildTaskExport(task)).not.toContain('- Verified :')
   })
 })

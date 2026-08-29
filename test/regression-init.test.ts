@@ -11,12 +11,12 @@ beforeEach(async () => {
 
 describe('initial load racing a write', () => {
   it('does not replace the applied state with an older read from disk', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
 
-    const first = store.mutate((s) => setNext(s, { next: 'première', basedOnVersion: null }))
+    const first = store.mutate((s) => setNext(s, { next: 'first', basedOnVersion: null }))
     const agent = call(resumeTaskTool)
     const second = store.mutate((s) =>
-      setNext(s, { next: 'nouvelle prochaine action', basedOnVersion: null }),
+      setNext(s, { next: 'new next action', basedOnVersion: null }),
     )
 
     await Promise.all([first, agent, second])
@@ -24,11 +24,11 @@ describe('initial load racing a write', () => {
 
     const final = currentTask()
     expect(final.version).toBe(task.version + 2)
-    expect(final.next).toBe('nouvelle prochaine action')
+    expect(final.next).toBe('new next action')
   })
 
   it('never walks the version backwards, even with several writes in flight', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const versions: number[] = []
     store.subscribe(() => {
       const v = store.currentTask()?.version
@@ -36,9 +36,9 @@ describe('initial load racing a write', () => {
     })
 
     const writes = [
-      store.mutate((s) => setNext(s, { next: 'une', basedOnVersion: null })),
+      store.mutate((s) => setNext(s, { next: 'one', basedOnVersion: null })),
       call(resumeTaskTool),
-      store.mutate((s) => setNext(s, { next: 'deux', basedOnVersion: null })),
+      store.mutate((s) => setNext(s, { next: 'two', basedOnVersion: null })),
     ]
     await Promise.all(writes)
     await settle(4)

@@ -23,9 +23,9 @@ function looksLikeDiff(value: string): boolean {
   if (lines.some((line) => line.startsWith('diff --git ') || line.startsWith('Index: ')))
     return true
   const minus = lines.some((line) => line.startsWith('--- '))
-  const plus = lines.some((line) => line.startsWith('+++ '))
+  const pread = lines.some((line) => line.startsWith('+++ '))
   const hunk = lines.some((line) => /^@@ .* @@/.test(line))
-  return (minus && plus) || hunk
+  return (minus && pread) || hunk
 }
 
 function looksLikeTestReport(value: string): boolean {

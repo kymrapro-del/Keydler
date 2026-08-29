@@ -4,7 +4,7 @@ const MAX_RETENUS = 20
 
 /**
  * The reads are named here rather than imported from `tools.ts`: the witness is
- * called FROM `tools.ts`, and importing it back would make a cycle. A test
+ * called from `tools.ts`, and importing it back would make a cycle. A test
  * walks READ_TOOLS and checks that this list does not drift.
  */
 const READS = new Set(['resume_task', 'what_changed', 'read_task_detail', 'search_task'])
@@ -48,7 +48,7 @@ export const RECENT_WINDOW = 10 * 60_000
 
 /**
  * An observed call, not a presence: nothing in WebMCP says an agent is
- * “connected”, and the screen must not let anyone believe it.
+ * "connected", and the screen must not suggest it.
  */
 export function recentlyActive(now: number = Date.now()): Call | null {
   const last = recents[recents.length - 1]

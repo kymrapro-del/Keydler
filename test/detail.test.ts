@@ -9,13 +9,13 @@ import { call, clearDatabase, currentTask, textOf, writeArgs } from './helpers'
 const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
 async function loadedLog(stepCount: number, tailleDePreuve = 40) {
-  const task = await store.createAndOpenTask('Tâche chargée', 'Continuer')
+  const task = await store.createAndOpenTask('Loaded task', 'Continue')
   for (let i = 0; i < stepCount; i++) {
     await call(
       logStep,
       writeArgs(currentTask(), {
-        action: `Étape ${i}`,
-        result: `Résultat ${i}`,
+        action: `Step ${i}`,
+        result: `Result ${i}`,
         evidence: { kind: 'command_output', content: `sortie ${i} ` + 'x'.repeat(tailleDePreuve) },
       }),
     )
@@ -35,26 +35,26 @@ describe('pagination', () => {
     const page = textOf(await call(readTaskDetailTool, { section: 'steps', limit: 5 }))
     expect(page).toContain('PAGE        1–5 of 12')
     expect(page).toContain('MORE        7 left, call again with offset: 5')
-    expect(page).toContain('Étape 0')
-    expect(page).toContain('Étape 4')
-    expect(page).not.toContain('Étape 5')
+    expect(page).toContain('Step 0')
+    expect(page).toContain('Step 4')
+    expect(page).not.toContain('Step 5')
   })
 
   it('walks the whole collection with no gap and no overlap', async () => {
     await loadedLog(12)
 
-    const vues: string[] = []
+    const views: string[] = []
     let offset = 0
     for (let guard = 0; guard < 10; guard++) {
       const page = textOf(await call(readTaskDetailTool, { section: 'steps', limit: 5, offset }))
-      vues.push(...(page.match(/Étape \d+/g) ?? []))
+      views.push(...(page.match(/Step \d+/g) ?? []))
       const next = page.match(/call again with offset: (\d+)/)
       if (!next) break
       offset = Number(next[1])
     }
 
-    expect(vues).toEqual(Array.from({ length: 12 }, (_, i) => `Étape ${i}`))
-    expect(new Set(vues).size).toBe(12)
+    expect(views).toEqual(Array.from({ length: 12 }, (_, i) => `Step ${i}`))
+    expect(new Set(views).size).toBe(12)
   })
 
   it('says outright that a section is exhausted, rather than a silent page', async () => {
@@ -64,7 +64,7 @@ describe('pagination', () => {
   })
 
   it('says a section is empty, without looking like a failure', async () => {
-    await store.createAndOpenTask('Tâche', 'Continuer')
+    await store.createAndOpenTask('Task', 'Continue')
     const page = textOf(await call(readTaskDetailTool, { section: 'decisions' }))
     expect(page).toContain('PAGE        empty, this section holds nothing')
   })
@@ -77,8 +77,8 @@ describe('pagination', () => {
   })
 
   it('refuses an unknown section by naming the ones that exist', async () => {
-    await store.createAndOpenTask('Tâche', 'Continuer')
-    const result = await call(readTaskDetailTool, { section: 'etapes' })
+    await store.createAndOpenTask('Task', 'Continue')
+    const result = await call(readTaskDetailTool, { section: 'unknown-section' })
     expect(result.isError).toBe(true)
     for (const s of SECTIONS) expect(textOf(result)).toContain(s)
   })
@@ -96,11 +96,11 @@ describe('pagination', () => {
 describe('targeted reading', () => {
   it('truncates evidence in a page, and returns it whole when it is named', async () => {
     const long = 'L'.repeat(EVIDENCE_PREVIEW + 500)
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     await call(
       logStep,
       writeArgs(task, {
-        action: 'Lancé la suite',
+        action: 'Ran the suite',
         result: 'ok',
         evidence: { kind: 'command_output', content: long },
       }),
@@ -111,25 +111,25 @@ describe('targeted reading', () => {
     expect(page.length).toBeLessThan(long.length)
     expect(page).toContain(`request id "${stepId}" for all of it`)
 
-    const entier = textOf(await call(readTaskDetailTool, { section: 'steps', id: stepId }))
-    expect(entier).toContain(long)
-    expect(entier).toContain('one entry, in full')
+    const fullEntry = textOf(await call(readTaskDetailTool, { section: 'steps', id: stepId }))
+    expect(fullEntry).toContain(long)
+    expect(fullEntry).toContain('one entry, in full')
   })
 
   it('says an id is unknown, and how many the section holds', async () => {
     await loadedLog(2)
-    const result = textOf(await call(readTaskDetailTool, { section: 'steps', id: 'inexistant' }))
-    expect(result).toContain('No entry with id "inexistant"')
+    const result = textOf(await call(readTaskDetailTool, { section: 'steps', id: 'missing' }))
+    expect(result).toContain('No entry with id "missing"')
     expect(result).toContain('2 entries')
   })
 
   it('keeps proposals apart from the rest, right into the detail', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const reject = ALL_TOOLS.find((t) => t.name === 'reject_approach')!
-    await call(reject, writeArgs(task, { approach: 'Approche X', reason: 'supposée' }))
+    await call(reject, writeArgs(task, { approach: 'Approach X', reason: 'assumed' }))
 
     const page = textOf(await call(readTaskDetailTool, { section: 'proposals' }))
-    expect(page).toContain('Approche X')
+    expect(page).toContain('Approach X')
     expect(page).toContain('standing: proposed')
   })
 })
@@ -209,8 +209,8 @@ describe('the credentials section', () => {
       { section: 'credentials', offset: 0, limit: 20, id: null },
       names(3),
     )
-    for (const mot of ['ciphertext', 'salt', 'iv', 'iterations', 'sealed:']) {
-      expect(output, mot).not.toContain(mot)
+    for (const word of ['ciphertext', 'salt', 'iv', 'iterations', 'sealed:']) {
+      expect(output, word).not.toContain(word)
     }
     expect(output).toContain('no tool here returns a value')
   })

@@ -17,7 +17,7 @@ const actifs = (await readdir(join(dist, 'assets')))
   .sort()
 
 if (actifs.length === 0) {
-  console.error('precache: aucun fichier dans dist/assets. La construction a-t-elle eu lieu ?')
+  console.error('precache : dist/assets contains no files. Did the build run?')
   process.exit(1)
 }
 
@@ -31,9 +31,9 @@ const written = source
   .replace(/^const SHELL = .*$/m, `const SHELL = ${JSON.stringify(shell)}`)
 
 if (written === source) {
-  console.error('precache: ni CACHE ni SHELL trouvés dans dist/sw.js')
+  console.error('precache : found neither CACHE nor SHELL in dist/sw.js')
   process.exit(1)
 }
 
 await writeFile(path, written)
-console.log(`precache: ${shell.length} entrées, cache keydler-${version}`)
+console.log(`precache : ${shell.length} entries, cache keydler-${version}`)

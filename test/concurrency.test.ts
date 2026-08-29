@@ -19,7 +19,7 @@ beforeEach(async () => {
 
 describe('concurrent writes', () => {
   it('applies only one and refuses the other, instead of losing it', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
     const v = task.version
 
     const results = await Promise.allSettled([
@@ -48,14 +48,14 @@ describe('concurrent writes', () => {
   })
 
   it('loses no write under heavy concurrency', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
     const v = task.version
 
     const results = await Promise.allSettled(
       Array.from({ length: 8 }, (_, i) =>
         store.mutateAsAgent(
           storeWrite('log_step', v, { n: v }, (s) =>
-            logStep(s, { action: `étape ${i}`, result: 'r', basedOnVersion: v }, 'agent'),
+            logStep(s, { action: `step ${i}`, result: 'r', basedOnVersion: v }, 'agent'),
           ),
         ),
       ),
@@ -74,13 +74,13 @@ describe('concurrent writes', () => {
   })
 
   it('applies a chain of writes that respect the version returned', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
     let v = task.version
 
     for (let i = 0; i < 5; i++) {
       const next = await store.mutateAsAgent(
         storeWrite('log_step', v, { n: v }, (s) =>
-          logStep(s, { action: `étape ${i}`, result: 'r', basedOnVersion: v }, 'agent'),
+          logStep(s, { action: `step ${i}`, result: 'r', basedOnVersion: v }, 'agent'),
         ),
       )
       v = next.version
@@ -90,22 +90,20 @@ describe('concurrent writes', () => {
     expect(final.version).toBe(task.version + 5)
     expect(final.steps).toHaveLength(5)
     expect(final.steps.map((s) => s.action)).toEqual([
-      'étape 0',
-      'étape 1',
-      'étape 2',
-      'étape 3',
-      'étape 4',
+      'step 0',
+      'step 1',
+      'step 2',
+      'step 3',
+      'step 4',
     ])
   })
 
   it('serializes human writes too, which are never refused', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
 
     await Promise.all(
       Array.from({ length: 6 }, (_, i) =>
-        store.mutate((s) =>
-          addConstraint(s, { rule: `règle ${i}`, basedOnVersion: null }, 'human'),
-        ),
+        store.mutate((s) => addConstraint(s, { rule: `rule ${i}`, basedOnVersion: null }, 'human')),
       ),
     )
 
@@ -115,7 +113,7 @@ describe('concurrent writes', () => {
   })
 
   it('persists the exact state that is displayed, with no write left behind', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
     const v = task.version
 
     await Promise.allSettled([

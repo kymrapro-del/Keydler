@@ -13,10 +13,10 @@ async function clearDatabase() {
   await Promise.all([tx.objectStore('tasks').clear(), tx.objectStore('meta').clear(), tx.done])
 }
 
-async function autreOnglet(id: string, muter: (s: Parameters<typeof logStep>[0]) => typeof s) {
-  const disque = await loadTask(id)
-  if (!disque) throw new Error('cahier introuvable')
-  await saveTask(muter(disque))
+async function otherTab(id: string, muter: (s: Parameters<typeof logStep>[0]) => typeof s) {
+  const disk = await loadTask(id)
+  if (!disk) throw new Error('task not found')
+  await saveTask(muter(disk))
 }
 
 beforeEach(async () => {
@@ -26,40 +26,40 @@ beforeEach(async () => {
 
 describe('conflict between pages', () => {
   it('refuses to overwrite a version written by another page', async () => {
-    const task = await store.createAndOpenTask('Tâche', 'Continuer')
+    const task = await store.createAndOpenTask('Task', 'Continue')
 
-    await autreOnglet(task.id, (s) =>
-      addConstraint(s, { rule: 'posée ailleurs', basedOnVersion: null }, 'human'),
+    await otherTab(task.id, (s) =>
+      addConstraint(s, { rule: 'added elsewhere', basedOnVersion: null }, 'human'),
     )
 
     await expect(
-      store.mutate((s) => addConstraint(s, { rule: 'posée ici', basedOnVersion: null }, 'human')),
+      store.mutate((s) => addConstraint(s, { rule: 'added here', basedOnVersion: null }, 'human')),
     ).rejects.toBeInstanceOf(ConcurrentWriteError)
 
-    const disque = await loadTask(task.id)
-    expect(disque?.constraints.map((c) => c.rule)).toEqual(['posée ailleurs'])
+    const disk = await loadTask(task.id)
+    expect(disk?.constraints.map((c) => c.rule)).toEqual(['added elsewhere'])
   })
 
   it('resynchronises so that the screen stops lying', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
     expect(store.currentTask()?.version).toBe(1)
 
-    await autreOnglet(task.id, (s) =>
-      addConstraint(s, { rule: 'posée ailleurs', basedOnVersion: null }, 'human'),
+    await otherTab(task.id, (s) =>
+      addConstraint(s, { rule: 'added elsewhere', basedOnVersion: null }, 'human'),
     )
 
     await expect(
-      store.mutate((s) => addConstraint(s, { rule: 'posée ici', basedOnVersion: null }, 'human')),
+      store.mutate((s) => addConstraint(s, { rule: 'added here', basedOnVersion: null }, 'human')),
     ).rejects.toBeInstanceOf(ConcurrentWriteError)
 
     expect(store.currentTask()?.version).toBe(2)
-    expect(store.currentTask()?.constraints.map((c) => c.rule)).toEqual(['posée ailleurs'])
+    expect(store.currentTask()?.constraints.map((c) => c.rule)).toEqual(['added elsewhere'])
   })
 
   it('tells the agent to call resume_task again', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
-    await autreOnglet(task.id, (s) =>
-      addConstraint(s, { rule: 'posée ailleurs', basedOnVersion: null }, 'human'),
+    const task = await store.createAndOpenTask('Task', undefined)
+    await otherTab(task.id, (s) =>
+      addConstraint(s, { rule: 'added elsewhere', basedOnVersion: null }, 'human'),
     )
 
     const logStepTool = ALL_TOOLS.find((t) => t.name === 'log_step')!
@@ -77,9 +77,9 @@ describe('conflict between pages', () => {
   })
 
   it('succeeds once the version is refreshed', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
-    await autreOnglet(task.id, (s) =>
-      addConstraint(s, { rule: 'posée ailleurs', basedOnVersion: null }, 'human'),
+    const task = await store.createAndOpenTask('Task', undefined)
+    await otherTab(task.id, (s) =>
+      addConstraint(s, { rule: 'added elsewhere', basedOnVersion: null }, 'human'),
     )
 
     await store.mutate((s) => s).catch(() => undefined)

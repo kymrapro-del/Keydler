@@ -118,7 +118,7 @@ describe('the history on screen', () => {
     store.__resetStore()
     await clearDatabase()
     await store.init()
-    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
     await store.openPreparedTask(buildDemoTask())
@@ -259,8 +259,8 @@ describe('installable', () => {
 
   it('serves the service worker only in production', () => {
     const main = mainRaw
-    // In development, a cache comes between hot reload and the page: you lose
-    // hours debugging a version that no longer exists.
+    // In development, a cache comes between hot reload and the page, and hours
+    // go into debugging a version that no longer exists.
     expect(main).toContain('import.meta.env.PROD')
     expect(main).toMatch(/serviceWorker\s*\n?\s*\.register\(\s*'\/sw\.js'/)
   })

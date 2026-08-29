@@ -53,7 +53,7 @@ describe('while you were away', () => {
     )
 
   async function open() {
-    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
     await settled()
@@ -134,7 +134,7 @@ describe('while you were away', () => {
     )
     await written(before)
 
-    // We were there: the page kept up.
+    // The tab was on screen: the page kept up.
     expect(card()).toBeUndefined()
     expect(seenVersion(store.currentTask()!.id)).toBe(store.currentTask()!.version)
   })
@@ -173,7 +173,7 @@ describe('a background tab does not count as a presence', () => {
     store.__resetStore()
     await clearDatabase()
     await store.init()
-    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
     await store.openPreparedTask(buildDemoTask())

@@ -71,7 +71,7 @@ describe('messages meant for the human', () => {
         'this task is closed. Reopen it if there is work left.',
       ],
     ]
-    for (const [error, attendu] of cas) expect(humanReason(error)).toBe(attendu)
+    for (const [error, expected] of cas) expect(humanReason(error)).toBe(expected)
   })
 
   it('covers every code without letting the agent text through', () => {
@@ -128,6 +128,6 @@ describe('escaping', () => {
   })
 
   it('leaves ordinary text untouched', () => {
-    expect(escapeHtml('Ne jamais modifier le schéma')).toBe('Ne jamais modifier le schéma')
+    expect(escapeHtml('Never change the schema')).toBe('Never change the schema')
   })
 })

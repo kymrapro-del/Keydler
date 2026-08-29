@@ -7,10 +7,10 @@ import type { TaskState } from '../src/domain/types'
 
 // Concurrency control goes through the `by-id-version` index rather than a full
 // re-read of the task: 2 ms for 800 kB in Chrome, against 0.1 ms for a key.
-// This file opens the database at the OLD version before anything else touches
+// This file opens the database at the old version before anything else touches
 // it, so that the migration really happens: `getDb()` memoises its promise, and
 // a single earlier call would make the test hollow.
-function ancienneBase(): Promise<IDBDatabase> {
+function openOldDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('cahier-de-quart', 2)
     request.onupgradeneeded = () => {
@@ -37,54 +37,53 @@ function writeOldStyle(db: IDBDatabase, task: TaskState): Promise<void> {
 
 describe('a log written before the index stays protected', () => {
   it('migrates, then refuses a stale write and says the real version', async () => {
-    const installed: TaskState = { ...buildCoreTask(), id: 'ancien', version: 7 }
+    const installed: TaskState = { ...buildCoreTask(), id: 'old', version: 7 }
 
-    const vieille = await ancienneBase()
-    await writeOldStyle(vieille, installed)
-    vieille.close()
+    const oldDatabase = await openOldDatabase()
+    await writeOldStyle(oldDatabase, installed)
+    oldDatabase.close()
 
     // First contact between the application code and the database: this is
     // where the migration to the index happens, on a record already present.
     const db = await getDb()
     expect(db.version).toBe(3)
 
-    const relu = await loadTask('ancien')
-    expect(relu?.version).toBe(7)
+    const reread = await loadTask('old')
+    expect(reread?.version).toBe(7)
 
     // At the right version: accepted.
-    await saveTask({ ...relu!, version: 8 }, 7)
-    expect((await loadTask('ancien'))?.version).toBe(8)
+    await saveTask({ ...reread!, version: 8 }, 7)
+    expect((await loadTask('old'))?.version).toBe(8)
 
-    // At a stale version: refused, and the message carries the REAL version,
+    // At a stale version: refused, and the message carries the real version,
     // without which the caller would not know what to rebase on.
-    const error = await saveTask({ ...relu!, version: 9 }, 7).catch((e) => e)
+    const error = await saveTask({ ...reread!, version: 9 }, 7).catch((e) => e)
     expect(error).toBeInstanceOf(ConcurrentWriteError)
     expect((error as ConcurrentWriteError).message).toContain('8')
-    expect((await loadTask('ancien'))?.version).toBe(8)
+    expect((await loadTask('old'))?.version).toBe(8)
   })
 
-  // A write that CARRIES an expected version is by definition an update:
-  // creations take the versionless path. A missing key is therefore a task
-  // deleted elsewhere, and letting it through resurrected it with all its steps
-  // and its evidence, but without its sealed credentials, which really were
-  // erased.
+  // A write carrying an expected version is an update; creations take the
+  // versionless path. A missing key is therefore a task deleted elsewhere, and
+  // letting it through brought it back with every step and every piece of
+  // evidence, minus the sealed credentials, which were erased.
   it('refuses to resurrect a deleted log, and does not recreate it', async () => {
-    const installed: TaskState = { ...buildCoreTask(), id: 'supprime', version: 3 }
+    const installed: TaskState = { ...buildCoreTask(), id: 'deleted', version: 3 }
     await saveTask(installed)
-    expect((await loadTask('supprime'))?.version).toBe(3)
+    expect((await loadTask('deleted'))?.version).toBe(3)
 
     const db = await getDb()
-    await db.delete('tasks', 'supprime')
+    await db.delete('tasks', 'deleted')
 
     const error = await saveTask({ ...installed, version: 4 }, 3).catch((e) => e)
     expect(error).toBeInstanceOf(TaskGoneError)
     expect((error as Error).message).toContain('was deleted')
-    expect(await loadTask('supprime')).toBeUndefined()
+    expect(await loadTask('deleted')).toBeUndefined()
   })
 
   it('lets a creation through, since it carries no expected version', async () => {
-    const neuf: TaskState = { ...buildCoreTask(), id: 'jamais-vu', version: 1 }
-    await saveTask(neuf)
-    expect((await loadTask('jamais-vu'))?.version).toBe(1)
+    const newTask: TaskState = { ...buildCoreTask(), id: 'never-seen', version: 1 }
+    await saveTask(newTask)
+    expect((await loadTask('never-seen'))?.version).toBe(1)
   })
 })

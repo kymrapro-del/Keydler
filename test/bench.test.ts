@@ -29,7 +29,7 @@ let unmount: () => void
 /**
  * Waiting a fixed number of turns was enough on an empty run and failed in the
  * full suite: the write queue goes through IndexedDB, whose latency depends on
- * the load. We wait for the effect, not for a delay.
+ * the load. Wait for the effect, not for a delay.
  */
 async function settled(turns = 4) {
   for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
@@ -43,7 +43,7 @@ async function written(before: number) {
 
 function type(id: string, value: string) {
   const field = root.querySelector<HTMLInputElement>(`#${id}`)
-  if (!field) throw new Error(`champ #${id} absent`)
+  if (!field) throw new Error(`field #${id} absent`)
   field.value = value
   field.dispatchEvent(new Event('input', { bubbles: true }))
 }
@@ -52,7 +52,7 @@ function button(label: string): HTMLButtonElement {
   const found = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
     (b) => b.textContent?.trim() === label,
   )
-  if (!found) throw new Error(`bouton « ${label} » absent`)
+  if (!found) throw new Error(`button “${label}” is missing`)
   return found
 }
 
@@ -64,7 +64,7 @@ beforeEach(async () => {
   await clearDatabase()
   await store.init()
   history.replaceState(null, '', '/')
-  document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+  document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
   root = document.querySelector<HTMLElement>('#app')!
   unmount = mount(root)
 })
@@ -307,15 +307,15 @@ describe('dashboard', () => {
   })
 
   it('shows exactly what resume_task returns, not a near version', async () => {
-    // The panel is titled “What resume_task returns”. If it rendered the state
+    // The panel is titled "What resume_task returns". If it rendered the state
     // without the URL or the credentials, it would show something other than
     // what the agent receives, in a product whose whole value is honesty.
     const resume = ALL_TOOLS.find((t) => t.name === 'resume_task')!
-    const attendu = textOf(await resume.execute({}, { signal: new AbortController().signal }))
+    const expected = textOf(await resume.execute({}, { signal: new AbortController().signal }))
     await settled()
 
     const pre = root.querySelector('details.technical pre')!
-    expect(pre.textContent).toBe(attendu)
+    expect(pre.textContent).toBe(expected)
     expect(pre.textContent).toContain('URL')
   })
 
@@ -495,7 +495,7 @@ describe('a success message does not settle in', () => {
     store.__resetStore()
     await clearDatabase()
     await store.init()
-    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
     await store.createAndOpenTask('Ship the issuer', 'Read the spec')

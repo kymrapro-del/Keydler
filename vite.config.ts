@@ -1,6 +1,6 @@
 import { loadEnv, type Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
-import { tokensDe } from './scripts/jeton.mjs'
+import { tokensFrom } from './scripts/token.mjs'
 
 /**
  * With no token the plugin did nothing, and said nothing. A misspelled
@@ -11,30 +11,30 @@ import { tokensDe } from './scripts/jeton.mjs'
  * An origin trial token is not a secret: it is printed as-is in the served
  * HTML. Hiding it bought nothing. Failing loudly buys everything.
  */
-function originTrialMeta(brut: string | undefined, production: boolean): Plugin {
-  const tokens = tokensDe(brut)
+function originTrialMeta(raw: string | undefined, production: boolean): Plugin {
+  const tokens = tokensFrom(raw)
   return {
     name: 'webmcp-origin-trial',
     buildStart() {
       if (production && tokens.length === 0) {
         this.error(
-          'VITE_WEBMCP_ORIGIN_TRIAL_TOKEN est vide pour une construction de production.\n' +
-            'Sans lui, WebMCP ne s’active que derrière chrome://flags, et rien ne le dira.\n' +
-            'Enregistrez le jeton pour l’origine exacte servie, ou construisez avec\n' +
-            'ALLOW_NO_ORIGIN_TRIAL=1 si c’est délibéré.',
+          'VITE_WEBMCP_ORIGIN_TRIAL_TOKEN is empty for a production build.\n' +
+            'Without it, WebMCP requires chrome://flags and the page cannot explain why.\n' +
+            'Register a token for the exact served origin, or build with\n' +
+            'ALLOW_NO_ORIGIN_TRIAL=1 when this is intentional.',
         )
       }
     },
     transformIndexHtml(html) {
       if (tokens.length === 0) return html
-      const balises = tokens
+      const tags = tokens
         .map((t) => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'))
         .map((t) => `<meta http-equiv="origin-trial" content="${t}" />`)
         .join('\n    ')
       const charset = html.match(/<meta\s+charset=[^>]*>/i)
       return charset
-        ? html.replace(charset[0], () => `${charset[0]}\n    ${balises}`)
-        : html.replace(/<head>/i, () => `<head>\n    ${balises}`)
+        ? html.replace(charset[0], () => `${charset[0]}\n    ${tags}`)
+        : html.replace(/<head>/i, () => `<head>\n    ${tags}`)
     },
   }
 }

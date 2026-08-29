@@ -1,7 +1,7 @@
-# Development plan: watch log
+# Development plan : watch log
 
-> Deadline: September 3, 2026, 13:00 PDT (22:00 Paris).
-> Target for filing: the evening of September 2. The 3rd is only a safety net.
+> Deadline : September 3, 2026, 13:00 PDT (22:00 Paris).
+> Target for filing : the evening of September 2. The 3rd is only a safety net.
 > Repository reset to zero on August 26.
 
 ---
@@ -17,7 +17,7 @@ vague, every task risks falling between the two.
 | Network         | Kymra | Hosting, public URL, public repository, submission description, filing the entry                 |
 | Everything else | Moon  | Architecture, domain, WebMCP, persistence, interface code, tests, CI, documentation, measurement |
 
-Put differently: the _behavior_ of the interface is in Moon's track, its
+Put differently : the _behavior_ of the interface is in Moon's track, its
 _appearance_ in Kymra's. A screen exists, displays and reacts because Moon coded
 it; it is beautiful because Kymra dressed it.
 
@@ -30,10 +30,10 @@ write refusal live. Decided on August 26.
 ## 2. The contract between the two tracks
 
 So that Kymra can work without ever touching the logic, and Moon without ever
-waiting on the style guide:
+waiting on the style guide :
 
 - **No visual value hard-coded in a component.** Color, spacing, typography,
-  radius, shadow: everything goes through CSS variables declared in a single token
+  radius, shadow : everything goes through CSS variables declared in a single token
   file.
 - **Moon delivers that file with neutral values**, readable and accessible, but
   with no aesthetic pretension. It is a starting point, not a design proposal.
@@ -59,7 +59,7 @@ blocking each other.
   is working on; a divergence is refused, never merged.
 - **The human write is authoritative**: no version, never refused. It is what
   makes the agent's write stale. All of the supervision rests on that asymmetry.
-- **Local persistence** in IndexedDB. No account, no server: this removes
+- **Local persistence** in IndexedDB. No account, no server : this removes
   authentication and makes the demonstration reproducible immediately.
 - **Degrees of proof** distinguishing proven work from asserted work.
 
@@ -76,7 +76,7 @@ The permanent pointer and its resumption · versioning with stale writes refused
 · a human adding a constraint live · the visual distinction between proven and
 asserted work.
 
-Everything else is scenery. The last two call for an interface: their _behavior_
+Everything else is scenery. The last two call for an interface : their _behavior_
 is in Moon's track, their _appearance_ in Kymra's.
 
 ---
@@ -98,28 +98,28 @@ model.
 
 The criterion splits into two distinct tests, which must not be confused.
 
-**Test A: registration.** Chrome with `chrome://flags/#enable-webmcp-testing`,
+**Test A : registration.** Chrome with `chrome://flags/#enable-webmcp-testing`,
 then DevTools → Application tab → WebMCP section. Registered tools appear there
-and can be invoked by hand. No agent needed, no deployment: `localhost` is a
+and can be invoked by hand. No agent needed, no deployment : `localhost` is a
 secure context.
 
-**Test B: discovery by an agent.** An MCP bridge
-(`@mcp-b/chrome-devtools-mcp`) exposes the page's tools to an MCP client: Claude
+**Test B : discovery by an agent.** An MCP bridge
+(`@mcp-b/chrome-devtools-mcp`) exposes the page's tools to an MCP client : Claude
 Code or Codex CLI, both runnable under Linux. Fresh conversation, tab open, the
 instruction “continue”.
 
 > **Exit criterion.** Test A passes, and in a fresh conversation with no
 > history, the agent goes looking for the page's tools and calls `resume_task`.
 > If Test A fails, the code is at fault. If only Test B fails, it is the
-> description: rework it until it works.
+> description : rework it until it works.
 
 **What Test B is not.** Through the bridge, the agent sees two generic tools
 (`list_webmcp_tools` and `call_webmcp_tool`) and not the page's tools directly.
 That is a different discovery path from the one in ChatGPT's built-in browser.
-Real, but different: not to be presented as anything other than what it is.
+Real, but different : not to be presented as anything other than what it is.
 
 **Workstation constraint.** ChatGPT desktop does not exist under Linux. This is
-not blocking: the contest rules ask for a URL reachable “via ChatGPT's built-in
+not blocking : the contest rules ask for a URL reachable “via ChatGPT's built-in
 browser or Google Chrome with WebMCP enabled”, and impose no AI client for the
 demonstration.
 
@@ -139,14 +139,14 @@ in the developer tools, not through an interface.
 
 ### D3: August 28 · The resumption contract
 
-The most underestimated day: it is no longer about code but about wording.
+The most underestimated day : it is no longer about code but about wording.
 
 - Readout format calibrated under 400 tokens, constraints and rejections never
   truncated.
 - Descriptions of the six tools iterated against a real agent.
-- End-to-end scenario: start, cut, resume, verify.
+- End-to-end scenario : start, cut, resume, verify.
 
-> **Exit criterion.** On a real task, conversation closed then reopened: the
+> **Exit criterion.** On a real task, conversation closed then reopened : the
 > agent spontaneously cites a constraint and refuses a rejected approach. This
 > is the video's scenario, reproducible before we film.
 
@@ -171,28 +171,28 @@ The moment the product stops displaying and starts supervising.
 - Disabling a constraint, rejecting an approach manually.
 - A visible signal when an agent write is refused for stale state.
 
-> **Exit criterion.** A filmable sequence: type a constraint while the agent is
+> **Exit criterion.** A filmable sequence : type a constraint while the agent is
 > thinking, see the next write refused, then the agent call the pointer again
 > and respect the new rule.
 
 ### D6: August 31 · The measurement
 
-Deliberately tightened scope: eight tasks, a single metric.
+Deliberately tightened scope : eight tasks, a single metric.
 
 - Every task has an explicit constraint and a condemned approach.
 - Control condition without the log, condition with the log, same tasks, same
   opening instruction.
-- A single, binary metric: is the rejected approach proposed again?
+- A single, binary metric : is the rejected approach proposed again?
 - Protocol and logs committed to the repository.
 
 > **Exit criterion.** One sentence with a number in it, true and reproducible.
-> If the gap is small, say so anyway: an honest and modest result is worth more
+> If the gap is small, say so anyway : an honest and modest result is worth more
 > than an unverifiable number. Four tasks at a minimum, never zero.
 
 ### D7: September 1 · Integration and dossier
 
 - Taking in Kymra's tokens, checking that nothing broke.
-- README: architecture, local startup, behavior without WebMCP, demonstration
+- README : architecture, local startup, behavior without WebMCP, demonstration
   scenario, measurement protocol.
 - Keyboard accessibility, contrast, narrow layout.
 
@@ -201,7 +201,7 @@ Deliberately tightened scope: eight tasks, a single metric.
 
 ### D8: September 2 · BUFFER
 
-A deliberately underloaded day: it absorbs the delays of the seven before it.
+A deliberately underloaded day : it absorbs the delays of the seven before it.
 
 - Full run-through on a clean machine, in private browsing.
 - Check of the page without WebMCP active.
@@ -248,7 +248,7 @@ does not show on screen, and never the central mechanism.
 ### The agent does not call the pointer on its own
 
 The main risk, and it shows up as soon as tonight. The cause is almost always
-the description: too descriptive, not prescriptive enough. Make the wording bear
+the description : too descriptive, not prescriptive enough. Make the wording bear
 on the circumstances of the call rather than on the function.
 
 ### The split leaves a hole
@@ -267,7 +267,7 @@ discovered by a judge disqualifies.
 
 Three deliverables out of four depend on a live URL. If it only exists on
 September 1, there is no margin left to discover that it does not work.
-Development, for its part, does not wait on it: everything is tested on
+Development, for its part, does not wait on it : everything is tested on
 `localhost`.
 
 ### Registration and discovery get confused

@@ -5,9 +5,9 @@ const css = Object.values(
   import.meta.glob('../src/style.css', { eager: true, query: '?raw', import: 'default' }),
 )[0] as string
 
-// Three sections (task switcher, history, search) shipped WITH NO STYLE AT ALL:
-// the insertions anchored on comments deleted in the meantime. Nothing flagged
-// it, the view cases looking for text and ids, never a CSS rule.
+// Three sections, task switcher, history and search, shipped with no style at
+// all: the insertions anchored on comments deleted in the meantime. Nothing
+// flagged it, the view cases looking for text and ids, never a CSS rule.
 const STRUCTURAL = [
   'switcher',
   'switcher__body',
@@ -50,11 +50,10 @@ describe('the stylesheet covers what the view emits', () => {
   })
 
   it('leaves no class from the view without a rule', () => {
-    // The classes actually written in the view's HTML, minus the ones that are
-    // purely semantic or supplied by the tokens. An attribute holding an
-    // interpolation was ignored in full, so that a class written right next to
-    // a `${...}` escaped the guard: that is exactly how `card--waiting` got
-    // through.
+    // The classes actually written in the view's HTML, minus the purely
+    // semantic ones and those supplied by the tokens. An attribute holding an
+    // interpolation used to be ignored whole, so a class next to a `${...}`
+    // escaped the guard: that is how `card--waiting` got through.
     const emitted = new Set<string>()
     for (const m of benchSource.matchAll(/class="([^"]*)"/g)) {
       const litteral = m[1].replace(/\$\{[^}]*\}/g, ' ')

@@ -95,7 +95,7 @@ describe('the toggle on screen', () => {
     store.__resetStore()
     await clearDatabase()
     await store.init()
-    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
   })

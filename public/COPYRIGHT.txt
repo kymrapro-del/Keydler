@@ -1,7 +1,7 @@
 Copyright (c) 2026 Moon1pact.
 
 The files in this folder that are original Keydler works include, without
-limitation:
+limitation :
 
   - og.png
   - favicon.ico

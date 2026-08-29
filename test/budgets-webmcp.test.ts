@@ -8,18 +8,17 @@ import { ALL_TOOLS } from '../src/webmcp/tools'
 
 // Character budgets Chrome recommends for WebMCP: 30 per name, 500 per tool
 // description, 150 per parameter description, 1.5 k per output. These are not
-// hard limits: past them, you run into the agents' own guardrails.
+// hard limits: past them, the agents' own guardrails take over.
 // https://developer.chrome.com/docs/ai/webmcp/secure-tools
 
 const MAX_NAME = 30
 const MAX_TOOL_DESCRIPTION = 500
 const MAX_PARAM_DESCRIPTION = 150
 // Chrome recommends 1.5 k characters per output; `TOKEN_BUDGET` is 400 tokens,
-// that is 1600 characters by its own measure: 6.7% above. Dropping to 375 saved
+// 1600 characters by its own measure, 6.7% above. Dropping to 375 saved
 // seventeen characters on an ordinary render and cost an identifier name on
-// screen. We measure WITH the task address, which the tool always passes:
-// without it, 1484 characters for an output that is really 1528, seen in Brave
-// 151, 1.9% above.
+// screen. Measured with the task address, which the tool always passes: without
+// it, 1484 characters for an output that is really 1528. Brave 151, 1.9% above.
 const MAX_OUTPUT = 1_600
 
 type Schema = {
@@ -74,13 +73,13 @@ describe('the character budgets Chrome recommends', () => {
   it('bounds search by characters, not by count', () => {
     // Twelve matches of 240 characters make 6296 characters: the match count
     // bounds nothing as long as the excerpts are unbounded.
-    const longue = (mot: string, n: number) => `${mot} ` + 'x'.repeat(n)
+    const longText = (word: string, n: number) => `${word} ` + 'x'.repeat(n)
     const task: TaskState = {
       ...buildCoreTask(),
       steps: Array.from({ length: 30 }, (_, i) => ({
         id: `s${i}`,
-        action: longue('zebra', 400),
-        result: longue('zebra', 400),
+        action: longText('zebra', 400),
+        result: longText('zebra', 400),
         evidence: null,
         dispute: null,
         confidence: 'evidence' as const,
@@ -123,18 +122,16 @@ describe('the character budgets Chrome recommends', () => {
   })
 
   it('renders an ordinary briefing within the product budget', () => {
-    // `resume_task` is the heaviest output of the set, and the only one that
-    // comes near the bound. We measure what the tool really sends: with the
-    // task address, which `resume_task` passes on every call.
-    for (const [nom, task] of [
+    // `resume_task` is the heaviest output of the set and the only one near the
+    // bound. Measured as the tool really sends it, task address included.
+    for (const [name, task] of [
       ['core', buildCoreTask()],
       ['demo', buildDemoTask()],
     ] as const) {
       const sent = renderTaskState(task, { url: `http://localhost:5173/t/${task.id}` })
-      expect(sent.length, nom).toBeLessThanOrEqual(MAX_OUTPUT)
-      // And within reach of Chrome's recommendation, without having aimed for
-      // it.
-      expect(sent.length, nom).toBeLessThan(1_560)
+      expect(sent.length, name).toBeLessThanOrEqual(MAX_OUTPUT)
+      // Within reach of Chrome's recommendation, without aiming for it.
+      expect(sent.length, name).toBeLessThan(1_560)
     }
   })
 })
@@ -142,10 +139,9 @@ describe('the character budgets Chrome recommends', () => {
 describe('what the cut was not allowed to take', () => {
   const of = (name: string) => ALL_TOOLS.find((t) => t.name === name)!
 
-  // The descriptions are written as multiline templates: a sentence can
-  // straddle a line break, which is only a space to whoever reads it. Searching
-  // for the raw sentence would make these tests sensitive to the formatting of
-  // the source rather than to the message.
+  // The descriptions are multiline templates: a sentence can straddle a line
+  // break, which is only a space to a reader. Matching the raw sentence would
+  // tie these tests to source formatting rather than to the message.
   const flat = (name: string) => of(name).description.replace(/\s+/g, ' ')
 
   // Descriptions cut by a third to fit the budget: a description instructs, the

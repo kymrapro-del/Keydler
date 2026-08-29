@@ -20,10 +20,10 @@ function encode(value: unknown): string {
 }
 
 export function fingerprintIntent(operation: string, args: Record<string, unknown>): string {
-  const canonique = canonicalIntent(operation, args)
-  const a = cyrb53(canonique, 0)
-  const b = cyrb53(canonique, 0x9e3779b9)
-  return `${canonique.length.toString(36)}.${a.toString(36)}.${b.toString(36)}`
+  const canonical = canonicalIntent(operation, args)
+  const a = cyrb53(canonical, 0)
+  const b = cyrb53(canonical, 0x9e3779b9)
+  return `${canonical.length.toString(36)}.${a.toString(36)}.${b.toString(36)}`
 }
 
 function cyrb53(text: string, seed: number): number {

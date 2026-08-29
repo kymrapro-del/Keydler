@@ -13,7 +13,7 @@ Credentials are encrypted. A value you seal is encrypted with AES-GCM 256 under
 a key derived by PBKDF2-SHA256 at 600 000 iterations from a passphrase that is
 never stored. Sealed values live outside the task record, in a separate store,
 so they cannot travel inside a shared link or an export. That is a structural
-guarantee rather than a careful one: there is no code path that copies them into
+guarantee rather than a careful one : there is no code path that copies them into
 a log, because they are not in the log.
 
 Shared links can be sealed. A protected link uses the same primitives. Until the
@@ -68,6 +68,6 @@ policy is worth reporting, and will be answered.
 ## Scope
 
 The measured state of the deployed site is checked by `npm run sonde`, which
-asks the live origin rather than the source: headers, policy, origin trial
+asks the live origin rather than the source : headers, policy, origin trial
 token, MIME types, caching, redirects and routing. Its failures are real; its
 notes are things observed and deliberately not fixed, each with the reason.

@@ -10,15 +10,15 @@ import { join } from 'node:path'
 // this script checks that it still matches, a policy that has drifted being
 // reassuring without protecting.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
-const racine = fileURLToPath(new URL('../', import.meta.url))
+const root = fileURLToPath(new URL('../', import.meta.url))
 
 const html = await readFile(join(dist, 'index.html'), 'utf8')
 
 const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
 if (scripts.length !== 1) {
   console.error(
-    `headers: ${scripts.length} script(s) en ligne trouvé(s), un seul est attendu.\n` +
-      "En ajouter un exige d'ajouter son empreinte ; en retirer un exige de retirer la sienne.",
+    `headers : found ${scripts.length} inline scripts, expected exactly one.\n` +
+      'Adding or removing one requires updating its hash.',
   )
   process.exit(1)
 }
@@ -33,14 +33,14 @@ if (!modele.includes('__CSP_SCRIPT_HASH__')) {
 }
 await writeFile(path, modele.replaceAll('__CSP_SCRIPT_HASH__', fingerprint))
 
-const vercel = await readFile(join(racine, 'vercel.json'), 'utf8')
+const vercel = await readFile(join(root, 'vercel.json'), 'utf8')
 if (!vercel.includes(fingerprint)) {
   console.error(
-    `headers: vercel.json ne porte pas l'empreinte du script en ligne.\n` +
+    `headers : vercel.json does not contain the inline script hash.\n` +
       `Attendue : ${fingerprint}\n` +
-      "Le script d'amorce a changé : reportez cette valeur dans vercel.json.",
+      'The bootstrap script changed : copy this value into vercel.json.',
   )
   process.exit(1)
 }
 
-console.log(`headers: politique scellée sur ${fingerprint}`)
+console.log(`headers : policy sealed with ${fingerprint}`)

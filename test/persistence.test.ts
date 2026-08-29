@@ -15,7 +15,7 @@ beforeEach(() => {
 
 describe('persistence', () => {
   it('gives back the same state and the same version after a reload', async () => {
-    const created = await store.createAndOpenTask('Tâche persistée', 'Continuer')
+    const created = await store.createAndOpenTask('Persistent task', 'Continue')
     await store.mutate((state) =>
       logStep(state, { action: 'a', result: 'b', basedOnVersion: state.version }, 'agent'),
     )
@@ -31,7 +31,7 @@ describe('persistence', () => {
   })
 
   it('finds the last task opened, with no id given', async () => {
-    await store.createAndOpenTask('Premier', undefined)
+    await store.createAndOpenTask('First', undefined)
     const second = await store.createAndOpenTask('Second', undefined)
 
     store.__resetStore()
@@ -41,11 +41,11 @@ describe('persistence', () => {
     expect((await loadLastTask())?.id).toBe(second.id)
   })
 
-  // The fallback (no last log known any more) used to pull back EVERY log on
+  // The fallback (no last log known any more) used to pull back every log on
   // the machine only to keep one; it now walks down the index by date. The
   // dates are set by hand: two logs created within the same millisecond have no
-  // “most recent”, and the product does not promise one.
-  async function poser(id: string, updatedAt: number, schemaVersion = SCHEMA_VERSION) {
+  // "most recent", and the product does not promise one.
+  async function putStoredTask(id: string, updatedAt: number, schemaVersion = SCHEMA_VERSION) {
     await putTask({ ...buildCoreTask(), id, title: id, updatedAt } as never)
     const db = await getDb()
     const stored = await db.get('tasks', id)
@@ -54,35 +54,35 @@ describe('persistence', () => {
 
   it('with no last task known, takes the most recent', async () => {
     await clearDatabase()
-    await poser('ancien', 1_000)
-    await poser('recent', 2_000)
+    await putStoredTask('old', 1_000)
+    await putStoredTask('recent', 2_000)
 
     expect((await loadLastTask())?.id).toBe('recent')
   })
 
   it('goes down to the next one when the most recent is unreadable', async () => {
     await clearDatabase()
-    await poser('ancien', 1_000)
+    await putStoredTask('old', 1_000)
     // A log written by a future version: refused on read, as it should be, but
     // it must not take the whole machine down with it.
-    await poser('recent', 2_000, 999)
+    await putStoredTask('recent', 2_000, 999)
 
-    expect((await loadLastTask())?.id).toBe('ancien')
+    expect((await loadLastTask())?.id).toBe('old')
   })
 
   it('drops an unreadable task from the list, without taking the others with it', async () => {
     // Found by mutation: nothing held this net. A log from a future version
     // must not empty the machine's picker.
     await clearDatabase()
-    await poser('lisible', 1_000)
-    await poser('futur', 2_000, 999)
+    await putStoredTask('readable', 1_000)
+    await putStoredTask('future', 2_000, 999)
 
-    const cartes = await store.allTaskCards()
-    expect(cartes.map((c) => c.id)).toEqual(['lisible'])
+    const cards = await store.allTaskCards()
+    expect(cards.map((c) => c.id)).toEqual(['readable'])
   })
 
   it('persists refused writes too', async () => {
-    const task = await store.createAndOpenTask('Tâche', undefined)
+    const task = await store.createAndOpenTask('Task', undefined)
     await store.mutate((state) =>
       addConstraint(state, { rule: 'R', basedOnVersion: null }, 'human'),
     )

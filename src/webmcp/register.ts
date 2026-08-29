@@ -69,19 +69,19 @@ function raison(error: unknown): string {
 }
 
 async function sync(modelContext: ModelContextLike): Promise<void> {
-  const voulus = toolsForCurrentState()
-  const noms = new Set(voulus.map((t) => t.name))
+  const vouread = toolsForCurrentState()
+  const names = new Set(vouread.map((t) => t.name))
   const lifecycle = getRegistrationState().lifecycle
 
   if (lifecycle.mode === 'dynamic') {
-    for (const [nom, controller] of [...registered]) {
-      if (noms.has(nom)) continue
+    for (const [name, controller] of [...registered]) {
+      if (names.has(name)) continue
       controller.abort()
-      registered.delete(nom)
+      registered.delete(name)
     }
   }
 
-  const toInstall = voulus.filter((t) => !registered.has(t.name))
+  const toInstall = vouread.filter((t) => !registered.has(t.name))
 
   const issues = await Promise.allSettled(
     toInstall.map(async (tool) => {
@@ -105,7 +105,7 @@ async function sync(modelContext: ModelContextLike): Promise<void> {
     }
   })
 
-  const failures = voulus
+  const failures = vouread
     .filter((t) => !registered.has(t.name))
     .map((t) => ({ name: t.name, reason: motifs.get(t.name) ?? 'not registered' }))
 
@@ -136,8 +136,8 @@ function syncQueued(modelContext: ModelContextLike): Promise<void> {
 async function observeRegisteredTools(modelContext: ModelContextLike): Promise<void> {
   if (typeof modelContext.getTools !== 'function') return
   try {
-    const outils = await modelContext.getTools()
-    setState({ ...state, observedTools: outils.map((t) => t.name) })
+    const tools = await modelContext.getTools()
+    setState({ ...state, observedTools: tools.map((t) => t.name) })
   } catch {}
 }
 

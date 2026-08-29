@@ -19,13 +19,13 @@ export async function clearDatabase(): Promise<void> {
 export async function waitUntil(
   predicate: () => boolean,
   what = 'the expected condition',
-  tours = 300,
+  turns = 300,
 ): Promise<void> {
-  for (let i = 0; i < tours; i++) {
+  for (let i = 0; i < turns; i++) {
     if (predicate()) return
     await new Promise((r) => setTimeout(r, 0))
   }
-  throw new Error(`délai dépassé en attendant : ${what}`)
+  throw new Error(`timed out waiting : ${what}`)
 }
 
 export function call(
@@ -44,11 +44,11 @@ export function textOf(result: ToolResult): string {
   return result.content.map((c) => c.text).join('\n')
 }
 
-let compteur = 0
+let counter = 0
 
 export function mutationId(prefix = 'm'): string {
-  compteur += 1
-  return `${prefix}-test-${compteur.toString().padStart(6, '0')}`
+  counter += 1
+  return `${prefix}-test-${counter.toString().padStart(6, '0')}`
 }
 
 export function storeWrite(
@@ -78,7 +78,7 @@ export function writeArgs(
 
 export function currentTask(): TaskState {
   const task = store.currentTask()
-  if (!task) throw new Error('aucun cahier ouvert')
+  if (!task) throw new Error('no task is open')
   return task
 }
 
@@ -87,21 +87,21 @@ export class FakeModelContext extends EventTarget {
   readonly attempts: string[] = []
   failOn = new Set<string>()
 
-  private enAttente: (() => void)[] = []
-  lent = false
+  private pendingResolvers: (() => void)[] = []
+  slow = false
 
-  reprendre(): void {
-    const attendus = this.enAttente
-    this.enAttente = []
-    for (const release of attendus) release()
+  resume(): void {
+    const releases = this.pendingResolvers
+    this.pendingResolvers = []
+    for (const release of releases) release()
   }
 
   registerTool = vi.fn(
     async (tool: ModelContextTool, options?: { signal?: AbortSignal }): Promise<void> => {
       this.attempts.push(tool.name)
 
-      if (this.lent) {
-        await new Promise<void>((resolve) => this.enAttente.push(resolve))
+      if (this.slow) {
+        await new Promise<void>((resolve) => this.pendingResolvers.push(resolve))
       }
 
       if (options?.signal?.aborted) {
@@ -152,8 +152,8 @@ export function removeModelContext(): void {
   Reflect.deleteProperty(document, 'modelContext')
 }
 
-export async function settle(tours = 4): Promise<void> {
-  for (let i = 0; i < tours; i++) await new Promise((r) => setTimeout(r, 0))
+export async function settle(turns = 4): Promise<void> {
+  for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
 }
 
 export function pretendChromium(major: number | null, brand = 'Chromium'): void {

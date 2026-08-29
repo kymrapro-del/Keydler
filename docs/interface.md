@@ -1,7 +1,7 @@
 # The interface, room by room
 
 The [README](../README.md) shows what the product is. This is what is actually
-on the page: every panel, and the reason it exists.
+on the page : every panel, and the reason it exists.
 
 ## What else is on the page
 
@@ -11,25 +11,25 @@ on the page: every panel, and the reason it exists.
   decision +3 more”_), so “which one is waiting on me?” is a glance, not five
   clicks.
 - **An agent just called a tool.** When one has, the header says which tool and
-  how long ago. It reports a call the page observed, never a connection: nothing
+  how long ago. It reports a call the page observed, never a connection : nothing
   in WebMCP tells a page an agent is present, and the wording does not pretend
   otherwise.
 - **Search** across the open task and the others at once, from the box or by
   pressing `/`. It matches a rejection by its reason and a step by the content of
   its evidence, and says which. Agents get the same search as `search_task`.
-- **The history of one rule.** Every rule carries a History button: what was
+- **The history of one rule.** Every rule carries a History button : what was
   reworded, when it was lifted, when it came back. It falls out of the `targetId`
   the audit already keeps for undo, the same field answering a second question no
   card was asking. The log is bounded, so when older entries have been dropped it
   says so rather than showing a short history as if it were the whole one. An
   empty history would otherwise read as “nothing happened”.
-- **History** in words: _“You lifted a rule”_, _“Agent tried to record a step
-  (refused): the task had changed since it was read”_. The audit trail was always
+- **History** in words : _“You lifted a rule”_, _“Agent tried to record a step
+  (refused) : the task had changed since it was read”_. The audit trail was always
   complete; this is the screen for it.
 - **Correct anything.** Rename the task, change the next action, reword a rule or
   a ruled-out approach, rename a credential or fix what it is for. All human
-  writes: never refused, always audited.
-- **Record a step you did yourself**, with evidence pasted whole: several lines,
+  writes : never refused, always audited.
+- **Record a step you did yourself**, with evidence pasted whole : several lines,
   a diff, a test report. You say what the evidence _is_; the page guesses and you
   correct it, so a diff is never filed as command output. You can also attach
   evidence later to a step that was only claimed.
@@ -38,7 +38,7 @@ on the page: every panel, and the reason it exists.
   answer goes back into `resume_task`, so the next conversation reads it.
 - **Archive** what is done, without deleting it. `resume_task` says so, in case
   an agent arrives on an old link.
-- **Import and export.** Import never overwrites: a task already here at a
+- **Import and export.** Import never overwrites : a task already here at a
   different version is added as a copy.
 - **A link that carries the log.** “Copy a link that carries this log” packs the
   whole task (gzipped through `CompressionStream`, no dependency) into the URL
@@ -51,11 +51,11 @@ on the page: every panel, and the reason it exists.
   list is written at build time from the real, hashed asset names. An audit found
   it had been listing none of them, so offline served a blank page after the first
   visit. Verified since with the static server stopped and the network emulated
-  off: an uncached fetch fails and the page still renders. When the network goes,
+  off : an uncached fetch fails and the page still renders. When the network goes,
   the page says so, because everything here is on the device.
 - **Will the browser keep this?** Technical details reports whether storage is
   durable and how much room the log takes, and offers to ask the browser for
-  durability. It never claims the work is safe: not durable means _may be cleared
+  durability. It never claims the work is safe : not durable means _may be cleared
   when space runs short_, durable means _the browser will not clear it on its
   own_. You still can, and so can a site-data wipe. If the browser declines the
   request, the page says that too rather than doing nothing visible.
@@ -70,13 +70,13 @@ on the page: every panel, and the reason it exists.
   the same text the tool returns, not a version written for the screen.
 - **Carry the rules over.** Creating a task offers to bring the rules in force
   from the one you are on. They arrive binding and attributed to you, and nothing
-  else follows: not the work, not the rejections, not the history.
+  else follows : not the work, not the rejections, not the history.
 - **How long since anything happened.** The header says when the log was last
   written, and `resume_task` warns an agent when a notebook has sat untouched for
   a day or more, so it checks that what it is reading still holds.
 - **Did the agent read before writing?** The page counts it, from the calls it
   actually observed. Every write after a read says so; a write that arrived before
-  any read is called out: that agent was working from its own memory, not from
+  any read is called out : that agent was working from its own memory, not from
   this log. It is the product's central claim, reported as observed data rather
   than asserted.
 - **Escape closes whatever is open**, and `/` reaches search. One thing closes at
@@ -89,7 +89,7 @@ on the page: every panel, and the reason it exists.
   approve it is a form with one exit. “Wrong” sits beside “Approve”, asks for your
   reason, and that reason is what every later conversation reads. Disputing drops
   the step out of the proven count, and it undoes like any other decision.
-- **“Needs you”**, at the top, before you read ten cards: agents blocked on a
+- **“Needs you”**, at the top, before you read ten cards : agents blocked on a
   decision, questions, proposals, evidence to read, work claimed with no evidence,
   all counted, ordered by what it costs to miss, and linked to the card that holds
   each one. It disappears when there is nothing left.
@@ -111,13 +111,13 @@ on the page: every panel, and the reason it exists.
   background, its title carries the count, the same signal every chat app uses,
   and it costs no permission prompt.
 - **Undo that.** Lifting a rule, accepting a proposal, archiving a task,
-  disputing a step, renaming, rewording a rule, changing the next action: each is
+  disputing a step, renaming, rewording a rule, changing the next action : each is
   one click, so each is one click back. It undoes only your own last decision,
   only while that decision is still in force, and never reaches past an agent's
-  work. An answer to a question and a logged step stay outside it: an agent may
+  work. An answer to a question and a logged step stay outside it : an agent may
   already have acted on the answer, and a step is a record of work, not a
   decision. Nothing is erased. The undo is a write of its own, and the audit entry
-  now keeps what was replaced, so the history reads _“renamed: X → Y”_ rather than
+  now keeps what was replaced, so the history reads _“renamed : X → Y”_ rather than
   just _“renamed”_.
 - **Filter what you searched.** When results span rules, steps, decisions and
   rejections, one button per kind narrows them, with a count each. The filter

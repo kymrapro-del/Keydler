@@ -1,7 +1,7 @@
 /**
- * `www.js` est un Worker Cloudflare : du JavaScript simple, hors du programme
- * TypeScript. Ces déclarations permettent aux épreuves de l'importer et de
- * vérifier réellement ce qu'il rend, au lieu de taire l'erreur d'import.
+ * `www.js` is a Cloudflare Worker: plain JavaScript, outside the TypeScript
+ * program. These declarations let a test import it and check what it returns,
+ * rather than silence the import error.
  */
 declare const worker: {
   fetch(request: Request): Response

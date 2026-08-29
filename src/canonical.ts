@@ -1,5 +1,5 @@
 /**
- * `www.keydler.com` is ANOTHER origin: everything there is partitioned, and the
+ * `www.keydler.com` is another origin: everything there is partitioned, and the
  * origin trial token being invalid on it, a judge reads "WebMCP is not
  * available in this browser". Cloudflare Pages cannot filter on the host in
  * `_redirects`; the rule is set by hand in its dashboard, and forgetting it

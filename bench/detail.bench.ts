@@ -7,18 +7,15 @@ import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import type { Step, TaskState } from '../src/domain/types'
 
-/**
- * Where the time goes INSIDE a path, rather than what the whole path costs. It
- * answers whether something is worth touching, and usually says no.
- */
+/** Where the time goes inside a path, rather than what the whole path costs. */
 
-function steps(n: number, preuve = true): Step[] {
+function steps(n: number, withEvidence = true): Step[] {
   return Array.from({ length: n }, (_, i) => ({
     id: `s${i}`,
     action: `Ran the migration on shard ${i} and checked the row count matched`,
     result: `Shard ${i} moved, 4211 rows, no drift detected in the checksum`,
     evidence:
-      preuve && i % 3 === 0
+      withEvidence && i % 3 === 0
         ? { kind: 'command_output' as const, content: 'ok '.repeat(120), verifiedAt: null }
         : null,
     dispute: null,
@@ -74,20 +71,19 @@ describe('detail', () => {
       await wipe()
       await putTask(task)
       const db = await getDb()
-      console.log(`\n  --- ${n} étapes ---`)
+      console.log(`\n  --- ${n} steps ---`)
 
-      await timed('db.get complet (le contrôle de version le fait)', () => db.get('tasks', 'w'))
-      await timed('db.put complet', () => db.put('tasks', toStored(task)))
-      await timed('saveTask AVEC contrôle de version', () => saveTask(task, task.version))
-      await timed('saveTask SANS contrôle de version', () => saveTask(task))
+      await timed('full db.get (used by the version check)', () => db.get('tasks', 'w'))
+      await timed('full db.put', () => db.put('tasks', toStored(task)))
+      await timed('saveTask WITH version check', () => saveTask(task, task.version))
+      await timed('saveTask WITHOUT version check', () => saveTask(task))
       await timed('loadTask (get + normalize)', () => loadTask('w'))
-      // The clone was INSIDE the measurement: normalizeTask looked like it cost
-      // 26.34 ms where it costs 1.18, a factor of 22, and it pointed at the
-      // wrong fix (speed up normalize, rather than read less often). The clone
-      // happens once now, outside the timer.
-      const cloné = structuredClone(toStored(task))
-      sync('normalizeTask seul', () => normalizeTask(cloné), 5)
-      sync('structuredClone seul', () => structuredClone(toStored(task)), 5)
+      // The clone was inside the measurement: normalizeTask read as 26.34 ms
+      // where it costs 1.18, a factor of 22, pointing at the wrong fix. It now
+      // happens once, outside the timer.
+      const cloned = structuredClone(toStored(task))
+      sync('normalizeTask alone', () => normalizeTask(cloned), 5)
+      sync('structuredClone alone', () => structuredClone(toStored(task)), 5)
     }
   }, 300_000)
 
@@ -95,7 +91,7 @@ describe('detail', () => {
     await wipe()
     store.__resetStore()
     await store.init()
-    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
     const root = document.querySelector<HTMLElement>('#app')!
     mount(root)
     await store.openPreparedTask({ ...buildCoreTask(), steps: steps(2000) })
@@ -103,62 +99,62 @@ describe('detail', () => {
 
     const html = root.innerHTML
     console.log(
-      `\n  html rendu : ${html.length} caractères, ${root.querySelectorAll('*').length} nœuds`,
+      `\n  rendered HTML : ${html.length} characters, ${root.querySelectorAll('*').length} nodes`,
     )
-    sync('render() complet (chaîne identique : saute tout)', () => __renderNow())
-    sync('innerHTML = même chaîne (analyse HTML seule)', () => {
+    sync('full render() (identical string : skips everything)', () => __renderNow())
+    sync('innerHTML = same string (HTML parsing only)', () => {
       root.innerHTML = html
     })
-    sync('querySelectorAll sur tous les boutons', () => root.querySelectorAll('button').length)
+    sync('querySelectorAll over every button', () => root.querySelectorAll('button').length)
   }, 300_000)
 
   it('a render that actually changes, on a large task', async () => {
     await wipe()
     store.__resetStore()
     await store.init()
-    document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
+    document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
     const root = document.querySelector<HTMLElement>('#app')!
     mount(root)
     await store.openPreparedTask({ ...buildCoreTask(), steps: steps(20000) })
     __renderNow()
 
-    const durées: number[] = []
+    const durations: number[] = []
     for (let i = 0; i < 12; i++) {
-      await store.mutate((st) => ({ ...st, version: st.version + 1, next: `tour ${i}` }))
+      await store.mutate((st) => ({ ...st, version: st.version + 1, next: `round ${i}` }))
       const t0 = performance.now()
       __renderNow()
-      durées.push(performance.now() - t0)
+      durations.push(performance.now() - t0)
     }
-    console.log(`\n  rendu changeant (le cahier bouge)   : ${median(durées).toFixed(2)} ms`)
+    console.log(`\n  changing render (the task changes)   : ${median(durations).toFixed(2)} ms`)
 
-    // The case that matters: the task does NOT move but the screen does, a
-    // keystroke in the search box, a list unfolded. That is where everything
-    // depending on the task alone can be reused.
-    const champ = root.querySelector<HTMLInputElement>('#search')
-    const interactifs: number[] = []
+    // The case that matters: the task does not move but the screen does, a
+    // keystroke in the search box, a list unfolded. Everything depending on the
+    // task alone can be reused.
+    const field = root.querySelector<HTMLInputElement>('#search')
+    const interactiveTimes: number[] = []
     for (let i = 0; i < 12; i++) {
-      if (champ) {
-        champ.value = 'shard'.slice(0, (i % 5) + 1)
-        champ.dispatchEvent(new Event('input', { bubbles: true }))
+      if (field) {
+        field.value = 'shard'.slice(0, (i % 5) + 1)
+        field.dispatchEvent(new Event('input', { bubbles: true }))
       }
       const t0 = performance.now()
       __renderNow()
-      interactifs.push(performance.now() - t0)
+      interactiveTimes.push(performance.now() - t0)
     }
     console.log(
-      `  rendu interactif (le cahier ne bouge pas) : ${median(interactifs).toFixed(2)} ms${champ ? '' : '  [PAS DE CHAMP]'}`,
+      `  interactive render (the task is unchanged) : ${median(interactiveTimes).toFixed(2)} ms${field ? '' : '  [NO FIELD]'}`,
     )
   }, 300_000)
 
   it('startup', async () => {
-    for (const [nombre, taille] of [
+    for (const [count, size] of [
       [1, 200],
       [1, 20000],
       [30, 500],
     ] as const) {
       await wipe()
-      for (let i = 0; i < nombre; i++) {
-        await putTask({ ...buildCoreTask(), id: `t${i}`, title: `T${i}`, steps: steps(taille) })
+      for (let i = 0; i < count; i++) {
+        await putTask({ ...buildCoreTask(), id: `t${i}`, title: `T${i}`, steps: steps(size) })
       }
       const db = await getDb()
       await db.put('meta', 't0', 'lastTaskId')
@@ -166,52 +162,52 @@ describe('detail', () => {
       store.__resetStore()
       const t0 = performance.now()
       await store.init()
-      const avec = performance.now() - t0
+      const withLastTaskId = performance.now() - t0
 
       // The fallback path: no lastTaskId left, so a full listTasks().
       await db.delete('meta', 'lastTaskId')
       store.__resetStore()
       const t1 = performance.now()
       await store.init()
-      const sans = performance.now() - t1
+      const withoutLastTaskId = performance.now() - t1
 
       console.log(
-        `  ${String(nombre).padEnd(3)} cahiers × ${String(taille).padEnd(6)} étapes : init ${avec.toFixed(1)} ms · sans lastTaskId ${sans.toFixed(1)} ms`,
+        `  ${String(count).padEnd(3)} tasks × ${String(size).padEnd(6)} steps : init ${withLastTaskId.toFixed(1)} ms, without lastTaskId ${withoutLastTaskId.toFixed(1)} ms`,
       )
     }
   }, 300_000)
 
   it('memory retained by the task list', async () => {
-    const mo = (n: number) => `${(n / 1024 / 1024).toFixed(1)} Mo`
+    const megabytes = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`
     await wipe()
     for (let i = 0; i < 20; i++) {
       await putTask({ ...buildCoreTask(), id: `t${i}`, title: `T${i}`, steps: steps(2000) })
     }
 
-    // A worker heap is too noisy to decide anything here, so what is RETAINED
-    // is measured by its serialised size: deterministic, and proportional to
-    // what the page holds open all the time.
-    const entiers = JSON.stringify(await store.allTasks()).length
-    const fiches = JSON.stringify(await store.allTaskCards()).length
+    // A worker heap is too noisy to decide anything here, so retention is
+    // measured by serialised size: deterministic, and proportional to what the
+    // page holds open.
+    const fullTasks = JSON.stringify(await store.allTasks()).length
+    const cards = JSON.stringify(await store.allTaskCards()).length
 
-    console.log('\n  20 cahiers × 2000 étapes, retenus par le sélecteur :')
-    console.log(`    cahiers entiers (avant) : ${mo(entiers)}`)
+    console.log('\n  20 tasks × 2000 steps, retained by the picker :')
+    console.log(`    full tasks (before) : ${megabytes(fullTasks)}`)
     console.log(
-      `    fiches (après)          : ${mo(fiches)}  (${(entiers / fiches).toFixed(0)}× moins)`,
+      `    cards (after)      : ${megabytes(cards)}  (${(fullTasks / cards).toFixed(0)}× less)`,
     )
   }, 300_000)
 
   it('memory held by one task', async () => {
-    const mo = (n: number) => `${(n / 1024 / 1024).toFixed(1)} Mo`
+    const megabytes = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`
     for (const n of [1000, 20000]) {
       global.gc?.()
-      const avant = process.memoryUsage().heapUsed
+      const before = process.memoryUsage().heapUsed
       const task: TaskState = { ...buildCoreTask(), steps: steps(n) }
       const json = JSON.stringify(task).length
       global.gc?.()
-      const après = process.memoryUsage().heapUsed
+      const after = process.memoryUsage().heapUsed
       console.log(
-        `  ${String(n).padEnd(6)} étapes : ${mo(après - avant)} en tas · ${mo(json)} en JSON`,
+        `  ${String(n).padEnd(6)} steps : ${megabytes(after - before)} on the heap, ${megabytes(json)} as JSON`,
       )
       void task
     }

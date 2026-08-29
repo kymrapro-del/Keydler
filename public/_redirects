@@ -1,12 +1,6 @@
-# Une tâche vit à /t/:id, et la page y déplace l'adresse dès qu'un cahier est
-# ouvert. Sans cette règle, tout rechargement, tout signet et tout lien partagé
-# tombe sur le 404 de l'hébergeur. Invisible en local : `vite preview` réécrit
-# déjà, un hébergeur statique non.
+# Tasks use `/t/:id`. This SPA fallback keeps reloads, bookmarks and shared
+# links on the application instead of the host's 404 page.
 /*  /index.html  200
 
-# La redirection www → apex n'est PAS ici : Cloudflare Pages ne fait pas
-# correspondre l'hôte dans ce fichier, seulement le chemin. Sur Cloudflare elle
-# se pose en règle de redirection (Rules → Redirect Rules), et elle demande un
-# droit d'écriture sur la zone que la session de déploiement n'a pas.
-# `vercel.json` la porte pour Vercel, et `src/main.ts` la tient de toute façon
-# côté navigateur ; voir le commentaire là-bas.
+# Host redirects do not belong here because Cloudflare Pages matches paths only.
+# Vercel handles the redirect in `vercel.json`; the browser also canonicalizes it.

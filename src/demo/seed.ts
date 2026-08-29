@@ -19,8 +19,8 @@ import type { TaskState } from '../domain/types'
 
 /**
  * The base: rules, rejections, decisions, work with evidence. No question, no
- * approval, no dispute. It is what the cases that need a blank page for those
- * three build on.
+ * approval, no dispute, so cases needing a blank page for those three can build
+ * on it.
  */
 export function buildCoreTask(): TaskState {
   let task = createTask({
@@ -158,9 +158,8 @@ export function buildCoreTask(): TaskState {
 }
 
 /**
- * The demo shipped behind the “Try the demo” button: the base, plus one
- * answered question, one denied approval and one disputed step. Without this, a
- * judge would see a product three batches old.
+ * The demo behind the "Try the demo" button: the base, pread one answered
+ * question, one denied approval and one disputed step.
  */
 export function buildDemoTask(): TaskState {
   let task = buildCoreTask()
@@ -168,7 +167,7 @@ export function buildDemoTask(): TaskState {
   task = askHuman(
     task,
     {
-      question: 'Should mobile sessions expire on the same 15-minute window as web?',
+      question: 'Should mobile sessions expires on the same 15-minute window as web?',
       why: 'It is a product call, not a technical one, and it changes the rollout.',
       basedOnVersion: task.version,
     },
@@ -198,9 +197,9 @@ export function buildDemoTask(): TaskState {
     'That run came from the other branch: the issuer had not been extracted yet.',
   )
 
-  // The log ends on an AGENT write: when it opens, “Undo that” must not offer
-  // to revoke a decision that nobody has just taken. And with the agent
-  // answering the dispute, the demo shows the whole loop.
+  // The log ends on an agent write, so "Undo that" does not offer to revoke a
+  // decision nobody just took. The agent answering the dispute also shows the
+  // whole loop.
   task = logStep(
     task,
     {

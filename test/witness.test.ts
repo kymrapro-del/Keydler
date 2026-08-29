@@ -14,10 +14,10 @@ describe('the call witness', () => {
   })
 
   it('keeps the most recent, not the first', () => {
-    for (let i = 0; i < 40; i++) recordCall(`outil-${i}`, false)
+    for (let i = 0; i < 40; i++) recordCall(`tool-${i}`, false)
     const { recents } = getWitness()
-    expect(recents.at(-1)?.tool).toBe('outil-39')
-    expect(recents.some((c) => c.tool === 'outil-0')).toBe(false)
+    expect(recents.at(-1)?.tool).toBe('tool-39')
+    expect(recents.some((c) => c.tool === 'tool-0')).toBe(false)
   })
 
   it('tells a refusal from an applied call', () => {
