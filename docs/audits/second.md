@@ -91,11 +91,11 @@ They are reported here because a test that passes without demonstrating anything
 is worse than a missing test: it inspires a confidence it does not deserve.
 
 1. **The picker badge.** The test checked that a row contained "blocked", on a
-   task titled "Blocked task". It was the title that satisfied the assertion.
-   Task renamed, assertion moved onto the element.
+   task titled "Blocked task". It was the title that satisfied the assertion. Task
+   renamed, assertion moved onto the element.
 2. **The two bounds of the link.** Each masked the other: the over-long payload
-   failed at decoding anyway, and the oversized uncompressed payload was stopped
-   by the input bound. Both tests passed without proving anything. Isolated: a
+   failed at decoding anyway, and the oversized uncompressed payload was stopped by
+   the input bound. Both tests passed without proving anything. Isolated: a
    perfectly valid log, simply too long, that only the input bound refuses.
 
 In both cases, it is the mutation test that revealed the problem: with the guard
@@ -167,11 +167,10 @@ display), but nothing bounds it either.
 ## What this second audit does not cover
 
 - **No browser verification.** The control browser could not be restarted in
-  this environment, and I prefer to write that down rather than let anyone
-  believe in a verification that did not take place. The tests do exercise the
-  platform's real `CompressionStream` and `DecompressionStream`, and not
-  doubles. The browser readings from the earlier passes, for their part, still
-  hold.
+  this environment, and I prefer to write that down rather than let anyone believe
+  in a verification that did not take place. The tests do exercise the platform's
+  real `CompressionStream` and `DecompressionStream`, and not doubles. The browser
+  readings from the earlier passes, for their part, still hold.
 - **No review of the encryption**, nor of the service worker, nor of the
   manifest: they have not changed since the first audit.
 - **No performance measurement**, apart from the two durations quoted for the

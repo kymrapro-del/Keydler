@@ -18,8 +18,8 @@ deliberately sets aside any subjective, non-reproducible measure of quality.
 | Control      | The statement of the task, and nothing else. No rule, no rejection: this is the state where the previous conversation was lost and nothing survived it. |
 | With the log | The log, loaded with the task, its active rule and its ruled-out approach with its reason. Opening instruction: `continue`.                             |
 
-The comparison therefore bears on what the log makes survive, not on the
-wording of the instruction.
+The comparison therefore bears on what the log makes survive, not on the wording
+of the instruction.
 
 ## Order of execution
 
@@ -40,8 +40,8 @@ code through `fetch` and the isolation is an illusion. See
 ## Collecting the logs
 
 The “Delete this task” button starts again from an empty base between two runs,
-without going through the developer tools. It asks for confirmation, naming
-what disappears.
+without going through the developer tools. It asks for confirmation, naming what
+disappears.
 
 Export before deleting. The “Export this task” button produces a file carrying
 the compact briefing, the full content of the evidence (which the briefing never

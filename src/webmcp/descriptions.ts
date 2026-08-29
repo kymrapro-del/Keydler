@@ -1,7 +1,8 @@
 /**
  * Chrome recommends 500 characters per tool description and 150 per parameter
- * description: not hard limits, but there are thirteen to read at once. A description
- * instructs, the README explains; `test/budgets-webmcp.test.ts` holds these bounds.
+ * description: not hard limits, but there are thirteen to read at once. A
+ * description instructs, the README explains; `test/budgets-webmcp.test.ts`
+ * holds these bounds.
  */
 
 export const RESUME_TASK_DESCRIPTION = `Persistent, human-supervised checkpoint for the current task. It holds:

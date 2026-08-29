@@ -7,18 +7,19 @@ import type { TaskState } from '../src/domain/types'
 import { ALL_TOOLS } from '../src/webmcp/tools'
 
 // Character budgets Chrome recommends for WebMCP: 30 per name, 500 per tool
-// description, 150 per parameter description, 1.5 k per output. These are not hard
-// limits: past them, you run into the agents' own guardrails.
+// description, 150 per parameter description, 1.5 k per output. These are not
+// hard limits: past them, you run into the agents' own guardrails.
 // https://developer.chrome.com/docs/ai/webmcp/secure-tools
 
 const MAX_NAME = 30
 const MAX_TOOL_DESCRIPTION = 500
 const MAX_PARAM_DESCRIPTION = 150
-// Chrome recommends 1.5 k characters per output; `TOKEN_BUDGET` is 400 tokens, that is
-// 1600 characters by its own measure: 6.7% above. Dropping to 375 saved seventeen
-// characters on an ordinary render and cost an identifier name on screen.
-// We measure WITH the task address, which the tool always passes: without it, 1484
-// characters for an output that is really 1528, seen in Brave 151, 1.9% above.
+// Chrome recommends 1.5 k characters per output; `TOKEN_BUDGET` is 400 tokens,
+// that is 1600 characters by its own measure: 6.7% above. Dropping to 375 saved
+// seventeen characters on an ordinary render and cost an identifier name on
+// screen. We measure WITH the task address, which the tool always passes:
+// without it, 1484 characters for an output that is really 1528, seen in Brave
+// 151, 1.9% above.
 const MAX_OUTPUT = 1_600
 
 type Schema = {
@@ -131,7 +132,8 @@ describe('the character budgets Chrome recommends', () => {
     ] as const) {
       const sent = renderTaskState(task, { url: `http://localhost:5173/t/${task.id}` })
       expect(sent.length, nom).toBeLessThanOrEqual(MAX_OUTPUT)
-      // And within reach of Chrome's recommendation, without having aimed for it.
+      // And within reach of Chrome's recommendation, without having aimed for
+      // it.
       expect(sent.length, nom).toBeLessThan(1_560)
     }
   })
@@ -141,13 +143,13 @@ describe('what the cut was not allowed to take', () => {
   const of = (name: string) => ALL_TOOLS.find((t) => t.name === name)!
 
   // The descriptions are written as multiline templates: a sentence can
-  // straddle a line break, which is only a space to whoever reads it.
-  // Searching for the raw sentence would make these tests sensitive to the
-  // formatting of the source rather than to the message.
+  // straddle a line break, which is only a space to whoever reads it. Searching
+  // for the raw sentence would make these tests sensitive to the formatting of
+  // the source rather than to the message.
   const flat = (name: string) => of(name).description.replace(/\s+/g, ' ')
 
-  // Descriptions cut by a third to fit the budget: a description instructs,
-  // the README explains. Here are the instructions that had to survive.
+  // Descriptions cut by a third to fit the budget: a description instructs, the
+  // README explains. Here are the instructions that had to survive.
   it('keeps when to call each tool', () => {
     for (const tool of ALL_TOOLS) {
       expect(tool.description, tool.name).toMatch(/Call this/)

@@ -3,10 +3,11 @@ import paquetBrut from '../package.json?raw'
 import gabaritSw from '../public/sw.js?raw'
 import gabaritHeaders from '../public/_headers?raw'
 
-// `vite build` alone leaves a `dist/` that cannot be deployed: without `precache.mjs` (the
-// fingerprinted names in the service worker) nor `headers.mjs` (the CSP sealed on the inline
-// script hash), the CSP served carries `'__CSP_SCRIPT_HASH__'` and blocks the bootstrap script.
-// None of this shows in `dist/`; `npm run check` has already left that very folder behind.
+// `vite build` alone leaves a `dist/` that cannot be deployed: without
+// `precache.mjs` (the fingerprinted names in the service worker) nor
+// `headers.mjs` (the CSP sealed on the inline script hash), the CSP served
+// carries `'__CSP_SCRIPT_HASH__'` and blocks the bootstrap script. None of this
+// shows in `dist/`; `npm run check` has already left that very folder behind.
 const paquet = JSON.parse(paquetBrut) as { scripts: Record<string, string> }
 const scripts = paquet.scripts
 
@@ -55,8 +56,8 @@ describe('npm run check', () => {
 
 describe('the templates the build must rewrite', () => {
   it('the service worker starts from a cache name recognisable as unsubstituted', () => {
-    // `artefact.mjs` refuses any name ending in `-dev`. If the template
-    // changed to a normal looking name, the guard would no longer catch an
+    // `artefact.mjs` refuses any name ending in `-dev`. If the template changed
+    // to a normal looking name, the guard would no longer catch an
     // unsubstituted artefact going past.
     const cache = /const CACHE = '([^']*)'/.exec(gabaritSw)?.[1]
     expect(cache).toBeDefined()
@@ -72,8 +73,8 @@ describe('the templates the build must rewrite', () => {
 
   it('the policy starts from a marker, never from a hard-coded hash', () => {
     // A hash written by hand in `public/_headers` would survive a missing
-    // substitution with nothing to report it, and would silently drift from
-    // the script actually built.
+    // substitution with nothing to report it, and would silently drift from the
+    // script actually built.
     expect(gabaritHeaders).toContain('__CSP_SCRIPT_HASH__')
     expect(gabaritHeaders).not.toMatch(/'sha256-[A-Za-z0-9+/=]+'/)
   })

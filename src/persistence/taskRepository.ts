@@ -16,8 +16,8 @@ export async function saveTask(state: TaskState, expectedVersion?: number): Prom
   const tasks = tx.objectStore('tasks')
 
   if (expectedVersion !== undefined) {
-    // The check is about one integer only, and it re-read the whole task to
-    // get it: 2 ms for 800 KB in Chrome, against 0.1 ms for a key. The
+    // The check is about one integer only, and it re-read the whole task to get
+    // it: 2 ms for 800 KB in Chrome, against 0.1 ms for a key. The
     // `by-id-version` index answers “is this task at THIS version” without
     // fetching its content back. IndexedDB maintains it from the task's own
     // fields: no mirror to keep in step, so nothing that drifts.
@@ -78,9 +78,9 @@ export async function loadLastTask(): Promise<TaskState | undefined> {
   }
 
   // The fallback (no last known task) fetched back EVERY task on the device to
-  // keep just one: 22 ms for thirty. The index is already sorted by write
-  // date; only its keys are needed, and we walk down to the next one only if
-  // the most recent is unreadable, as before.
+  // keep just one: 22 ms for thirty. The index is already sorted by write date;
+  // only its keys are needed, and we walk down to the next one only if the most
+  // recent is unreadable, as before.
   const keys = await db.getAllKeysFromIndex('tasks', 'by-updatedAt')
   for (let i = keys.length - 1; i >= 0; i--) {
     try {

@@ -104,7 +104,8 @@ describe('bounds of the recent surfaces', () => {
     const installed = setGoal(buildCoreTask(), 'Ship it')
     const clos = completeTask(installed, { summary: 'Done', basedOnVersion: null }, 'human')
     expect(clos.goal).toBe('Ship it')
-    // Setting a goal on a closed task stays possible: the human stays in charge.
+    // Setting a goal on a closed task stays possible: the human stays in
+    // charge.
     expect(() => setGoal(clos, 'Another goal')).not.toThrow()
   })
 

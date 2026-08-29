@@ -3,9 +3,9 @@ import { addConstraint } from '../src/domain/task'
 
 // A burst of announcements must not produce a burst of re-reads: measured on a
 // 20,000 step task, fifty announcements cost fifty reads and 1702 ms, of which
-// 1668 ms thrown away, and delayed this tab's writes by a factor of 51: the write
-// queue is shared. The counter goes through `vi.mock` rather than a stopwatch:
-// what counts is a NUMBER of reads, and a number does not flicker.
+// 1668 ms thrown away, and delayed this tab's writes by a factor of 51: the
+// write queue is shared. The counter goes through `vi.mock` rather than a
+// stopwatch: what counts is a NUMBER of reads, and a number does not flicker.
 const lectures = { loadTask: 0 }
 
 vi.mock('../src/persistence/taskRepository', async (original) => {

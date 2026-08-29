@@ -45,8 +45,8 @@ describe('theme choice', () => {
       throw new Error('denied')
     }
 
-    // Private browsing, site data blocked: the choice holds for this
-    // page, and nothing must fall over.
+    // Private browsing, site data blocked: the choice holds for this page, and
+    // nothing must fall over.
     expect(() => applyTheme('dark')).not.toThrow()
     expect(document.documentElement.dataset.theme).toBe('dark')
 

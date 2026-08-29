@@ -321,7 +321,8 @@ describe('filtering results by kind', () => {
 
   it('orders the kinds the way the log presents them', () => {
     // A rule comes before a step because that is the order of the log; an order
-    // drawn from elsewhere would make the buttons dance from one keystroke to the next.
+    // drawn from elsewhere would make the buttons dance from one keystroke to
+    // the next.
     const ordre = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
       .map((b) => b.dataset.filter!)
       .filter((k) => k !== 'all')
@@ -377,7 +378,8 @@ describe('filtering results by kind', () => {
     type('rotation')
     await settled()
 
-    // A filter kept from one search to the next makes an empty result look real.
+    // A filter kept from one search to the next makes an empty result look
+    // real.
     const actif = root.querySelector('[data-filter="all"]')
     expect(actif?.getAttribute('aria-pressed')).toBe('true')
   })

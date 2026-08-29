@@ -133,7 +133,8 @@ describe('on screen', () => {
     await waitUntil(() => asked.mock.calls.length > 0, 'the request', 3000)
     await waitUntil(() => !root.querySelector('#persist'), 'the button to go', 3000)
 
-    // The node is replaced on every render: read it again, do not keep the old one.
+    // The node is replaced on every render: read it again, do not keep the old
+    // one.
     expect(root.querySelector('details.technical')!.textContent).toMatch(/will not|won’t/i)
   })
 

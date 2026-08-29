@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import worker from '../workers/www.js'
 
 // This Worker replaces a Redirect Rule the deploy token is not allowed to set.
-// `wrangler dev --local` does NOT let you check it: it builds `request.url` from
-// the listening address and ignores the `Host` header, so everything reaches it as
-// coming from `127.0.0.1`. Hence these direct calls to the handler, with the URL we want.
+// `wrangler dev --local` does NOT let you check it: it builds `request.url`
+// from the listening address and ignores the `Host` header, so everything
+// reaches it as coming from `127.0.0.1`. Hence these direct calls to the
+// handler, with the URL we want.
 const appeler = (url: string): Response => worker.fetch(new Request(url)) as Response
 
 describe('the redirect from www to the apex', () => {
@@ -43,17 +44,17 @@ describe('the guard against the loop', () => {
   })
 
   it('answers 404 rather than serving anything', () => {
-    // This Worker has no asset binding: if it is reached on the apex, the
-    // route is wrong. Better to say so than to pretend.
+    // This Worker has no asset binding: if it is reached on the apex, the route
+    // is wrong. Better to say so than to pretend.
     expect(appeler('https://keydler.com/').status).toBe(404)
   })
 })
 
 describe('the redirect headers', () => {
   it('does not carve the redirect into visitors for a year', () => {
-    // A 301 is cached by browsers even without this header.
-    // This setup is a temporary workaround: being able to switch back to www
-    // if the apex goes down is worth more than a long cache, whose gain is nil.
+    // A 301 is cached by browsers even without this header. This setup is a
+    // temporary workaround: being able to switch back to www if the apex goes
+    // down is worth more than a long cache, whose gain is nil.
     const cache = appeler('https://www.keydler.com/').headers.get('cache-control') ?? ''
     const duree = Number(/max-age=(\d+)/.exec(cache)?.[1] ?? -1)
     expect(duree).toBeGreaterThan(0)

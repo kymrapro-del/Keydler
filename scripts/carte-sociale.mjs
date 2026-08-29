@@ -8,10 +8,9 @@ import { join } from 'node:path'
 // home page in its place and every shared card was broken (checked in
 // production, 200 with `content-type: text/html`). 1200×630, the 1.91:1 that
 // platforms crop the least. SVG rendered by a system tool rather than one more
-// dependency; the PNG committed to the repo, so that the build does not
-// require that tool.
-// Resolved when used rather than at load: imported from a test this module has
-// no file URL, and converting here would fail on import.
+// dependency; the PNG committed to the repo, so that the build does not require
+// that tool. Resolved when used rather than at load: imported from a test this
+// module has no file URL, and converting here would fail on import.
 const racine = () => fileURLToPath(new URL('../', import.meta.url))
 
 export const empreinteSvg = (texte) => createHash('sha256').update(texte, 'utf8').digest('hex')

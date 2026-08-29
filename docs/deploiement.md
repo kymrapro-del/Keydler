@@ -8,12 +8,12 @@ WebMCP on in a browser, and pointing an agent at it.
 
 It is live at https://keydler.com, served by Cloudflare Pages, with
 `www.keydler.com` redirecting to it. The apex is the canonical origin and the
-www address must never serve anything. They are two origins, and everything
-here is origin-scoped: the IndexedDB database, the theme preference, "while you
-were away", the cross-tab channel, the service worker cache. A log created on
-one is invisible from the other, and a `/t/:id` link minted here opens an empty
-page there. The origin-trial token is bound to one origin too, so on the wrong
-one WebMCP never activates at all.
+www address must never serve anything. They are two origins, and everything here
+is origin-scoped: the IndexedDB database, the theme preference, "while you were
+away", the cross-tab channel, the service worker cache. A log created on one is
+invisible from the other, and a `/t/:id` link minted here opens an empty page
+there. The origin-trial token is bound to one origin too, so on the wrong one
+WebMCP never activates at all.
 
 `vercel.json` carries that redirect. Cloudflare Pages cannot (`_redirects`
 matches paths, not hosts), so there it is a Redirect Rule set by hand in the
@@ -47,11 +47,11 @@ adds the coverage report.
 npm run bench
 ```
 
-`bench` is the scaling harness behind [`docs/echelle.md`](echelle.md).
-It is kept out of `npm test` on purpose: it runs for minutes, and a duration is
-not an assertion. A time threshold in the suite starts blinking on the first
-loaded machine. What the bench finds becomes an ordinary test instead: a node
-bound, a token count, a bounded list.
+`bench` is the scaling harness behind [`docs/echelle.md`](echelle.md). It is
+kept out of `npm test` on purpose: it runs for minutes, and a duration is not an
+assertion. A time threshold in the suite starts blinking on the first loaded
+machine. What the bench finds becomes an ordinary test instead: a node bound, a
+token count, a bounded list.
 
 The page works without WebMCP: the state is real and persistent, only the agent
 connection is missing.

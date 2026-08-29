@@ -33,7 +33,8 @@ describe('search inside one task', () => {
     expect(matches('naïve façade', 'naive facade')).toBe(true)
     expect(matches('crème brûlée', 'creme')).toBe(true)
 
-    // And it does not draw together words that the accent alone does not separate.
+    // And it does not draw together words that the accent alone does not
+    // separate.
     expect(matches('déjà', 'deta')).toBe(false)
   })
 
@@ -250,8 +251,8 @@ describe('on screen', () => {
   })
 
   it('finds another task and opens it from the results', async () => {
-    // No render in between: this is the case that left the list stale, the cache
-    // being keyed on the open task and not on the whole set.
+    // No render in between: this is the case that left the list stale, the
+    // cache being keyed on the open task and not on the whole set.
     const other = await store.createAndOpenTask('Ship the invoice export', 'List the columns')
     await store.openTask(demoId)
     await waitFor(() => store.currentTask()?.id === demoId, 'retour au cahier de démo')

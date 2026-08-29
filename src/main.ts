@@ -28,8 +28,8 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     // without depending on a header we do not control. Measured in production:
     // `public/_headers` asks for `no-cache` on `/sw.js` and Cloudflare serves
     // `max-age=14400` (four hours), the worker being the only thing cached at
-    // the edge (`cf-cache-status: REVALIDATED` against `DYNAMIC`). A visitor who
-    // came back kept the old worker, and with it the old application.
+    // the edge (`cf-cache-status: REVALIDATED` against `DYNAMIC`). A visitor
+    // who came back kept the old worker, and with it the old application.
     void navigator.serviceWorker
       .register('/sw.js', { updateViaCache: 'none' })
       .catch(() => undefined)

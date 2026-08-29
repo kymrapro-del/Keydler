@@ -26,9 +26,9 @@ comes back as a string even when registered as an object.
 ## August 26, 2026, Day 2: versioning and refusal of stale state
 
 **Observed**, through the real API in Brave: six tools exposed; four writes
-applied from v1 to v5; one write deliberately based on v1 refused with
-`STALE STATE`; constraint and rejection returned by `resume_task`; state intact
-after a full reload.
+applied from v1 to v5; one write deliberately based on v1 refused with `STALE
+STATE`; constraint and rejection returned by `resume_task`; state intact after a
+full reload.
 
 **Conclusion.** Day 2 exit criterion met.
 
@@ -193,7 +193,8 @@ blank IndexedDB.
 | R4 · constraint quoted                    | yes: all three, with their source |
 | R5 · work invented                        | no                                |
 
-Recorded on the page: one call, `resume_task`, applied, version unchanged at v12.
+Recorded on the page: one call, `resume_task`, applied, version unchanged at
+v12.
 
 **Three behaviors that go beyond the protocol.**
 
@@ -315,14 +316,14 @@ They are not replayed here and are not carried over.
 
 1. **The annotations are renamed on projection.** What the page sets as
    `readOnlyHint` / `untrustedContentHint` comes out of `getTools()` as
-   `{"readOnly":true,"untrustedContent":true}`. The meaning is preserved, the
-   name is not: a test written against the name as set would say nothing about
-   what the client receives.
+   `{"readOnly":true,"untrustedContent":true}`. The meaning is preserved, the name
+   is not: a test written against the name as set would say nothing about what the
+   client receives.
 
 2. **The hardened schemas travel through intact.** `additionalProperties: false`,
-   the `minLength`/`maxLength` bounds, the `enum` of evidence kinds, the
-   `pattern` of `mutation_id` and the strict nested `evidence` object all appear
-   in what the client reads.
+   the `minLength`/`maxLength` bounds, the `enum` of evidence kinds, the `pattern`
+   of `mutation_id` and the strict nested `evidence` object all appear in what the
+   client reads.
 
 ### What this record does not say
 
@@ -339,8 +340,8 @@ They are not replayed here and are not carried over.
 of the task. Exact and sole instruction: `Continue this task.`
 
 **Environment observed.** Claude Desktop 2.1.234, final answer by Opus 4.8. The
-interface first displayed a "cyber" classification block, then switched to
-Opus 4.8. The session held a general memory mentioning other projects, but no
+interface first displayed a "cyber" classification block, then switched to Opus
+4.8. The session held a general memory mentioning other projects, but no
 information about the task in progress.
 
 The session trace confirms that the bridge's tools were available to the model,
@@ -470,14 +471,14 @@ records `Continue this task.` as a normal user message, after the local command
 1. two searches for file tools, with no usable result;
 2. discovery and call of `list_pages`;
 3. a rendering of the selected page, titled "Watch Log: a shared memory for you
-   and your AI" (the product still bore that name on the date of this record),
-   at the URL of the task;
+   and your AI" (the product still bore that name on the date of this record), at
+   the URL of the task;
 4. discovery stopped: no `list_webmcp_tools`, no `resume_task`;
 5. a request to the human to specify the work to be done.
 
-The final answer wrongly claims that "Continue this task" came from the
-`/effort max` command. The trace nevertheless clearly separates the local
-command from the user message sent twenty seconds later.
+The final answer wrongly claims that "Continue this task" came from the `/effort
+max` command. The trace nevertheless clearly separates the local command from
+the user message sent twenty seconds later.
 
 ### Resumption contract results
 
@@ -505,8 +506,8 @@ as a capability that is reliable or guaranteed by this bridge.
 **Protocol.** New session `104b6db0-1379-4345-8608-bb36d5ae8bb4`,
 Claude Code 2.1.246 / Opus 5, launched from a new directory
 `/tmp/watch-log-agent.mCBX6p`. Same strict configuration, `ToolSearch` as the
-only built-in tool, no prior `/effort`. Exact and sole instruction:
-`Continue this task.`
+only built-in tool, no prior `/effort`. Exact and sole instruction: `Continue
+this task.`
 
 ### Discovery path observed
 
@@ -557,8 +558,8 @@ production build served on `http://localhost:5174`, driven by
 - `search_task { query: "issuer" }`: `MATCHES 1 shown of 1 found`, the step
   returned with its result, and the section to re-read (`steps`) named.
 - `search_task { query: "gemini" }` on a log carrying two credentials
-  named `gemini-api-key`: `NO MATCH`. Search does not reach into the
-  vault: not the names, and still less the values.
+  named `gemini-api-key`: `NO MATCH`. Search does not reach into the vault: not
+  the names, and still less the values.
 - `read_task_detail { section: "steps" }` after a step logged by hand
   with a test report pasted in: `evidence kind: test_report`, line breaks
   preserved.
@@ -573,13 +574,12 @@ tests.**
 3. Two credentials could carry the same name, which makes `${name}`
    ambiguous, the only thing the agent receives.
 4. The success message ("Copied. Paste it to your agent.") never
-   cleared: ten minutes later it still claimed an action had just
-   taken place.
+   cleared: ten minutes later it still claimed an action had just taken place.
 5. `mount()` reset every draft to the empty string, including the one
    that carried a default value, which made a write invalid.
 
-Each was reproduced by a red test before the fix. The first four were
-checked again in the browser after the fix.
+Each was reproduced by a red test before the fix. The first four were checked
+again in the browser after the fix.
 
 **Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
 on this machine, as in previous passes.
@@ -592,37 +592,37 @@ build on `http://localhost:5174`, driven by `chrome-devtools-mcp`.
 **Observed.**
 
 - `list_webmcp_tools` returns eleven tools. The three new ones
-  (`ask_human`, `attach_evidence`, `set_next_action`) carry the schemas
-  expected and `readOnly: false`.
+  (`ask_human`, `attach_evidence`, `set_next_action`) carry the schemas expected
+  and `readOnly: false`.
 - Full `ask_human` loop: the tool opens the question (v15 → v16), the
-  "Waiting on you" card appears between NEXT and the work, the answer typed
-  on the page closes the question (v17), and `resume_task` returns
-  `ANSWERED BY THE HUMAN` with the answer. This is the first time an agent
-  can leave the human anything other than a proposal.
+  "Waiting on you" card appears between NEXT and the work, the answer typed on the
+  page closes the question (v17), and `resume_task` returns `ANSWERED BY THE
+HUMAN` with the answer. This is the first time an agent can leave the human
+  anything other than a proposal.
 - `attach_evidence` on a step left `claimed`: evidence attached, line
-  breaks preserved, `confidence` moved to `evidence`, never to `human_verified`.
-  A second call on the same step is refused, the first piece of evidence intact.
+  breaks preserved, `confidence` moved to `evidence`, never to `human_verified`. A
+  second call on the same step is refused, the first piece of evidence intact.
 - `set_next_action` changes NEXT without creating a step.
 - Vault: a three-line PEM key sealed then revealed byte for
-  byte, announced as "Private key". Credentials sealed before kinds
-  existed read as "Other" and can be reclassified from the page.
+  byte, announced as "Private key". Credentials sealed before kinds existed read
+  as "Other" and can be reclassified from the page.
 
 **Defects found by this pass.**
 
 1. `${name}` written in a TypeScript template in `descriptions.ts` was
-   interpolated by JavaScript: the global variable `name` is the empty string
-   in a browser, and every agent received "the name to write as ,
-   and what it is for". Nothing crashed. A test now compares each
-   shipped description against that pattern.
+   interpolated by JavaScript: the global variable `name` is the empty string in a
+   browser, and every agent received "the name to write as , and what it is for".
+   Nothing crashed. A test now compares each shipped description against that
+   pattern.
 2. The `card--waiting` class escaped the CSS guard: extraction skipped
    any `class` attribute containing a `$`, so any class written next to an
-   interpolation. The guard now reads the BEM markers wherever they
-   are written, and it found the missing class.
+   interpolation. The guard now reads the BEM markers wherever they are written,
+   and it found the missing class.
 3. The kind selector on the correction form was wired to nothing:
    reclassifying a credential silently kept the old kind.
 4. A dashboard test passed alone and failed in the full suite: it
-   waited a fixed number of loop turns instead of waiting for the write.
-   Three consecutive full runs since the fix, all green.
+   waited a fixed number of loop turns instead of waiting for the write. Three
+   consecutive full runs since the fix, all green.
 
 **Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
 on this machine.
@@ -635,9 +635,9 @@ on this machine.
 **Observed.**
 
 - `what_changed` on a task the human edited while the agent was
-  working: three writes since v15, split into CHANGES WHAT YOU MAY DO
-  (rule added, rule lifted) and ALSO HAPPENED (a step from another agent).
-  Response measured at ~90 tokens, against ~400 for `resume_task`.
+  working: three writes since v15, split into CHANGES WHAT YOU MAY DO (rule added,
+  rule lifted) and ALSO HAPPENED (a step from another agent). Response measured at
+  ~90 tokens, against ~400 for `resume_task`.
 - The stale-state refusal now names the exact way out:
   `Call what_changed with since_version: 15`. Checked in the browser.
 - Indicator: a write that arrived without a prior read is flagged in plain words
@@ -654,13 +654,13 @@ on this machine.
    recorded nothing. Only successful writes are counted.
 2. The technical panel is titled "What `resume_task` returns" but rendered
    the state without the URL or the credentials: it showed something other than
-   what the agent receives. The test now compares the panel to the tool's
-   real output.
+   what the agent receives. The test now compares the panel to the tool's real
+   output.
 3. The runtime version check accepted `0` when every schema
    declares `minimum: 1`. The two are aligned.
 4. The four operations added in the previous batch had no verb in
-   the history, and no field label in the error messages: the screen
-   showed `ask_human` and "the field “questionId”".
+   the history, and no field label in the error messages: the screen showed
+   `ask_human` and "the field “questionId”".
 5. Search covered neither the questions nor the answers, which are
    often the only trace of a human decision.
 6. One more line in WRITE PROTOCOL pushed `resume_task` past the
@@ -677,37 +677,34 @@ on this machine.
 **Observed.**
 
 - No Undo button on a freshly opened log. After lifting a
-  rule, it appears and names itself:
-  `Undo: you lifted the rule “Never modify the database schema”`. One click
-  restores the rule and the button disappears.
+  rule, it appears and names itself: `Undo: you lifted the rule “Never modify the
+database schema”`. One click restores the rule and the button disappears.
 - `what_changed` renders the undo as a sentence, on the agent's side:
-  `v17 The human undid their own last decision: lifted the rule “…”`, filed
-  under CHANGES WHAT YOU MAY DO: restoring a rule does change what the
-  agent is allowed to do.
+  `v17 The human undid their own last decision: lifted the rule “…”`, filed under
+  CHANGES WHAT YOU MAY DO: restoring a rule does change what the agent is allowed
+  to do.
 - Away digest: tab moved to `hidden`, an agent write over WebMCP,
-  back to the tab. The "While you were away" card appears at the top:
-  "1 write since you last had this page open, at v17". The "Got it" button
-  closes it and it does not come back.
+  back to the tab. The "While you were away" card appears at the top: "1 write
+  since you last had this page open, at v17". The "Got it" button closes it and it
+  does not come back.
 
 **Design decisions taken during this pass.**
 
 1. Undo never reaches back past an agent write, and
-   only for as long as the decision is still in force. Without that, opening a
-   log from last week would have offered to revoke an old decision in one
-   click, and undoing twice would have replayed the same action
-   backwards.
+   only for as long as the decision is still in force. Without that, opening a log
+   from last week would have offered to revoke an old decision in one click, and
+   undoing twice would have replayed the same action backwards.
 2. The page marks itself "seen" only if the tab is actually on screen.
-   Without that condition the digest would never have fired: a background
-   tab keeps rendering on every agent write.
+   Without that condition the digest would never have fired: a background tab keeps
+   rendering on every agent write.
 3. `AuditEntry` now carries `targetId`: without it, an entry could not
    point at what it had touched, and the inverse would have had to re-read the
-   rule's text from the detail. Schema moved to v6, normalization in place for
-   logs written before.
+   rule's text from the detail. Schema moved to v6, normalization in place for logs
+   written before.
 
 **Defect found.** `undo` had no verb in the page history or
-in `what_changed`: the screen showed "ran undo". Same class of omission as
-in the previous batch; the test now covers the operations reserved for
-the human.
+in `what_changed`: the screen showed "ran undo". Same class of omission as in
+the previous batch; the test now covers the operations reserved for the human.
 
 **Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
 on this machine.
@@ -717,9 +714,9 @@ on this machine.
 **Machine.** Brave 151.1.93.137 / Chromium 151, production build on
 `http://localhost:5174`, driven by `chrome-devtools-mcp`.
 
-This is the product's only blocking call. With no page open in front of
-someone, that wait would make no sense: it is exactly what WebMCP
-makes possible and what a classic MCP server cannot do.
+This is the product's only blocking call. With no page open in front of someone,
+that wait would make no sense: it is exactly what WebMCP makes possible and what
+a classic MCP server cannot do.
 
 **Observed, through the real WebMCP surface.**
 
@@ -731,17 +728,16 @@ human`, as an error, with the instruction not to work around it.
 - **Approval**: a click on "Allow" unblocks the call, which returns `ALLOWED by
 the human` with the action quoted word for word.
 
-The clicks are real clicks on the page's real buttons; only their
-triggering is scripted, for lack of two free hands while a call
-is blocking.
+The clicks are real clicks on the page's real buttons; only their triggering is
+scripted, for lack of two free hands while a call is blocking.
 
 **Defect found, and it was the worst possible one for this tool.** A second
-request carrying exactly the same wording as an already-decided request
-received the decision of the first. Observed in the browser: a request
-denied earlier made `DENIED` come back instantly for a brand-new request.
-With an `allowed` in its place, the product would have authorized an action
-nobody had approved. The lookup now takes the most recent request,
-never the first; a red test reproduces the exact case.
+request carrying exactly the same wording as an already-decided request received
+the decision of the first. Observed in the browser: a request denied earlier
+made `DENIED` come back instantly for a brand-new request. With an `allowed` in
+its place, the product would have authorized an action nobody had approved. The
+lookup now takes the most recent request, never the first; a red test reproduces
+the exact case.
 
 **Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
 on this machine.
@@ -752,8 +748,8 @@ on this machine.
 `http://localhost:5174`.
 
 The product knew how to approve a piece of evidence, not how to reject it. In a
-supervision product, that was an asymmetry: an agent could leave a false
-claim that nobody could mark as such.
+supervision product, that was an asymmetry: an agent could leave a false claim
+that nobody could mark as such.
 
 **Observed.**
 
@@ -767,17 +763,16 @@ claim that nobody could mark as such.
   `evidence`, `human_verified` or `claimed` depending on what was attached to it.
 
 **Visual defect found, and only in the browser.** The dispute
-reason was rendered with the `.quote` class, styled as a block but
-laid out inline in the row's text: it overlapped the action of
-the step. No test could see it: the CSS guard checks that a class
-exists, not that it lands properly. Dedicated `.row__dispute` class, and the
-probe now compares the rectangles.
+reason was rendered with the `.quote` class, styled as a block but laid out
+inline in the row's text: it overlapped the action of the step. No test could
+see it: the CSS guard checks that a class exists, not that it lands properly.
+Dedicated `.row__dispute` class, and the probe now compares the rectangles.
 
 **Decision.** The FULL DETAIL sentence in `resume_task` listed the sections;
-it had already fallen behind twice, and each added word cost a credential
-name inside the 400-token budget. It now points to the schema of
-`read_task_detail`, which carries the list and cannot drift. A test compares
-the schema's enumeration to `SECTIONS`.
+it had already fallen behind twice, and each added word cost a credential name
+inside the 400-token budget. It now points to the schema of `read_task_detail`,
+which carries the list and cannot drift. A test compares the schema's
+enumeration to `SECTIONS`.
 
 **Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
 on this machine.
@@ -788,30 +783,31 @@ on this machine.
 `http://localhost:5174`.
 
 A judge will ask: "I send the link to a colleague, what do they see?" Until now,
-an empty page. The log now travels in the fragment of the address,
-which browsers never send to the server.
+an empty page. The log now travels in the fragment of the address, which
+browsers never send to the server.
 
 **Observed.**
 
 - "Copy a link that carries this log" on the demonstration log:
-  2,833 characters, `z` marker and gzip signature present: compression
-  really does go through `CompressionStream`, with no dependency at all.
+  2,833 characters, `z` marker and gzip signature present: compression really does
+  go through `CompressionStream`, with no dependency at all.
 - Log deleted from the device, then the link opened: the "A shared log" card
-  announces the title, `4 steps · 3 rules · v15`, and says that taking
-  the log makes a copy that will not stay in sync.
+  announces the title, `4 steps · 3 rules · v15`, and says that taking the log
+  makes a copy that will not stay in sync.
 - Nothing is written before the click. "Take a copy" imports and opens the log;
-  the payload disappears from the address so that a reload does not offer it again.
+  the payload disappears from the address so that a reload does not offer it
+  again.
 
 **Defect found.** On the receiving end, the "This task does not exist on this
-device" banner showed above the offer: two messages that contradict each
-other on screen, one of which alarms for nothing. The banner is suppressed
-for as long as a link is being read, and comes back if it is declined. A
-test covers both directions.
+device" banner showed above the offer: two messages that contradict each other
+on screen, one of which alarms for nothing. The banner is suppressed for as long
+as a link is being read, and comes back if it is declined. A test covers both
+directions.
 
 **Method note.** A first attempt appeared to fail: `location.href`
-to the same address changes only the fragment and does not reload the page,
-so the old bundle was still running. Recorded here so this
-false negative is not taken for a defect.
+to the same address changes only the fragment and does not reload the page, so
+the old bundle was still running. Recorded here so this false negative is not
+taken for a defect.
 
 **Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
 on this machine.
@@ -821,36 +817,34 @@ on this machine.
 **Machine.** Brave 151.1.93.137 / Chromium 151, production build.
 
 **Starting point.** `buildDemoTask()` predated the questions, the
-approvals and the disputes. A judge clicking "Try the demo" saw a
-product from three batches ago. It was the highest-leverage defect in the repository.
+approvals and the disputes. A judge clicking "Try the demo" saw a product from
+three batches ago. It was the highest-leverage defect in the repository.
 
 **What was done.** The file is now in two layers:
 `buildCoreTask()` (rules, rejections, decisions, work with evidence) and
-`buildDemoTask()`, which adds to it a question asked then answered, an
-approval request that was denied, and a disputed step with its reason. The cases
-that needed a blank page point at the base layer.
+`buildDemoTask()`, which adds to it a question asked then answered, an approval
+request that was denied, and a disputed step with its reason. The cases that
+needed a blank page point at the base layer.
 
 **Two decisions taken along the way.**
 
 1. The demonstration ends on an agent write (it re-runs the
-   benchmark after the dispute). Without that, "Undo that" showed on
-   opening and offered to revoke a decision that nobody had just
-   taken.
+   benchmark after the dispute). Without that, "Undo that" showed on opening and
+   offered to revoke a decision that nobody had just taken.
 2. The enriched log pushed `resume_task` to 425 tokens. The degradation
-   ladder now knows how to drop settled history (answers
-   already given, approvals already decided) before what is still waiting on a
-   decision. What is settled can be re-read page by page; what is blocking cannot.
+   ladder now knows how to drop settled history (answers already given, approvals
+   already decided) before what is still waiting on a decision. What is settled can
+   be re-read page by page; what is blocking cannot.
 
 **Observed in the browser.** Demo open: the "Needs you" bar announces
 "1 proposal · 1 piece of evidence · 2 steps claimed with no evidence", the
 answered question and the disputed step are visible, no "Undo" button on
-opening. `?` opens the keyboard help, Escape closes it, `s` opens the
-step form.
+opening. `?` opens the keyboard help, Escape closes it, `s` opens the step form.
 
 **Measurement.** The shareable link of the enriched demo: 3,587 characters
-compressed. Without `CompressionStream`, 12,255, hence the limit raised to 16,000,
-failing which the fallback would have refused an ordinary log and would have served
-no purpose.
+compressed. Without `CompressionStream`, 12,255, hence the limit raised to
+16,000, failing which the fallback would have refused an ordinary log and would
+have served no purpose.
 
 **Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
 on this machine.
@@ -871,18 +865,17 @@ evidence`, `1 step the human says is wrong`), with the instruction to say so in
 
 **A point of honesty.** The guard compares strings, not meanings:
 two different wordings of the same prohibition will both get through. The
-refusal message says so in plain words, so that nobody takes this
-comparison for understanding.
+refusal message says so in plain words, so that nobody takes this comparison for
+understanding.
 
 **Defect found while writing.** The guard had slipped into
-`editRejection`: rewording the reason for a rejection while keeping its approach (the
-most ordinary case) was refused. Two regression tests had
-caught it; the guard is now only on creations.
+`editRejection`: rewording the reason for a rejection while keeping its approach
+(the most ordinary case) was refused. Two regression tests had caught it; the
+guard is now only on creations.
 
 **Gap closed along the way.** The export carried neither approval
-requests nor disputes, while it already carried the questions.
-Same family of omission as the previous times, now covered by one test
-per section.
+requests nor disputes, while it already carried the questions. Same family of
+omission as the previous times, now covered by one test per section.
 
 **Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
 on this machine.
@@ -894,12 +887,12 @@ on this machine.
 **Observed.**
 
 - Technical panel: "Storage is not durable: the browser may clear this when
-  space runs short, and nothing here would survive it." That is the real state of this
-  machine, read from `navigator.storage.persisted()`.
+  space runs short, and nothing here would survive it." That is the real state of
+  this machine, read from `navigator.storage.persisted()`.
 - A click on "Ask the browser to keep this": Brave refused. The page says
-  so ("The browser declined for now") and leaves the button in place. That is
-  the expected behavior: Chrome grants durability on usage
-  criteria, not on request alone.
+  so ("The browser declined for now") and leaves the button in place. That is the
+  expected behavior: Chrome grants durability on usage criteria, not on request
+  alone.
 - Creating a task: "Carry over the 3 rules from “Refactor the
   authentication module”", checked or not.
 - Header: "Last written 14 minutes ago."
@@ -914,12 +907,12 @@ on this machine.
    because it is a false negative easily taken for a defect.
 
 **Usability defect fixed.** The first version said nothing when the
-browser refused durability: the click had no visible effect, which
-reads as a broken button.
+browser refused durability: the click had no visible effect, which reads as a
+broken button.
 
 **Layering note.** `elapsed.ts` was placed in `src/domain` and not in
-`src/ui`: `render.ts` uses it, and the domain must not depend on the view.
-Same correction as for `seen.ts` during the audit.
+`src/ui`: `render.ts` uses it, and the domain must not depend on the view. Same
+correction as for `seen.ts` during the audit.
 
 ## 28 August 2026: extended undo, tool inspector, filters
 
@@ -929,25 +922,24 @@ Same correction as for `seen.ts` during the audit.
 
 - A task renamed, then a click on Undo:
   `Undo: you renamed this task to “A name I will regret”`, and the original title
-  comes back. The same now for the next action and for the rewording
-  of a rule.
+  comes back. The same now for the next action and for the rewording of a rule.
 - Tool inspector, collapsed by default under the technical details:
-  thirteen tools, each with the exact description and schema that
-  the agent receives. A test compares the `<pre>` of the schema to `tool.inputSchema` by
+  thirteen tools, each with the exact description and schema that the agent
+  receives. A test compares the `<pre>` of the schema to `tool.inputSchema` by
   structural equality, so it cannot drift.
 - Search filters on "token": `All (5) · Ruled out (2) · Steps (2) ·
 Decisions (1)`. Clicking "Steps" cuts from 5 rows to 2.
 
 **Design decision.** Undo always stops at two things: an
-answer to a question, and a logged step. An agent may have read the
-answer and built on it; removing it in one click would erase the ground under its
-feet. A step is the account of a piece of work, not a supervision decision. A
-test states this boundary rather than leaving it implicit.
+answer to a question, and a logged step. An agent may have read the answer and
+built on it; removing it in one click would erase the ground under its feet. A
+step is the account of a piece of work, not a supervision decision. A test
+states this boundary rather than leaving it implicit.
 
 **What made undo possible.** `AuditEntry` now carries
-`previous`, the value it replaced. It is first of all a better log ("renamed:
-X → Y" rather than "renamed"), and undo is only a consequence of it.
-Schema moved to v9.
+`previous`, the value it replaced. It is first of all a better log ("renamed: X
+→ Y" rather than "renamed"), and undo is only a consequence of it. Schema moved
+to v9.
 
 **Method note.** A probe read `<h1>` after opening the rename
 form, which is precisely what replaces the title: probe error, not code error.
@@ -960,30 +952,28 @@ Recorded for the same reason as the previous ones.
 **Two gaps of substance, not of surface.**
 
 1. The log said the next action and never what "done" means.
-   A conversation picking up again knew the next step, not the
-   destination. `DONE WHEN` now sits next to `NEXT` in what every
-   agent reads, and `complete_task` reminds it of that so the closing summary says
-   whether it was reached.
+   A conversation picking up again knew the next step, not the destination. `DONE
+WHEN` now sits next to `NEXT` in what every agent reads, and `complete_task`
+   reminds it of that so the closing summary says whether it was reached.
 2. An agent without WebMCP (the vast majority today) could read nothing
-   of this log. "Copy the log as text" copies the exact output of
-   `resume_task`, framed by an instruction. A test compares the copied text to the
-   output of `renderTaskState` with the same options: it is not a variant
-   written for the screen.
+   of this log. "Copy the log as text" copies the exact output of `resume_task`,
+   framed by an instruction. A test compares the copied text to the output of
+   `renderTaskState` with the same options: it is not a variant written for the
+   screen.
 
 **Model choice.** The goal is human-only. An agent can ask for it
-through `ask_human`, not write it: the definition of success is precisely the thing
-that the human must hold.
+through `ask_human`, not write it: the definition of success is precisely the
+thing that the human must hold.
 
 **Formatting defect, found in the browser.** `DONE WHEN` had landed
-after the disputes block, with no blank line: it read as a part
-of that block. Moved up into the header, with `NEXT`.
+after the disputes block, with no blank line: it read as a part of that block.
+Moved up into the header, with `NEXT`.
 
 **Side effect spotted and handled.** Making `optionalText` tolerant of spaces
-(so that a field emptied by hand would mean "nothing") made
-`set_next_action` able to erase the next action with a string
-of spaces, when its schema declares `minLength: 1`. An existing test
-caught it. The tool now validates strictly; the human keeps the right to
-empty the field.
+(so that a field emptied by hand would mean "nothing") made `set_next_action`
+able to erase the next action with a string of spaces, when its schema declares
+`minLength: 1`. An existing test caught it. The tool now validates strictly; the
+human keeps the right to empty the field.
 
 ## 28 August 2026: the overview, and a tool call that shows
 
@@ -992,69 +982,64 @@ empty the field.
 **Two questions the product could not be asked.**
 
 1. "Which of my tasks is blocked?" meant opening each one. The
-   picker now carries, per task, a summary of what is waiting, read
-   in the browser: `1 proposal to accept or decline +3 more`. The summary
-   names what costs the most to miss and counts the rest; a full
-   enumeration in a badge does not read.
+   picker now carries, per task, a summary of what is waiting, read in the browser:
+   `1 proposal to accept or decline +3 more`. The summary names what costs the most
+   to miss and counts the rest; a full enumeration in a badge does not read.
 2. "Is an agent working right now?" After a real call to
-   `search_task`, the header shows: `An agent called search_task just now.`
-   The wording reports an observed call, never a presence: nothing in
-   WebMCP tells a page that an agent is there, and a test forbids the word
-   "connected".
+   `search_task`, the header shows: `An agent called search_task just now.` The
+   wording reports an observed call, never a presence: nothing in WebMCP tells a
+   page that an agent is there, and a test forbids the word "connected".
 
 **A test that passed for the wrong reason.** The first draft checked that a
-picker row contained "blocked", on a task titled "Blocked
-task". It was the title that satisfied the assertion, not the badge. Task
-renamed, assertion moved onto the element.
+picker row contained "blocked", on a task titled "Blocked task". It was the
+title that satisfied the assertion, not the badge. Task renamed, assertion moved
+onto the element.
 
 **An intermittent test, tracked down rather than tolerated.** "rules out an approach,
-marked human" failed in the full suite about one run in two: it
-waited a fixed number of loop turns instead of the write. Four other
-places in the same file had the same pattern; three wait on a refusal,
-where there is nothing to wait for, and were left as they were. Five full runs
-in a row green since.
+marked human" failed in the full suite about one run in two: it waited a fixed
+number of loop turns instead of the write. Four other places in the same file
+had the same pattern; three wait on a refusal, where there is nothing to wait
+for, and were left as they were. Five full runs in a row green since.
 
 ## 28 August 2026: the history of a single rule
 
 **Machine.** Brave 151.1.93.137 / Chromium 151, production build.
 
 The log already contained everything that had happened to each rule (`targetId`
-had been added to make undo possible), but no surface
-asked the question "what happened to this one?". Each rule now carries
-a "History" button.
+had been added to make undo possible), but no surface asked the question "what
+happened to this one?". Each rule now carries a "History" button.
 
 **Observed.** A rule lifted from the screen, then its history unfolded:
 `28/08/2026, 15:11:39 · You lifted a rule · Never modify the database schema`.
-No machine operation name, one history open at a time, no
-horizontal overflow.
+No machine operation name, one history open at a time, no horizontal overflow.
 
 **Test error, recorded.** The setup called `buildCoreTask()` twice
-(once to read the rule's id, once for the task), so
-the id matched nothing. The domain correctly refused with
-"no constraint with id …"; it was the probe that was wrong.
+(once to read the rule's id, once for the task), so the id matched nothing. The
+domain correctly refused with "no constraint with id …"; it was the probe that
+was wrong.
 
 ## 28 August 2026: scale and cost
 
 **Setup.** Chrome, dev server, a task of 40 rules and 30 discarded approaches
 written straight into IndexedDB.
 
-The full report is in [scale](echelle.md). What was seen in the browser, and
-not only in jsdom:
+The full report is in [scale](echelle.md). What was seen in the browser, and not
+only in jsdom:
 
 **Observed.** 12 rule rows out of 40, “28 rules still in force are not shown”,
-“Show all 40 rules”; 12 discarded approaches out of 30. After the click:
-40 rows, the warning gone, the button now “Show fewer”, focus still on the
-button. 360 nodes collapsed, 499 expanded. Real computed styles on the warning
-as on the button.
+“Show all 40 rules”; 12 discarded approaches out of 30. After the click: 40
+rows, the warning gone, the button now “Show fewer”, focus still on the button.
+360 nodes collapsed, 499 expanded. Real computed styles on the warning as on the
+button.
 
 **No screenshot.** The capture panel of this environment returned blank images
 while the DOM was answering. Noted rather than replaced by an image that shows
 nothing.
 
 **Anomaly not reproduced.** On the first attempt, the page stayed on
-“Loading…” after a direct write into IndexedDB; after clearing and rewriting
-the same task, it loaded normally. Holding an IndexedDB connection open does
-not reproduce the hang. Logged as unexplained.
+“Loading…” after a direct write into IndexedDB; after clearing and rewriting the
+same task, it loaded normally. Holding an IndexedDB connection open does not
+reproduce the hang. Logged as unexplained.
 
 **Task picker, checked too.** 41 tasks on the machine, 12 rows shown,
 “Show all 40 tasks”, 457 nodes; after the click, 40 rows and 681 nodes. That is
@@ -1063,8 +1048,8 @@ never the number of tasks.
 
 **Probe errors, logged.** Twice: `.rows li` counted across the whole page when
 the card in question was “Rules to follow”, and a DOM reference read back after
-a render had replaced it. In both cases it was the probe that was wrong, not
-the product.
+a render had replaced it. In both cases it was the probe that was wrong, not the
+product.
 
 ## 28 August 2026: second scale pass, in the browser
 
@@ -1092,8 +1077,7 @@ task, under the bar set by a 60 Hz frame.
 **A decision taken on measurement, against intuition.** Rewriting the page's
 58 KB of HTML costs 0.7 ms in Chrome, against 15 ms under jsdom. Rendering by
 sections, which looked unavoidable from the jsdom figures, would therefore have
-gained less than a millisecond for a rebuild of the entire dashboard. Not
-done.
+gained less than a millisecond for a rebuild of the entire dashboard. Not done.
 
 ## 28 August 2026: what travels with a link
 
@@ -1102,15 +1086,15 @@ them a command output containing a fake token and an internal hostname.
 
 The shareable link and the export carry the evidence exactly as it was pasted.
 The README said so; the screen did not. And the screen is what you read before
-you click. Worse, the old message only arrived after the copy, when the
-decision had already been made.
+you click. Worse, the old message only arrived after the copy, when the decision
+had already been made.
 
 **Observed.** On this task, under the share button: “3 pieces of evidence
 travel with it, pasted exactly as they were. Command output often holds a token
 or an internal hostname: read what it carries before you send this on. Sealed
-credentials never travel.” A block of 820 × 50 px, gray `rgb(160, 160, 172)`,
-no horizontal overflow. Both evidence fields carry “Kept exactly as pasted, and
-it travels with every export and shared link.”, placed under the textarea. The
+credentials never travel.” A block of 820 × 50 px, gray `rgb(160, 160, 172)`, no
+horizontal overflow. Both evidence fields carry “Kept exactly as pasted, and it
+travels with every export and shared link.”, placed under the textarea. The
 technical panel carries the export note.
 
 **What was refused.** A warning displayed permanently. It only appears if there
@@ -1138,11 +1122,11 @@ an agent reads on every enumeration, weighed 20,378 characters.
 
 **The editorial rule.** A tool description instructs, the README explains. What
 was cut is the justifications (why the rule exists) and the protocol reminders
-that already appeared three times: in the schema, in the WRITE PROTOCOL block
-of `resume_task`, and in the text of the refusals. No instruction was removed,
-and a second block of tests names the ones that had to survive:
-“BEFORE doing any work”, “Do NOT guess and carry on”,
-“NO ANSWER IS NOT APPROVAL”, “does not prove the work was never attempted”.
+that already appeared three times: in the schema, in the WRITE PROTOCOL block of
+`resume_task`, and in the text of the refusals. No instruction was removed, and
+a second block of tests names the ones that had to survive: “BEFORE doing any
+work”, “Do NOT guess and carry on”, “NO ANSWER IS NOT APPROVAL”, “does not prove
+the work was never attempted”.
 
 **A change tried then backed out.** Dropping `TOKEN_BUDGET` from 400 to 375
 to land exactly on Chrome's 1.5k. Measured: seventeen characters saved on an
@@ -1178,11 +1162,11 @@ Read out as an agent receives it, through `getTools()`:
 No overruns. The four read tools do carry `untrustedContentHint`.
 
 **And a mistake in my own guard, found by this check.** I had measured the
-output of `resume_task` through `renderTaskState(task)` with no options, that
-is 1484 characters. Called for real by `execute_webmcp_tool`, it returns
-1528: the tool always passes the task address, which my measurement left out.
-The test was therefore reassuring itself about something other than what goes
-out. Fixed: it now measures with the address.
+output of `resume_task` through `renderTaskState(task)` with no options, that is
+1484 characters. Called for real by `execute_webmcp_tool`, it returns 1528: the
+tool always passes the task address, which my measurement left out. The test was
+therefore reassuring itself about something other than what goes out. Fixed: it
+now measures with the address.
 
 The real position is therefore: 1528 characters, 1.9% above Chrome's
 recommendation and inside the product's budget (400 tokens, 1600 characters).
@@ -1194,8 +1178,8 @@ way.
 
 **Setup.** Brave 151.1.93.137 / Chromium 151, throwaway profile,
 `--enable-features=WebMCP,WebMCPTesting`, dev server. Tool calls go through
-`execute_webmcp_tool`, so through the same surface as an agent. Two tabs open
-on the same task for the concurrency tests.
+`execute_webmcp_tool`, so through the same surface as an agent. Two tabs open on
+the same task for the concurrency tests.
 
 ### What holds
 
@@ -1231,17 +1215,17 @@ only measured `resume_task`.
 | `read_task_detail`, page of 20      | 1,989    | ×1.3         |
 | `read_task_detail`, one whole entry | 9,078    | ×6           |
 
-The last one is deliberate: the tool exists to return a whole piece of
-evidence, and `MAX_EVIDENCE_LENGTH` is 8000. The other two are bounded only by
-a number of entries, never by characters, and one entry can be twenty times
-bigger than another.
+The last one is deliberate: the tool exists to return a whole piece of evidence,
+and `MAX_EVIDENCE_LENGTH` is 8000. The other two are bounded only by a number of
+entries, never by characters, and one entry can be twenty times bigger than
+another.
 
 **2. No refresh between tabs.** The second tab reopened the task and wrote up
 to v31; the first still displayed v29 and “Task closed”. It only finds out by
 trying to write. The safety guarantee holds (nothing is overwritten silently,
 and the refusal even names the other page), but the screen lies until then,
-which is exactly what this product holds against others. `visibilitychange`
-does not re-read the database; it redraws from memory.
+which is exactly what this product holds against others. `visibilitychange` does
+not re-read the database; it redraws from memory.
 
 ### Probe errors, logged
 
@@ -1262,15 +1246,15 @@ tools re-register within the second.
 ### Search now fills up to the budget
 
 Twelve matches of 240 characters came to 6296 characters. The bound is now on
-characters and not on the count: 6296 → 1275, and the header says “2 shown of
-30 found · 28 more not shown: narrow the query”. Nothing is hidden, search is
-there to find.
+characters and not on the count: 6296 → 1275, and the header says “2 shown of 30
+found · 28 more not shown: narrow the query”. Nothing is hidden, search is there
+to find.
 
 **A bound I put in then took out.** I had bounded `read_task_detail` the same
 way. An existing test refused it, and it was right: `resume_task` is the short
-pointer, `read_task_detail` is where you go for volume. Bounding it returned
-one or two entries per page as soon as evidence was attached. The split of
-roles was deliberate; I had not recognized it before the test told me.
+pointer, `read_task_detail` is where you go for volume. Bounding it returned one
+or two entries per page as soon as evidence was attached. The split of roles was
+deliberate; I had not recognized it before the test told me.
 
 ### Two tabs stay in sync
 
@@ -1283,19 +1267,19 @@ rule, with no click and no reload. No console errors.
 **Two defects found while building it, one of which the suite did not see.**
 
 1. **The echo.** A rewrite by line number had turned the receiver's
-   `tasksChanged()` into `tasksChangedEverywhere()`: every tab re-announced
-   what it received, and two tabs would have sent the message back and forth
-   forever. Caught by a test that checked what was emitted.
+   `tasksChanged()` into `tasksChangedEverywhere()`: every tab re-announced what it
+   received, and two tabs would have sent the message back and forth forever.
+   Caught by a test that checked what was emitted.
 
 2. **The deaf tab, seen in the browser only.** The channel was opened lazily,
-   on the first announcement. But a tab that only reads never announces
-   anything: it stayed deaf, and it was exactly the one that needed waking.
-   The suite could not see it, because in every one of its cases the store had
-   written before listening. The channel now opens at `init()`, and one test
-   starts from a store that does not write a single time.
+   on the first announcement. But a tab that only reads never announces anything:
+   it stayed deaf, and it was exactly the one that needed waking. The suite could
+   not see it, because in every one of its cases the store had written before
+   listening. The channel now opens at `init()`, and one test starts from a store
+   that does not write a single time.
 
-That is the third time in this project that a green test has hidden a defect
-the browser shows in a minute.
+That is the third time in this project that a green test has hidden a defect the
+browser shows in a minute.
 
 ## 28 August 2026: security pass in real WebMCP
 
@@ -1303,9 +1287,9 @@ the browser shows in a minute.
 
 ### Injection: what an agent writes ends up in the human's DOM
 
-A step written by an agent, carrying
-`<img src=x onerror="window.__pwned=1">`, `<script>`, an `<iframe>` and a
-`</pre>` meant to break out of the evidence block.
+A step written by an agent, carrying `<img src=x onerror="window.__pwned=1">`,
+`<script>`, an `<iframe>` and a `</pre>` meant to break out of the evidence
+block.
 
 **Observed.** Nothing executed: the four witnesses stay `null`. Zero `<img>`,
 zero `<script>`, zero `<iframe>` in `#app`. The text displays as it is,
@@ -1334,8 +1318,8 @@ for, never the value. `search_task` on the value itself: `NO MATCH`.
 
 **Nor does the shareable link.** 7005 characters, decompressed into
 19,589 characters of JSON: neither the value, nor even the name. Since the
-secrets live outside `TaskState`, `packTask` cannot carry them: the guarantee
-is structural, and it can be checked on the byte.
+secrets live outside `TaskState`, `packTask` cannot carry them: the guarantee is
+structural, and it can be checked on the byte.
 
 **Passphrase.** Wrong one: “That passphrase does not open this credential.”
 Right one: the value, with “Hidden again in under a minute.”
@@ -1346,9 +1330,9 @@ returns `CREDENTIALS: names only, values sealed (1)` and the `${name}` alone.
 **But the guarantee is the one that is written, no more.** The page says:
 “anything you reveal on screen can be read by an agent that drives this
 browser”. That is exact, and I have just given the unintended demonstration of
-it: I read the revealed value out of the DOM with `evaluate_script`. The
-promise is “no TOOL returns a value”, not “no agent can see it”. The product
-says so; it had to be checked rather than oversold.
+it: I read the revealed value out of the DOM with `evaluate_script`. The promise
+is “no TOOL returns a value”, not “no agent can see it”. The product says so; it
+had to be checked rather than oversold.
 
 ### The decompression bomb, with the real `DecompressionStream`
 
@@ -1414,8 +1398,8 @@ The task goes, the secret goes with it, and the other task is untouched.
 checked until now, and a judge opens whatever they want.
 
 **What holds.** No horizontal overflow: `scrollWidth` is exactly 375, and none
-of the elements in `#app` goes past the width of the viewport. The median
-height of a touch target is 41 px.
+of the elements in `#app` goes past the width of the viewport. The median height
+of a touch target is 41 px.
 
 **What does not hold, and is not fixed.** Four elements fall below a
 comfortable target:
@@ -1462,8 +1446,8 @@ And three tasks for six keystrokes: the batching by `requestAnimationFrame` is
 doing its job: typing fast does not produce one render per character.
 
 **Probe error, logged.** The first measurement was on the wrong task:
-`lastTaskId` had been written while the page was already mounted, and the
-reload reopened the previous one. The 1009 ms figure I read there was that of a
+`lastTaskId` had been written while the page was already mounted, and the reload
+reopened the previous one. The 1009 ms figure I read there was that of a
 ten-step task. It measured nothing.
 
 ## 28 August 2026: what an adversarial audit found in code written an hour ago
@@ -1475,10 +1459,10 @@ earlier, two of them reachable with two tabs and a ten-step task.
 
 ### The worst: a deletion could be undone by the other tab
 
-The deletion announced only “the list has changed”, without naming the task.
-The tab next door therefore kept a deleted task on screen, and its next write
-brought it back to life. `saveTask` treated “no record” as “not created yet”
-and fell back on the `put`.
+The deletion announced only “the list has changed”, without naming the task. The
+tab next door therefore kept a deleted task on screen, and its next write
+brought it back to life. `saveTask` treated “no record” as “not created yet” and
+fell back on the `put`.
 
 The task came back with all its steps and all its pasted evidence, but without
 its sealed credentials, which really had been erased: the human believed the
@@ -1490,31 +1474,31 @@ Commit `26501e8` is titled “Verify … that deleting a task takes its secrets�
 This defect gave it the lie in the two-tab case.
 
 **Two fixes, both necessary.** The deletion names the task
-(`{id, gone: true}`), and the receiver switches to `missing`. And `saveTask`
-now refuses a write that carries an expected version against an absent record:
-such a write is by definition an update, creations go through the path without
-a version.
+(`{id, gone: true}`), and the receiver switches to `missing`. And `saveTask` now
+refuses a write that carries an expected version against an absent record: such
+a write is by definition an update, creations go through the path without a
+version.
 
 **I had written the opposite assertion.** `test/migration-index.test.ts`
-claimed “lets through the very first write of a task that does not exist”.
-It was my reasoning that was wrong, not the code that followed it. The test now
+claimed “lets through the very first write of a task that does not exist”. It
+was my reasoning that was wrong, not the code that followed it. The test now
 asserts the opposite, with the reason.
 
 ### Three others, in the same file
 
 - **The re-read did not recheck the binding.** The “is this the open task?”
-  guard was evaluated when the message arrived; the work itself was deferred
-  into the queue. Between the two, the user can open another task, and the
-  re-read flipped the screen, and `boundId`, back to the previous one. Worse
-  than the stale screen the channel was meant to remove.
+  guard was evaluated when the message arrived; the work itself was deferred into
+  the queue. Between the two, the user can open another task, and the re-read
+  flipped the screen, and `boundId`, back to the previous one. Worse than the
+  stale screen the channel was meant to remove.
 - **No batching.** Measured by the agent on 20,000 steps: fifty announcements
-  cost fifty reads and 1702 ms, of which 1668 thrown away. And since the queue
-  is shared with the local writes, they delayed this tab's writes by a factor
-  of 51. One re-read per task now.
+  cost fifty reads and 1702 ms, of which 1668 thrown away. And since the queue is
+  shared with the local writes, they delayed this tab's writes by a factor of 51.
+  One re-read per task now.
 - **The task list was re-read on every write.** `listKey` contained the version
   of the open task, which changes on every write: 61 ms and 15.9 MB read to
-  produce 9 KB of cards, across 20 tasks of 2000 steps. The rows of the picker
-  do not depend on it.
+  produce 9 KB of cards, across 20 tasks of 2000 steps. The rows of the picker do
+  not depend on it.
 
 ### Checked with two real tabs
 
@@ -1531,17 +1515,17 @@ Then an agent tries to write from tab 2: refused. And on disk: `tasks` empty,
 Removing the binding recheck inside `resyncFromDisk` turns no test red: the
 guard of the queue covers it upstream. The two do have distinct roles (one
 avoids the read, the other avoids applying a stale read), and I could not build
-a deterministic race for the second. It stays, uncovered, and it is written
-here rather than covered up.
+a deterministic race for the second. It stays, uncovered, and it is written here
+rather than covered up.
 
 ### A figure published by the bench was wrong
 
 `bench/detail.bench.ts` was timing `normalizeTask(structuredClone(task))`,
-charging the cost of the clone to normalization: 3.94 ms of clone counted
-inside 0.24 ms of normalization, at 4000 steps. A factor of sixteen, and it
-pointed at the wrong fix: “speed up normalize” instead of “read less often”.
-The clone is out of the timer. No published document quoted that figure; only
-the bench output was wrong.
+charging the cost of the clone to normalization: 3.94 ms of clone counted inside
+0.24 ms of normalization, at 4000 steps. A factor of sixteen, and it pointed at
+the wrong fix: “speed up normalize” instead of “read less often”. The clone is
+out of the timer. No published document quoted that figure; only the bench
+output was wrong.
 
 ## 28 August 2026: the production build, and a README promise that was false
 
@@ -1565,27 +1549,26 @@ be verified on the host actually chosen.
 `SHELL` listed `/`, `/index.html`, the manifest and one icon. The two files the
 application is made of carry a hash in their name: they cannot be written by
 hand, and nothing was injecting them. Registration happening on `load`, the
-first visit does not go through the worker either. After a single visit,
-offline rendered a blank page, while the README claimed the opposite,
-“verified with the server stopped”.
+first visit does not go through the worker either. After a single visit, offline
+rendered a blank page, while the README claimed the opposite, “verified with the
+server stopped”.
 
 `scripts/precache.mjs` now writes the real names into `dist/sw.js`, and gives
 the cache a name derived from their content, without which `activate` never
 deleted anything.
 
 **Verified for real, this time.** Static server stopped, network emulated
-offline, a `fetch` of an uncached resource that fails, and the page renders
-957 characters of real content. Cache: five entries, including the JS and the
-CSS.
+offline, a `fetch` of an uncached resource that fails, and the page renders 957
+characters of real content. Cache: five entries, including the JS and the CSS.
 
 ### An error page could poison the cache for good
 
-The navigation branch cached the response without checking its status. On a
-host without rewriting, the first `/t/:id` returned a 404 that was written over
+The navigation branch cached the response without checking its status. On a host
+without rewriting, the first `/t/:id` returned a 404 that was written over
 `/index.html`: the offline fallback then served that 404 for every navigation,
-the root included. And the cache name being fixed, no deployment cleaned it.
-The `response.ok` check already existed on the resource branch; it was missing
-on the navigation one.
+the root included. And the cache name being fixed, no deployment cleaned it. The
+`response.ok` check already existed on the resource branch; it was missing on
+the navigation one.
 
 ### The source map was shipping to production
 
@@ -1597,14 +1580,14 @@ demand (`SOURCEMAP=1`). `dist/` goes from ~760 kB to 260 kB.
 ## 29 August 2026: the link protected by a passphrase
 
 A link carries the whole log, and its real leak is not the fragment (which the
-browser never transmits), but the place where it gets pasted: a Slack thread,
-an email, a conversation that keeps the message.
+browser never transmits), but the place where it gets pasted: a Slack thread, an
+email, a conversation that keeps the message.
 
 **What was built.** A second button, “Copy a protected link”, which seals the
 link with a passphrase. No new cryptography: it is the vault's `seal`/`unseal`,
-AES-GCM 256 and PBKDF2-SHA256 at 600,000 iterations, salt and IV drawn at
-random on every seal. Encryption comes after compression, since ciphertext does
-not compress.
+AES-GCM 256 and PBKDF2-SHA256 at 600,000 iterations, salt and IV drawn at random
+on every seal. Encryption comes after compression, since ciphertext does not
+compress.
 
 **What it does not do, and the screen says so.** It does not verify an
 identity. A URL fragment is a bearer capability, and authenticating someone
@@ -1643,9 +1626,9 @@ be redone by hand afterwards: “The Keydler takes…” reads badly for a prope
 noun.
 
 **A falsification, corrected.** The rename first rewrote earlier OBSERVATIONS:
-an entry from 28 August had a page say it was titled “Keydler: …”, when it
-still carried the old name. An audit caught it. The records dated before
-29 August quote the strings actually observed again; it is the same rule as for
+an entry from 28 August had a page say it was titled “Keydler: …”, when it still
+carried the old name. An audit caught it. The records dated before 29 August
+quote the strings actually observed again; it is the same rule as for
 `chrome-watch-log`, and I had applied it there and not here.
 
 **What was NOT renamed, and why.** Three persisted keys:
@@ -1660,9 +1643,9 @@ A guard in the rename script checked that each one survived, and would have
 stopped the work if one had disappeared.
 
 The MCP server name `chrome-watch-log` and the `/tmp/watch-log-agent.*`
-directories quoted in the measurement protocols are not renamed either: they
-are facts of the measurement environment, not the product name, and rewriting
-them would falsify the protocol.
+directories quoted in the measurement protocols are not renamed either: they are
+facts of the measurement environment, not the product name, and rewriting them
+would falsify the protocol.
 
 ## 29 August 2026: the rename audit, and what it caught me on
 
@@ -1685,42 +1668,41 @@ observed again, with an aside that dates the name.
 
 Verified by opening `docs/assets/shared-link.png`: “WATCH LOG” in the masthead,
 “The Watch Log keeps…” in the tagline, “A SHARED WATCH LOG” as a card title:
-three times in a single image, under a caption that now says “A shared log”.
-The rename commit had not touched a single image file.
+three times in a single image, under a caption that now says “A shared log”. The
+rename commit had not touched a single image file.
 
-The nine were retaken in Brave, at 1180 × 900 like the originals
-(`active-task` full page). The four others (`activity`, `credentials`,
-`disputed-step`, `human-intervention`) are card crops with no masthead;
-verified by opening `human-intervention.png`, they had nothing to redo.
+The nine were retaken in Brave, at 1180 × 900 like the originals (`active-task`
+full page). The four others (`activity`, `credentials`, `disputed-step`,
+`human-intervention`) are card crops with no masthead; verified by opening
+`human-intervention.png`, they had nothing to redo.
 
 ### Five other fixes
 
 - **The production build stayed silent without an origin trial token.** A
   misspelled variable at the hosting provider produced a healthy-looking site
-  where `document.modelContext` never exists, and every check stayed green. It
-  now fails, with `ALLOW_NO_ORIGIN_TRIAL=1` as an escape hatch for local
-  verification and continuous integration: it is the deployment build that has
-  to prove the token arrived.
+  where `document.modelContext` never exists, and every check stayed green. It now
+  fails, with `ALLOW_NO_ORIGIN_TRIAL=1` as an escape hatch for local verification
+  and continuous integration: it is the deployment build that has to prove the
+  token arrived.
 - **`durability.ts` announced “This log takes …”** for a figure that comes from
-  `navigator.storage.estimate()`, so from the WHOLE origin: every log, the
-  vault, the service worker cache. The rename had turned a vague sentence into
-  a false one. Fixed to “Everything this site stores here takes …”.
+  `navigator.storage.estimate()`, so from the WHOLE origin: every log, the vault,
+  the service worker cache. The rename had turned a vague sentence into a false
+  one. Fixed to “Everything this site stores here takes …”.
 - **`package.json`** still carried a description in French with the old name,
   invisible to a search for “watch”, and the repository goes public.
 - **Two strings read by an agent** said “log” where “task” carried the meaning:
-  “This device holds no log yet” under a `NO ACTIVE TASK` header, and “Another
-  log may be open elsewhere, but it is NOT this task”, which compares a log to
-  a task in the message whose only role is to stop an agent from resuming the
-  wrong work.
+  “This device holds no log yet” under a `NO ACTIVE TASK` header, and “Another log
+  may be open elsewhere, but it is NOT this task”, which compares a log to a task
+  in the message whose only role is to stop an agent from resuming the wrong work.
 - **No social tags and no canonical.** The SPA rewrite returns 200 on any path:
   without a canonical, every made-up URL is an indexable duplicate. Added, with
-  `keydler.com` as the origin, the one place in the repository where an
-  absolute URL is right rather than a guess about the host.
+  `keydler.com` as the origin, the one place in the repository where an absolute
+  URL is right rather than a guess about the host.
 
 ## 29 August 2026: locking the site down for good
 
-A page that holds a vault of encrypted credentials and exposes thirteen tools
-an agent can call deserves better than a policy of principle.
+A page that holds a vault of encrypted credentials and exposes thirteen tools an
+agent can call deserves better than a policy of principle.
 
 **What the inventory showed.** The product is a rare case: zero outgoing
 network requests, no external font, no `data:` image, and not a single `style=`
@@ -1736,16 +1718,16 @@ upgrade-insecure-requests
 ```
 
 The inline script goes through its hash, never through `unsafe-inline`, which
-would drain the policy of all its value in a single word.
-`scripts/headers.mjs` computes the hash on the HTML actually built, substitutes
-it into `dist/_headers`, and refuses the build if `vercel.json` does not carry
-the same one: a policy that has drifted between two hosting providers reassures
-without protecting.
+would drain the policy of all its value in a single word. `scripts/headers.mjs`
+computes the hash on the HTML actually built, substitutes it into
+`dist/_headers`, and refuses the build if `vercel.json` does not carry the same
+one: a policy that has drifted between two hosting providers reassures without
+protecting.
 
-Added to that: HSTS, `nosniff`, `X-Frame-Options: DENY`,
-`Referrer-Policy: no-referrer` (addresses carry task identifiers), the two
-`Cross-Origin-*` policies, and a `Permissions-Policy` that refuses the
-seventeen capabilities the product does not use.
+Added to that: HSTS, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy:
+no-referrer` (addresses carry task identifiers), the two `Cross-Origin-*`
+policies, and a `Permissions-Policy` that refuses the seventeen capabilities the
+product does not use.
 
 ### The test: does the policy really refuse?
 
@@ -1777,10 +1759,10 @@ deadline.
 undo, and it is not a decision to take in someone else's place.
 
 **Probe error, recorded.** A mutant on `default-src` survived at first. It had
-hit the comment that quotes the directive, not the directive. Aimed at the
-right line, it dies. And one of my tests was hollow:
-`empreintes.length + 1 === 1 + empreintes.length` is true of any number;
-rewritten to compare the whole directive.
+hit the comment that quotes the directive, not the directive. Aimed at the right
+line, it dies. And one of my tests was hollow: `empreintes.length + 1 === 1 +
+empreintes.length` is true of any number; rewritten to compare the whole
+directive.
 
 ## 29 August 2026: the first real deployment, and what it revealed
 
@@ -1799,9 +1781,8 @@ Published on Cloudflare Pages, then verified cold in Brave against
 | Reload with the network cut                       | the page loads, the 13 tools register                 |
 | Agent write during the outage                     | accepted                                              |
 
-Cloudflare replaces `index.html`'s `no-cache` with
-`public, max-age=0, must-revalidate`. Equivalent effect: revalidation every
-time. Left as it is.
+Cloudflare replaces `index.html`'s `no-cache` with `public, max-age=0,
+must-revalidate`. Equivalent effect: revalidation every time. Left as it is.
 
 ### Three defects found in production that no test covered
 
@@ -1816,9 +1797,9 @@ value away.
    state was at v4. An agent holding an old read overwrote the next action the
    human had just set, with no refusal.
 2. **The entry was signed `human`.** The record (the one thing this product
-   promises to be honest) credited a human with a write that no human had made.
-   An agent re-reading the history concludes “the human changed direction while
-   I was working” and falls in line.
+   promises to be honest) credited a human with a write that no human had made. An
+   agent re-reading the history concludes “the human changed direction while I was
+   working” and falls in line.
 3. **One name when it succeeds, another when it fails**: `set_next` applied,
    `set_next_action` refused. So the tool's name only appeared on failures.
    `changes.ts` already listed both, which shows that the duplication had been
@@ -1861,8 +1842,8 @@ as that is not done.
 **The origin trial token is not in this build**: it is not registered yet. So
 the verification above rests on Brave launched with
 `--enable-features=WebMCP,WebMCPTesting`, like every previous one, and does not
-demonstrate that WebMCP will turn on for a judge on an ordinary browser. That
-is what the token will bring, and it remains to be put in place.
+demonstrate that WebMCP will turn on for a judge on an ordinary browser. That is
+what the token will bring, and it remains to be put in place.
 
 ### 29 August 2026, later: “the origin is dead” was false
 
@@ -1887,32 +1868,30 @@ consequences:
    have reached the origin;
 3. a route pattern with no scheme intercepts the http as well. The origin trial
    token being bound to `https://keydler.com`, a page served in the clear would
-   work perfectly and would expose no WebMCP tool. A judge would read “WebMCP
-   is not available” on a site that looks healthy.
+   work perfectly and would expose no WebMCP tool. A judge would read “WebMCP is
+   not available” on a site that looks healthy.
 
 It is the third point that counts: the workaround turned a loud failure (a 521
 that nobody can miss) into a silent failure, during the judging period. The
-routes now carry their scheme, but the setup stays prepared and not
-recommended, for a reason the review put better than I did: it would make the
-OVH record the load-bearing pillar of the site, and would outlive the DNS fix
-by hiding it.
+routes now carry their scheme, but the setup stays prepared and not recommended,
+for a reason the review put better than I did: it would make the OVH record the
+load-bearing pillar of the site, and would outlive the DNS fix by hiding it.
 
 **What made the mistake possible.** I probed `https://` and drew a conclusion
 about `keydler.com`. A single request in the clear was enough to set me
-straight, and I did not make it before writing a conclusion into the
-repository.
+straight, and I did not make it before writing a conclusion into the repository.
 
 ### A useful refusal, discovered while deploying
 
 The deployment failed before all of that, for an unrelated and instructive
-reason: the Workers assets validator refuses the SPA rewrite
-`/*  /index.html  200` in `_redirects`, which it takes for an infinite loop,
-where Pages accepts it. Two validators, two opinions, on the same file.
+reason: the Workers assets validator refuses the SPA rewrite `/* /index.html
+200` in `_redirects`, which it takes for an infinite loop, where Pages accepts
+it. Two validators, two opinions, on the same file.
 
 The Worker has no use for it: `not_found_handling` does the same job. So
 `public/.assetsignore` removes `_redirects` from that one delivery, without
-touching the Pages one, which does not send files starting with a dot.
-Verified locally: `/t/abc123` returns 200 and carries the CSP.
+touching the Pages one, which does not send files starting with a dot. Verified
+locally: `/t/abc123` returns 200 and carries the CSP.
 
 Nothing was attached to the zone: zero routes, no deployment, `keydler.com`
 unchanged.
@@ -1989,10 +1968,10 @@ flags. No `--enable-features`.
 | `https://keydler.pages.dev` | the same token | absent                  |
 
 Same build, same browser, same session, same token in the HTML: the only
-difference is the origin the token is bound to. Chromium rejects it on the
-other one, without saying anything. It is the failure mode I had feared from
-the start, observed here rather than assumed, and the proof that it really is
-the token, and not a browser setting, that turns the feature on.
+difference is the origin the token is bound to. Chromium rejects it on the other
+one, without saying anything. It is the failure mode I had feared from the
+start, observed here rather than assumed, and the proof that it really is the
+token, and not a browser setting, that turns the feature on.
 
 A complete agent loop on `keydler.com` in that browser: `resume_task` returns
 the state, `log_step` writes, no console message.

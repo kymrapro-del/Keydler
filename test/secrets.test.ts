@@ -52,8 +52,8 @@ afterEach(() => {
 })
 
 async function withSecret() {
-  // The secret exists BEFORE the task is opened: that is the real order, and
-  // it is also the only one that guarantees the first render sees it.
+  // The secret exists BEFORE the task is opened: that is the real order, and it
+  // is also the only one that guarantees the first render sees it.
   const task = buildDemoTask()
   await addSecret({
     taskId: task.id,
@@ -159,9 +159,9 @@ describe('what the agent receives', () => {
     // The cost is bounded, not proportional. It is compared against what the
     // twenty-eight extra names would cost if they were all rendered, and we
     // require staying under a fifth of that. Measured: 17 tokens against 131,
-    // that is 13%. A hardcoded threshold would not say why
-    // and would drift with every rewording: this one already had to go from 5
-    // to 20 the day a sentence shortened and let one more name fit.
+    // that is 13%. A hardcoded threshold would not say why and would drift with
+    // every rewording: this one already had to go from 5 to 20 the day a
+    // sentence shortened and let one more name fit.
     //
     // We do NOT measure a unit price by difference: the output for two
     // credentials is SHORTER than the output for one, because the degradation

@@ -188,8 +188,8 @@ describe('for an agent without WebMCP', () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
     await waitUntil(() => copied !== null, 'the copy', 3000)
 
-    // The same text as resume_task, down to the same options: that is the
-    // whole point, the agent reads exactly what the tool would have returned.
+    // The same text as resume_task, down to the same options: that is the whole
+    // point, the agent reads exactly what the tool would have returned.
     const attendu = renderTaskState(store.currentTask()!, {
       url: taskUrl(store.currentTask()!.id),
       credentials: [],

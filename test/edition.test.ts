@@ -85,8 +85,8 @@ describe('human corrections, in the domain', () => {
     const task = buildDemoTask()
     const rule = activeConstraints(task)[0]
 
-    // None of these mutations carries a `basedOnVersion`: that is exactly
-    // what goes stale on the version the agent works from.
+    // None of these mutations carries a `basedOnVersion`: that is exactly what
+    // goes stale on the version the agent works from.
     for (const entry of [
       renameTask(task, 'A new name').audit.at(-1)!,
       editConstraint(task, rule.id, 'A reworded rule').audit.at(-1)!,

@@ -1,8 +1,9 @@
 /**
- * `www.keydler.com` is ANOTHER origin: everything there is partitioned, and the origin
- * trial token being invalid on it, a judge reads "WebMCP is not available in this
- * browser". Cloudflare Pages cannot filter on the host in `_redirects`; the rule is set
- * by hand in its dashboard, and forgetting it does not show.
+ * `www.keydler.com` is ANOTHER origin: everything there is partitioned, and the
+ * origin trial token being invalid on it, a judge reads "WebMCP is not
+ * available in this browser". Cloudflare Pages cannot filter on the host in
+ * `_redirects`; the rule is set by hand in its dashboard, and forgetting it
+ * does not show.
  */
 const CANONIQUE = 'keydler.com'
 

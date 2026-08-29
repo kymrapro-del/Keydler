@@ -16,10 +16,11 @@ import { referenceSyntax, type SecretName } from './secret'
 import { sinceThen } from './elapsed'
 
 /**
- * Chrome recommends 1.5k characters per tool output, that is 375 tokens at four characters
- * per token, the measure `estimateTokens` uses. Dropping from 400 to 375 was tried then
- * reverted: an ordinary render went from 1,506 to 1,489 characters, seventeen gained, against
- * one credential name lost from the screen on a loaded task.
+ * Chrome recommends 1.5k characters per tool output, that is 375 tokens at four
+ * characters per token, the measure `estimateTokens` uses. Dropping from 400 to
+ * 375 was tried then reverted: an ordinary render went from 1,506 to 1,489
+ * characters, seventeen gained, against one credential name lost from the
+ * screen on a loaded task.
  */
 export const TOKEN_BUDGET = 400
 
@@ -58,10 +59,11 @@ export type RenderOptions = {
 const CLIP_FLOOR = 0.4
 
 /**
- * Nothing bounded the rules or the ruled-out approaches: ten rules were enough to blow the
- * budget (487 tokens), two thousand took it to 37,800 (94 times what is advertised) and the
- * degradation ladder cut only the history. So they are cut last, never below this floor and
- * never silently: the agent must know that some are missing.
+ * Nothing bounded the rules or the ruled-out approaches: ten rules were enough
+ * to blow the budget (487 tokens), two thousand took it to 37,800 (94 times
+ * what is advertised) and the degradation ladder cut only the history. So they
+ * are cut last, never below this floor and never silently: the agent must know
+ * that some are missing.
  */
 const MIN_BINDING_SHOWN = 12
 
@@ -404,9 +406,9 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   }
 
   // Everything else is exhausted: what binds gives way last, and by halves
-  // rather than all at once, to cut only what has to be cut. The floor
-  // starts from the real length, otherwise half of infinity is still
-  // infinity and the descent never ends.
+  // rather than all at once, to cut only what has to be cut. The floor starts
+  // from the real length, otherwise half of infinity is still infinity and the
+  // descent never ends.
   const fitConstraints = Math.min(recentConstraints, active.length)
   const fitRejections = Math.min(recentRejections, ruledOut.length)
   if (fitConstraints > MIN_BINDING_SHOWN || fitRejections > MIN_BINDING_SHOWN) {

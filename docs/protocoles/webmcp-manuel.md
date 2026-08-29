@@ -1,9 +1,9 @@
 # Manual protocol: WebMCP in a real browser
 
-What the test suite covers, it covers against a fake `ModelContext` written
-from the specification IDL. That is useful and it is not enough: a fake cannot
-fail in any way other than the way it was written. This document lists what has
-to be observed in a real browser, and exactly what has to be seen.
+What the test suite covers, it covers against a fake `ModelContext` written from
+the specification IDL. That is useful and it is not enough: a fake cannot fail
+in any way other than the way it was written. This document lists what has to be
+observed in a real browser, and exactly what has to be seen.
 
 Six checks, half an hour. To be replayed after any change to `src/webmcp/`.
 
@@ -39,8 +39,8 @@ brave --remote-debugging-port=9222 \
   http://localhost:5174
 ```
 
-Pass both flags: the feature is called `WebMCPTesting` in Brave 151, whereas
-the `chrome-devtools-mcp` help announces `WebMCP`. The toggle in
+Pass both flags: the feature is called `WebMCPTesting` in Brave 151, whereas the
+`chrome-devtools-mcp` help announces `WebMCP`. The toggle in
 `brave://inspect/#remote-debugging` opens no port, and Chromium ≥ 136 refuses
 remote debugging on the default profile.
 
@@ -49,8 +49,8 @@ claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest \
   --browserUrl http://127.0.0.1:9222 --categoryExperimentalWebmcp
 ```
 
-Start from an empty log: the Delete this task button until the empty state, or
-a fresh profile.
+Start from an empty log: the Delete this task button until the empty state, or a
+fresh profile.
 
 > What `getTools()` proves and does not prove. The panel's “Observed through
 > `getTools()`” line reads the browser's table. It is a second source, distinct
@@ -136,8 +136,8 @@ client's “stop” button, or `Esc`) while it is waiting its turn.
       by one only.
 - [ ] The version advances by one notch only.
 - [ ] The refusal is audited: in the export's “Write log”, a `log_step` line
-      marked `refused`, with the reason “cancelled before anything was
-      written”, and no change of version.
+      marked `refused`, with the reason “cancelled before anything was written”, and
+      no change of version.
 - [ ] The page's call counter shows the refused call.
 
 > A cancelled call that wrote anyway would produce a write nobody sees go past:
@@ -150,13 +150,11 @@ client, call `log_step` again with exactly the same arguments, `mutation_id`
 included.
 
 - [ ] The answer is identical to the first one, followed by the note
-      “Replay of an earlier call with this mutation_id. Nothing was written
-      twice.”
+      “Replay of an earlier call with this mutation_id. Nothing was written twice.”
 - [ ] The number of steps has not changed.
 - [ ] The version has not changed.
 
-Then call `log_step` again with the same `mutation_id` and a different
-`action`.
+Then call `log_step` again with the same `mutation_id` and a different `action`.
 
 - [ ] The call is refused, with a message containing `different arguments`.
 - [ ] Nothing is written, and above all no `OK` is returned: an agent that

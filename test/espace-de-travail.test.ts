@@ -4,9 +4,10 @@ import { __renderNow, mount } from '../src/ui/bench'
 import * as store from '../src/store/taskStore'
 import { clearDatabase } from './helpers'
 
-// `/workspace` is what a "Sign in" button has to reach on a product with no account and no
-// server. The log list, the export and the import already existed, but folded inside an open
-// log: whoever arrives from a home page has none, and so saw nothing.
+// `/workspace` is what a "Sign in" button has to reach on a product with no
+// account and no server. The log list, the export and the import already
+// existed, but folded inside an open log: whoever arrives from a home page has
+// none, and so saw nothing.
 describe('the workspace address', () => {
   it('recognises its own, with or without a trailing slash', () => {
     expect(isWorkspacePath(WORKSPACE_PATH)).toBe(true)
@@ -15,8 +16,8 @@ describe('the workspace address', () => {
 
   it('recognises nothing else', () => {
     // `/workspaces` or `/workspace-2` must not open this view: they are
-    // different addresses, and confusing them would steal their page from
-    // any future routes.
+    // different addresses, and confusing them would steal their page from any
+    // future routes.
     for (const other of ['/', '/t/abc', '/workspaces', '/workspace-2', '/Workspace', '']) {
       expect(isWorkspacePath(other), other).toBe(false)
     }
@@ -96,9 +97,10 @@ describe('the workspace page', () => {
   })
 
   it('lists EVERY log on the device, not only the one that is open', async () => {
-    // `store.init()` with no id reopens the last log and `deleteCurrentTask` reopens another
-    // one: no state has logs without one being open. A first version of this test claimed the
-    // opposite, and a mutation proved it wrong.
+    // `store.init()` with no id reopens the last log and `deleteCurrentTask`
+    // reopens another one: no state has logs without one being open. A first
+    // version of this test claimed the opposite, and a mutation proved it
+    // wrong.
     await store.init()
     await store.createAndOpenTask('Refactor the auth module', 'Map the entry points')
     await store.createAndOpenTask('Ship the landing page', 'Replace the sign-in button')
@@ -128,8 +130,8 @@ describe('the workspace page', () => {
   })
 
   it('promises no account', async () => {
-    // The product refuses to write "verified" in place of a human; its own
-    // page must not suggest a backing it does not have.
+    // The product refuses to write "verified" in place of a human; its own page
+    // must not suggest a backing it does not have.
     unmount = mount(root)
     await store.init()
     await attendre()
@@ -145,8 +147,8 @@ describe('the workspace page', () => {
   it('does not claim the logs are encrypted, because they are not', async () => {
     // Only the credential vault and sealed links are encrypted. The logs
     // themselves sit in the clear in IndexedDB, and anyone with a hand on the
-    // browser session can read them. Writing "encrypted" here would be the
-    // only real falsehood this page could carry.
+    // browser session can read them. Writing "encrypted" here would be the only
+    // real falsehood this page could carry.
     unmount = mount(root)
     await store.init()
     await attendre()
@@ -161,8 +163,8 @@ describe('the workspace page', () => {
   it('promises privacy only through what is verifiable', async () => {
     // A first draft said "nobody else can read it, not even us". That is a
     // promise about trust: we serve the code, so we could change it. What is
-    // demonstrable is that there is no destination and that the security
-    // policy blocks other origins.
+    // demonstrable is that there is no destination and that the security policy
+    // blocks other origins.
     unmount = mount(root)
     await store.init()
     await attendre()
@@ -174,8 +176,8 @@ describe('the workspace page', () => {
   })
 
   it('warns that clearing the browser erases everything', async () => {
-    // With no server, there is no backup anywhere else. Staying silent about
-    // it would be the only false promise this page could make.
+    // With no server, there is no backup anywhere else. Staying silent about it
+    // would be the only false promise this page could make.
     unmount = mount(root)
     await store.init()
     await attendre()

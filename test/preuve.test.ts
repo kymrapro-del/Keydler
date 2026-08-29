@@ -169,8 +169,9 @@ describe('recording a step by hand', () => {
     root.querySelector<HTMLFormElement>('#form-step')!.requestSubmit()
     await recorded(before)
 
-    // This is the point that counts: read_task_detail announced "command_output"
-    // for a diff, so the product lied to the agent about the kind of evidence it holds.
+    // This is the point that counts: read_task_detail announced
+    // "command_output" for a diff, so the product lied to the agent about the
+    // kind of evidence it holds.
     const rendered = renderDetail(store.currentTask()!, {
       section: 'steps',
       offset: 0,

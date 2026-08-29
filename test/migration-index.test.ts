@@ -6,10 +6,10 @@ import { getDb } from '../src/persistence/db'
 import type { TaskState } from '../src/domain/types'
 
 // Concurrency control goes through the `by-id-version` index rather than a full
-// re-read of the task: 2 ms for 800 kB in Chrome, against 0.1 ms for a key. This
-// file opens the database at the OLD version before anything else touches it, so
-// that the migration really happens: `getDb()` memoises its promise, and a single
-// earlier call would make the test hollow.
+// re-read of the task: 2 ms for 800 kB in Chrome, against 0.1 ms for a key.
+// This file opens the database at the OLD version before anything else touches
+// it, so that the migration really happens: `getDb()` memoises its promise, and
+// a single earlier call would make the test hollow.
 function ancienneBase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('cahier-de-quart', 2)
@@ -63,10 +63,11 @@ describe('a log written before the index stays protected', () => {
     expect((await loadTask('ancien'))?.version).toBe(8)
   })
 
-  // A write that CARRIES an expected version is by definition an update: creations
-  // take the versionless path. A missing key is therefore a task deleted elsewhere,
-  // and letting it through resurrected it with all its steps and its evidence, but
-  // without its sealed credentials, which really were erased.
+  // A write that CARRIES an expected version is by definition an update:
+  // creations take the versionless path. A missing key is therefore a task
+  // deleted elsewhere, and letting it through resurrected it with all its steps
+  // and its evidence, but without its sealed credentials, which really were
+  // erased.
   it('refuses to resurrect a deleted log, and does not recreate it', async () => {
     const installed: TaskState = { ...buildCoreTask(), id: 'supprime', version: 3 }
     await saveTask(installed)

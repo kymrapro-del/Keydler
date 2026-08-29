@@ -6,10 +6,10 @@ import * as store from '../src/store/taskStore'
 import { clearDatabase, waitUntil } from './helpers'
 
 // Two tabs on the same task: the second had written up to v31 while the first
-// still showed v29 and "Task closed". The write from the first would indeed have
-// been refused, but its screen lied until then.
-// "The other tab" is a second `BroadcastChannel`: within one process as between
-// two tabs, it never delivers to the context that posts.
+// still showed v29 and "Task closed". The write from the first would indeed
+// have been refused, but its screen lied until then. "The other tab" is a
+// second `BroadcastChannel`: within one process as between two tabs, it never
+// delivers to the context that posts.
 let autreOnglet: BroadcastChannel
 
 function annonce(id: string, version: number): void {
@@ -74,7 +74,8 @@ describe('what one tab learns from the other', () => {
   })
 
   it('ignores an announcement older than what it already holds', async () => {
-    // Otherwise a late announcement would walk the screen back to a stale state.
+    // Otherwise a late announcement would walk the screen back to a stale
+    // state.
     const task = await store.createAndOpenTask('La mienne', undefined)
     await store.mutate((s) =>
       addConstraint(s, { rule: 'Posée ici', basedOnVersion: null }, 'human'),
@@ -111,18 +112,17 @@ describe('what one tab learns from the other', () => {
     await store.createAndOpenTask('La mienne', undefined)
     const before = store.tasksRevision()
 
-    // A creation elsewhere: the id does not concern us, but the list
-    // does.
+    // A creation elsewhere: the id does not concern us, but the list does.
     autreOnglet.postMessage({ id: null, version: 0 })
     await waitUntil(() => store.tasksRevision() > before, 'the list revision')
   })
 })
 
 describe('what a tab does with a deletion from elsewhere', () => {
-  // Deletion only announced "the list has changed", without naming the task: the
-  // tab next door kept it on screen and its next write RESURRECTED it, with all
-  // its steps and all its evidence, but without its sealed credentials, those
-  // really erased. The human believed the data gone; it came back maimed.
+  // Deletion only announced "the list has changed", without naming the task:
+  // the tab next door kept it on screen and its next write RESURRECTED it, with
+  // all its steps and all its evidence, but without its sealed credentials,
+  // those really erased. The human believed the data gone; it came back maimed.
   it('learns the open log was deleted, and stops showing it', async () => {
     const task = await store.createAndOpenTask('Supprimée ailleurs', undefined)
     expect(store.getSnapshot().status).toBe('ready')
@@ -157,9 +157,10 @@ describe('what a tab does with a deletion from elsewhere', () => {
 })
 
 describe('the reread will not overwrite the wrong log', () => {
-  // The "is this really the open task?" guard was evaluated when the message was
-  // RECEIVED, the re-read being deferred in the write queue: opening another task
-  // in between switched the screen, and `boundId`, back to the previous one.
+  // The "is this really the open task?" guard was evaluated when the message
+  // was RECEIVED, the re-read being deferred in the write queue: opening
+  // another task in between switched the screen, and `boundId`, back to the
+  // previous one.
   it('gives up if the open log changed between the announcement and its turn', async () => {
     const a = await store.createAndOpenTask('Cahier A', undefined)
     const b = await store.createAndOpenTask('Cahier B', undefined)

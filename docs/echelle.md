@@ -1,8 +1,8 @@
 # Scale and cost, August 28, 2026
 
-The two previous audits were looking for correctness defects. This one looks
-for cost defects: what grows without bound, what gets redone for nothing, what
-stops being usable once the task fills up.
+The two previous audits were looking for correctness defects. This one looks for
+cost defects: what grows without bound, what gets redone for nothing, what stops
+being usable once the task fills up.
 
 Everything that follows is measured. The bench is in the repository:
 
@@ -401,9 +401,8 @@ directly into IndexedDB then reloaded.
 not shown", the button "Show all 40 rules"; 12 discarded-approach rows out of 30
 with its own button; 360 nodes in `#app`. After the click: 40 rows, the warning
 gone, the button turned into "Show fewer", focus still on the button, 499 nodes.
-The warning and the button have real computed styles (`rgb(230, 230, 234)`,
-15 px, a 152 × 41 px rectangle) and are therefore neither invisible nor
-unstyled.
+The warning and the button have real computed styles (`rgb(230, 230, 234)`, 15
+px, a 152 × 41 px rectangle) and are therefore neither invisible nor unstyled.
 
 **No screenshot.** This environment's capture panel returned empty images while
 the DOM itself was answering correctly. I note it rather than present an image
@@ -427,8 +426,8 @@ recorded as unexplained rather than closed without action.
 ## What this work does not cover
 
 - **No measurement on a real browser.** The timings come from jsdom, where
-  rendering is slower and styling absent. Sizes, nodes and tokens, for their
-  part, do not depend on the engine.
+  rendering is slower and styling absent. Sizes, nodes and tokens, for their part,
+  do not depend on the engine.
 - **No measurement on mobile**, nor on a slow machine.
 - **No memory measurement**. The task is held whole in memory; nothing has been
   measured on that side.

@@ -6,8 +6,8 @@ site serves, so the notice belongs here rather than only in `node_modules`.
 
 Everything else in the served bundle is written for this project. There are no
 web fonts, no CDN scripts and no external assets: the typeface is whatever the
-reader's system provides, and the content security policy would refuse a
-request to any other origin anyway.
+reader's system provides, and the content security policy would refuse a request
+to any other origin anyway.
 
 ## idb
 
