@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-// @ts-expect-error — Worker Cloudflare en JavaScript simple, hors du programme TypeScript.
 import worker from '../workers/www.js'
 
 /**

@@ -1,6 +1,5 @@
 import { loadEnv, type Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
-// @ts-expect-error — module de construction en JavaScript simple, partagé avec les épreuves.
 import { tokensDe } from './scripts/jeton.mjs'
 
 /**

@@ -37,7 +37,7 @@ après rechargement complet.
 **Protocole visé.** Agent sans historique, consigne réduite à `continue`.
 
 **Ce qui s'est passé.** L'agent avait accès au système de fichiers du dépôt. Il a
-lu `README.md` et `docs/plan-developpement.md` **avant** de toucher au
+lu `README.md` et `docs/plan.md` **avant** de toucher au
 navigateur, y a trouvé le protocole de test énoncé mot pour mot, et s'est
 appuyé dessus. Il l'a rapporté lui-même.
 
@@ -89,7 +89,7 @@ correctement.
 
 ## 26 août 2026 — J3, essais du contrat de reprise
 
-Protocole : [`protocole-reprise.md`](protocole-reprise.md). État de départ
+Protocole : [`protocole-reprise.md`](protocoles/reprise.md). État de départ
 identique à chaque essai — cahier de démonstration en v12, témoin remis à zéro.
 Consigne unique : `continue`.
 
@@ -1047,7 +1047,7 @@ l'identifiant ne correspondait à rien. Le domaine refusait correctement avec
 **Poste.** Chrome, serveur de développement, cahier de 40 règles et
 30 approches écartées écrit directement dans IndexedDB.
 
-Le rapport complet est dans [échelle](echelle-2026-08-28.md). Ce qui a été vu
+Le rapport complet est dans [échelle](echelle.md). Ce qui a été vu
 dans le navigateur, et non seulement en jsdom :
 
 **Observé.** 12 lignes de règles sur 40, « 28 rules still in force are not

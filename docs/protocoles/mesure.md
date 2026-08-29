@@ -35,7 +35,7 @@ des tâches. Il faut alors durcir les tâches, pas maquiller le chiffre.
 La condition avec cahier passe par le build d'essai (`npm run trial`, port
 5174), sans carte de source : sur le serveur de développement, un agent lit
 tout le code par `fetch` et l'isolement est illusoire. Voir
-[`protocole-reprise.md`](protocole-reprise.md).
+[`protocole-reprise.md`](../protocoles/reprise.md).
 
 ## Récolte des journaux
 
@@ -52,7 +52,7 @@ entier en un fichier.
 Cette étape a été ajoutée après coup, et à un prix : les cahiers des tâches 1 à
 7 de la campagne du 26 août ont été **détruits** par la réinitialisation entre
 essais, avant qu'un export existe. Seules les conclusions rapportées par les
-agents subsistent, dans [`mesures/resultats.md`](mesures/resultats.md). Une
+agents subsistent, dans [`mesures/resultats.md`](../mesures/resultats.md). Une
 campagne ultérieure devra verser ses exports au dépôt.
 
 ## Ce qu'on relève
@@ -78,4 +78,4 @@ une, et l'écart doit être relevé tel quel, motif compris.
 cahier, dans 0 cas sur 8.**
 
 Relevés, transcriptions et réserves dans
-[`mesures/resultats.md`](mesures/resultats.md).
+[`mesures/resultats.md`](../mesures/resultats.md).
