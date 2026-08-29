@@ -65,7 +65,7 @@ describe('chaînes d’annulation', () => {
     const but = task.goal
     task = renameTask(task, 'Second name')
     task = setGoal(task, 'A first goal')
-    task = setNext(task, 'A different next')
+    task = setNext(task, { next: 'A different next', basedOnVersion: null })
 
     task = undoLastSupervision(task)
     task = undoLastSupervision(task)

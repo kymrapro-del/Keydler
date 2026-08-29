@@ -208,7 +208,9 @@ describe('cycle de vie', () => {
   it('refuse de poser une prochaine action sur une tâche close', () => {
     let task = seedTask()
     task = completeTask(task, { summary: 'Terminé.', basedOnVersion: 1 }, 'agent', ctx(10))
-    expect(() => setNext(task, 'encore une chose', ctx(20))).toThrow(ValidationError)
+    expect(() =>
+      setNext(task, { next: 'encore une chose', basedOnVersion: null }, 'human', ctx(20)),
+    ).toThrow(ValidationError)
     expect(task.next).toBeNull()
   })
 

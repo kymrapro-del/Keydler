@@ -1947,7 +1947,7 @@ function bindSupervision(): void {
         : current.kind === 'goal'
           ? (state) => setGoal(state, value)
           : current.kind === 'next'
-            ? (state) => setNext(state, value)
+            ? (state) => setNext(state, { next: value, basedOnVersion: null })
             : current.kind === 'constraint'
               ? (state) => editConstraint(state, current.id, value)
               : (state) => editRejection(state, current.id, { approach: value, reason })

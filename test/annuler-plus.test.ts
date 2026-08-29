@@ -26,7 +26,7 @@ describe('le journal retient ce qui a été remplacé', () => {
 
   it('garde l’ancienne prochaine action', () => {
     const before = task.next
-    const next = setNext(task, 'Something else entirely')
+    const next = setNext(task, { next: 'Something else entirely', basedOnVersion: null })
     expect(next.audit.at(-1)!.previous).toBe(before)
   })
 
@@ -46,7 +46,7 @@ describe('le journal retient ce qui a été remplacé', () => {
     // Confondre « il n'y avait rien » avec « rien n'a été consigné » rendait
     // impossible d'annuler la toute première pose d'un champ.
     const sansNext = { ...task, next: null }
-    const next = setNext(sansNext, 'First next action')
+    const next = setNext(sansNext, { next: 'First next action', basedOnVersion: null })
     expect(next.audit.at(-1)!.previous).toBe('')
     expect(undoLastSupervision(next).next).toBeNull()
   })
@@ -64,7 +64,7 @@ describe('annuler ce qui a été remplacé', () => {
 
   it('rend l’ancienne prochaine action', () => {
     const before = task.next!
-    const changed = setNext(task, 'Something else entirely')
+    const changed = setNext(task, { next: 'Something else entirely', basedOnVersion: null })
     const back = undoLastSupervision(changed)
     expect(back.next).toBe(before)
   })
