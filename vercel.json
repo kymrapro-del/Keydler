@@ -1,6 +1,19 @@
 {
   "buildCommand": "npm run build:trial",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.keydler.com"
+        }
+      ],
+      "destination": "https://keydler.com/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

@@ -450,9 +450,20 @@ npm run check
 
 ### Deploying it
 
-The site is meant for **keydler.com**, and the origin-trial token has to be
-registered against that exact origin — a preview subdomain will not activate
-WebMCP, and judges must be given the production address.
+The site is meant for **keydler.com**, the apex, and `www.keydler.com` must
+redirect to it. They are two origins, and everything here is origin-scoped: the
+IndexedDB database, the theme preference, "while you were away", the cross-tab
+channel, the service worker cache. A log created on one is invisible from the
+other, and a `/t/:id` link minted here opens an empty page there. The
+origin-trial token is bound to one origin too, so on the wrong one WebMCP never
+activates at all.
+
+`vercel.json` carries that redirect. **Cloudflare Pages cannot** — `_redirects`
+matches paths, not hosts — so there it is a Redirect Rule set by hand in the
+dashboard. Because a forgotten rule is invisible (both addresses answer, each
+with its own data), `src/canonical.ts` also sends www to the apex from the page
+itself. That is a backstop, not a substitute: a 301 happens before the page
+loads, this happens after.
 
 The address moves to `/t/:id` as soon as a task is open, so a host without an
 SPA rewrite 404s on every reload, bookmark and shared link. `public/_redirects`
