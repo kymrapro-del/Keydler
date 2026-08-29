@@ -1,18 +1,32 @@
+<div align="center">
+
+<img src="public/og.png" alt="Keydler: a shared memory for you and your AI." width="820">
+
 # Keydler
 
-**A shared memory for you and your AI. It keeps completed work, rules to
-follow, and mistakes not to repeat, even when the conversation changes.**
+**A shared memory for you and your AI. It keeps completed work, rules to follow,
+and mistakes not to repeat, even when the conversation changes.**
 
-> Conversations reset. The work should not.
+_Conversations reset. The work should not._
 
-[keydler.com](https://keydler.com) · [How it works](#why-webmcp-is-the-point)
-· [The thirteen tools](#the-tools) · [Documentation](docs/) ·
+[![CI](https://github.com/kymrapro-del/ChatGPT-WebMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/kymrapro-del/ChatGPT-WebMCP/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-918-3d4ec8)](docs/verification.md)
+[![WebMCP tools](https://img.shields.io/badge/WebMCP%20tools-13-3d4ec8)](#the-tools)
+[![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-1-3d4ec8)](package.json)
+[![Backend](https://img.shields.io/badge/backend-none-3d4ec8)](SECURITY.md)
+[![License](https://img.shields.io/badge/license-MIT-3d4ec8)](LICENSE)
+
+**[keydler.com](https://keydler.com)** &nbsp;·&nbsp;
+[How it works](#why-webmcp-is-the-point) &nbsp;·&nbsp;
+[The thirteen tools](#the-tools) &nbsp;·&nbsp;
+[Documentation](docs/) &nbsp;·&nbsp;
 [Security](SECURITY.md)
 
-No account, no server, no network calls. Everything stays in the browser, and
-the page is the tool surface an agent talks to.
+</div>
 
-![Keydler: a shared memory for you and your AI.](public/og.png)
+> [!NOTE]
+> No account, no server, no network calls. Everything stays in the browser, and
+> the page itself is the tool surface an agent talks to.
 
 ---
 
@@ -79,6 +93,35 @@ That asymmetry is the supervision. An agent that could forbid an approach on its
 own authority would close off the right answer for every conversation that
 follows, silently and with no way to notice.
 
+Here is what happens when you correct an agent while it works, which is step 3
+of the three above and the whole reason the product exists:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant H as You
+    participant P as The page
+    participant A as Your agent
+
+    A->>P: resume_task
+    P-->>A: state at v7, rules in force, what was ruled out
+    Note over A: works from v7
+
+    H->>P: adds a rule
+    Note over P: state moves to v8
+
+    A->>P: log_step, based_on_version 7
+    P-->>A: STALE STATE. Nothing was written.
+    A->>P: what_changed since v7
+    P-->>A: a rule was added, and it binds you
+    A->>P: log_step, based_on_version 8
+    P-->>A: recorded, now at v9
+```
+
+> [!IMPORTANT]
+> The refusal is the feature. Without it an agent would overwrite the rule you
+> had just set and never know it, and you would find out from the result.
+
 ## What it looks like
 
 **First visit**
@@ -118,6 +161,10 @@ If nobody answers within the window, the call comes back `NO ANSWER`, never
 `ALLOWED`. The reply says it in as many words: _no answer is not approval,
 treat it exactly as a refusal_. The request stays on the page for when you
 return.
+
+<details>
+<summary><b>Eight more screens: what needs you, disputing a step, coming back after an absence, search, themes</b></summary>
+<br>
 
 **One bar tells you what needs you.** The human-side answer to `resume_task`:
 what is unresolved, in the order it costs to miss, each one a link to the card
@@ -160,9 +207,15 @@ found by its _reason_, and a step found by the content of its evidence
 
 ![Search](docs/assets/search.png)
 
-**Light, dark, or whatever the system says**
+**Light, dark, or whatever the system says.** The image below follows your own
+GitHub theme.
 
-![Light theme](docs/assets/light-theme.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/needs-you.png">
+  <img alt="The same page in light and dark" src="docs/assets/light-theme.png">
+</picture>
+
+</details>
 
 ## The tools
 

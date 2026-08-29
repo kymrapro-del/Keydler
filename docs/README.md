@@ -1,35 +1,39 @@
+<div align="center">
+
 # Documentation
 
-Everything here was written while building the thing it describes, and none of
-it is marketing. Where a number appears, it was measured; where something was
-not verified, the text says so.
+**Everything here was written while building the thing it describes.**
 
-Most of it is in French, the language the work was done in. The product, its
-interface and the [README](../README.md) are in English.
+</div>
+
+> [!NOTE]
+> Where a number appears, it was measured. Where something was not verified, the
+> text says so. Most of this is in French, the language the work was done in.
+> The product, its interface and the [README](../README.md) are in English.
 
 ## Start here
 
-| Document                           | What it holds                                                                                                     |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| [verification.md](verification.md) | The honest journal. Every check run, in order, including the ones that failed and the mistakes made while probing |
-| [echelle.md](echelle.md)           | What happens at scale, and what it costs (measured on real logs, not estimated)                                   |
-| [concours.md](concours.md)         | What the contest research actually established, and what it did not                                               |
+| Document                              | What it holds                                                                                                     |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| 📓 [verification.md](verification.md) | The honest journal. Every check run, in order, including the ones that failed and the mistakes made while probing |
+| 📈 [echelle.md](echelle.md)           | What happens at scale, and what it costs (measured on real logs, not estimated)                                   |
+| 🏁 [concours.md](concours.md)         | What the contest research actually established, and what it did not                                               |
 
 ## The product
 
-| Document                             | What it holds                                                  |
-| ------------------------------------ | -------------------------------------------------------------- |
-| [interface.md](interface.md)         | Every panel on the page, and the reason it exists              |
-| [deploiement.md](deploiement.md)     | Putting it on a host, enabling WebMCP, pointing an agent at it |
-| [demonstration.md](demonstration.md) | The demonstration script                                       |
+| Document                                | What it holds                                                  |
+| --------------------------------------- | -------------------------------------------------------------- |
+| 🖥️ [interface.md](interface.md)         | Every panel on the page, and the reason it exists              |
+| 🚢 [deploiement.md](deploiement.md)     | Putting it on a host, enabling WebMCP, pointing an agent at it |
+| 🎬 [demonstration.md](demonstration.md) | The demonstration script                                       |
 
 ## Audits
 
 Two adversarial passes over the product, each looking for what the tests
 could not see.
 
-- [audits/premier.md](audits/premier.md)
-- [audits/second.md](audits/second.md)
+- 🔍 [audits/premier.md](audits/premier.md)
+- 🔍 [audits/second.md](audits/second.md)
 
 ## Protocols
 

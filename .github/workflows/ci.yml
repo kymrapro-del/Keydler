@@ -18,22 +18,12 @@ jobs:
 
       - run: npm ci
 
-      # Exactement ce que `npm run check` exécute en local : un échec ici doit
-      # toujours être reproductible sur la machine de qui a poussé.
-      - name: Types
-        run: npx tsc --noEmit
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Format
-        run: npm run format:check
-
-      - name: Tests d'invariants
-        run: npm test
-
-      - name: Build de production
-        run: ALLOW_NO_ORIGIN_TRIAL=1 npx vite build
+      # `npm run check` et rien d'autre. Détailler les étapes ici les faisait
+      # dériver : ce fichier lançait encore `vite build` nu, donc sans le garde
+      # d'artefact ni le vérificateur de liens que `check` a fini par contenir.
+      # Un badge posé sur un CI plus faible que la commande locale ment.
+      - name: check
+        run: ALLOW_NO_ORIGIN_TRIAL=1 npm run check
 
       # Le build d'essai sert les campagnes de mesure : il ne doit jamais
       # produire de carte de source, faute de quoi un agent « navigateur seul »

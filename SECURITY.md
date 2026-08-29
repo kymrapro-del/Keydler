@@ -1,8 +1,11 @@
+<div align="center">
+
 # Security
 
-Keydler has no server, no account and no network calls. That removes most of
-what a security policy usually covers, and creates a different set of things
-worth stating plainly.
+**No server, no account, no network calls. That removes most of what a security
+policy usually covers, and creates a different set of things worth stating.**
+
+</div>
 
 ## What is protected, and how
 
@@ -29,6 +32,10 @@ through one escaping function, and agent-authored content is marked
 
 ## What is not protected
 
+> [!CAUTION]
+> The four points below are the ones people get wrong about a product with no
+> server. None of them is a bug; all of them are consequences.
+
 Your logs are not encrypted at rest. IndexedDB holds them in the clear.
 Anyone with access to your browser profile can read them. Only credentials and
 sealed links are encrypted; claiming otherwise would be false.
@@ -45,6 +52,10 @@ There is no recovery. Clearing the site's data deletes everything, because
 no copy exists on a server. Export before you clear.
 
 ## Reporting a vulnerability
+
+> [!IMPORTANT]
+> Use GitHub's private advisory, not a public issue, for anything that would
+> expose someone's data before it is fixed.
 
 Open a private security advisory through GitHub's Report a vulnerability
 button on this repository. Please do not open a public issue for anything that
