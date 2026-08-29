@@ -19,7 +19,9 @@
     "format:check": "prettier --check .",
     "coverage": "vitest run --coverage",
     "bench": "vitest run --config vitest.bench.config.ts",
-    "artefact": "node scripts/artefact.mjs"
+    "artefact": "node scripts/artefact.mjs",
+    "sonde": "node scripts/sonde-production.mjs",
+    "carte": "node scripts/carte-sociale.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
