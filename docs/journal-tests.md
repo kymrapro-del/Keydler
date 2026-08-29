@@ -1977,3 +1977,53 @@ enregistré. Toute la vérification ci-dessus s'appuie sur Brave lancé avec
 `--enable-features=WebMCP,WebMCPTesting`. Elle **ne démontre pas** qu'un juge
 sur un navigateur ordinaire verrait le moindre outil. C'est le seul point qui
 sépare encore ce déploiement d'une candidature défendable.
+
+### 29 août 2026, soir — WebMCP s'active sans drapeau, et c'est démontré
+
+Le jeton d'origin trial est enregistré, déployé, et **vérifié dans un navigateur
+qui n'a aucun drapeau WebMCP**. C'est la première vérification de tout ce projet
+qui ne dépend pas de `--enable-features=WebMCP,WebMCPTesting` — toutes les
+précédentes en dépendaient, et je l'ai dit à chaque fois.
+
+Le jeton, lu avant d'être utilisé :
+
+```
+origine        https://keydler.com:443
+fonctionnalité WebMCP
+third-party    non        sous-domaines  non
+expire         2026-11-17
+```
+
+Soit 75 jours après le gel du 3 septembre, 57 après la fin du jugement.
+
+**L'expérience de contrôle**, qui est ce qui rend la démonstration concluante.
+Brave 152.1.94.117 (Chromium 152), profil neuf, lancé avec pour seuls drapeaux
+`--remote-debugging-port=9223 --user-data-dir=… --no-first-run`. Aucun
+`--enable-features`.
+
+| Origine                     | Balise servie | `document.modelContext` |
+| --------------------------- | ------------- | ----------------------- |
+| `https://keydler.com`       | le jeton      | **existe** — 13 outils  |
+| `https://keydler.pages.dev` | le même jeton | **absent**              |
+
+Même construction, même navigateur, même session, même jeton dans le HTML : la
+seule différence est l'origine à laquelle le jeton est lié. Chromium le rejette
+sur l'autre, **sans rien dire**. C'est le mode d'échec que je redoutais depuis
+le début, ici constaté plutôt que supposé — et la preuve que c'est bien le
+jeton, et non un réglage du navigateur, qui active la fonctionnalité.
+
+Boucle d'agent complète sur `keydler.com` dans ce navigateur : `resume_task`
+rend l'état, `log_step` écrit, aucun message de console.
+
+**Conséquence à ne pas oublier :** `keydler.pages.dev` n'a plus WebMCP. Ce
+n'était pas le cas ce matin, où le drapeau masquait la différence. Cette
+origine reste une surface de repli pour l'interface, pas pour les outils, tant
+qu'un second jeton n'y est pas posé.
+
+### Le jeton est versionné, à dessein
+
+`.env.production` est le seul fichier `.env` suivi par git. Un jeton d'origin
+trial n'est pas un secret — il est imprimé dans le HTML de chaque page servie.
+Ce que le versionner protège, c'est la capacité à reconstruire exactement
+l'artefact déployé à partir du seul dépôt, ce qui compte pendant un gel où l'on
+ne peut plus rien rattraper.
