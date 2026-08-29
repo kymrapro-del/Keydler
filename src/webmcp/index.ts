@@ -16,4 +16,10 @@ export { RESUME_TASK_DESCRIPTION } from './descriptions'
 export { getWitness, onCall, recentlyActive, resetCalls } from './witness'
 export type { Call, WitnessState } from './witness'
 export { checkAvailability } from './adapter'
-export { currentTaskIdFromLocation, taskPath, taskUrl } from './location'
+export {
+  currentTaskIdFromLocation,
+  isWorkspacePath,
+  taskPath,
+  taskUrl,
+  WORKSPACE_PATH,
+} from './location'
