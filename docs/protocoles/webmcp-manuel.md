@@ -183,6 +183,6 @@ différente.
 | 5   | Annulation : aucune mutation, refus audité   |                      |             |          |       |
 | 6   | Rejeu exact / collision d'arguments          |                      |             |          |       |
 
-Reporter les relevés dans `docs/journal-tests.md`, avec la version exacte du
+Reporter les relevés dans `docs/verification.md`, avec la version exacte du
 navigateur. **Un point non relevé se note « non vérifié », jamais « supposé
 bon ».**
