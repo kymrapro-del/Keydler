@@ -67,7 +67,7 @@ describe('recording a step by hand', () => {
   async function recorded(before: number) {
     await waitUntil(
       () => (store.currentTask()?.steps.length ?? 0) > before,
-      'l’étape à être écrite',
+      'the step to be written',
     )
     __renderNow()
   }

@@ -77,7 +77,7 @@ describe('deleting a task leaves nothing behind', () => {
     expect(seenVersion(task.id)).toBe(task.version)
 
     await store.deleteCurrentTask()
-    await waitUntil(() => seenVersion(task.id) === null, 'le repère effacé')
+    await waitUntil(() => seenVersion(task.id) === null, 'the marker to clear')
 
     expect(seenVersion(task.id)).toBeNull()
   })

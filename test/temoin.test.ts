@@ -126,7 +126,7 @@ describe('what the page says about it', () => {
   it('flags a write that arrived without a read, which contradicts the whole promise', async () => {
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     await call(logStep, writeArgs(store.currentTask()!, { action: 'a', result: 'b' }))
-    await waitUntil(() => activity().textContent!.includes('without reading'), 'le constat')
+    await waitUntil(() => activity().textContent!.includes('without reading'), 'the observation')
     __renderNow()
 
     const text = activity().textContent!

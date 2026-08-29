@@ -58,9 +58,9 @@ describe('reading a token', () => {
 
 describe('what reading refuses', () => {
   const mauvais: [string, string][] = [
-    ['du texte qui n’est pas un jeton', 'pas-un-jeton'],
-    ['une chaîne vide', ''],
-    ['un jeton tronqué', fabriquer(VALIDE).slice(0, 40)],
+    ['text that is not a token', 'not-a-token'],
+    ['an empty string', ''],
+    ['a truncated token', fabriquer(VALIDE).slice(0, 40)],
   ]
 
   it.each(mauvais)('refuses %s', (_nom, value) => {

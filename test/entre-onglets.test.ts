@@ -38,7 +38,7 @@ describe('what one tab learns from the other', () => {
     )
     annonce(task.id, 2)
 
-    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 2, 'la relecture')
+    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 2, 'the re-read')
     expect(store.currentTask()!.constraints.map((c) => c.rule)).toContain('Posée ailleurs')
   })
 
@@ -58,7 +58,7 @@ describe('what one tab learns from the other', () => {
     )
     annonce(id, 2)
 
-    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 2, 'la relecture')
+    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 2, 'the re-read')
     expect(store.currentTask()!.constraints.map((c) => c.rule)).toContain('Posée ailleurs')
   })
 
@@ -99,7 +99,7 @@ describe('what one tab learns from the other', () => {
 
     // We wait for the announcement of THIS task: creation already emitted one
     // for the list, which arrives asynchronously and would win the race.
-    await waitUntil(() => received.some((m) => m.id === task.id), 'l’annonce de la tâche')
+    await waitUntil(() => received.some((m) => m.id === task.id), 'the task announcement')
     expect(received).toContainEqual({
       id: task.id,
       version: store.currentTask()!.version,
@@ -114,7 +114,7 @@ describe('what one tab learns from the other', () => {
     // A creation elsewhere: the id does not concern us, but the list
     // does.
     autreOnglet.postMessage({ id: null, version: 0 })
-    await waitUntil(() => store.tasksRevision() > before, 'la révision de la liste')
+    await waitUntil(() => store.tasksRevision() > before, 'the list revision')
   })
 })
 
@@ -129,7 +129,7 @@ describe('what a tab does with a deletion from elsewhere', () => {
 
     autreOnglet.postMessage({ id: task.id, version: 0, gone: true })
 
-    await waitUntil(() => store.getSnapshot().status === 'missing', 'l’état « disparu »')
+    await waitUntil(() => store.getSnapshot().status === 'missing', 'the “gone” state')
     expect(store.currentTask()).toBeNull()
     expect(store.missingTaskId()).toBe(task.id)
   })
@@ -140,7 +140,7 @@ describe('what a tab does with a deletion from elsewhere', () => {
     const db = await getDb()
     await db.delete('tasks', task.id)
     autreOnglet.postMessage({ id: task.id, version: 0, gone: true })
-    await waitUntil(() => store.getSnapshot().status === 'missing', 'l’état « disparu »')
+    await waitUntil(() => store.getSnapshot().status === 'missing', 'the “gone” state')
 
     await expect(
       store.mutate((s) => addConstraint(s, { rule: 'Trop tard', basedOnVersion: null }, 'human')),

@@ -96,7 +96,7 @@ describe('search on screen', () => {
         addConstraint(s, { rule: `Rule about widgets number ${i}`, basedOnVersion: null }, 'human'),
       )
     }
-    await waitUntil(() => (store.currentTask()?.constraints.length ?? 0) >= 60, 'les 60 règles')
+    await waitUntil(() => (store.currentTask()?.constraints.length ?? 0) >= 60, 'the 60 rules')
     type('widgets')
     await settled()
 

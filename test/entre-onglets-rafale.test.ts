@@ -50,7 +50,7 @@ describe('a burst of announcements costs only one re-read', () => {
     lectures.loadTask = 0
     for (let i = 0; i < 50; i++) autreOnglet.postMessage({ id: task.id, version: 2 + i })
 
-    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 2, 'la relecture')
+    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 2, 'the re-read')
     await new Promise((r) => setTimeout(r, 80))
 
     expect(store.currentTask()!.constraints.map((c) => c.rule)).toContain('Posée ailleurs')
@@ -72,11 +72,11 @@ describe('a burst of announcements costs only one re-read', () => {
     await avancer('Première vague')
     lectures.loadTask = 0
     autreOnglet.postMessage({ id: task.id, version: 2 })
-    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 2, 'la première relecture')
+    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 2, 'the first re-read')
 
     await avancer('Seconde vague')
     autreOnglet.postMessage({ id: task.id, version: 3 })
-    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 3, 'la seconde relecture')
+    await waitUntil(() => (store.currentTask()?.version ?? 0) >= 3, 'the second re-read')
 
     expect(store.currentTask()!.constraints.map((c) => c.rule)).toContain('Seconde vague')
     expect(lectures.loadTask).toBeGreaterThanOrEqual(2)

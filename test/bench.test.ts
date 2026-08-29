@@ -37,7 +37,7 @@ async function settled(turns = 4) {
 }
 
 async function written(before: number) {
-  await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'l’écriture à être appliquée')
+  await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'the write to be applied')
   __renderNow()
 }
 
@@ -515,7 +515,7 @@ describe('a success message does not settle in', () => {
     })
 
     root.querySelector<HTMLButtonElement>('#copy-handoff')!.click()
-    await waitUntil(() => !!root.querySelector('.notice--ok'), 'le message de copie')
+    await waitUntil(() => !!root.querySelector('.notice--ok'), 'the copy message')
     __renderNow()
     expect(root.querySelector('.notice--ok')!.textContent).toContain('Copied')
 

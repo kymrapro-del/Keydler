@@ -119,32 +119,32 @@ describe('on screen', () => {
 
   it('says under the technical details where storage stands', async () => {
     const details = root.querySelector('details.technical')!
-    await waitUntil(() => details.textContent!.includes('MB'), 'la mesure de stockage', 3000)
+    await waitUntil(() => details.textContent!.includes('MB'), 'the storage reading', 3000)
     expect(details.textContent).toMatch(/may/i)
   })
 
   it("offers to ask for it, and does not do it behind the human's back", async () => {
-    await waitUntil(() => !!root.querySelector('#persist'), 'le bouton', 3000)
+    await waitUntil(() => !!root.querySelector('#persist'), 'the button', 3000)
 
     const asked = vi.fn(() => Promise.resolve(true))
     fakeStorage({ persist: asked, persisted: () => Promise.resolve(true) })
 
     root.querySelector<HTMLButtonElement>('#persist')!.click()
-    await waitUntil(() => asked.mock.calls.length > 0, 'la demande', 3000)
-    await waitUntil(() => !root.querySelector('#persist'), 'le bouton retiré', 3000)
+    await waitUntil(() => asked.mock.calls.length > 0, 'the request', 3000)
+    await waitUntil(() => !root.querySelector('#persist'), 'the button to go', 3000)
 
     // The node is replaced on every render: read it again, do not keep the old one.
     expect(root.querySelector('details.technical')!.textContent).toMatch(/will not|won’t/i)
   })
 
   it('says when the browser declined, rather than doing nothing', async () => {
-    await waitUntil(() => !!root.querySelector('#persist'), 'le bouton', 3000)
+    await waitUntil(() => !!root.querySelector('#persist'), 'the button', 3000)
     fakeStorage({ persist: () => Promise.resolve(false) })
 
     root.querySelector<HTMLButtonElement>('#persist')!.click()
     await waitUntil(
       () => !!root.querySelector('.notice--ok') || !!root.querySelector('.notice--error'),
-      'un retour visible',
+      'visible feedback',
       3000,
     )
     __renderNow()

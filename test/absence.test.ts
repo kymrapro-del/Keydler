@@ -43,7 +43,7 @@ describe('while you were away', () => {
   }
 
   async function written(before: number) {
-    await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'l’écriture')
+    await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'the write')
     __renderNow()
   }
 
@@ -196,7 +196,7 @@ describe('a background tab does not count as a presence', () => {
         'agent',
       ),
     )
-    await waitUntil(() => store.currentTask()!.steps.length > 4, 'l’écriture de l’agent')
+    await waitUntil(() => store.currentTask()!.steps.length > 4, 'the write from the agent')
 
     // Without this the page would mark itself "seen" while nobody was looking,
     // and the digest would never fire.

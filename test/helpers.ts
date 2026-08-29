@@ -18,7 +18,7 @@ export async function clearDatabase(): Promise<void> {
 
 export async function waitUntil(
   predicate: () => boolean,
-  what = 'la condition attendue',
+  what = 'the expected condition',
   tours = 300,
 ): Promise<void> {
   for (let i = 0; i < tours; i++) {

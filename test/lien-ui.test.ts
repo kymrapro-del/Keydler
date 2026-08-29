@@ -50,7 +50,7 @@ afterEach(() => {
 describe('offering the log in a link', () => {
   it('copies an address that carries the whole log', async () => {
     root.querySelector<HTMLButtonElement>('#copy-link')!.click()
-    await waitUntil(() => copied !== null, 'la copie')
+    await waitUntil(() => copied !== null, 'the copy')
     await settled()
 
     expect(copied).toContain(`#${FRAGMENT_KEY}`)
@@ -100,7 +100,7 @@ describe('offering the log in a link', () => {
 
   it('says what it just copied, and that it is a copy', async () => {
     root.querySelector<HTMLButtonElement>('#copy-link')!.click()
-    await waitUntil(() => !!root.querySelector('.notice--ok'), 'le message')
+    await waitUntil(() => !!root.querySelector('.notice--ok'), 'the message')
     __renderNow()
 
     const message = root.querySelector('.notice--ok')!.textContent!
@@ -164,7 +164,7 @@ describe('receiving a log through a link', () => {
     await arriveWith(await packTask(source))
 
     root.querySelector<HTMLButtonElement>('#accept-link')!.click()
-    await waitUntil(() => store.currentTask() !== null, 'le cahier importé', 3000)
+    await waitUntil(() => store.currentTask() !== null, 'the imported task', 3000)
     await settled()
 
     expect(store.currentTask()!.title).toBe(source.title)
@@ -187,7 +187,7 @@ describe('receiving a log through a link', () => {
 
   it('says a link is unreadable rather than letting the page look broken', async () => {
     await arriveWith('zdefinitivementpasuncahier')
-    await waitUntil(() => !!root.querySelector('.notice--error'), 'le message d’erreur', 3000)
+    await waitUntil(() => !!root.querySelector('.notice--error'), 'the error message', 3000)
     __renderNow()
 
     expect(root.querySelector('.notice--error')!.textContent).toMatch(/link/i)
@@ -220,7 +220,7 @@ describe('the protected link, from the screen', () => {
     const vrai = window.prompt
     window.prompt = () => 'la phrase du téléphone'
     bouton.click()
-    await waitUntil(() => copied !== null, 'la copie')
+    await waitUntil(() => copied !== null, 'the copy')
     window.prompt = vrai
     await settled()
 
@@ -256,7 +256,7 @@ describe('the protected link, from the screen', () => {
 
     type('sealed-passphrase', 'la phrase du téléphone')
     root.querySelector<HTMLFormElement>('#form-sealed')!.requestSubmit()
-    await waitUntil(() => root.textContent!.includes('A shared log'), 'l’offre')
+    await waitUntil(() => root.textContent!.includes('A shared log'), 'the offer')
     __renderNow()
 
     expect(root.textContent).toContain(title)
@@ -269,7 +269,7 @@ describe('the protected link, from the screen', () => {
 
     type('sealed-passphrase', 'ce n’est pas la bonne')
     root.querySelector<HTMLFormElement>('#form-sealed')!.requestSubmit()
-    await waitUntil(() => !!root.querySelector('.notice--error'), 'le refus')
+    await waitUntil(() => !!root.querySelector('.notice--error'), 'the refusal')
     __renderNow()
 
     const message = root.querySelector('.notice--error')!.textContent!

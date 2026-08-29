@@ -140,7 +140,7 @@ describe('the bar on screen', () => {
 
   it('disappears when there is nothing left to do', async () => {
     await store.openPreparedTask({ ...buildDemoTask(), status: 'completed' })
-    await waitUntil(() => store.currentTask()?.status === 'completed', 'la clôture')
+    await waitUntil(() => store.currentTask()?.status === 'completed', 'the closing')
     __renderNow()
     expect(bar()).toBeNull()
   })

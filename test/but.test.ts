@@ -141,7 +141,7 @@ describe('from the page', () => {
     field.dispatchEvent(new Event('input', { bubbles: true }))
     root.querySelector<HTMLFormElement>('#edit-form')!.requestSubmit()
 
-    await waitUntil(() => store.currentTask()?.goal === BUT, 'le but écrit', 3000)
+    await waitUntil(() => store.currentTask()?.goal === BUT, 'the goal to be written', 3000)
     __renderNow()
 
     expect(root.querySelector('.hero')!.textContent).toContain(BUT)
@@ -186,7 +186,7 @@ describe('for an agent without WebMCP', () => {
 
   it('copies the log as text, just as the agent would have received it', async () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
-    await waitUntil(() => copied !== null, 'la copie', 3000)
+    await waitUntil(() => copied !== null, 'the copy', 3000)
 
     // The same text as resume_task, down to the same options: that is the
     // whole point, the agent reads exactly what the tool would have returned.
@@ -199,7 +199,7 @@ describe('for an agent without WebMCP', () => {
 
   it('frames it with an instruction, so it is not an anonymous wall of text', async () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
-    await waitUntil(() => copied !== null, 'la copie', 3000)
+    await waitUntil(() => copied !== null, 'the copy', 3000)
 
     expect(copied!.toLowerCase()).toContain('continue this task')
     expect(copied!.toLowerCase()).toContain('read this before')
@@ -207,7 +207,7 @@ describe('for an agent without WebMCP', () => {
 
   it('carries no credential value', async () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
-    await waitUntil(() => copied !== null, 'la copie', 3000)
+    await waitUntil(() => copied !== null, 'the copy', 3000)
 
     for (const mot of ['ciphertext', 'passphrase', 'sealed:']) {
       expect(copied, mot).not.toContain(mot)
@@ -216,7 +216,7 @@ describe('for an agent without WebMCP', () => {
 
   it('says what it just copied', async () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
-    await waitUntil(() => !!root.querySelector('.notice--ok'), 'le message', 3000)
+    await waitUntil(() => !!root.querySelector('.notice--ok'), 'the message', 3000)
     __renderNow()
     expect(root.querySelector('.notice--ok')!.textContent!.toLowerCase()).toContain('paste')
   })

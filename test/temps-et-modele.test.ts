@@ -166,7 +166,7 @@ describe('from the page', () => {
     await waitUntil(
       () =>
         store.currentTask()?.title === 'Second task' && store.currentTask()!.constraints.length > 0,
-      'les règles reprises',
+      'the carried rules',
       3000,
     )
     __renderNow()
@@ -182,7 +182,7 @@ describe('from the page', () => {
     fill('new-title', 'Plain task')
     fill('new-next', 'Start it')
     root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
-    await waitUntil(() => store.currentTask()?.title === 'Plain task', 'la nouvelle tâche', 3000)
+    await waitUntil(() => store.currentTask()?.title === 'Plain task', 'the new task', 3000)
     await settled()
 
     expect(store.currentTask()!.constraints).toHaveLength(0)

@@ -36,7 +36,7 @@ describe('an approval wait while everything else moves', () => {
       requestApprovalTool,
       writeArgs(currentTask(), { action: 'Do it', why: 'risky' }),
     )
-    await waitUntil(() => currentTask().approvals.length > 0, 'la demande')
+    await waitUntil(() => currentTask().approvals.length > 0, 'the request')
     await store.deleteCurrentTask()
 
     const result = await pending
@@ -50,7 +50,7 @@ describe('an approval wait while everything else moves', () => {
       requestApprovalTool,
       writeArgs(currentTask(), { action: 'Do it', why: 'risky' }),
     )
-    await waitUntil(() => currentTask().approvals.length > 0, 'la demande')
+    await waitUntil(() => currentTask().approvals.length > 0, 'the request')
     await store.createAndOpenTask('Elsewhere', 'x')
 
     const result = await pending

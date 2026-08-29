@@ -282,7 +282,7 @@ describe('the whole device does not grow the page either', () => {
     // The task list is re-read asynchronously after the render.
     await waitUntil(
       () => (root.textContent ?? '').includes(`${count} tasks on this device`),
-      'la liste des cahiers',
+      'the task list',
     )
     __renderNow()
   }
