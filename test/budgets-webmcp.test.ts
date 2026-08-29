@@ -33,8 +33,8 @@ function parameters(schema: object | undefined, prefix = ''): [string, { descrip
   ])
 }
 
-describe('les budgets de caractères que Chrome recommande', () => {
-  it('tient les noms sous trente caractères', () => {
+describe('the character budgets Chrome recommends', () => {
+  it('holds names under thirty characters', () => {
     for (const tool of ALL_TOOLS) {
       expect(tool.name.length, tool.name).toBeLessThanOrEqual(MAX_NAME)
       for (const [name] of parameters(tool.inputSchema)) {
@@ -43,13 +43,13 @@ describe('les budgets de caractères que Chrome recommande', () => {
     }
   })
 
-  it('tient les descriptions d’outil sous cinq cents', () => {
+  it('holds tool descriptions under five hundred', () => {
     for (const tool of ALL_TOOLS) {
       expect(tool.description.length, tool.name).toBeLessThanOrEqual(MAX_TOOL_DESCRIPTION)
     }
   })
 
-  it('tient les descriptions de paramètre sous cent cinquante', () => {
+  it('holds parameter descriptions under a hundred and fifty', () => {
     for (const tool of ALL_TOOLS) {
       for (const [name, prop] of parameters(tool.inputSchema)) {
         expect((prop.description ?? '').length, `${tool.name}.${name}`).toBeLessThanOrEqual(
@@ -59,7 +59,7 @@ describe('les budgets de caractères que Chrome recommande', () => {
     }
   })
 
-  it('ne laisse aucune description vide', () => {
+  it('leaves no description empty', () => {
     // An upper bound invites cutting; cutting down to silence would not be
     // progress. Every tool and every parameter still says something.
     for (const tool of ALL_TOOLS) {
@@ -70,7 +70,7 @@ describe('les budgets de caractères que Chrome recommande', () => {
     }
   })
 
-  it('borne la recherche par les caractères, pas par le compte', () => {
+  it('bounds search by characters, not by count', () => {
     // Twelve matches of 240 characters make 6296 characters: the match count
     // bounds nothing as long as the excerpts are unbounded.
     const longue = (mot: string, n: number) => `${mot} ` + 'x'.repeat(n)
@@ -98,7 +98,7 @@ describe('les budgets de caractères que Chrome recommande', () => {
     expect(text).toContain('more not shown: narrow the query')
   })
 
-  it('rend au moins une correspondance, même démesurée', () => {
+  it('renders at least one match, however oversized', () => {
     // Otherwise a single entry bigger than the budget would render an empty
     // answer, and search would no longer find anything at all.
     const task: TaskState = {
@@ -121,7 +121,7 @@ describe('les budgets de caractères que Chrome recommande', () => {
     expect(text).toContain('1 shown of 1 found')
   })
 
-  it('rend une restitution ordinaire dans le budget du produit', () => {
+  it('renders an ordinary briefing within the product budget', () => {
     // `resume_task` is the heaviest output of the set, and the only one that
     // comes near the bound. We measure what the tool really sends: with the
     // task address, which `resume_task` passes on every call.
@@ -137,7 +137,7 @@ describe('les budgets de caractères que Chrome recommande', () => {
   })
 })
 
-describe('ce que la coupe ne devait pas emporter', () => {
+describe('what the cut was not allowed to take', () => {
   const of = (name: string) => ALL_TOOLS.find((t) => t.name === name)!
 
   // The descriptions are written as multiline templates: a sentence can
@@ -148,35 +148,35 @@ describe('ce que la coupe ne devait pas emporter', () => {
 
   // Descriptions cut by a third to fit the budget: a description instructs,
   // the README explains. Here are the instructions that had to survive.
-  it('garde le moment où appeler chaque outil', () => {
+  it('keeps when to call each tool', () => {
     for (const tool of ALL_TOOLS) {
       expect(tool.description, tool.name).toMatch(/Call this/)
     }
   })
 
-  it('garde ce qui fait de resume_task le premier geste', () => {
+  it('keeps what makes resume_task the first move', () => {
     expect(flat('resume_task')).toContain('BEFORE doing any work')
     expect(flat('resume_task')).toContain('context loss')
     expect(flat('resume_task')).toContain('refused as stale')
   })
 
-  it('garde le refus de deviner, et le silence qui n’est pas un accord', () => {
+  it('keeps the refusal to guess, and the silence that is not an approval', () => {
     expect(flat('ask_human')).toContain('Do NOT guess and carry on')
     expect(flat('request_approval')).toContain('NO ANSWER IS NOT APPROVAL')
     expect(flat('request_approval')).toContain('exactly as a refusal')
   })
 
-  it('garde qu’une recherche vide ne prouve rien', () => {
+  it('keeps that an empty search proves nothing', () => {
     expect(flat('search_task')).toContain('does not prove the work was never attempted')
   })
 
-  it('garde qu’un agent propose et n’ordonne pas', () => {
+  it('keeps that an agent proposes and does not order', () => {
     expect(flat('add_constraint')).toContain('PROPOSAL')
     expect(flat('reject_approach')).toContain('PROPOSAL')
     expect(flat('reject_approach')).toContain('cannot forbid an approach on your own')
   })
 
-  it('garde le motif obligatoire d’un rejet', () => {
+  it('keeps the mandatory reason on a rejection', () => {
     expect(flat('reject_approach')).toContain('A reason is mandatory')
   })
 })

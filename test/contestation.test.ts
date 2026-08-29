@@ -36,8 +36,8 @@ function disputed(): TaskState {
   )
 }
 
-describe('contester une étape', () => {
-  it('marque l’étape, avec le motif de l’humain', () => {
+describe('disputing a step', () => {
+  it('marks the step, with the reason the human gave', () => {
     const next = disputed()
     const step = next.steps.find((s) => s.id === claimed(task).id)!
 
@@ -48,20 +48,20 @@ describe('contester une étape', () => {
     expect(next.audit.at(-1)).toMatchObject({ operation: 'dispute_step', actor: 'human' })
   })
 
-  it('exige un motif : « c’est faux » sans raison n’aide personne', () => {
+  it('requires a reason: "that is wrong" on its own helps nobody', () => {
     expect(() => disputeStep(task, claimed(task).id, '   ')).toThrow(ValidationError)
   })
 
-  it('refuse une étape inconnue', () => {
+  it('refuses an unknown step', () => {
     expect(() => disputeStep(task, 'nope', 'a reason')).toThrow(ValidationError)
   })
 
-  it('refuse de contester deux fois', () => {
+  it('refuses to dispute twice', () => {
     const once = disputed()
     expect(() => disputeStep(once, claimed(task).id, 'again')).toThrow(ValidationError)
   })
 
-  it('conteste aussi une étape que l’on avait validée soi-même', () => {
+  it('disputes even a step you approved yourself', () => {
     const step = task.steps.find((s) => s.evidence !== null)!
     const verified = verifyEvidence(task, step.id, step.evidence!.content)
     expect(verified.steps.find((s) => s.id === step.id)!.confidence).toBe('human_verified')
@@ -72,7 +72,7 @@ describe('contester une étape', () => {
     expect(next.steps.find((s) => s.id === step.id)!.confidence).toBe('disputed')
   })
 
-  it('ne compte plus une étape contestée comme prouvée', () => {
+  it('stops counting a disputed step as proven', () => {
     const withEvidence = task.steps.find((s) => s.confidence === 'evidence')!
     const before = provenStepCount(task)
     const next = disputeStep(task, withEvidence.id, 'The output came from another branch.')
@@ -81,7 +81,7 @@ describe('contester une étape', () => {
     expect(evidenceCounts(next).disputed).toBe(1)
   })
 
-  it('s’annule, et l’étape retrouve exactement le degré qu’elle avait', () => {
+  it('undoes, and the step regains exactly the level it had', () => {
     const withEvidence = task.steps.find((s) => s.confidence === 'evidence')!
     const next = disputeStep(task, withEvidence.id, 'Wrong branch.')
     expect(undoable(next)).toContain('disputed')
@@ -92,14 +92,14 @@ describe('contester une étape', () => {
     expect(step.dispute).toBeNull()
   })
 
-  it('rend une étape sans preuve à « claimed » quand on annule', () => {
+  it('returns a step with no evidence to `claimed` when undone', () => {
     const back = undoLastSupervision(disputed())
     expect(back.steps.find((s) => s.id === claimed(task).id)!.confidence).toBe('claimed')
   })
 })
 
-describe('ce que les autres surfaces en disent', () => {
-  it('met la contestation en tête de ce que lit l’agent, avec son motif', () => {
+describe('what the other surfaces say about it', () => {
+  it('puts the dispute at the top of what the agent reads, with its reason', () => {
     const rendered = renderTaskState(disputed())
     expect(rendered).toContain('DISPUTED BY THE HUMAN')
     expect(rendered).toContain('never deployed')
@@ -107,11 +107,11 @@ describe('ce que les autres surfaces en disent', () => {
     expect(estimateTokens(rendered)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
-  it('n’invente rien quand rien n’est contesté', () => {
+  it('invents nothing when nothing is disputed', () => {
     expect(renderTaskState(task)).not.toContain('DISPUTED BY THE HUMAN')
   })
 
-  it('porte le motif dans le détail de l’étape', () => {
+  it('carries the reason into the step detail', () => {
     const rendered = renderDetail(disputed(), {
       section: 'steps',
       offset: 0,
@@ -122,18 +122,18 @@ describe('ce que les autres surfaces en disent', () => {
     expect(rendered).toContain('never deployed')
   })
 
-  it('compte comme un changement qui engage l’agent', () => {
+  it('counts as a change that binds the agent', () => {
     const rendered = renderChanges(disputed(), task.version)
     expect(rendered).toContain('CHANGES WHAT YOU MAY DO')
     expect(rendered).not.toContain('dispute_step')
   })
 
-  it('se retrouve par la recherche, par le motif', () => {
+  it('is found by search, through the reason', () => {
     const hits = searchTask(disputed(), 'never deployed')
     expect(hits.length).toBeGreaterThan(0)
   })
 
-  it('se lit en phrase dans l’historique', () => {
+  it('reads as a sentence in the history', () => {
     const line = describeEntry({
       id: 'e1',
       operation: 'dispute_step',
@@ -150,7 +150,7 @@ describe('ce que les autres surfaces en disent', () => {
   })
 })
 
-describe('contester depuis la page', () => {
+describe('disputing from the page', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -180,12 +180,12 @@ describe('contester depuis la page', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('propose de contester chaque étape que vous n’avez pas validée', () => {
+  it('offers to dispute every step you have not approved', () => {
     const id = claimed(store.currentTask()!).id
     expect(root.querySelector(`[data-dispute="${id}"]`)).not.toBeNull()
   })
 
-  it('demande un motif, et refuse de contester sans', async () => {
+  it('asks for a reason, and refuses to dispute without one', async () => {
     const id = claimed(store.currentTask()!).id
     root.querySelector<HTMLButtonElement>(`[data-dispute="${id}"]`)!.click()
     __renderNow()
@@ -200,7 +200,7 @@ describe('contester depuis la page', () => {
     expect(disputedSteps(store.currentTask()!)).toHaveLength(0)
   })
 
-  it('offre les deux issues là où la preuve est sous les yeux', async () => {
+  it('offers both outcomes where the evidence is in front of you', async () => {
     const card = [...root.querySelectorAll('.card')].find((c) =>
       c.querySelector('h2')?.textContent?.includes('Evidence to review'),
     )!
@@ -212,7 +212,7 @@ describe('contester depuis la page', () => {
     expect(card.querySelector('[data-dispute]')).not.toBeNull()
   })
 
-  it('retire de la revue une preuve déjà tranchée', async () => {
+  it('drops evidence already ruled on from the review', async () => {
     const step = store.currentTask()!.steps.find((s) => s.confidence === 'evidence')!
     const before = store.currentTask()!.version
     await store.mutate((s) => disputeStep(s, step.id, 'The output came from another branch.'))
@@ -224,7 +224,7 @@ describe('contester depuis la page', () => {
     expect(card?.querySelector(`[data-verify="${step.id}"]`) ?? null).toBeNull()
   })
 
-  it('marque l’étape, et le motif est à l’écran', async () => {
+  it('marks the step, and the reason is on screen', async () => {
     const id = claimed(store.currentTask()!).id
     root.querySelector<HTMLButtonElement>(`[data-dispute="${id}"]`)!.click()
     __renderNow()

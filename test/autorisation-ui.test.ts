@@ -6,31 +6,31 @@ import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase, waitUntil } from './helpers'
 
-describe('le titre de l’onglet appelle quand il le faut', () => {
+describe('the tab title calls out when it should', () => {
   const BASE = 'Keydler: a shared memory for you and your AI'
 
-  it('ne change rien quand rien n’attend', () => {
+  it('changes nothing when nothing is waiting', () => {
     expect(attentionTitle(BASE, 0, true)).toBe(BASE)
     expect(attentionTitle(BASE, 0, false)).toBe(BASE)
   })
 
-  it('ne crie pas quand l’onglet est déjà sous les yeux', () => {
+  it('does not shout when the tab is already in view', () => {
     expect(attentionTitle(BASE, 2, true)).toBe(BASE)
   })
 
-  it('compte ce qui attend quand l’onglet est caché', () => {
+  it('counts what is waiting when the tab is hidden', () => {
     expect(attentionTitle(BASE, 1, false)).toBe(`(1) ${BASE}`)
     expect(attentionTitle(BASE, 3, false)).toBe(`(3) ${BASE}`)
   })
 
-  it('ne s’empile pas quand on le rappelle', () => {
+  it('does not stack up when it is called again', () => {
     const once = attentionTitle(BASE, 1, false)
     expect(attentionTitle(once, 2, false)).toBe(`(2) ${BASE}`)
     expect(attentionTitle(once, 0, false)).toBe(BASE)
   })
 })
 
-describe('une demande d’autorisation à l’écran', () => {
+describe('a permission request on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -82,11 +82,11 @@ describe('une demande d’autorisation à l’écran', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('ne montre rien tant que rien n’a été demandé', () => {
+  it('shows nothing until something has been asked', () => {
     expect(card()).toBeUndefined()
   })
 
-  it('montre l’action et son motif, et dit que l’agent attend', async () => {
+  it('shows the action and its reason, and says the agent is waiting', async () => {
     await ask()
     const shown = card()!
     expect(shown).toBeDefined()
@@ -95,7 +95,7 @@ describe('une demande d’autorisation à l’écran', () => {
     expect(shown.textContent).toMatch(/waiting|blocked/i)
   })
 
-  it('passe avant tout le reste, y compris la prochaine action', async () => {
+  it('comes before everything else, including the next action', async () => {
     await ask()
     const cards = [...root.querySelectorAll('.card')]
     const permission = cards.indexOf(card()!)
@@ -104,7 +104,7 @@ describe('une demande d’autorisation à l’écran', () => {
     if (next >= 0) expect(permission).toBeLessThan(next)
   })
 
-  it('autorise d’un clic, et la carte disparaît', async () => {
+  it('allows in one click, and the card disappears', async () => {
     await ask()
     const id = pendingApprovals(store.currentTask()!)[0].id
     const before = store.currentTask()!.version
@@ -117,7 +117,7 @@ describe('une demande d’autorisation à l’écran', () => {
     expect(card()).toBeUndefined()
   })
 
-  it('refuse d’un clic, et le refus est conservé', async () => {
+  it('denies in one click, and the refusal is kept', async () => {
     await ask()
     const id = pendingApprovals(store.currentTask()!)[0].id
     const before = store.currentTask()!.version
@@ -128,7 +128,7 @@ describe('une demande d’autorisation à l’écran', () => {
     expect(store.currentTask()!.approvals.find((a) => a.id === id)!.decision).toBe('denied')
   })
 
-  it('met le compte dans le titre quand l’onglet est caché', async () => {
+  it('puts the count in the title when the tab is hidden', async () => {
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,
       get: () => 'hidden',

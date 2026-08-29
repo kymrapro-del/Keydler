@@ -19,8 +19,8 @@ const refusal = (state: TaskState, version: number | null, offset = 0) =>
     ctx(1000 + offset),
   )
 
-describe('journal d’audit', () => {
-  it('compte une tentative répétée à l’identique au lieu de l’empiler', () => {
+describe('the audit trail', () => {
+  it('counts an attempt repeated word for word instead of stacking it', () => {
     let t = task()
     const before = t.audit.length
 
@@ -30,7 +30,7 @@ describe('journal d’audit', () => {
     expect(t.audit.at(-1)).toMatchObject({ outcome: 'refused', repeated: 5 })
   })
 
-  it('n’assimile pas deux refus qui diffèrent', () => {
+  it('does not merge two refusals that differ', () => {
     let t = task()
     const before = t.audit.length
 
@@ -41,7 +41,7 @@ describe('journal d’audit', () => {
     expect(t.audit.at(-1)?.repeated).toBeUndefined()
   })
 
-  it('ne fusionne jamais une réussite avec ce qui la précède', () => {
+  it('never merges a success with what comes before it', () => {
     let t = task()
     // Two DIFFERENT rules: a word-for-word repeat has been refused ever since
     // a guard exists, and this case is about merging entries, not about
@@ -53,7 +53,7 @@ describe('journal d’audit', () => {
     expect(applied).toHaveLength(3)
   })
 
-  it('borne le journal et dit combien a été élagué', () => {
+  it('bounds the audit trail and says how much was trimmed', () => {
     let t = task()
     let v = t.version
 
@@ -78,7 +78,7 @@ describe('journal d’audit', () => {
     expect(trimmed + kept).toBe(MAX_AUDIT_ENTRIES + 40 + 1)
   })
 
-  it('le contenu du cahier survit à l’élagage du journal', () => {
+  it('the content of the log survives the trimming of the audit trail', () => {
     let t = task()
     let v = t.version
     for (let i = 0; i < MAX_AUDIT_ENTRIES + 10; i++) {

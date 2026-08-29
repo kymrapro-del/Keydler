@@ -8,14 +8,14 @@ import {
   proposedRejections,
 } from '../src/domain/task'
 
-describe('cahier de démonstration', () => {
-  it('porte trois contraintes en vigueur et deux approches condamnées', () => {
+describe('the demo log', () => {
+  it('carries three constraints in force and two ruled-out approaches', () => {
     const task = buildDemoTask()
     expect(activeConstraints(task)).toHaveLength(3)
     expect(acceptedRejections(task)).toHaveLength(2)
   })
 
-  it('laisse une proposition d’agent en attente, sans qu’elle interdise rien', () => {
+  it('leaves one agent proposal pending, without it forbidding anything', () => {
     const task = buildDemoTask()
     const enAttente = proposedRejections(task)
     expect(enAttente).toHaveLength(1)
@@ -28,7 +28,7 @@ describe('cahier de démonstration', () => {
     expect(condamnations).not.toContain(enAttente[0].approach)
   })
 
-  it('distingue les contraintes humaines de celles de l’agent', () => {
+  it('separates the human constraints from the agent ones', () => {
     const task = buildDemoTask()
     const sources = activeConstraints(task).map((c) => c.source)
     expect(sources.filter((s) => s === 'human')).toHaveLength(2)
@@ -36,18 +36,18 @@ describe('cahier de démonstration', () => {
     expect(activeConstraints(task).every((c) => c.standing === 'accepted')).toBe(true)
   })
 
-  it('propose l’approche C comme prochaine action', () => {
+  it('proposes approach C as the next action', () => {
     expect(buildDemoTask().next).toContain('approach C')
   })
 
-  it('représente les trois degrés de preuve', () => {
+  it('covers all three levels of evidence', () => {
     const counts = evidenceCounts(buildDemoTask())
     expect(counts.human_verified).toBeGreaterThan(0)
     expect(counts.evidence).toBeGreaterThan(0)
     expect(counts.claimed).toBeGreaterThan(0)
   })
 
-  it('restitue ce qu’un agent doit lire pour reprendre', () => {
+  it('renders what an agent has to read to resume', () => {
     const output = renderTaskState(buildDemoTask())
     expect(output).toContain('Never modify the database schema')
     expect(output).toContain('Do not add any new dependency')
@@ -56,7 +56,7 @@ describe('cahier de démonstration', () => {
     expect(output).toContain('approach C')
   })
 
-  it('ne contredit pas ce qu’il affirme : le diff touche bien deux fichiers', () => {
+  it('does not contradict what it claims: the diff really touches two files', () => {
     const task = buildDemoTask()
     const step = task.steps.find((s) => s.result.includes('2 files touched'))
     expect(step).toBeDefined()
@@ -65,7 +65,7 @@ describe('cahier de démonstration', () => {
     expect(files).toBe(2)
   })
 
-  it('ne contredit pas les contraintes qu’il porte : la signature exportée est intacte', () => {
+  it('does not contradict the constraints it carries: the exported signature is intact', () => {
     const task = buildDemoTask()
     const step = task.steps.find((s) => s.result.includes('public API unchanged'))
     const diff = step!.evidence!.content
@@ -74,7 +74,7 @@ describe('cahier de démonstration', () => {
     expect(removedExports).toEqual([])
   })
 
-  it('est reproductible : deux constructions donnent la même forme', () => {
+  it('is reproducible: two builds give the same shape', () => {
     const a = buildDemoTask()
     const b = buildDemoTask()
     expect(b.version).toBe(a.version)

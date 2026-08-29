@@ -6,23 +6,23 @@ import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase, waitUntil, writeArgs, call } from './helpers'
 
-describe('le témoin sait si l’agent a lu avant d’écrire', () => {
+describe('the witness knows whether the agent read before writing', () => {
   beforeEach(resetCalls)
 
-  it('ne prétend rien tant que rien n’a été appelé', () => {
+  it('claims nothing until something has been called', () => {
     const { total, blindWrites, sawRead } = getWitness()
     expect(total).toBe(0)
     expect(blindWrites).toBe(0)
     expect(sawRead).toBe(false)
   })
 
-  it('compte une écriture arrivée avant toute lecture', () => {
+  it('counts a write that arrived before any read', () => {
     recordCall('log_step', false)
     expect(getWitness().blindWrites).toBe(1)
     expect(getWitness().sawRead).toBe(false)
   })
 
-  it('ne compte plus rien une fois que l’agent a lu', () => {
+  it('counts nothing more once the agent has read', () => {
     recordCall('resume_task', false)
     recordCall('log_step', false)
     recordCall('add_decision', false)
@@ -31,7 +31,7 @@ describe('le témoin sait si l’agent a lu avant d’écrire', () => {
     expect(getWitness().blindWrites).toBe(0)
   })
 
-  it('accepte what_changed et read_task_detail comme des lectures', () => {
+  it('accepts what_changed and read_task_detail as reads', () => {
     for (const tool of ['what_changed', 'read_task_detail', 'search_task']) {
       resetCalls()
       recordCall(tool, false)
@@ -40,7 +40,7 @@ describe('le témoin sait si l’agent a lu avant d’écrire', () => {
     }
   })
 
-  it('ne compte que les écritures qui ont abouti', () => {
+  it('counts only the writes that went through', () => {
     // A refused write recorded nothing: flagging it as "check what it wrote"
     // would send someone looking for something that does not exist. The
     // refusal itself already shows in the list of calls.
@@ -52,14 +52,14 @@ describe('le témoin sait si l’agent a lu avant d’écrire', () => {
     expect(getWitness().blindWrites).toBe(1)
   })
 
-  it('ne tient pas une lecture refusée pour une lecture', () => {
+  it('does not take a refused read for a read', () => {
     // A resume_task that failed taught the agent nothing.
     recordCall('resume_task', true)
     recordCall('log_step', false)
     expect(getWitness().blindWrites).toBe(1)
   })
 
-  it('classe chaque outil livré comme lecture ou écriture, sans oubli', () => {
+  it('classes every shipped tool as a read or a write, with none left out', () => {
     for (const tool of ALL_TOOLS) {
       resetCalls()
       recordCall(tool.name, false)
@@ -69,14 +69,14 @@ describe('le témoin sait si l’agent a lu avant d’écrire', () => {
     }
   })
 
-  it('repart à zéro quand on efface le journal d’appels', () => {
+  it('starts over from zero when the call log is cleared', () => {
     recordCall('log_step', false)
     resetCalls()
     expect(getWitness().blindWrites).toBe(0)
   })
 })
 
-describe('ce que la page en dit', () => {
+describe('what the page says about it', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -108,11 +108,11 @@ describe('ce que la page en dit', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('ne juge rien avant d’avoir observé quoi que ce soit', () => {
+  it('judges nothing before it has observed anything', () => {
     expect(activity().textContent).not.toContain('without reading')
   })
 
-  it('dit que l’agent a lu avant d’écrire, quand c’est le cas', async () => {
+  it('says the agent read before writing, when that is the case', async () => {
     const resume = ALL_TOOLS.find((t) => t.name === 'resume_task')!
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
@@ -123,7 +123,7 @@ describe('ce que la page en dit', () => {
     expect(activity().textContent).toContain('after reading this page')
   })
 
-  it('signale une écriture arrivée sans lecture, qui contredit toute la promesse', async () => {
+  it('flags a write that arrived without a read, which contradicts the whole promise', async () => {
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     await call(logStep, writeArgs(store.currentTask()!, { action: 'a', result: 'b' }))
     await waitUntil(() => activity().textContent!.includes('without reading'), 'le constat')

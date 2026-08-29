@@ -31,8 +31,8 @@ afterEach(() => {
   removeModelContext()
 })
 
-describe('inventaire', () => {
-  it('expose quatre outils de lecture et neuf d’écriture', () => {
+describe('inventory', () => {
+  it('exposes four read tools and nine write tools', () => {
     expect(READ_TOOLS.map((t) => t.name)).toEqual([
       'resume_task',
       'what_changed',
@@ -53,7 +53,7 @@ describe('inventaire', () => {
     expect(ALL_TOOLS).toHaveLength(13)
   })
 
-  it('n’annonce jamais une annotation que WebMCP ne transporte pas', () => {
+  it('never announces an annotation WebMCP does not carry', () => {
     const connues = new Set(['readOnlyHint', 'untrustedContentHint'])
     for (const tool of ALL_TOOLS) {
       for (const key of Object.keys(tool.annotations ?? {})) {
@@ -62,7 +62,7 @@ describe('inventaire', () => {
     }
   })
 
-  it('marque les lectures en lecture seule et leur contenu comme non fiable', () => {
+  it('marks reads read-only and their content untrusted', () => {
     for (const tool of READ_TOOLS) {
       expect(tool.annotations?.readOnlyHint).toBe(true)
       expect(tool.annotations?.untrustedContentHint).toBe(true)
@@ -72,7 +72,7 @@ describe('inventaire', () => {
     }
   })
 
-  it('décrit resume_task en disant quand l’appeler', () => {
+  it('describes resume_task by saying when to call it', () => {
     const description = resumeTaskTool.description
     expect(description).toContain('BEFORE doing any work')
     expect(description).toContain('context loss')
@@ -81,8 +81,8 @@ describe('inventaire', () => {
   })
 })
 
-describe('disponibilité', () => {
-  it('distingue un contexte non sécurisé d’une absence d’API', async () => {
+describe('availability', () => {
+  it('tells an insecure context apart from a missing API', async () => {
     const vrai = Object.getOwnPropertyDescriptor(window, 'isSecureContext')
     Object.defineProperty(window, 'isSecureContext', { configurable: true, value: false })
 
@@ -94,14 +94,14 @@ describe('disponibilité', () => {
     else Reflect.deleteProperty(window, 'isSecureContext')
   })
 
-  it('signale l’absence d’API sans lever d’erreur', async () => {
+  it('reports a missing API without throwing', async () => {
     const state = await registerTools()
     expect(state.phase).toBe('unsupported')
     expect(state.toolNames).toEqual([])
     expect(checkAvailability()).toEqual({ supported: false, reason: 'no-api' })
   })
 
-  it('accepte encore navigator.modelContext, déprécié depuis Chrome 150', async () => {
+  it('still accepts navigator.modelContext, deprecated since Chrome 150', async () => {
     const registered: Array<{ name: string }> = []
     Object.defineProperty(navigator, 'modelContext', {
       configurable: true,
@@ -126,8 +126,8 @@ describe('disponibilité', () => {
   })
 })
 
-describe('outils de bout en bout', () => {
-  it('restitue un état lisible et refuse ensuite une écriture périmée', async () => {
+describe('tools end to end', () => {
+  it('renders a readable state and then refuses a stale write', async () => {
     const task = await store.createAndOpenTask('Refactoriser l’authentification', 'Cartographier')
 
     const rendered = textOf(await call(resumeTaskTool))
@@ -153,7 +153,7 @@ describe('outils de bout en bout', () => {
     expect(current.audit.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
   })
 
-  it('exige un motif de rejet et le dit à l’agent', async () => {
+  it('requires a reason to reject, and says so to the agent', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Prochaine')
     const rejectApproach = ALL_TOOLS.find((t) => t.name === 'reject_approach')!
 
@@ -166,7 +166,7 @@ describe('outils de bout en bout', () => {
     expect(textOf(result)).toContain('reason')
   })
 
-  it('refuse un mutation_id qui ne pourrait pas servir à rejouer', async () => {
+  it('refuses a mutation_id that could not serve a replay', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Prochaine')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
@@ -183,13 +183,13 @@ describe('outils de bout en bout', () => {
     expect(store.currentTask()!.steps).toHaveLength(0)
   })
 
-  it('indique clairement l’absence de cahier plutôt que d’échouer', async () => {
+  it('says plainly there is no task rather than failing', async () => {
     expect(textOf(await call(resumeTaskTool))).toContain('NO ACTIVE TASK')
   })
 })
 
-describe('cycle de vie des outils', () => {
-  it('n’expose aucune écriture tant qu’aucun cahier n’est ouvert', async () => {
+describe('tool lifecycle', () => {
+  it('exposes no write while no task is open', async () => {
     const fake = installModelContext()
     await registerTools()
 
@@ -202,7 +202,7 @@ describe('cycle de vie des outils', () => {
     ])
   })
 
-  it('expose les écritures dès qu’une tâche est ouverte, et émet toolchange', async () => {
+  it('exposes the writes as soon as a task is open, and emits toolchange', async () => {
     const fake = installModelContext()
     await registerTools()
 
@@ -238,7 +238,7 @@ describe('cycle de vie des outils', () => {
     expect(snapshotState.observedTools).toContain('log_step')
   })
 
-  it('garde les écritures posées à la clôture, faute de garantie de retrait', async () => {
+  it('keeps the writes in place at closing, for lack of a removal guarantee', async () => {
     const fake = installModelContext()
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     await registerTools()
@@ -255,7 +255,7 @@ describe('cycle de vie des outils', () => {
     expect(textOf(await call(resumeTaskTool))).toContain('TASK CLOSED')
   })
 
-  it('désenregistre par AbortController, sans jamais réenregistrer un nom pris', async () => {
+  it('unregisters through AbortController, never re-registering a taken name', async () => {
     const fake = installModelContext()
     await store.createAndOpenTask('Tâche', 'Continuer')
     await registerTools()
@@ -268,7 +268,7 @@ describe('cycle de vie des outils', () => {
     expect(fake.names()).toContain('log_step')
   })
 
-  it('garde les outils enregistrés quand un seul échoue', async () => {
+  it('keeps the registered tools when a single one fails', async () => {
     const fake = installModelContext()
     fake.failOn.add('reject_approach')
     await store.createAndOpenTask('Tâche', 'Continuer')
@@ -285,7 +285,7 @@ describe('cycle de vie des outils', () => {
     expect(fake.names()).toEqual([...snapshotState.toolNames].sort())
   })
 
-  it('continue d’annoncer l’outil manquant, même quand un tour n’a rien à poser', async () => {
+  it('keeps announcing the missing tool, even when a round has nothing to place', async () => {
     const fake = installModelContext()
     fake.failOn.add('reject_approach')
     await store.createAndOpenTask('Tâche', 'Continuer')
@@ -301,7 +301,7 @@ describe('cycle de vie des outils', () => {
     expect(fake.names()).not.toContain('reject_approach')
   })
 
-  it('repose un outil dont l’échec était passager', async () => {
+  it('puts back a tool whose failure was temporary', async () => {
     const fake = installModelContext()
     fake.failOn.add('reject_approach')
     await store.createAndOpenTask('Tâche', 'Continuer')
@@ -317,7 +317,7 @@ describe('cycle de vie des outils', () => {
     expect(getRegistrationState().phase).toBe('registered')
   })
 
-  it('ne pose jamais deux fois le même nom, même quand deux tours se chevauchent', async () => {
+  it('never places the same name twice, even when two rounds overlap', async () => {
     const fake = installModelContext()
     await registerTools()
 
@@ -338,7 +338,7 @@ describe('cycle de vie des outils', () => {
     expect(fake.names()).toContain('log_step')
   })
 
-  it('n’enregistre jamais deux fois, même appelé en double', async () => {
+  it('never registers twice, even when called twice', async () => {
     const fake = installModelContext()
     await store.createAndOpenTask('Tâche', 'Continuer')
 
@@ -350,7 +350,7 @@ describe('cycle de vie des outils', () => {
     expect(fake.attempts).toHaveLength(ALL_TOOLS.length)
   })
 
-  it('rejette un enregistrement dont le signal est déjà avorté', async () => {
+  it('rejects a registration whose signal is already aborted', async () => {
     const fake = installModelContext()
     const controller = new AbortController()
     controller.abort()
@@ -362,8 +362,8 @@ describe('cycle de vie des outils', () => {
   })
 })
 
-describe('annulation', () => {
-  it('n’écrit rien quand le signal est déjà avorté', async () => {
+describe('cancellation', () => {
+  it('writes nothing when the signal is already aborted', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
@@ -382,7 +382,7 @@ describe('annulation', () => {
     expect(store.currentTask()!.version).toBe(task.version)
   })
 
-  it('n’écrit pas non plus si l’annulation survient pendant l’attente de la file', async () => {
+  it('writes nothing either when the cancellation lands while waiting in the queue', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     const controller = new AbortController()
@@ -417,7 +417,7 @@ describe('annulation', () => {
     expect(last.versionBefore).toBe(last.versionAfter)
   })
 
-  it('laisse une trace du refus, pour que l’écran le montre', async () => {
+  it('leaves a trace of the refusal, so the screen can show it', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     const controller = new AbortController()
@@ -429,7 +429,7 @@ describe('annulation', () => {
     expect(journal.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
   })
 
-  it('refuse aussi une lecture annulée plutôt que de la servir', async () => {
+  it('refuses a cancelled read too rather than serving it', async () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     const controller = new AbortController()
     controller.abort()

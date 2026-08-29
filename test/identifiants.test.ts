@@ -12,7 +12,7 @@ import { clearDatabase, waitUntil } from './helpers'
 
 const PASSPHRASE = 'correct horse battery'
 
-describe('corriger un identifiant sans le desceller', () => {
+describe('fixing a credential without unsealing it', () => {
   beforeEach(clearDatabase)
 
   const base = {
@@ -23,7 +23,7 @@ describe('corriger un identifiant sans le desceller', () => {
     passphrase: PASSPHRASE,
   }
 
-  it('renomme et reformule sans jamais redemander la valeur', async () => {
+  it('renames and rewords without ever asking for the value again', async () => {
     const { id } = await addSecret(base)
     await editSecret(id, { name: 'gemini-api-key', purpose: 'Calls Gemini from the ingest job' })
 
@@ -36,7 +36,7 @@ describe('corriger un identifiant sans le desceller', () => {
     expect(await revealSecret(id, PASSPHRASE)).toBe('AIzaSy-original')
   })
 
-  it('reclasse un identifiant scellé avant que les natures existent', async () => {
+  it('reclassifies a credential sealed before kinds existed', async () => {
     const { id } = await addSecret({ ...base, name: 'legacy-key' })
     expect((await listSecretNames('task-edit'))[0].kind).toBe('other')
 
@@ -48,13 +48,13 @@ describe('corriger un identifiant sans le desceller', () => {
     expect((await listSecretNames('task-edit'))[0].kind).toBe('private_key')
   })
 
-  it('garde la nature quand la correction n’en mentionne pas', async () => {
+  it('keeps the kind when the correction mentions none', async () => {
     const { id } = await addSecret({ ...base, name: 'hook', kind: 'webhook_url' })
     await editSecret(id, { name: 'hook', purpose: 'Posts build results' })
     expect((await listSecretNames('task-edit'))[0].kind).toBe('webhook_url')
   })
 
-  it('refuse un renommage qui créerait un doublon', async () => {
+  it('refuses a rename that would create a duplicate', async () => {
     await addSecret(base)
     const { id } = await addSecret({ ...base, name: 'stripe-key', value: 'sk-other' })
 
@@ -63,20 +63,20 @@ describe('corriger un identifiant sans le desceller', () => {
     )
   })
 
-  it('accepte qu’un identifiant garde son propre nom', async () => {
+  it('accepts a credential keeping its own name', async () => {
     const { id } = await addSecret(base)
     await editSecret(id, { name: 'gemini-key', purpose: 'A better description' })
     expect((await listSecretNames('task-edit'))[0].purpose).toBe('A better description')
   })
 
-  it('applique les mêmes règles de nom qu’à la création', async () => {
+  it('applies the same name rules as at creation', async () => {
     const { id } = await addSecret(base)
     await expect(editSecret(id, { name: 'has spaces', purpose: 'x' })).rejects.toThrow()
     await expect(editSecret(id, { name: 'ok-name', purpose: '' })).rejects.toThrow()
   })
 })
 
-describe('une valeur révélée ne reste pas à l’écran', () => {
+describe('a revealed value does not stay on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -103,7 +103,7 @@ describe('une valeur révélée ne reste pas à l’écran', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('se referme toute seule après un moment', async () => {
+  it('closes itself again after a while', async () => {
     const fill = (id: string, value: string) => {
       const field = root.querySelector<HTMLInputElement>(`#${id}`)!
       field.value = value
@@ -136,7 +136,7 @@ describe('une valeur révélée ne reste pas à l’écran', () => {
   })
 })
 
-describe('corriger et supprimer ne se marchent pas dessus', () => {
+describe('fixing and deleting do not tread on each other', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -176,7 +176,7 @@ describe('corriger et supprimer ne se marchent pas dessus', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('préremplit la correction avec ce qui est enregistré', async () => {
+  it('prefills the correction with what is stored', async () => {
     root.querySelector<HTMLButtonElement>('[data-edit-secret]')!.click()
     __renderNow()
 

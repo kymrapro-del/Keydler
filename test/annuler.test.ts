@@ -30,14 +30,14 @@ beforeEach(() => {
   task = buildDemoTask()
 })
 
-describe('annuler la dernière décision de supervision', () => {
-  it('ne propose rien quand rien n’est annulable', () => {
+describe('undoing the last supervision decision', () => {
+  it('offers nothing when nothing is undoable', () => {
     const fresh = logStep(task, { action: 'a', result: 'b', basedOnVersion: null }, 'agent')
     expect(undoable(fresh)).toBeNull()
     expect(() => undoLastSupervision(fresh)).toThrow(ValidationError)
   })
 
-  it('rétablit une règle levée par erreur', () => {
+  it('restores a rule lifted by mistake', () => {
     const rule = activeConstraints(task)[0]
     const lifted = setConstraintActive(task, rule.id, false)
     expect(activeConstraints(lifted).some((c) => c.id === rule.id)).toBe(false)
@@ -48,7 +48,7 @@ describe('annuler la dernière décision de supervision', () => {
     expect(back.audit.at(-1)).toMatchObject({ operation: 'undo', actor: 'human' })
   })
 
-  it('remet une proposition acceptée par erreur à l’état de proposition', () => {
+  it('returns a proposal accepted by mistake to the proposed state', () => {
     const proposed = addConstraint(
       task,
       { rule: 'Keep flags stable', basedOnVersion: null },
@@ -63,7 +63,7 @@ describe('annuler la dernière décision de supervision', () => {
     expect(activeConstraints(back).some((c) => c.id === id)).toBe(false)
   })
 
-  it('remet un rejet décliné par erreur à l’état de proposition', () => {
+  it('returns a rejection declined by mistake to the proposed state', () => {
     const proposed = rejectApproach(
       task,
       { approach: 'Sharding by tenant', reason: 'unmeasured', basedOnVersion: null },
@@ -76,13 +76,13 @@ describe('annuler la dernière décision de supervision', () => {
     expect(proposedRejections(back).some((r) => r.id === id)).toBe(true)
   })
 
-  it('désarchive une tâche archivée par erreur', () => {
+  it('unarchives a task archived by mistake', () => {
     const archived = setArchived(task, true)
     const back = undoLastSupervision(archived)
     expect(back.archived).toBe(false)
   })
 
-  it('n’efface rien : l’annulation est une écriture de plus', () => {
+  it('erases nothing: an undo is one more write', () => {
     const rule = activeConstraints(task)[0]
     const lifted = setConstraintActive(task, rule.id, false)
     const back = undoLastSupervision(lifted)
@@ -92,7 +92,7 @@ describe('annuler la dernière décision de supervision', () => {
     expect(back.audit.at(-1)!.detail).toContain(rule.rule)
   })
 
-  it('remonte à la décision précédente quand on annule deux fois', () => {
+  it('goes back to the previous decision when you undo twice', () => {
     const rules = activeConstraints(task)
     let next = setConstraintActive(task, rules[0].id, false)
     next = setConstraintActive(next, rules[1].id, false)
@@ -105,12 +105,12 @@ describe('annuler la dernière décision de supervision', () => {
     expect(undoable(next)).toBeNull()
   })
 
-  it('ignore ce qu’un agent a écrit : on n’annule que ses propres décisions', () => {
+  it('ignores what an agent wrote: you undo only your own decisions', () => {
     const proposed = addConstraint(task, { rule: 'Agent rule', basedOnVersion: null }, 'agent')
     expect(undoable(proposed)).toBeNull()
   })
 
-  it('ne touche pas à ce qui n’est plus dans l’état qu’il avait laissé', () => {
+  it('leaves alone what is no longer in the state it was left in', () => {
     const rule = activeConstraints(task)[0]
     const lifted = setConstraintActive(task, rule.id, false)
     // The human changed their mind by hand in the meantime.
@@ -120,7 +120,7 @@ describe('annuler la dernière décision de supervision', () => {
     expect(undoable(restored)).toContain('restored')
   })
 
-  it('n’annule ni une réponse, ni une étape consignée', () => {
+  it('undoes neither an answer nor a logged step', () => {
     // An answer may have been read and followed by an agent: pulling it back in
     // one click would erase what it leaned on. A step is the account of a piece
     // of work, not a supervision decision.
@@ -137,12 +137,12 @@ describe('annuler la dernière décision de supervision', () => {
     ).toBeNull()
   })
 
-  it('annule en revanche un renommage, qui n’est qu’un mot remplacé', () => {
+  it('undoes a rename, though, which is only a replaced word', () => {
     expect(undoable(renameTask(task, 'A new title'))).toContain('renamed')
   })
 })
 
-describe('annuler depuis la page', () => {
+describe('undoing from the page', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -172,11 +172,11 @@ describe('annuler depuis la page', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('n’affiche pas de bouton tant qu’il n’y a rien à annuler', () => {
+  it('shows no button while there is nothing to undo', () => {
     expect(root.querySelector('#undo')).toBeNull()
   })
 
-  it('apparaît après une décision, et dit laquelle', async () => {
+  it('appears after a decision, and says which one', async () => {
     const before = store.currentTask()!.version
     root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()
     await written(before)
@@ -187,7 +187,7 @@ describe('annuler depuis la page', () => {
     expect(undo.getAttribute('aria-label')).toContain('lifted')
   })
 
-  it('rend la décision, et le bouton disparaît', async () => {
+  it('gives the decision back, and the button disappears', async () => {
     const rule = store.currentTask()!.constraints.find((c) => c.active)!
     let before = store.currentTask()!.version
     root.querySelector<HTMLButtonElement>('[data-toggle]')!.click()

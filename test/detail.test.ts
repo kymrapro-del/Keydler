@@ -29,7 +29,7 @@ beforeEach(async () => {
 })
 
 describe('pagination', () => {
-  it('rend une page bornée et dit combien il reste, avec le décalage suivant', async () => {
+  it('renders a bounded page and says how many are left, with the next offset', async () => {
     await loadedLog(12)
 
     const page = textOf(await call(readTaskDetailTool, { section: 'steps', limit: 5 }))
@@ -40,7 +40,7 @@ describe('pagination', () => {
     expect(page).not.toContain('Étape 5')
   })
 
-  it('parcourt toute la collection sans trou ni recouvrement', async () => {
+  it('walks the whole collection with no gap and no overlap', async () => {
     await loadedLog(12)
 
     const vues: string[] = []
@@ -57,33 +57,33 @@ describe('pagination', () => {
     expect(new Set(vues).size).toBe(12)
   })
 
-  it('dit explicitement qu’une section est épuisée, plutôt que de rendre une page muette', async () => {
+  it('says outright that a section is exhausted, rather than a silent page', async () => {
     await loadedLog(3)
     const page = textOf(await call(readTaskDetailTool, { section: 'steps' }))
     expect(page).toContain('MORE        none, this is the end of the section')
   })
 
-  it('dit qu’une section est vide, sans laisser croire à une panne', async () => {
+  it('says a section is empty, without looking like a failure', async () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     const page = textOf(await call(readTaskDetailTool, { section: 'decisions' }))
     expect(page).toContain('PAGE        empty, this section holds nothing')
   })
 
-  it('signale un décalage au-delà de la fin, et dit lequel serait valable', async () => {
+  it('flags an offset past the end, and says which one would work', async () => {
     await loadedLog(3)
     const page = textOf(await call(readTaskDetailTool, { section: 'steps', offset: 50 }))
     expect(page).toContain('past the end of this section')
     expect(page).toContain('between 0 and 2')
   })
 
-  it('refuse une section inconnue en nommant celles qui existent', async () => {
+  it('refuses an unknown section by naming the ones that exist', async () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     const result = await call(readTaskDetailTool, { section: 'etapes' })
     expect(result.isError).toBe(true)
     for (const s of SECTIONS) expect(textOf(result)).toContain(s)
   })
 
-  it('refuse une taille de page hors bornes, plutôt que de rendre le cahier entier', async () => {
+  it('refuses an out-of-bounds page size, rather than returning the whole log', async () => {
     await loadedLog(3)
     for (const limit of [0, MAX_LIMIT + 1, -3]) {
       const result = await call(readTaskDetailTool, { section: 'steps', limit })
@@ -93,8 +93,8 @@ describe('pagination', () => {
   })
 })
 
-describe('lecture ciblée', () => {
-  it('tronque la preuve en page, et la rend entière quand on la nomme', async () => {
+describe('targeted reading', () => {
+  it('truncates evidence in a page, and returns it whole when it is named', async () => {
     const long = 'L'.repeat(EVIDENCE_PREVIEW + 500)
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     await call(
@@ -116,14 +116,14 @@ describe('lecture ciblée', () => {
     expect(entier).toContain('one entry, in full')
   })
 
-  it('dit qu’un identifiant est inconnu, et combien la section en contient', async () => {
+  it('says an id is unknown, and how many the section holds', async () => {
     await loadedLog(2)
     const result = textOf(await call(readTaskDetailTool, { section: 'steps', id: 'inexistant' }))
     expect(result).toContain('No entry with id "inexistant"')
     expect(result).toContain('2 entries')
   })
 
-  it('sépare les propositions du reste, jusque dans le détail', async () => {
+  it('keeps proposals apart from the rest, right into the detail', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const reject = ALL_TOOLS.find((t) => t.name === 'reject_approach')!
     await call(reject, writeArgs(task, { approach: 'Approche X', reason: 'supposée' }))
@@ -134,8 +134,8 @@ describe('lecture ciblée', () => {
   })
 })
 
-describe('le pointeur reste court, et dit où trouver le reste', () => {
-  it('tient sous le budget alors même que le détail est volumineux', async () => {
+describe('the pointer stays short, and says where to find the rest', () => {
+  it('stays under budget even when the detail is bulky', async () => {
     await loadedLog(30, 2000)
 
     const summary = textOf(await call(resumeTaskTool))
@@ -148,7 +148,7 @@ describe('le pointeur reste court, et dit où trouver le reste', () => {
     expect(estimateTokens(detail)).toBeGreaterThan(TOKEN_BUDGET)
   })
 
-  it('ne mute rien : c’est le contrat d’une lecture', async () => {
+  it('mutates nothing: that is the contract of a read', async () => {
     await loadedLog(3)
     const before = currentTask()
 
@@ -163,8 +163,8 @@ describe('le pointeur reste court, et dit où trouver le reste', () => {
   })
 })
 
-describe('ce que resume_task annonce du détail', () => {
-  it('renvoie au schéma plutôt que de recopier la liste des sections', () => {
+describe('what resume_task announces about the detail', () => {
+  it('points at the schema rather than copying out the list of sections', () => {
     // A prose enumeration has already fallen behind twice, and every word
     // added here costs an id name in a 400-token budget.
     // The schema's own enumeration cannot drift.
@@ -173,7 +173,7 @@ describe('ce que resume_task annonce du détail', () => {
     expect(rendered).toContain('schema')
   })
 
-  it('déclare chaque section dans le schéma de l’outil, sans en oublier', () => {
+  it('declares every section in the tool schema, leaving none out', () => {
     const schema = readTaskDetailTool.inputSchema as {
       properties: { section: { enum: string[] } }
     }
@@ -181,7 +181,7 @@ describe('ce que resume_task annonce du détail', () => {
   })
 })
 
-describe('section credentials', () => {
+describe('the credentials section', () => {
   const names = (n: number) =>
     Array.from({ length: n }, (_, i) => ({
       id: `s${i}`,
@@ -190,7 +190,7 @@ describe('section credentials', () => {
       kind: 'api_key' as const,
     }))
 
-  it('rend la liste complète des noms, page par page', () => {
+  it('renders the full list of names, page by page', () => {
     const output = renderDetail(
       buildDemoTask(),
       { section: 'credentials', offset: 0, limit: 5, id: null },
@@ -203,7 +203,7 @@ describe('section credentials', () => {
     expect(output).toMatch(/MORE\s+3 left, call again with offset: 5/)
   })
 
-  it('ne porte que la projection publique : jamais une valeur, jamais un scellé', () => {
+  it('carries only the public projection: never a value, never a seal', () => {
     const output = renderDetail(
       buildDemoTask(),
       { section: 'credentials', offset: 0, limit: 20, id: null },
@@ -215,7 +215,7 @@ describe('section credentials', () => {
     expect(output).toContain('no tool here returns a value')
   })
 
-  it('dit qu’il n’y en a aucun, sans laisser croire à une panne', () => {
+  it('says there are none, without looking like a failure', () => {
     const output = renderDetail(
       buildDemoTask(),
       { section: 'credentials', offset: 0, limit: 5, id: null },

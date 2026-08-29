@@ -31,8 +31,8 @@ function asked(): TaskState {
   )
 }
 
-describe('demander l’autorisation d’agir', () => {
-  it('ouvre une demande que personne n’a encore tranchée', () => {
+describe('asking permission to act', () => {
+  it('opens a request nobody has decided yet', () => {
     const next = asked()
     expect(pendingApprovals(next)).toHaveLength(1)
     expect(decidedApprovals(next)).toHaveLength(0)
@@ -44,7 +44,7 @@ describe('demander l’autorisation d’agir', () => {
     expect(next.audit.at(-1)).toMatchObject({ operation: 'request_approval', actor: 'agent' })
   })
 
-  it('exige de dire ce qui sera fait et pourquoi il faut demander', () => {
+  it('requires saying what will be done and why it has to be asked', () => {
     expect(() =>
       requestApproval(task, { action: 'Do it', why: '', basedOnVersion: null }, 'agent'),
     ).toThrow(ValidationError)
@@ -53,7 +53,7 @@ describe('demander l’autorisation d’agir', () => {
     ).toThrow(ValidationError)
   })
 
-  it('se tranche par un humain, et la décision est conservée', () => {
+  it('is decided by a human, and the decision is kept', () => {
     const next = asked()
     const id = pendingApprovals(next)[0].id
 
@@ -64,25 +64,25 @@ describe('demander l’autorisation d’agir', () => {
     expect(allowed.audit.at(-1)).toMatchObject({ operation: 'allow_action', actor: 'human' })
   })
 
-  it('consigne un refus comme un refus, pas comme une absence de réponse', () => {
+  it('records a refusal as a refusal, not as an absence of answer', () => {
     const next = asked()
     const denied = decideApproval(next, pendingApprovals(next)[0].id, 'denied')
     expect(decidedApprovals(denied)[0].decision).toBe('denied')
     expect(denied.audit.at(-1)).toMatchObject({ operation: 'deny_action' })
   })
 
-  it('refuse de trancher deux fois plutôt que d’écraser la première décision', () => {
+  it('refuses to decide twice rather than overwrite the first decision', () => {
     const next = asked()
     const id = pendingApprovals(next)[0].id
     const once = decideApproval(next, id, 'allowed')
     expect(() => decideApproval(once, id, 'denied')).toThrow(ValidationError)
   })
 
-  it('refuse de trancher une demande qui n’existe pas', () => {
+  it('refuses to decide a request that does not exist', () => {
     expect(() => decideApproval(task, 'nope', 'allowed')).toThrow(ValidationError)
   })
 
-  it('refuse une demande sur une tâche close', () => {
+  it('refuses a request on a closed task', () => {
     const closed = { ...task, status: 'completed' as const }
     expect(() =>
       requestApproval(closed, { action: 'a', why: 'b', basedOnVersion: null }, 'agent'),
@@ -90,8 +90,8 @@ describe('demander l’autorisation d’agir', () => {
   })
 })
 
-describe('ce que les autres surfaces en disent', () => {
-  it('met une demande en attente tout en haut de ce que lit l’agent', () => {
+describe('what the other surfaces say about it', () => {
+  it('puts a waiting request at the very top of what the agent reads', () => {
     const rendered = renderTaskState(asked())
     expect(rendered).toContain('AWAITING YOUR APPROVAL')
     expect(rendered).toContain('Run the migration against the staging replica')
@@ -99,7 +99,7 @@ describe('ce que les autres surfaces en disent', () => {
     expect(estimateTokens(rendered)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
-  it('rend la décision humaine, qui est ce que l’agent doit respecter', () => {
+  it('renders the human decision, which is what the agent must respect', () => {
     const next = asked()
     const denied = decideApproval(next, pendingApprovals(next)[0].id, 'denied')
     const rendered = renderTaskState(denied)
@@ -107,12 +107,12 @@ describe('ce que les autres surfaces en disent', () => {
     expect(rendered).toContain('Run the migration')
   })
 
-  it('n’invente aucune section quand rien n’a été demandé', () => {
+  it('invents no section when nothing has been asked', () => {
     const rendered = renderTaskState(task)
     expect(rendered).not.toContain('AWAITING YOUR APPROVAL')
   })
 
-  it('se relit en entier par read_task_detail', () => {
+  it('reads back in full through read_task_detail', () => {
     const rendered = renderDetail(asked(), {
       section: 'approvals',
       offset: 0,
@@ -124,7 +124,7 @@ describe('ce que les autres surfaces en disent', () => {
     expect(rendered).toContain('It rewrites 40k rows')
   })
 
-  it('compte comme un changement qui vous engage', () => {
+  it('counts as a change that binds you', () => {
     const next = asked()
     const allowed = decideApproval(next, pendingApprovals(next)[0].id, 'allowed')
     const rendered = renderChanges(allowed, next.version)
@@ -132,7 +132,7 @@ describe('ce que les autres surfaces en disent', () => {
     expect(rendered).not.toContain('allow_action')
   })
 
-  it('se retrouve par la recherche', () => {
+  it('is found again by search', () => {
     const hits = searchTask(asked(), 'migration')
     expect(hits.some((h) => h.kind === 'approval')).toBe(true)
   })

@@ -69,8 +69,8 @@ async function withSecret() {
   return task
 }
 
-describe('ce que l’agent reçoit', () => {
-  it('cite le nom et l’usage, jamais la valeur', async () => {
+describe('what the agent receives', () => {
+  it('quotes the name and the purpose, never the value', async () => {
     await withSecret()
 
     const rendered = textOf(await call(resumeTaskTool))
@@ -83,14 +83,14 @@ describe('ce que l’agent reçoit', () => {
     expect(rendered).not.toContain(PASSPHRASE)
   })
 
-  it('dit à l’agent d’écrire la référence, et qu’aucun outil ne rend de valeur', async () => {
+  it('tells the agent to write the reference, and that no tool returns a value', async () => {
     await withSecret()
     const rendered = textOf(await call(resumeTaskTool))
     expect(rendered).toContain('Write these as ${name}')
     expect(rendered).toContain('no tool here returns a value')
   })
 
-  it('ne laisse AUCUN outil rendre la valeur, quel qu’il soit', async () => {
+  it('lets NO tool return the value, whichever one it is', async () => {
     const task = await withSecret()
 
     const outputs: string[] = []
@@ -123,7 +123,7 @@ describe('ce que l’agent reçoit', () => {
     }
   })
 
-  it('ne met rien dans l’état de la tâche, ni la valeur ni le chiffré', async () => {
+  it('puts nothing in the task state, neither the value nor the ciphertext', async () => {
     await withSecret()
     const serialised = JSON.stringify(store.currentTask())
 
@@ -133,7 +133,7 @@ describe('ce que l’agent reçoit', () => {
     expect(serialised).not.toContain('ciphertext')
   })
 
-  it('n’écrit rien dans l’export, pas même le chiffré', async () => {
+  it('writes nothing into the export, not even the ciphertext', async () => {
     const task = await withSecret()
 
     for (const dump of [buildTaskExport(store.currentTask()!), buildFullExport([task])]) {
@@ -143,7 +143,7 @@ describe('ce que l’agent reçoit', () => {
     }
   })
 
-  it('borne le coût : trente identifiants ne coûtent pas plus que deux', async () => {
+  it('bounds the cost: thirty credentials cost no more than two', async () => {
     const task = buildDemoTask()
     const creds = (n: number) =>
       Array.from({ length: n }, (_, i) => ({
@@ -184,7 +184,7 @@ describe('ce que l’agent reçoit', () => {
     expect(output).not.toMatch(/\$\{service-\d+-api-k…/)
   })
 
-  it('sacrifie le travail ancien avant de cacher un nom d’identifiant', () => {
+  it('sacrifices old work before hiding a credential name', () => {
     const task = buildDemoTask()
     const creds = (n: number) =>
       Array.from({ length: n }, (_, i) => ({
@@ -208,7 +208,7 @@ describe('ce que l’agent reçoit', () => {
     expect(estimateTokens(withCreds)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
-  it('dit clairement qu’il en cache, plutôt que de paraître complet', () => {
+  it('says plainly that it hides some, rather than looking complete', () => {
     const output = renderTaskState(buildDemoTask(), {
       credentials: Array.from({ length: 8 }, (_, i) => ({
         id: `s${i}`,
@@ -230,14 +230,14 @@ describe('ce que l’agent reçoit', () => {
     expect(schema.properties.section.enum).toContain('credentials')
   })
 
-  it('rend une restitution sans identifiants identique à avant', async () => {
+  it('renders exactly as before when there are no credentials', async () => {
     const task = buildDemoTask()
     expect(renderTaskState(task, { credentials: [] })).toBe(renderTaskState(task))
   })
 })
 
-describe('ce que l’écran montre', () => {
-  it('affiche le nom sous forme de référence, et scelle la valeur', async () => {
+describe('what the screen shows', () => {
+  it('shows the name as a reference, and seals the value', async () => {
     await withSecret()
 
     const card = [...root.querySelectorAll('.card')].find((c) =>
@@ -251,7 +251,7 @@ describe('ce que l’écran montre', () => {
     expect(root.innerHTML).not.toContain(VALUE)
   })
 
-  it('n’expose la valeur qu’après une phrase de passe correcte', async () => {
+  it('exposes the value only after a correct passphrase', async () => {
     await withSecret()
 
     const prompt = vi.spyOn(window, 'prompt').mockReturnValue('wrong passphrase here')
@@ -272,7 +272,7 @@ describe('ce que l’écran montre', () => {
     prompt.mockRestore()
   })
 
-  it('replie la valeur au second clic', async () => {
+  it('folds the value back on the second click', async () => {
     await withSecret()
     const prompt = vi.spyOn(window, 'prompt').mockReturnValue(PASSPHRASE)
 
@@ -284,7 +284,7 @@ describe('ce que l’écran montre', () => {
     prompt.mockRestore()
   })
 
-  it('scelle un identifiant depuis le formulaire, sans garder la valeur saisie', async () => {
+  it('seals a credential from the form, without keeping the value typed in', async () => {
     const task = await store.openPreparedTask(buildDemoTask())
     await settled()
 
@@ -310,7 +310,7 @@ describe('ce que l’écran montre', () => {
     expect(root.innerHTML).not.toContain(VALUE)
   })
 
-  it('refuse un nom qu’un agent ne pourrait pas citer', async () => {
+  it('refuses a name an agent could not quote', async () => {
     await store.openPreparedTask(buildDemoTask())
     await settled()
 
@@ -330,7 +330,7 @@ describe('ce que l’écran montre', () => {
     expect(root.querySelector('[role="alert"]')?.textContent).not.toContain('INVALID INPUT')
   })
 
-  it('oublie ce qui était révélé quand on change de cahier', async () => {
+  it('forgets what was revealed when the log changes', async () => {
     await withSecret()
     const prompt = vi.spyOn(window, 'prompt').mockReturnValue(PASSPHRASE)
     root.querySelector<HTMLButtonElement>('[data-reveal]')!.click()

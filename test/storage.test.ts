@@ -22,8 +22,8 @@ beforeEach(() => {
   loadTask.mockReset()
 })
 
-describe('stockage indisponible', () => {
-  it('le magasin expose la panne au lieu de la taire', async () => {
+describe('storage unavailable', () => {
+  it('the store surfaces the failure instead of hiding it', async () => {
     loadLastTask.mockRejectedValue(new Error('IndexedDB is not available in this context'))
     await store.init()
 
@@ -31,7 +31,7 @@ describe('stockage indisponible', () => {
     expect(store.storageFailure()).toContain('IndexedDB')
   })
 
-  it('resume_task ne prétend pas qu’il n’y a pas de tâche', async () => {
+  it('resume_task does not claim there is no task', async () => {
     loadLastTask.mockRejectedValue(new Error('IndexedDB is not available in this context'))
 
     const result = await resumeTaskTool.execute({}, exec())
@@ -43,7 +43,7 @@ describe('stockage indisponible', () => {
     expect(text).toContain('Do NOT assume there is no task')
   })
 
-  it('une écriture échoue clairement plutôt que d’inventer un cahier vide', async () => {
+  it('a write fails plainly rather than inventing an empty log', async () => {
     loadLastTask.mockRejectedValue(new Error('quota exceeded'))
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
@@ -57,7 +57,7 @@ describe('stockage indisponible', () => {
     expect(result.content[0].text).toContain('quota exceeded')
   })
 
-  it('distingue toujours un cahier réellement absent', async () => {
+  it('still tells apart a log that is genuinely absent', async () => {
     loadLastTask.mockResolvedValue(undefined)
 
     const result = await resumeTaskTool.execute({}, exec())

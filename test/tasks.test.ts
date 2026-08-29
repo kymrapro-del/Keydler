@@ -46,8 +46,8 @@ afterEach(() => {
   history.replaceState(null, '', '/')
 })
 
-describe('plusieurs cahiers', () => {
-  it('rend les autres tâches atteignables depuis celle qui est ouverte', async () => {
+describe('several logs', () => {
+  it('makes the other tasks reachable from the one that is open', async () => {
     const first = await store.createAndOpenTask('First task', 'Do the first thing')
     const second = await store.createAndOpenTask('Second task', 'Do the second thing')
     await waitFor(() => root.querySelector('[data-open]') !== null, 'liste des tâches')
@@ -66,7 +66,7 @@ describe('plusieurs cahiers', () => {
     expect(location.pathname).toBe(`/t/${first.id}`)
   })
 
-  it('n’offre pas d’ouvrir la tâche déjà ouverte', async () => {
+  it('does not offer to open the task that is already open', async () => {
     const only = await store.createAndOpenTask('Only task', 'Do it')
     await waitFor(() => root.querySelector('.switcher') !== null, 'sélecteur')
 
@@ -74,7 +74,7 @@ describe('plusieurs cahiers', () => {
     expect(root.querySelector('.switcher')!.textContent).toContain('This is the only one.')
   })
 
-  it('distingue une tâche close d’une tâche ouverte dans la liste', async () => {
+  it('tells a closed task from an open one in the list', async () => {
     const closed = await store.createAndOpenTask('Closed one', 'x')
     await store.mutate((s) => ({ ...s, status: 'completed' as const, next: null }))
     await store.createAndOpenTask('Open one', 'y')
@@ -84,7 +84,7 @@ describe('plusieurs cahiers', () => {
     expect(row.textContent).toContain('closed')
   })
 
-  it('ouvre le formulaire de création depuis une tâche existante', async () => {
+  it('opens the creation form from an existing task', async () => {
     await store.createAndOpenTask('Existing', 'Continue')
     await waitFor(() => root.querySelector('#new-task') !== null, 'bouton')
 
@@ -98,8 +98,8 @@ describe('plusieurs cahiers', () => {
   })
 })
 
-describe('relecture d’un export', () => {
-  it('retrouve un cahier dans un export d’une seule tâche', () => {
+describe('reading an export back', () => {
+  it('finds a log in a single-task export', () => {
     const task = buildDemoTask()
     const [read] = parseExport(buildTaskExport(task))
 
@@ -110,7 +110,7 @@ describe('relecture d’un export', () => {
     expect(read.constraints.map((c) => c.rule)).toEqual(task.constraints.map((c) => c.rule))
   })
 
-  it('retrouve chaque cahier d’un export global', () => {
+  it('finds every log in a full export', () => {
     const a = buildDemoTask()
     const b = { ...buildDemoTask(), id: 'second-task', title: 'Another task' }
     const read = parseExport(buildFullExport([a, b]))
@@ -118,7 +118,7 @@ describe('relecture d’un export', () => {
     expect(read.map((t) => t.title)).toEqual([a.title, 'Another task'])
   })
 
-  it('ignore les blocs de code qui ne sont pas un cahier', () => {
+  it('ignores the code blocks that are not a log', () => {
     const task = buildDemoTask()
     const noise = ['# Notes', '', '```json', '{ "hello": "world" }', '```', '']
     const read = parseExport([...noise, buildTaskExport(task)].join('\n'))
@@ -127,12 +127,12 @@ describe('relecture d’un export', () => {
     expect(read[0].title).toBe(task.title)
   })
 
-  it('refuse un fichier sans cahier, en disant quoi fournir', () => {
+  it('refuses a file with no log, and says what to supply', () => {
     expect(() => parseExport('# Just a document\n\nNothing here.')).toThrow(NothingToImportError)
     expect(() => parseExport('')).toThrow(NothingToImportError)
   })
 
-  it('survit à un JSON tronqué sans emporter le reste', () => {
+  it('survives a truncated JSON without taking the rest down', () => {
     const task = buildDemoTask()
     const broken = '```json\n{ "id": "x", "title": "T", "version": 1, \n```\n'
     const read = parseExport(broken + buildTaskExport(task))
@@ -143,7 +143,7 @@ describe('relecture d’un export', () => {
 })
 
 describe('import', () => {
-  it('ajoute une tâche absente, telle quelle', async () => {
+  it('adds a missing task, exactly as it stands', async () => {
     const incoming = { ...buildDemoTask(), id: 'from-elsewhere', title: 'From another machine' }
     const outcome = await store.importTasks([incoming])
 
@@ -151,7 +151,7 @@ describe('import', () => {
     expect((await store.allTasks()).map((t) => t.title)).toContain('From another machine')
   })
 
-  it('ne réimporte pas deux fois le même cahier inchangé', async () => {
+  it('does not import the same unchanged log twice', async () => {
     const incoming = { ...buildDemoTask(), id: 'stable', title: 'Stable task' }
     await store.importTasks([incoming])
     const second = await store.importTasks([incoming])
@@ -160,7 +160,7 @@ describe('import', () => {
     expect((await store.allTasks()).filter((t) => t.title === 'Stable task')).toHaveLength(1)
   })
 
-  it('n’écrase JAMAIS une version différente : il en fait une copie', async () => {
+  it('NEVER overwrites a different version: it makes a copy', async () => {
     const original = await store.createAndOpenTask('Live task', 'Keep working')
     const stale = { ...original, version: original.version + 5, title: 'Live task' }
 
@@ -173,7 +173,7 @@ describe('import', () => {
     expect(kept.map((t) => t.title)).toContain('Live task (imported)')
   })
 
-  it('laisse le cahier ouvert intact', async () => {
+  it('leaves the open log untouched', async () => {
     const open = await store.createAndOpenTask('Open task', 'Continue')
     await store.importTasks([{ ...buildDemoTask(), id: 'other', title: 'Other' }])
 
@@ -181,7 +181,7 @@ describe('import', () => {
     expect(store.currentTask()!.version).toBe(open.version)
   })
 
-  it('fait l’aller-retour complet par le fichier', async () => {
+  it('makes the full round trip through the file', async () => {
     const task = buildDemoTask()
     const outcome = await store.importTasks(parseExport(buildTaskExport(task)))
 
@@ -195,8 +195,8 @@ describe('import', () => {
   })
 })
 
-describe('passer la main à l’agent', () => {
-  it('copie l’adresse et la consigne, en un clic', async () => {
+describe('handing off to the agent', () => {
+  it('copies the address and the instruction in one click', async () => {
     const task = await store.createAndOpenTask('Hand off', 'Continue')
     await waitFor(() => root.querySelector('#copy-handoff') !== null, 'bouton')
 
@@ -222,7 +222,7 @@ describe('passer la main à l’agent', () => {
     )
   })
 
-  it('dit quoi faire quand le presse-papiers est refusé', async () => {
+  it('says what to do when the clipboard is refused', async () => {
     await store.createAndOpenTask('Hand off', 'Continue')
     await waitFor(() => root.querySelector('#copy-handoff') !== null, 'bouton')
 
@@ -237,7 +237,7 @@ describe('passer la main à l’agent', () => {
     expect(root.querySelector('[role="alert"]')!.textContent).toContain('Copy the address')
   })
 
-  it('ne propose pas la main sur une tâche close', async () => {
+  it('does not offer the hand-off on a closed task', async () => {
     await store.createAndOpenTask('Closing', 'x')
     await store.mutate((s) => ({ ...s, status: 'completed' as const, next: null }))
     await settled()
@@ -246,8 +246,8 @@ describe('passer la main à l’agent', () => {
   })
 })
 
-describe('import depuis l’écran', () => {
-  it('lit un fichier et rend compte de ce qui a été fait', async () => {
+describe('import from the screen', () => {
+  it('reads a file and reports what it did', async () => {
     await store.createAndOpenTask('Existing', 'Continue')
     await waitFor(() => root.querySelector('#import-file') !== null, 'champ de fichier')
 
@@ -270,7 +270,7 @@ describe('import depuis l’écran', () => {
     expect((await store.allTasks()).map((t) => t.title)).toContain('From a file')
   })
 
-  it('refuse un fichier qui n’est pas un export, sans jargon', async () => {
+  it('refuses a file that is not an export, without jargon', async () => {
     await store.createAndOpenTask('Existing', 'Continue')
     await waitFor(() => root.querySelector('#import-file') !== null, 'champ de fichier')
 

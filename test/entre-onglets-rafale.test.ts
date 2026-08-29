@@ -36,8 +36,8 @@ afterEach(() => {
   autreOnglet.close()
 })
 
-describe('une rafale d’annonces ne coûte qu’une relecture', () => {
-  it('regroupe cinquante annonces en une seule lecture', async () => {
+describe('a burst of announcements costs only one re-read', () => {
+  it('batches fifty announcements into a single read', async () => {
     const task = await store.createAndOpenTask('Sous la rafale', undefined)
 
     // The other tab writes once, then announces fifty times, which is exactly
@@ -59,7 +59,7 @@ describe('une rafale d’annonces ne coûte qu’une relecture', () => {
     expect(lectures.loadTask).toBeLessThanOrEqual(2)
   })
 
-  it('relit à nouveau si une annonce arrive APRÈS que la première a été servie', async () => {
+  it('reads again if an announcement arrives AFTER the first was served', async () => {
     // Batching must not mean ignoring: two separate waves are two re-reads,
     // without which the screen would stay behind.
     const task = await store.createAndOpenTask('Deux vagues', undefined)

@@ -16,19 +16,19 @@ const paquet = JSON.parse(paquetBrut) as {
 const badge = (libelle: string) =>
   new RegExp(`img\\.shields\\.io/badge/${libelle}-([^-]+)-`).exec(readme)?.[1]
 
-describe('les badges du README', () => {
-  it('annonce le vrai nombre d’outils WebMCP', () => {
+describe('the README badges', () => {
+  it('announces the true number of WebMCP tools', () => {
     expect(badge('WebMCP%20tools')).toBe(String(ALL_TOOLS.length))
   })
 
-  it('annonce le vrai nombre de dépendances de production', () => {
+  it('announces the true number of runtime dependencies', () => {
     // This is a product claim, not a statistic: "zero dependencies except idb"
     // comes back in the README, the documentation and the audits.
     expect(Object.keys(paquet.dependencies)).toEqual(['idb'])
     expect(badge('runtime%20dependencies')).toBe('1')
   })
 
-  it('n’annonce pas plus d’épreuves qu’il n’en existe', () => {
+  it('announces no more tests than exist', () => {
     // The exact count would drift with every addition; what has to stay true
     // is that it is not inflated. It is compared against the number of test
     // files, at one per file minimum.
@@ -37,12 +37,12 @@ describe('les badges du README', () => {
     expect(annonce).toBeLessThanOrEqual(20_000)
   })
 
-  it('pointe le badge d’intégration continue sur un flux qui existe', () => {
+  it('points the CI badge at a workflow that exists', () => {
     const path = /actions\/workflows\/([\w.-]+)\/badge\.svg/.exec(readme)?.[1]
     expect(path).toBe('ci.yml')
   })
 
-  it('ne pose un badge d’intégration continue que si elle lance bien `check`', () => {
+  it('posts a CI badge only if CI really runs `check`', () => {
     // The workflow spelled out its steps and had drifted: it ran `vite build`
     // bare, so without the artifact guard or the link checker that `check` had
     // ended up holding. A green badge over a check weaker than the local
@@ -51,7 +51,7 @@ describe('les badges du README', () => {
     expect(ci).not.toMatch(/run:\s*(npx )?vite build\s*$/m)
   })
 
-  it('reproduit la notice de chaque dépendance qui atteint le navigateur', async () => {
+  it('reproduces the notice of every dependency that reaches the browser', async () => {
     // ISC and MIT ask that their copyright notice travel with the distributed
     // code. `idb` is compiled INTO the file served: the notice has to live in
     // the repository, not only in node_modules.
@@ -62,7 +62,7 @@ describe('les badges du README', () => {
     expect(notices).toContain('Copyright (c) 2016, Jake Archibald')
   })
 
-  it('ne promet la licence MIT que si le fichier la porte', async () => {
+  it('promises the MIT license only if the file carries it', async () => {
     const licence = (await import('../LICENSE?raw')).default
     expect(badge('license')).toBe('MIT')
     expect(licence).toContain('MIT License')

@@ -18,8 +18,8 @@ beforeEach(async () => {
   await clear()
 })
 
-describe('refus consignés', () => {
-  it('journalise une version manquante, qui n’atteint jamais la mutation', async () => {
+describe('refusals on the record', () => {
+  it('records a missing version, which never reaches the mutation', async () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     const before = store.currentTask()!.audit.length
 
@@ -32,7 +32,7 @@ describe('refus consignés', () => {
     expect(after.version).toBe(1)
   })
 
-  it('journalise une version illisible', async () => {
+  it('records an unreadable version', async () => {
     await store.createAndOpenTask('Tâche', undefined)
 
     const result = await logStep().execute(
@@ -44,7 +44,7 @@ describe('refus consignés', () => {
     expect(store.currentTask()!.audit.at(-1)).toMatchObject({ outcome: 'refused' })
   })
 
-  it('ne consigne pas deux fois un refus déjà journalisé par le magasin', async () => {
+  it('does not record twice a refusal the store already logged', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     const before = store.currentTask()!.audit.length
 
@@ -62,7 +62,7 @@ describe('refus consignés', () => {
     expect(store.currentTask()!.audit.length).toBe(before + 1)
   })
 
-  it('dit que rien n’a été écrit et donne la version pour réessayer', async () => {
+  it('says nothing was written and gives the version to retry with', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
 
     const result = await rejectApproach().execute(
@@ -76,7 +76,7 @@ describe('refus consignés', () => {
     expect(text).toContain(`based_on_version: ${task.version}`)
   })
 
-  it('n’ajoute pas ce rappel à un refus pour état périmé', async () => {
+  it('leaves that reminder off a stale state refusal', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     await store.mutateAsAgent(
       storeWrite('add_constraint', task.version, { rule: 'x' }, (s) => ({
@@ -102,8 +102,8 @@ describe('refus consignés', () => {
   })
 })
 
-describe('conseil de réessai', () => {
-  it('ne suggère pas de réessayer sur une tâche close', async () => {
+describe('retry advice', () => {
+  it('does not suggest retrying on a closed task', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     const complete = ALL_TOOLS.find((t) => t.name === 'complete_task')!
     await complete.execute(
@@ -128,7 +128,7 @@ describe('conseil de réessai', () => {
     expect(text).toContain('ask the human to reopen')
   })
 
-  it('suggère toujours le réessai quand l’entrée est simplement à corriger', async () => {
+  it('still suggests the retry when the input simply needs fixing', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
 
     const result = await rejectApproach().execute(

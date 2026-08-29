@@ -7,13 +7,13 @@ import { clearDatabase } from './helpers'
 // `/workspace` is what a "Sign in" button has to reach on a product with no account and no
 // server. The log list, the export and the import already existed, but folded inside an open
 // log: whoever arrives from a home page has none, and so saw nothing.
-describe('l’adresse de l’espace de travail', () => {
-  it('reconnaît la sienne, avec ou sans barre finale', () => {
+describe('the workspace address', () => {
+  it('recognises its own, with or without a trailing slash', () => {
     expect(isWorkspacePath(WORKSPACE_PATH)).toBe(true)
     expect(isWorkspacePath(`${WORKSPACE_PATH}/`)).toBe(true)
   })
 
-  it('ne reconnaît rien d’autre', () => {
+  it('recognises nothing else', () => {
     // `/workspaces` or `/workspace-2` must not open this view: they are
     // different addresses, and confusing them would steal their page from
     // any future routes.
@@ -23,8 +23,8 @@ describe('l’adresse de l’espace de travail', () => {
   })
 })
 
-describe('la porte d’entrée depuis l’accueil', () => {
-  it('est un lien, pas un bouton', async () => {
+describe('the way in from the home screen', () => {
+  it('is a link, not a button', async () => {
     // A control that changes the address has to be an <a href>: middle-click,
     // Ctrl+click and screen readers depend on it. It is also the only crawl
     // path a search engine finds on this site, which has no other anchor.
@@ -47,7 +47,7 @@ describe('la porte d’entrée depuis l’accueil', () => {
   })
 })
 
-describe('la page de l’espace de travail', () => {
+describe('the workspace page', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -65,7 +65,7 @@ describe('la page de l’espace de travail', () => {
     history.replaceState(null, '', WORKSPACE_PATH)
   })
 
-  it('s’ouvre quand l’adresse la désigne, sans cahier ouvert', async () => {
+  it('opens when the address names it, with no log open', async () => {
     unmount = mount(root)
     await store.init()
     await attendre()
@@ -74,7 +74,7 @@ describe('la page de l’espace de travail', () => {
     unmount()
   })
 
-  it('garde son adresse au lieu de se faire renvoyer à la racine', async () => {
+  it('keeps its address instead of being sent back to the root', async () => {
     // `reflectAddress` rewrites the address on every render to `/t/:id` or `/`.
     // Without an exception for this view, the address left for `/` on the first
     // render and a reload no longer brought the page back.
@@ -86,7 +86,7 @@ describe('la page de l’espace de travail', () => {
     unmount()
   })
 
-  it('dit qu’il n’y a rien quand l’appareil est vide', async () => {
+  it('says there is nothing when the device is empty', async () => {
     unmount = mount(root)
     await store.init()
     await attendre()
@@ -95,7 +95,7 @@ describe('la page de l’espace de travail', () => {
     unmount()
   })
 
-  it('liste TOUS les cahiers du poste, pas seulement celui qui est ouvert', async () => {
+  it('lists EVERY log on the device, not only the one that is open', async () => {
     // `store.init()` with no id reopens the last log and `deleteCurrentTask` reopens another
     // one: no state has logs without one being open. A first version of this test claimed the
     // opposite, and a mutation proved it wrong.
@@ -117,7 +117,7 @@ describe('la page de l’espace de travail', () => {
     unmount()
   })
 
-  it('offre l’export et l’import, qui vivaient derrière un cahier ouvert', async () => {
+  it('offers the export and the import, which lived behind an open log', async () => {
     unmount = mount(root)
     await store.init()
     await attendre()
@@ -127,7 +127,7 @@ describe('la page de l’espace de travail', () => {
     unmount()
   })
 
-  it('ne promet aucun compte', async () => {
+  it('promises no account', async () => {
     // The product refuses to write "verified" in place of a human; its own
     // page must not suggest a backing it does not have.
     unmount = mount(root)
@@ -142,7 +142,7 @@ describe('la page de l’espace de travail', () => {
     unmount()
   })
 
-  it('ne prétend pas que les cahiers sont chiffrés, parce qu’ils ne le sont pas', async () => {
+  it('does not claim the logs are encrypted, because they are not', async () => {
     // Only the credential vault and sealed links are encrypted. The logs
     // themselves sit in the clear in IndexedDB, and anyone with a hand on the
     // browser session can read them. Writing "encrypted" here would be the
@@ -158,7 +158,7 @@ describe('la page de l’espace de travail', () => {
     unmount()
   })
 
-  it('ne promet la confidentialité que par ce qui est vérifiable', async () => {
+  it('promises privacy only through what is verifiable', async () => {
     // A first draft said "nobody else can read it, not even us". That is a
     // promise about trust: we serve the code, so we could change it. What is
     // demonstrable is that there is no destination and that the security
@@ -173,7 +173,7 @@ describe('la page de l’espace de travail', () => {
     unmount()
   })
 
-  it('avertit que vider le navigateur efface tout', async () => {
+  it('warns that clearing the browser erases everything', async () => {
     // With no server, there is no backup anywhere else. Staying silent about
     // it would be the only false promise this page could make.
     unmount = mount(root)
@@ -184,7 +184,7 @@ describe('la page de l’espace de travail', () => {
     unmount()
   })
 
-  it('sort de la vue quand on ouvre un cahier depuis la liste', async () => {
+  it('leaves the view when a log is opened from the list', async () => {
     await store.init()
     const task = await store.createAndOpenTask('Refactor the auth module', 'Map the entry points')
     store.__resetStore()

@@ -20,12 +20,12 @@ beforeEach(() => {
   task = buildCoreTask()
 })
 
-describe('suivre ce qui est arrivé à une seule règle', () => {
-  it('ne rend rien pour un identifiant inconnu', () => {
+describe('following what happened to a single rule', () => {
+  it('returns nothing for an unknown id', () => {
     expect(historyOf(task, 'nope').entries).toEqual([])
   })
 
-  it('rassemble tout ce qui a touché cette règle, dans l’ordre', () => {
+  it('gathers everything that touched that rule, in order', () => {
     const rule = activeConstraints(task)[0]
     let next = editConstraint(task, rule.id, 'A reworded rule')
     next = setConstraintActive(next, rule.id, false)
@@ -42,7 +42,7 @@ describe('suivre ce qui est arrivé à une seule règle', () => {
     )
   })
 
-  it('ne mélange pas deux règles', () => {
+  it('does not mix two rules', () => {
     const [plain, deux] = activeConstraints(task)
     let next = setConstraintActive(task, plain.id, false)
     next = setConstraintActive(next, deux.id, false)
@@ -51,13 +51,13 @@ describe('suivre ce qui est arrivé à une seule règle', () => {
     expect(historyOf(next, deux.id).entries).toHaveLength(1)
   })
 
-  it('porte ce qui a été remplacé, quand il y en a un', () => {
+  it('carries what was replaced, when there is something', () => {
     const rule = activeConstraints(task)[0]
     const next = editConstraint(task, rule.id, 'A reworded rule')
     expect(historyOf(next, rule.id).entries[0].previous).toBe(rule.rule)
   })
 
-  it('n’oublie pas une règle proposée puis acceptée', () => {
+  it('does not forget a rule proposed then accepted', () => {
     const proposed = addConstraint(task, { rule: 'A proposed rule', basedOnVersion: null }, 'agent')
     const id = proposed.constraints.at(-1)!.id
     // The proposal itself has no target: it is the decision that has one.
@@ -65,7 +65,7 @@ describe('suivre ce qui est arrivé à une seule règle', () => {
   })
 })
 
-describe('depuis la page', () => {
+describe('from the page', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -96,12 +96,12 @@ describe('depuis la page', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('ne montre rien tant qu’on ne demande pas', () => {
+  it('shows nothing until it is asked', () => {
     expect(root.querySelector('.trail')).toBeNull()
     expect(root.querySelector('[data-trail]')).not.toBeNull()
   })
 
-  it('déplie l’histoire de cette règle, en langage humain', async () => {
+  it('unfolds the history of that rule, in human language', async () => {
     const bouton = root.querySelector<HTMLButtonElement>('[data-trail]')!
     bouton.click()
     __renderNow()
@@ -113,7 +113,7 @@ describe('depuis la page', () => {
     expect(trail.textContent).not.toContain('edit_constraint')
   })
 
-  it('se replie au second clic', async () => {
+  it('folds back on the second click', async () => {
     const bouton = root.querySelector<HTMLButtonElement>('[data-trail]')!
     bouton.click()
     __renderNow()
@@ -124,7 +124,7 @@ describe('depuis la page', () => {
     expect(root.querySelector('.trail')).toBeNull()
   })
 
-  it('n’ouvre qu’une histoire à la fois', async () => {
+  it('opens only one history at a time', async () => {
     const boutons = [...root.querySelectorAll<HTMLButtonElement>('[data-trail]')]
     expect(boutons.length).toBeGreaterThan(1)
 
@@ -136,7 +136,7 @@ describe('depuis la page', () => {
     expect(root.querySelectorAll('.trail')).toHaveLength(1)
   })
 
-  it('suit la règle quand elle est levée depuis l’écran', async () => {
+  it('follows the rule when it is lifted from the screen', async () => {
     const rules = activeConstraints(store.currentTask()!)
     const before = store.currentTask()!.version
 
@@ -150,7 +150,7 @@ describe('depuis la page', () => {
   })
 })
 
-describe('une histoire élaguée le dit', () => {
+describe('a pruned history says so', () => {
   function makeSaturated(): { task: TaskState; ruleId: string } {
     let next = buildCoreTask()
     const rule = activeConstraints(next)[0]
@@ -162,7 +162,7 @@ describe('une histoire élaguée le dit', () => {
     return { task: next, ruleId: rule.id }
   }
 
-  it('ne prétend pas être complète quand le journal a été élagué', () => {
+  it('does not claim to be complete when the log has been pruned', () => {
     const { task, ruleId } = makeSaturated()
     const trail = historyOf(task, ruleId)
 
@@ -172,14 +172,14 @@ describe('une histoire élaguée le dit', () => {
     expect(trail.mayBeIncomplete).toBe(true)
   })
 
-  it('se dit complète tant que rien n’a été élagué', () => {
+  it('calls itself complete as long as nothing has been pruned', () => {
     const rule = activeConstraints(task)[0]
     const trail = historyOf(setConstraintActive(task, rule.id, false), rule.id)
     expect(trail.entries).toHaveLength(1)
     expect(trail.mayBeIncomplete).toBe(false)
   })
 
-  it('avertit même quand il reste des entrées à montrer', () => {
+  it('warns even when there are still entries to show', () => {
     const { task: beforeState, ruleId } = makeSaturated()
     const saturated = setConstraintActive(beforeState, ruleId, true)
 
@@ -189,7 +189,7 @@ describe('une histoire élaguée le dit', () => {
   })
 })
 
-describe('l’avertissement à l’écran', () => {
+describe('the warning on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -224,7 +224,7 @@ describe('l’avertissement à l’écran', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('dit que des entrées plus anciennes ont été écartées', () => {
+  it('says that older entries were dropped', () => {
     root.querySelector<HTMLButtonElement>('[data-trail]')!.click()
     __renderNow()
 
@@ -232,7 +232,7 @@ describe('l’avertissement à l’écran', () => {
     expect(trail.textContent).toMatch(/older|dropped|earlier/i)
   })
 
-  it('propose encore l’histoire même quand tout a été élagué', async () => {
+  it('still offers the history even when everything has been pruned', async () => {
     // With no surviving entry, hiding the button would keep the pruning quiet.
     const task = store.currentTask()!
     const forgotten = task.constraints[1]

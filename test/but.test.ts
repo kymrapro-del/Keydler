@@ -24,28 +24,28 @@ beforeEach(() => {
 
 const BUT = 'Every session expires in under 30 minutes, with no change to the schema.'
 
-describe('ce que « terminé » veut dire', () => {
-  it('n’existe pas tant que personne ne l’a écrit', () => {
+describe('what "done" means', () => {
+  it('does not exist until somebody writes it', () => {
     expect(createTask({ title: 'X' }).goal).toBeNull()
   })
 
-  it('s’écrit, et reste attribué à l’humain', () => {
+  it('gets written, and stays attributed to the human', () => {
     const next = setGoal(task, BUT)
     expect(next.goal).toBe(BUT)
     expect(next.audit.at(-1)).toMatchObject({ operation: 'set_goal', actor: 'human' })
   })
 
-  it('se retire, sans que ce soit une erreur', () => {
+  it('is removed, without that being an error', () => {
     const installed = setGoal(task, BUT)
     expect(setGoal(installed, '   ').goal).toBeNull()
   })
 
-  it('refuse d’être réécrit à l’identique', () => {
+  it('refuses to be rewritten word for word', () => {
     const installed = setGoal(task, BUT)
     expect(() => setGoal(installed, BUT)).toThrow(ValidationError)
   })
 
-  it('s’annule comme les autres corrections d’un champ', () => {
+  it('is undone like any other correction of a field', () => {
     const installed = setGoal(task, 'A first attempt')
     const changed = setGoal(installed, BUT)
     expect(undoable(changed)).toContain('what done')
@@ -53,8 +53,8 @@ describe('ce que « terminé » veut dire', () => {
   })
 })
 
-describe('ce que l’agent en lit', () => {
-  it('le place avec la prochaine action, pas au fond', () => {
+describe('what the agent reads of it', () => {
+  it('places it with the next action, not at the bottom', () => {
     const rendered = renderTaskState(setGoal(task, BUT))
     expect(rendered).toContain('DONE WHEN')
     expect(rendered).toContain('with no change to the schema')
@@ -62,11 +62,11 @@ describe('ce que l’agent en lit', () => {
     expect(estimateTokens(rendered)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
-  it('se tait quand personne ne l’a écrit', () => {
+  it('stays silent when nobody has written it', () => {
     expect(renderTaskState(task)).not.toContain('DONE WHEN')
   })
 
-  it('reste lisible sur une tâche close, à côté du résumé', () => {
+  it('stays readable on a closed task, next to the summary', () => {
     const closed = completeTask(setGoal(task, BUT), { summary: 'S', basedOnVersion: null }, 'human')
     const rendered = renderTaskState(closed)
     expect(rendered).toContain('DONE WHEN')
@@ -74,7 +74,7 @@ describe('ce que l’agent en lit', () => {
   })
 })
 
-describe('clore une tâche qui avait un but', () => {
+describe('closing a task that had a goal', () => {
   beforeEach(async () => {
     store.__resetStore()
     await clearDatabase()
@@ -83,7 +83,7 @@ describe('clore une tâche qui avait un but', () => {
 
   afterEach(() => store.__resetStore())
 
-  it('rappelle le but à l’agent, pour que son résumé y réponde', async () => {
+  it('reminds the agent of the goal, so its summary answers it', async () => {
     await store.openPreparedTask(setGoal(buildCoreTask(), BUT))
     const result = await call(completeTaskTool, writeArgs(currentTask(), { summary: 'Done.' }))
 
@@ -94,14 +94,14 @@ describe('clore une tâche qui avait un but', () => {
     expect(text.toLowerCase()).toContain('say whether')
   })
 
-  it('ne rappelle rien quand aucun but n’avait été posé', async () => {
+  it('reminds of nothing when no goal was ever set', async () => {
     await store.openPreparedTask(buildCoreTask())
     const result = await call(completeTaskTool, writeArgs(currentTask(), { summary: 'Done.' }))
     expect(textOf(result)).not.toContain('DONE WHEN')
   })
 })
 
-describe('depuis la page', () => {
+describe('from the page', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -126,13 +126,13 @@ describe('depuis la page', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('invite à dire ce que « terminé » veut dire quand rien n’est écrit', () => {
+  it('invites you to say what "done" means when nothing is written', () => {
     const bouton = root.querySelector('#edit-goal')!
     expect(bouton).not.toBeNull()
     expect(bouton.textContent).toMatch(/done/i)
   })
 
-  it('l’écrit, et l’affiche sous la prochaine action', async () => {
+  it('writes it, and shows it under the next action', async () => {
     root.querySelector<HTMLButtonElement>('#edit-goal')!.click()
     __renderNow()
 
@@ -148,7 +148,7 @@ describe('depuis la page', () => {
   })
 })
 
-describe('pour un agent qui n’a pas WebMCP', () => {
+describe('for an agent without WebMCP', () => {
   let root: HTMLElement
   let unmount: () => void
   let copied: string | null
@@ -184,7 +184,7 @@ describe('pour un agent qui n’a pas WebMCP', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('copie le cahier en texte, tel que l’agent l’aurait reçu', async () => {
+  it('copies the log as text, just as the agent would have received it', async () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
     await waitUntil(() => copied !== null, 'la copie', 3000)
 
@@ -197,7 +197,7 @@ describe('pour un agent qui n’a pas WebMCP', () => {
     expect(copied).toContain(attendu)
   })
 
-  it('l’encadre d’une consigne, pour que ce ne soit pas un mur de texte anonyme', async () => {
+  it('frames it with an instruction, so it is not an anonymous wall of text', async () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
     await waitUntil(() => copied !== null, 'la copie', 3000)
 
@@ -205,7 +205,7 @@ describe('pour un agent qui n’a pas WebMCP', () => {
     expect(copied!.toLowerCase()).toContain('read this before')
   })
 
-  it('ne porte aucune valeur d’identifiant', async () => {
+  it('carries no credential value', async () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
     await waitUntil(() => copied !== null, 'la copie', 3000)
 
@@ -214,7 +214,7 @@ describe('pour un agent qui n’a pas WebMCP', () => {
     }
   })
 
-  it('dit ce qu’il vient de copier', async () => {
+  it('says what it just copied', async () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
     await waitUntil(() => !!root.querySelector('.notice--ok'), 'le message', 3000)
     __renderNow()

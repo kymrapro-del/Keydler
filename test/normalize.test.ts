@@ -19,8 +19,8 @@ async function writeRaw(record: unknown) {
 
 beforeEach(clear)
 
-describe('normalisation à la lecture', () => {
-  it('survit à un enregistrement sans journal ni tableaux', async () => {
+describe('normalizing on read', () => {
+  it('survives a record with no audit log and no arrays', async () => {
     await writeRaw({ id: 'ancien', title: 'Cahier d’hier', version: 7, updatedAt: 1 })
 
     const task = await loadTask('ancien')
@@ -33,7 +33,7 @@ describe('normalisation à la lecture', () => {
     expect(task!.decisions).toEqual([])
   })
 
-  it('tient une contrainte à l’état illisible pour ACTIVE', () => {
+  it('takes a constraint with an unreadable state to be ACTIVE', () => {
     const task = normalizeTask({
       id: 'x',
       version: 1,
@@ -43,7 +43,7 @@ describe('normalisation à la lecture', () => {
     expect(task!.constraints[0].active).toBe(true)
   })
 
-  it('ramène un degré de preuve inconnu à « affirmé »', () => {
+  it('brings an unknown confidence level back to "claimed"', () => {
     const task = normalizeTask({
       id: 'x',
       version: 1,
@@ -53,7 +53,7 @@ describe('normalisation à la lecture', () => {
     expect(task!.steps[0].confidence).toBe('claimed')
   })
 
-  it('écarte une preuve dont la nature est inconnue', () => {
+  it('drops evidence whose kind is unknown', () => {
     const task = normalizeTask({
       id: 'x',
       version: 1,
@@ -65,7 +65,7 @@ describe('normalisation à la lecture', () => {
     expect(task!.steps[0].evidence).toBeNull()
   })
 
-  it('conserve un identifiant tel quel : c’est la clé primaire', async () => {
+  it('keeps an id exactly as given: it is the primary key', async () => {
     const bizarre = 'x" onload="alert(1)'
     await writeRaw({ id: bizarre, title: 'Cahier', version: 3, updatedAt: 1 })
 
@@ -74,7 +74,7 @@ describe('normalisation à la lecture', () => {
     expect(relu?.version).toBe(3)
   })
 
-  it('neutralise un identifiant hostile au rendu, pas au stockage', () => {
+  it('defuses a hostile id at render, not at storage', () => {
     const task = normalizeTask({
       id: 'x" onload="alert(1)',
       version: 1,
@@ -86,13 +86,13 @@ describe('normalisation à la lecture', () => {
     expect(escapeHtml(task!.steps[0].id)).not.toContain('<')
   })
 
-  it('refuse un enregistrement écrit par une version plus récente', async () => {
+  it('refuses a record written by a newer version', async () => {
     await writeRaw({ id: 'futur', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
 
     await expect(loadTask('futur')).rejects.toBeInstanceOf(FutureSchemaError)
   })
 
-  it('n’emporte pas toute la liste pour un enregistrement illisible', async () => {
+  it('does not take the whole list down for one unreadable record', async () => {
     const sain = createTask({ title: 'Sain', next: 'Continuer' })
     await saveTask(sain)
     await writeRaw({ id: 'futur', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
@@ -101,7 +101,7 @@ describe('normalisation à la lecture', () => {
     expect(tasks.map((t) => t.title)).toEqual(['Sain'])
   })
 
-  it('répare décisions, rejets et journal d’un enregistrement mutilé', () => {
+  it('repairs decisions, rejections and audit log of a mangled record', () => {
     const task = normalizeTask({
       id: 'x',
       version: 2,
@@ -124,7 +124,7 @@ describe('normalisation à la lecture', () => {
     expect(task!.audit[1].repeated).toBeUndefined()
   })
 
-  it('conserve intact un cahier normal', async () => {
+  it('leaves an ordinary task intact', async () => {
     const original = createTask({ title: 'Normal', next: 'Suite' })
     await saveTask(original)
 
@@ -140,7 +140,7 @@ describe('normalisation à la lecture', () => {
   })
 })
 
-describe('migration du schéma v1', () => {
+describe('schema v1 migration', () => {
   function v1(): Record<string, unknown> {
     return {
       id: 'ancien-1',
@@ -170,7 +170,7 @@ describe('migration du schéma v1', () => {
     }
   }
 
-  it('rend à l’humain une autorité qu’on lui avait prise', () => {
+  it('gives the human back an authority that had been taken', () => {
     const task = normalizeTask(v1() as never)!
 
     expect(task.constraints[0].standing).toBe('accepted')
@@ -179,7 +179,7 @@ describe('migration du schéma v1', () => {
     expect(task.rejected[1].standing).toBe('proposed')
   })
 
-  it('rebaptise « machine_verified » sans inventer un clic humain', () => {
+  it('renames "machine_verified" without inventing a human click', () => {
     const task = normalizeTask(v1() as never)!
 
     expect(task.steps[0].confidence).toBe('evidence')
@@ -187,12 +187,12 @@ describe('migration du schéma v1', () => {
     expect(task.steps[0].evidence?.verifiedAt).toBeNull()
   })
 
-  it('donne une mémoire de mutations vide plutôt que de planter dessus', () => {
+  it('gives an empty mutation memory rather than crashing on it', () => {
     const task = normalizeTask(v1() as never)!
     expect(task.mutations).toEqual([])
   })
 
-  it('reborne et nettoie une mémoire de mutations douteuse', () => {
+  it('bounds and cleans a doubtful mutation memory', () => {
     const stored = {
       ...v1(),
       schemaVersion: 3,
@@ -213,7 +213,7 @@ describe('migration du schéma v1', () => {
     expect(task.mutations.every((m) => m.id !== '')).toBe(true)
   })
 
-  it('écarte une mutation v2, dont l’intention n’est pas vérifiable', () => {
+  it('drops a v2 mutation, whose intent cannot be verified', () => {
     const stored = {
       ...v1(),
       schemaVersion: 2,
@@ -227,7 +227,7 @@ describe('migration du schéma v1', () => {
     expect(task.mutations.map((m) => m.id)).toEqual(['m-avec'])
   })
 
-  it('refuse toujours un enregistrement plus récent que le code qui le lit', () => {
+  it('still refuses a record newer than the code reading it', () => {
     expect(() => normalizeTask({ ...v1(), schemaVersion: 99 } as never)).toThrow(FutureSchemaError)
   })
 })

@@ -31,16 +31,16 @@ const STRUCTURAL = [
   'technical__body',
 ]
 
-describe('la feuille de style couvre ce que la vue émet', () => {
-  it.each(STRUCTURAL)('style la classe « %s »', (name) => {
+describe('the stylesheet covers what the view emits', () => {
+  it.each(STRUCTURAL)('styles the “%s” class', (name) => {
     expect(css).toMatch(new RegExp(`\\.${name.replace(/[-_]/g, '[-_]')}[\\s,:{.>]`))
   })
 
-  it('style aussi le surlignage de recherche', () => {
+  it('styles the search highlight too', () => {
     expect(css).toMatch(/(^|[\s,}])mark\s*\{/)
   })
 
-  it('ne laisse aucune classe BEM sans règle, même écrite dans une interpolation', () => {
+  it('leaves no BEM class without a rule, even one written inside an interpolation', () => {
     // `class="card${... ? ' card--waiting' : ''}"` hides the name inside the
     // expression: extraction by attribute does not see it. The BEM markers
     // -- and __ are unambiguous, wherever they are written.
@@ -49,7 +49,7 @@ describe('la feuille de style couvre ce que la vue émet', () => {
     expect(missing).toEqual([])
   })
 
-  it('ne laisse aucune classe de la vue sans règle', () => {
+  it('leaves no class from the view without a rule', () => {
     // The classes actually written in the view's HTML, minus the ones that are
     // purely semantic or supplied by the tokens.
     // An attribute holding an interpolation was ignored in full, so that a

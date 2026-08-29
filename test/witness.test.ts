@@ -3,8 +3,8 @@ import { getWitness, onCall, recordCall, resetCalls } from '../src/webmcp/witnes
 
 beforeEach(resetCalls)
 
-describe('témoin d’appels', () => {
-  it('compte tout, même ce qu’il ne retient pas', () => {
+describe('the call witness', () => {
+  it('counts everything, even what it does not keep', () => {
     for (let i = 0; i < 500; i++) recordCall('resume_task', i % 5 === 0)
 
     const { total, refused, recents } = getWitness()
@@ -13,14 +13,14 @@ describe('témoin d’appels', () => {
     expect(recents.length).toBeLessThanOrEqual(20)
   })
 
-  it('retient les plus récents, pas les premiers', () => {
+  it('keeps the most recent, not the first', () => {
     for (let i = 0; i < 40; i++) recordCall(`outil-${i}`, false)
     const { recents } = getWitness()
     expect(recents.at(-1)?.tool).toBe('outil-39')
     expect(recents.some((c) => c.tool === 'outil-0')).toBe(false)
   })
 
-  it('distingue un refus d’un appel appliqué', () => {
+  it('tells a refusal from an applied call', () => {
     recordCall('log_step', true)
     recordCall('resume_task', false)
     const { total, refused, recents } = getWitness()
@@ -29,7 +29,7 @@ describe('témoin d’appels', () => {
     expect(recents.filter((c) => c.refused)).toHaveLength(1)
   })
 
-  it('rend un instantané, pas son tableau vivant', () => {
+  it('returns a snapshot, not its live array', () => {
     recordCall('a', false)
     const retenu = getWitness()
     recordCall('b', false)
@@ -39,14 +39,14 @@ describe('témoin d’appels', () => {
     expect(getWitness().recents).toHaveLength(2)
   })
 
-  it('remet à zéro compteurs et mémoire', () => {
+  it('resets counters and memory', () => {
     for (let i = 0; i < 30; i++) recordCall('x', true)
     resetCalls()
     expect(getWitness()).toMatchObject({ total: 0, refused: 0 })
     expect(getWitness().recents).toHaveLength(0)
   })
 
-  it('prévient ses abonnés, et cesse quand ils se retirent', () => {
+  it('notifies its subscribers, and stops when they withdraw', () => {
     let vus = 0
     const stop = onCall(() => {
       vus += 1

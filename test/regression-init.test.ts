@@ -9,8 +9,8 @@ beforeEach(async () => {
   await clearDatabase()
 })
 
-describe('chargement initial concurrent à une écriture', () => {
-  it('ne remplace pas l’état appliqué par une lecture du disque plus ancienne', async () => {
+describe('initial load racing a write', () => {
+  it('does not replace the applied state with an older read from disk', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
 
     const first = store.mutate((s) => setNext(s, { next: 'première', basedOnVersion: null }))
@@ -27,7 +27,7 @@ describe('chargement initial concurrent à une écriture', () => {
     expect(final.next).toBe('nouvelle prochaine action')
   })
 
-  it('ne fait jamais reculer la version, même sur plusieurs écritures en vol', async () => {
+  it('never walks the version backwards, even with several writes in flight', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const versions: number[] = []
     store.subscribe(() => {

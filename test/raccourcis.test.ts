@@ -40,8 +40,8 @@ afterEach(() => {
   history.replaceState(null, '', '/')
 })
 
-describe('les raccourcis', () => {
-  it('sont tous décrits, sans doublon de touche', () => {
+describe('the shortcuts', () => {
+  it('are all described, with no duplicate key', () => {
     const keys = SHORTCUTS.map((s) => s.key)
     expect(new Set(keys).size).toBe(keys.length)
     for (const shortcut of SHORTCUTS) {
@@ -50,7 +50,7 @@ describe('les raccourcis', () => {
     }
   })
 
-  it('ouvre l’aide sur « ? », et la referme sur Échap', () => {
+  it('opens the help on `?`, and closes it on Escape', () => {
     expect(root.querySelector('#shortcuts')).toBeNull()
 
     press('?')
@@ -64,23 +64,23 @@ describe('les raccourcis', () => {
     expect(root.querySelector('#shortcuts')).toBeNull()
   })
 
-  it('se referme aussi sur un second « ? »', () => {
+  it('closes again on a second `?`', () => {
     press('?')
     press('?')
     expect(root.querySelector('#shortcuts')).toBeNull()
   })
 
-  it('ouvre le formulaire d’étape sur « s »', () => {
+  it('opens the step form on `s`', () => {
     press('s')
     expect(root.querySelector('#form-step')).not.toBeNull()
   })
 
-  it('ouvre la création de tâche sur « n »', () => {
+  it('opens task creation on `n`', () => {
     press('n')
     expect(root.querySelector('#create-task')).not.toBeNull()
   })
 
-  it('ne détourne aucune touche pendant que l’on écrit', () => {
+  it('hijacks no key while you are typing', () => {
     press('s')
     const field = root.querySelector<HTMLInputElement>('#step-action')!
     field.focus()
@@ -90,7 +90,7 @@ describe('les raccourcis', () => {
     expect(root.querySelector('#create-task')).toBeNull()
   })
 
-  it('laisse passer une combinaison du navigateur', () => {
+  it('lets a browser combination through', () => {
     const event = new KeyboardEvent('keydown', {
       key: 's',
       ctrlKey: true,
@@ -105,12 +105,12 @@ describe('les raccourcis', () => {
   })
 })
 
-describe('l’impression', () => {
-  it('a sa feuille, pour qu’une passation sur papier reste lisible', () => {
+describe('printing', () => {
+  it('has its own sheet, so that a handover on paper stays readable', () => {
     expect(css).toMatch(/@media\s+print/)
   })
 
-  it('retire de la page imprimée ce qui ne s’imprime pas', () => {
+  it('takes off the printed page what does not print', () => {
     const bloc = css.slice(css.search(/@media\s+print/))
     // Buttons on a sheet of paper are of use to nobody, and the dark
     // background empties a cartridge.

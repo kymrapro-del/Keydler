@@ -40,8 +40,8 @@ const NEW_OPERATIONS = ['ask_human', 'attach_evidence', 'set_next_action', 'answ
 // decision, which is precisely what the trust model forbids it.
 const HUMAN_ONLY = ['undo']
 
-describe('le journal met en mots ce que les nouveaux outils écrivent', () => {
-  it('ne laisse aucun nom d’opération machine atteindre l’écran', () => {
+describe('the log puts what the new tools write into words', () => {
+  it('lets no machine operation name reach the screen', () => {
     for (const operation of NEW_OPERATIONS) {
       for (const actor of ['human', 'agent'] as const) {
         const line = describeEntry(entry({ operation, actor }))
@@ -56,7 +56,7 @@ describe('le journal met en mots ce que les nouveaux outils écrivent', () => {
     }
   })
 
-  it('distingue poser une question de répondre à une question', () => {
+  it('tells asking a question apart from answering one', () => {
     expect(describeEntry(entry({ operation: 'ask_human', actor: 'agent' })).what).toBe(
       'asked you a question',
     )
@@ -65,7 +65,7 @@ describe('le journal met en mots ce que les nouveaux outils écrivent', () => {
     )
   })
 
-  it('met la tentative à l’infinitif pour les nouveaux outils aussi', () => {
+  it('puts the attempt in the infinitive for the new tools too', () => {
     for (const operation of [...NEW_OPERATIONS, ...HUMAN_ONLY]) {
       const line = describeEntry(entry({ operation, outcome: 'refused', detail: 'stale write' }))
       expect(line.what, operation).toMatch(/^tried to [a-z]/)
@@ -75,8 +75,8 @@ describe('le journal met en mots ce que les nouveaux outils écrivent', () => {
   })
 })
 
-describe('ce que l’agent lit d’une annulation', () => {
-  it('nomme l’annulation en phrase, jamais par son code', () => {
+describe('what the agent reads of an undo', () => {
+  it('names the undo in a sentence, never by its code', () => {
     const withRule = addConstraint(
       buildDemoTask(),
       { rule: 'Do not add Redis', basedOnVersion: null },
@@ -94,7 +94,7 @@ describe('ce que l’agent lit d’une annulation', () => {
   })
 })
 
-describe('les messages humains nomment les champs, pas leurs identifiants', () => {
+describe('human messages name the fields, not their identifiers', () => {
   const FIELDS: Record<string, string> = {
     question: 'the question',
     why: 'the reason it blocks you',
@@ -103,7 +103,7 @@ describe('les messages humains nomment les champs, pas leurs identifiants', () =
     step_id: 'that step',
   }
 
-  it.each(Object.entries(FIELDS))('parle de « %s » comme de « %s »', (field, expected) => {
+  it.each(Object.entries(FIELDS))('talks about “%s” as “%s”', (field, expected) => {
     const message = humanMessage(
       new ValidationError(field, 'must not be empty.', { code: 'empty' }),
       'Saving',
@@ -113,7 +113,7 @@ describe('les messages humains nomment les champs, pas leurs identifiants', () =
   })
 })
 
-describe('la recherche couvre ce qui a été demandé et répondu', () => {
+describe('search covers what was asked and what was answered', () => {
   function asked(): TaskState {
     const base = askHuman(
       buildDemoTask(),
@@ -127,17 +127,17 @@ describe('la recherche couvre ce qui a été demandé et répondu', () => {
     return answerQuestion(base, openQuestions(base)[0].id, 'Use the p95 dashboard baseline.')
   }
 
-  it('trouve une question par ses mots', () => {
+  it('finds a question by its words', () => {
     const hits = searchTask(asked(), 'baseline')
     expect(hits.some((h) => h.kind === 'question')).toBe(true)
   })
 
-  it('trouve une réponse humaine, qui est souvent la seule trace d’une décision', () => {
+  it('finds a human answer, often the only trace of a decision', () => {
     const hits = searchTask(asked(), 'p95 dashboard')
     expect(hits.some((h) => h.text.includes('Use the p95 dashboard baseline.'))).toBe(true)
   })
 
-  it('dit si la question est encore ouverte', () => {
+  it('says whether the question is still open', () => {
     const open = askHuman(
       buildDemoTask(),
       { question: 'Which region?', why: 'It changes the endpoint.', basedOnVersion: null },
@@ -148,8 +148,8 @@ describe('la recherche couvre ce qui a été demandé et répondu', () => {
   })
 })
 
-describe('l’export porte tout ce qui a été échangé', () => {
-  it('rend les questions et leurs réponses en clair, pas seulement dans le JSON', () => {
+describe('the export carries everything that was exchanged', () => {
+  it('renders questions and their answers in plain words, not only in the JSON', () => {
     const base = askHuman(
       buildDemoTask(),
       {
@@ -168,13 +168,13 @@ describe('l’export porte tout ce qui a été échangé', () => {
     expect(out).toContain('The thresholds are relative to it.')
   })
 
-  it('n’ajoute pas une section vide quand rien n’a été demandé', () => {
+  it('adds no empty section when nothing was asked', () => {
     expect(buildTaskExport(buildDemoTask())).not.toContain('## Questions and answers')
   })
 })
 
-describe('une preuve jointe après coup se relit comme telle', () => {
-  it('apparaît dans la recherche par son contenu', () => {
+describe('evidence attached afterwards reads back as such', () => {
+  it('shows up in search by its content', () => {
     const task = buildDemoTask()
     const claimed = task.steps.find((s) => s.evidence === null)!
     const next = attachEvidence(
@@ -192,8 +192,8 @@ describe('une preuve jointe après coup se relit comme telle', () => {
   })
 })
 
-describe('changer la prochaine action laisse une trace lisible', () => {
-  it('dit ce que la prochaine action est devenue', () => {
+describe('changing the next action leaves a readable trace', () => {
+  it('says what the next action became', () => {
     const next = setNext(buildDemoTask(), {
       next: 'Benchmark approach C against the p95 baseline',
       basedOnVersion: null,

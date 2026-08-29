@@ -28,8 +28,8 @@ function seedTask(): TaskState {
   return createTask({ title: 'Refactoriser l’authentification', next: 'Cartographier' }, ctx())
 }
 
-describe('invariant de version', () => {
-  it('incrémente la version à chaque mutation appliquée', () => {
+describe('the version invariant', () => {
+  it('bumps the version on every applied mutation', () => {
     let task = seedTask()
     expect(task.version).toBe(1)
 
@@ -58,7 +58,7 @@ describe('invariant de version', () => {
     expect(task.version).toBe(4)
   })
 
-  it('refuse une écriture fondée sur une version dépassée', () => {
+  it('refuses a write based on a stale version', () => {
     let task = seedTask()
     task = addConstraint(task, { rule: 'Aucune dépendance', basedOnVersion: 1 }, 'human', ctx(10))
     expect(task.version).toBe(2)
@@ -73,7 +73,7 @@ describe('invariant de version', () => {
     ).toThrow(StaleStateError)
   })
 
-  it('nomme les deux versions dans le message de refus', () => {
+  it('names both versions in the refusal message', () => {
     const task = seedTask()
     try {
       logStep(task, { action: 'a', result: 'b', basedOnVersion: 45 }, 'agent', ctx())
@@ -88,7 +88,7 @@ describe('invariant de version', () => {
     }
   })
 
-  it('n’oppose jamais de refus à une écriture humaine', () => {
+  it('never refuses a human write', () => {
     let task = seedTask()
     task = logStep(task, { action: 'x', result: 'y', basedOnVersion: 1 }, 'agent', ctx(10))
     task = addConstraint(
@@ -102,8 +102,8 @@ describe('invariant de version', () => {
   })
 })
 
-describe('journal d’audit', () => {
-  it('journalise un refus sans toucher à la version ni au contenu', () => {
+describe('the audit log', () => {
+  it('logs a refusal without touching the version or the content', () => {
     const task = seedTask()
     const after = recordRefusal(
       task,
@@ -115,7 +115,7 @@ describe('journal d’audit', () => {
     expect(after.audit.at(-1)).toMatchObject({ outcome: 'refused', versionAfter: task.version })
   })
 
-  it('enregistre la version avant et après chaque mutation appliquée', () => {
+  it('records the version before and after every applied mutation', () => {
     let task = seedTask()
     task = addConstraint(task, { rule: 'R', basedOnVersion: 1 }, 'agent', ctx(10))
     expect(task.audit.at(-1)).toMatchObject({
@@ -126,8 +126,8 @@ describe('journal d’audit', () => {
   })
 })
 
-describe('degrés de preuve', () => {
-  it('rétrograde en « claimed » une étape sans preuve', () => {
+describe('degrees of evidence', () => {
+  it('downgrades a step with no evidence to "claimed"', () => {
     let task = seedTask()
     task = logStep(
       task,
@@ -138,7 +138,7 @@ describe('degrés de preuve', () => {
     expect(task.steps[0].confidence).toBe('claimed')
   })
 
-  it('ignore tout degré déclaré : il est déduit de ce que l’écriture apporte', () => {
+  it('ignores any declared degree: it is derived from what the write carries', () => {
     let task = seedTask()
     task = logStep(
       task,
@@ -155,7 +155,7 @@ describe('degrés de preuve', () => {
     expect(task.steps[0].confidence).toBe('evidence')
   })
 
-  it('ne tient pas un lien ou un diff pour une vérification', () => {
+  it('does not take a link or a diff for a verification', () => {
     let task = seedTask()
     task = logStep(
       task,
@@ -171,7 +171,7 @@ describe('degrés de preuve', () => {
     expect(task.steps[0].confidence).toBe('evidence')
   })
 
-  it('ne passe en « human_verified » que par la validation humaine', () => {
+  it('reaches "human_verified" only through human validation', () => {
     let task = seedTask()
     task = logStep(
       task,
@@ -187,15 +187,15 @@ describe('degrés de preuve', () => {
     expect(evidenceCounts(task).human_verified).toBe(1)
   })
 
-  it('refuse de valider une étape sans preuve', () => {
+  it('refuses to verify a step with no evidence', () => {
     let task = seedTask()
     task = logStep(task, { action: 'a', result: 'b', basedOnVersion: 1 }, 'agent', ctx(10))
     expect(() => verifyEvidence(task, task.steps[0].id, '', ctx(20))).toThrow(ValidationError)
   })
 })
 
-describe('cycle de vie', () => {
-  it('refuse toute écriture après clôture', () => {
+describe('the lifecycle', () => {
+  it('refuses every write after completion', () => {
     let task = seedTask()
     task = completeTask(task, { summary: 'Terminé.', basedOnVersion: 1 }, 'agent', ctx(10))
     expect(task.status).toBe('completed')
@@ -205,7 +205,7 @@ describe('cycle de vie', () => {
     ).toThrow(ValidationError)
   })
 
-  it('refuse de poser une prochaine action sur une tâche close', () => {
+  it('refuses to set a next action on a closed task', () => {
     let task = seedTask()
     task = completeTask(task, { summary: 'Terminé.', basedOnVersion: 1 }, 'agent', ctx(10))
     expect(() =>
@@ -214,7 +214,7 @@ describe('cycle de vie', () => {
     expect(task.next).toBeNull()
   })
 
-  it('exige un motif pour tout rejet', () => {
+  it('requires a reason for every rejection', () => {
     const task = seedTask()
     expect(() =>
       rejectApproach(task, { approach: 'JWT B', reason: '  ', basedOnVersion: 1 }, 'agent', ctx()),
@@ -222,8 +222,8 @@ describe('cycle de vie', () => {
   })
 })
 
-describe('restitution', () => {
-  it('rend contraintes actives, rejets et protocole d’écriture', () => {
+describe('the briefing', () => {
+  it('renders active constraints, rejections and the write protocol', () => {
     let task = seedTask()
     task = addConstraint(
       task,
@@ -245,14 +245,14 @@ describe('restitution', () => {
     expect(output).toContain('based_on_version: 3')
   })
 
-  it('omet une contrainte désactivée', () => {
+  it('omits a deactivated constraint', () => {
     let task = seedTask()
     task = addConstraint(task, { rule: 'Règle levée', basedOnVersion: 1 }, 'human', ctx(10))
     task = setConstraintActive(task, task.constraints[0].id, false, ctx(20))
     expect(renderTaskState(task)).not.toContain('Règle levée')
   })
 
-  it('reste sous le budget de tokens sur un cahier chargé', () => {
+  it('stays under the token budget on a loaded log', () => {
     let task = seedTask()
     for (let i = 0; i < 40; i++) {
       task = logStep(
@@ -282,7 +282,7 @@ describe('restitution', () => {
   })
 })
 
-describe('budget de restitution sous pression', () => {
+describe('the briefing budget under pressure', () => {
   function loaded(nbRejets: number, nbContraintes: number): TaskState {
     let task = seedTask()
     let n = 0
@@ -312,7 +312,7 @@ describe('budget de restitution sous pression', () => {
     return task
   }
 
-  it('raccourcit les lignes avant d’en retirer', () => {
+  it('shortens lines before dropping any', () => {
     const light = renderTaskState(loaded(2, 2))
     const moyen = renderTaskState(loaded(8, 6))
 
@@ -327,7 +327,7 @@ describe('budget de restitution sous pression', () => {
   // NEVER dropping a binding rule rendered 37,800 tokens for two thousand
   // rules, 94 times the budget, and a render the context window truncates in
   // silence. Cut here and say so, or let it be cut elsewhere.
-  it('en dernier recours retire des obligations, et le dit sans détour', () => {
+  it('drops obligations as a last resort, and says so plainly', () => {
     const output = renderTaskState(loaded(30, 10))
 
     expect(output).toContain('Approche condamnée numéro 0')
@@ -336,7 +336,7 @@ describe('budget de restitution sous pression', () => {
     expect(output).toContain('read_task_detail on rejections')
   })
 
-  it('dit d’une règle retirée qu’elle engage TOUJOURS', () => {
+  it('says of a dropped rule that it is STILL binding', () => {
     const output = renderTaskState(loaded(0, 40))
 
     expect(output).toContain('CONSTRAINTS: binding (40)')
@@ -344,7 +344,7 @@ describe('budget de restitution sous pression', () => {
     expect(output).toContain('read_task_detail on constraints')
   })
 
-  it('garde un plancher d’obligations, et borne vraiment la restitution', () => {
+  it('keeps a floor of obligations, and really bounds the briefing', () => {
     const output = renderTaskState(loaded(0, 300))
 
     const shown = output.split('\n').filter((l) => l.includes('Contrainte ')).length
@@ -353,7 +353,7 @@ describe('budget de restitution sous pression', () => {
     expect(estimateTokens(output)).toBeLessThan(1000)
   })
 
-  it('montre les mêmes obligations d’un appel à l’autre', () => {
+  it('shows the same obligations from one call to the next', () => {
     // Cutting from the end would slide the window on every addition: the agent
     // would see a rule it had read disappear, without that rule changing.
     const before = renderTaskState(loaded(0, 40))
@@ -364,12 +364,12 @@ describe('budget de restitution sous pression', () => {
     expect(afterState).toContain('Contrainte 11')
   })
 
-  it('respecte le budget tant que les contraintes le permettent', () => {
+  it('holds the budget as long as the constraints allow', () => {
     const task = loaded(4, 3)
     expect(estimateTokens(renderTaskState(task))).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
-  it('annonce combien de décisions sont montrées sur combien', () => {
+  it('says how many decisions are shown out of how many', () => {
     let task = seedTask()
     for (let i = 0; i < 6; i++) {
       task = addDecision(
@@ -383,7 +383,7 @@ describe('budget de restitution sous pression', () => {
     expect(output).toMatch(/DECISIONS \(last \d+ of 6\)/)
   })
 
-  it('reste déterministe : deux rendus du même état sont identiques', () => {
+  it('stays deterministic: two renders of the same state are identical', () => {
     const task = loaded(30, 10)
     expect(renderTaskState(task)).toBe(renderTaskState(task))
   })

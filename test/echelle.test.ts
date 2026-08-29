@@ -120,8 +120,8 @@ afterEach(() => {
 // Measured before these caps: 2000 rules took a render round trip from 17 ms to
 // 501 ms, for 1.2 MB of HTML and 10,000 nodes, and the page repaints on every
 // keystroke in the search field.
-describe('la page ne grandit pas avec les données', () => {
-  it('garde le même ordre de grandeur avec cent fois plus de tout', async () => {
+describe('the page does not grow with the data', () => {
+  it('keeps the same order of magnitude with a hundred times more of everything', async () => {
     await open({
       constraints: rules(500),
       rejected: rejections(500),
@@ -137,7 +137,7 @@ describe('la page ne grandit pas avec les données', () => {
     expect(size).toBeLessThan(300_000)
   })
 
-  it('borne chaque liste séparément, pour qu’aucune ne passe entre les mailles', async () => {
+  it('bounds each list separately, so that none slips through the net', async () => {
     // A single unbounded list would be enough to bring the page down; the test
     // therefore takes them one at a time, with no other list masking it.
     for (const [nom, champ] of [
@@ -153,8 +153,8 @@ describe('la page ne grandit pas avec les données', () => {
   })
 })
 
-describe('ce qui est caché est dit, et reste atteignable', () => {
-  it('annonce le nombre de règles et les déplie toutes', async () => {
+describe('what is hidden is said, and stays reachable', () => {
+  it('announces how many rules there are and unfolds them all', async () => {
     await open({ constraints: rules(40) })
 
     expect(card('rules-title').querySelectorAll('.rows li').length).toBe(12)
@@ -165,7 +165,7 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
     expect(cardText('rules-title')).toContain('Show fewer')
   })
 
-  it('avertit quand ce qui est hors de vue ENGAGE encore', async () => {
+  it('warns when what is out of sight STILL BINDS', async () => {
     await open({ constraints: rules(40) })
     expect(cardText('rules-title')).toContain('28 rules still in force are not shown')
 
@@ -175,7 +175,7 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
     expect(text()).not.toContain('still in force are not shown')
   })
 
-  it('ne crie pas au loup pour des règles simplement levées', async () => {
+  it('does not cry wolf over rules that were merely lifted', async () => {
     await open({
       constraints: [...rules(6), ...rules(40, false).map((c) => ({ ...c, id: `x${c.id}` }))],
     })
@@ -184,13 +184,13 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
     expect(cardText('rules-title')).not.toContain('still in force are not shown')
   })
 
-  it('n’offre pas de bouton quand tout tient déjà à l’écran', async () => {
+  it('offers no button when everything already fits on screen', async () => {
     await open({ constraints: rules(5) })
     expect(cardText('rules-title')).not.toContain('Show all')
     expect(cardText('rules-title')).not.toContain('Show fewer')
   })
 
-  it('déplie aussi les approches écartées, les questions et les autorisations', async () => {
+  it('unfolds the rejected approaches, the questions and the permission requests too', async () => {
     await open({
       rejected: rejections(30),
       questions: questions(30),
@@ -208,8 +208,8 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
  * wakeups change nothing. Measured on the interface suite: 30% of the renders
  * produced identical HTML.
  */
-describe('ne redessine pas ce qui n’a pas changé', () => {
-  it('garde les mêmes nœuds quand rien ne bouge', async () => {
+describe('does not repaint what has not changed', () => {
+  it('keeps the same nodes when nothing moves', async () => {
     await open({ constraints: rules(3) })
     const beforeState = card('rules-title')
 
@@ -221,7 +221,7 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
     expect(card('rules-title')).toBe(beforeState)
   })
 
-  it('redessine dès que l’état change vraiment', async () => {
+  it('repaints as soon as the state really changes', async () => {
     await open({ constraints: rules(3) })
     const beforeState = card('rules-title')
 
@@ -232,7 +232,7 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
     expect(cardText('rules-title')).toContain('shard 3')
   })
 
-  it('peint une racine neuve, même si l’état est resté le même', async () => {
+  it('paints a fresh root, even when the state stayed the same', async () => {
     // The trap of the optimization: remembering the HTML already painted
     // without noticing that the root itself was replaced, and leaving a blank
     // page.
@@ -250,7 +250,7 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
     expect(cardText('rules-title')).toContain('shard 0')
   })
 
-  it('ne fait pas perdre le curseur dans un champ pendant un rendu à vide', async () => {
+  it('does not lose the cursor in a field during a render that changes nothing', async () => {
     await open({ constraints: rules(3) })
     const champ = root.querySelector<HTMLInputElement>('#new-constraint')!
     champ.value = 'Never deploy on a Friday'
@@ -267,7 +267,7 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
   })
 })
 
-describe('le poste entier ne fait pas grandir la page non plus', () => {
+describe('the whole device does not grow the page either', () => {
   async function poser(count: number): Promise<void> {
     for (let i = 0; i < count; i++) {
       await store.openPreparedTask({
@@ -287,7 +287,7 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
     __renderNow()
   }
 
-  it('borne le sélecteur de cahiers, qui balaie chaque cahier du poste', async () => {
+  it('bounds the task switcher, which sweeps every task on the device', async () => {
     // `needsYou` walks the steps of EVERY task for its badge: the page
     // therefore cost the whole device, not just the open task.
     await poser(40)
@@ -303,8 +303,8 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
  * a collapsed dropdown. Measured: 1.5 MB on the heap for a task of 1000 steps,
  * 29.6 MB for 20,000.
  */
-describe('la liste des cahiers ne retient pas les cahiers', () => {
-  it('ne rend que ce que le sélecteur affiche', async () => {
+describe('the task list does not hold on to the tasks', () => {
+  it('returns only what the switcher shows', async () => {
     await store.openPreparedTask({
       ...buildCoreTask(),
       id: 'gros',
@@ -332,13 +332,13 @@ describe('la liste des cahiers ne retient pas les cahiers', () => {
 // 20,000 steps, recomputed on every keystroke, hence memoized. A memo that misses
 // its invalidation shows stale state, worse than slow in a product whose subject
 // is exactly that.
-describe('l’aperçu de ce que lit l’agent reste à jour', () => {
+describe('the preview of what the agent reads stays current', () => {
   function apercu(): string {
     const pre = [...root.querySelectorAll('pre')].find((p) => p.textContent?.includes('TASK ID'))
     return pre?.textContent ?? ''
   }
 
-  it('suit la moindre écriture', async () => {
+  it('follows the slightest write', async () => {
     await open({ steps: steps(3) })
     expect(apercu()).toContain('3 steps logged')
 
@@ -358,7 +358,7 @@ describe('l’aperçu de ce que lit l’agent reste à jour', () => {
     expect(apercu()).toContain('Ran one more shard')
   })
 
-  it('suit un changement de cahier', async () => {
+  it('follows a change of task', async () => {
     await open({ id: 'un', title: 'Premier', steps: steps(1) })
     expect(apercu()).toContain('Premier')
 
@@ -372,8 +372,8 @@ describe('l’aperçu de ce que lit l’agent reste à jour', () => {
  * The export carries the evidence as it is. The README said so; the screen did
  * not, and the screen is what you read before clicking.
  */
-describe('l’export dit ce qu’il emporte', () => {
-  it('nomme les preuves, et ce qui ne peut pas partir', async () => {
+describe('the export says what it carries away', () => {
+  it('names the evidence, and what cannot leave', async () => {
     await open({ steps: steps(2) })
 
     const panneau = [...root.querySelectorAll('details')]

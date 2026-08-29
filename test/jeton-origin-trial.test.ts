@@ -25,8 +25,8 @@ function fabriquer(charge: Record<string, unknown>, version = 3): string {
 const DANS_UN_AN = Math.floor(Date.now() / 1000) + 365 * 24 * 3600
 const VALIDE = { origin: 'https://keydler.com:443', feature: 'WebMCP', expiry: DANS_UN_AN }
 
-describe('la lecture d’un jeton', () => {
-  it('rend l’origine, la fonctionnalité et l’expiration', () => {
+describe('reading a token', () => {
+  it('returns the origin, the feature and the expiry', () => {
     const j = lireJeton(fabriquer(VALIDE))
     expect(j.error).toBeUndefined()
     expect(j.origine).toBe('https://keydler.com:443')
@@ -37,11 +37,11 @@ describe('la lecture d’un jeton', () => {
     expect(j.expire?.getTime()).toBe(DANS_UN_AN * 1000)
   })
 
-  it('lit aussi la version 2', () => {
+  it('reads version 2 as well', () => {
     expect(lireJeton(fabriquer(VALIDE, 2)).fonctionnalite).toBe('WebMCP')
   })
 
-  it('tient `isSubdomain` absent pour faux', () => {
+  it('treats a missing `isSubdomain` as false', () => {
     // Subdomain coverage has to be asked for explicitly at registration.
     // Assuming it comes for free would suggest that a token for keydler.com
     // covers www.keydler.com. It does not cover it.
@@ -49,37 +49,37 @@ describe('la lecture d’un jeton', () => {
     expect(lireJeton(fabriquer({ ...VALIDE, isSubdomain: true })).sousDomaines).toBe(true)
   })
 
-  it('signale un jeton « third-party »', () => {
+  it('flags a “third-party” token', () => {
     // Those are only good injected from a third-party script. In a page's own
     // HTML they activate nothing, and say nothing.
     expect(lireJeton(fabriquer({ ...VALIDE, isThirdParty: true })).tiers).toBe(true)
   })
 })
 
-describe('ce que la lecture refuse', () => {
+describe('what reading refuses', () => {
   const mauvais: [string, string][] = [
     ['du texte qui n’est pas un jeton', 'pas-un-jeton'],
     ['une chaîne vide', ''],
     ['un jeton tronqué', fabriquer(VALIDE).slice(0, 40)],
   ]
 
-  it.each(mauvais)('refuse %s', (_nom, value) => {
+  it.each(mauvais)('refuses %s', (_nom, value) => {
     expect(lireJeton(value).error).toBeDefined()
   })
 
-  it('refuse une version inconnue', () => {
+  it('refuses an unknown version', () => {
     expect(lireJeton(fabriquer(VALIDE, 9)).error).toMatch(/version/)
   })
 
-  it('refuse une longueur de charge utile incohérente', () => {
+  it('refuses an inconsistent payload length', () => {
     const octets = depuisBase64(fabriquer(VALIDE))
     new DataView(octets.buffer).setUint32(65, 9_999, false)
     expect(lireJeton(enBase64(octets)).error).toMatch(/longueur/)
   })
 })
 
-describe('la lecture de la variable d’environnement', () => {
-  it('accepte plusieurs jetons, séparés par virgule ou saut de ligne', () => {
+describe('reading the environment variable', () => {
+  it('accepts several tokens, separated by comma or newline', () => {
     // One origin, one token: keydler.com and keydler.pages.dev are two of them.
     // Chrome reads every tag and keeps the one that matches.
     expect(tokensDe('a,b')).toEqual(['a', 'b'])
@@ -87,7 +87,7 @@ describe('la lecture de la variable d’environnement', () => {
     expect(tokensDe('  a , b  ')).toEqual(['a', 'b'])
   })
 
-  it('ne fabrique pas de jeton vide à partir de rien', () => {
+  it('makes no empty token out of nothing', () => {
     // A `content=""` tag would be worse than no tag at all: it would give the
     // impression that the token is in place.
     for (const rien of [undefined, '', '   ', ',', '\n,\n']) {

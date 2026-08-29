@@ -35,8 +35,8 @@ function writeOldStyle(db: IDBDatabase, task: TaskState): Promise<void> {
   })
 }
 
-describe('un cahier écrit avant l’index reste protégé', () => {
-  it('migre, puis refuse une écriture périmée et dit la version réelle', async () => {
+describe('a log written before the index stays protected', () => {
+  it('migrates, then refuses a stale write and says the real version', async () => {
     const installed: TaskState = { ...buildCoreTask(), id: 'ancien', version: 7 }
 
     const vieille = await ancienneBase()
@@ -67,7 +67,7 @@ describe('un cahier écrit avant l’index reste protégé', () => {
   // take the versionless path. A missing key is therefore a task deleted elsewhere,
   // and letting it through resurrected it with all its steps and its evidence, but
   // without its sealed credentials, which really were erased.
-  it('refuse de ressusciter un cahier supprimé, et ne le recrée pas', async () => {
+  it('refuses to resurrect a deleted log, and does not recreate it', async () => {
     const installed: TaskState = { ...buildCoreTask(), id: 'supprime', version: 3 }
     await saveTask(installed)
     expect((await loadTask('supprime'))?.version).toBe(3)
@@ -81,7 +81,7 @@ describe('un cahier écrit avant l’index reste protégé', () => {
     expect(await loadTask('supprime')).toBeUndefined()
   })
 
-  it('laisse passer une création, qui ne porte aucune version attendue', async () => {
+  it('lets a creation through, since it carries no expected version', async () => {
     const neuf: TaskState = { ...buildCoreTask(), id: 'jamais-vu', version: 1 }
     await saveTask(neuf)
     expect((await loadTask('jamais-vu'))?.version).toBe(1)

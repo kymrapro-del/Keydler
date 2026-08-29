@@ -23,8 +23,8 @@ async function clearVault() {
 
 beforeEach(clearVault)
 
-describe('scellement', () => {
-  it('ne laisse pas la valeur en clair dans ce qui est conservé', async () => {
+describe('sealing', () => {
+  it('keeps no plaintext value in what it stores', async () => {
     const sealed = await seal('AIzaSyD-secret-value-0123456789', 'correct horse battery')
 
     const serialised = JSON.stringify(sealed)
@@ -33,17 +33,17 @@ describe('scellement', () => {
     expect(sealed.iterations).toBeGreaterThanOrEqual(600_000)
   })
 
-  it('rend la valeur d’origine avec la bonne phrase', async () => {
+  it('returns the original value with the right passphrase', async () => {
     const sealed = await seal('AIzaSyD-secret-value-0123456789', 'correct horse battery')
     expect(await unseal(sealed, 'correct horse battery')).toBe('AIzaSyD-secret-value-0123456789')
   })
 
-  it('refuse une phrase erronée plutôt que de rendre du charabia', async () => {
+  it('refuses a wrong passphrase rather than returning gibberish', async () => {
     const sealed = await seal('AIzaSyD-secret-value', 'correct horse battery')
     await expect(unseal(sealed, 'wrong horse battery')).rejects.toBeInstanceOf(WrongPassphraseError)
   })
 
-  it('tire un sel et un vecteur neufs à chaque scellement', async () => {
+  it('draws a fresh salt and a fresh vector for every sealing', async () => {
     const a = await seal('same value', 'same passphrase')
     const b = await seal('same value', 'same passphrase')
 
@@ -52,16 +52,16 @@ describe('scellement', () => {
     expect(a.ciphertext).not.toBe(b.ciphertext)
   })
 
-  it('supporte une valeur non ASCII sans la corrompre', async () => {
+  it('carries a non-ASCII value without corrupting it', async () => {
     const value = 'clé-secrète-🔐-Ω'
     expect(await unseal(await seal(value, 'passphrase!'), 'passphrase!')).toBe(value)
   })
 })
 
-describe('coffre', () => {
+describe('vault', () => {
   const task = 'task-abc'
 
-  it('conserve un secret et n’en rend que le nom', async () => {
+  it('stores a secret and gives back only its name', async () => {
     const created = await addSecret({
       taskId: task,
       name: 'gemini-api-key',
@@ -83,7 +83,7 @@ describe('coffre', () => {
     expect(JSON.stringify(listed)).not.toContain('AIzaSyD-real-looking-key-value')
   })
 
-  it('ne rend la valeur qu’avec la phrase, et jamais sans', async () => {
+  it('gives the value back only with the passphrase, never without', async () => {
     const { id } = await addSecret({
       taskId: task,
       name: 'gemini-api-key',
@@ -96,7 +96,7 @@ describe('coffre', () => {
     expect(await revealSecret(id, 'correct horse battery')).toBe('AIzaSyD-real-looking-key-value')
   })
 
-  it('sépare les cahiers', async () => {
+  it('keeps notebooks apart', async () => {
     await addSecret({
       taskId: 'task-a',
       name: 'key-a',
@@ -116,7 +116,7 @@ describe('coffre', () => {
     expect((await listSecretNames('task-b')).map((s) => s.name)).toEqual(['key-b'])
   })
 
-  it('supprime un secret, et tous ceux d’un cahier', async () => {
+  it('deletes one secret, and every secret of a notebook', async () => {
     const { id } = await addSecret({
       taskId: task,
       name: 'one',
@@ -139,7 +139,7 @@ describe('coffre', () => {
     expect(await listSecretNames(task)).toEqual([])
   })
 
-  it('trie par nom, pour que l’agent lise une liste stable', async () => {
+  it('sorts by name, so the agent reads a stable list', async () => {
     for (const name of ['zeta-key', 'alpha-key', 'mid-key']) {
       await addSecret({
         taskId: task,
@@ -160,20 +160,20 @@ describe('coffre', () => {
 describe('validation', () => {
   const base = { taskId: 't', purpose: 'p', value: 'v', passphrase: 'passphrase' }
 
-  it('exige un nom citable tel quel par un agent', async () => {
+  it('requires a name an agent can quote as it stands', async () => {
     for (const name of ['', '   ', 'has space', 'a'.repeat(65), '-leading', 'quote"']) {
       await expect(addSecret({ ...base, name })).rejects.toBeInstanceOf(ValidationError)
     }
     await expect(addSecret({ ...base, name: 'gemini-api-key' })).resolves.toBeTruthy()
   })
 
-  it('exige un usage : un nom seul n’apprend rien à l’agent', async () => {
+  it('requires a purpose: a name alone teaches the agent nothing', async () => {
     await expect(addSecret({ ...base, name: 'k', purpose: '  ' })).rejects.toBeInstanceOf(
       ValidationError,
     )
   })
 
-  it('refuse une valeur vide ou démesurée', async () => {
+  it('refuses an empty or oversized value', async () => {
     await expect(addSecret({ ...base, name: 'k', value: '' })).rejects.toBeInstanceOf(
       ValidationError,
     )
@@ -182,20 +182,20 @@ describe('validation', () => {
     ).rejects.toBeInstanceOf(ValidationError)
   })
 
-  it('refuse une phrase de passe trop courte', async () => {
+  it('refuses a passphrase that is too short', async () => {
     await expect(addSecret({ ...base, name: 'k', passphrase: 'short' })).rejects.toBeInstanceOf(
       ValidationError,
     )
   })
 })
 
-describe('syntaxe de référence', () => {
-  it('donne à l’agent la forme exacte à écrire', () => {
+describe('reference syntax', () => {
+  it('gives the agent the exact form to write', () => {
     expect(referenceSyntax('gemini-api-key')).toBe('${gemini-api-key}')
   })
 })
 
-describe('un nom, un identifiant', () => {
+describe('one name, one credential', () => {
   const base = {
     taskId: 'task-unique',
     purpose: 'Gemini calls',
@@ -203,7 +203,7 @@ describe('un nom, un identifiant', () => {
     passphrase: 'correct horse battery',
   }
 
-  it('refuse un second identifiant qui porterait le même nom', async () => {
+  it('refuses a second credential that would carry the same name', async () => {
     await addSecret({ ...base, name: 'gemini-api-key' })
 
     // ${gemini-api-key} is the only thing the agent receives. Two entries under
@@ -215,27 +215,27 @@ describe('un nom, un identifiant', () => {
     expect((await listSecretNames(base.taskId)).length).toBe(1)
   })
 
-  it('compare les noms sans tenir compte de la casse', async () => {
+  it('compares names without regard to case', async () => {
     await addSecret({ ...base, name: 'gemini-api-key' })
     await expect(addSecret({ ...base, name: 'GEMINI-API-KEY' })).rejects.toBeInstanceOf(
       DuplicateSecretNameError,
     )
   })
 
-  it('laisse le même nom vivre dans un autre cahier', async () => {
+  it('lets the same name live in another notebook', async () => {
     await addSecret({ ...base, name: 'gemini-api-key' })
     await addSecret({ ...base, taskId: 'another-task', name: 'gemini-api-key' })
     expect((await listSecretNames('another-task')).length).toBe(1)
   })
 
-  it('dit qu’une phrase est trop courte, pas trop longue', async () => {
+  it('says a passphrase is too short, not too long', async () => {
     const error = await addSecret({ ...base, name: 'k', passphrase: 'short' }).catch((e) => e)
     expect(error).toBeInstanceOf(ValidationError)
     expect((error as ValidationError).code).toBe('too-short')
   })
 })
 
-describe('toute nature de secret, pas seulement une clé d’API', () => {
+describe('every kind of secret, not only an API key', () => {
   const PEM = `-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDExampleNotReal
 b25lIGxpbmUgdHdvIGxpbmUgdGhyZWUgbGluZSBmb3VyIGxpbmUgZml2ZSBsaW5l
@@ -247,7 +247,7 @@ b25lIGxpbmUgdHdvIGxpbmUgdGhyZWUgbGluZSBmb3VyIGxpbmUgZml2ZSBsaW5l
     passphrase: 'correct horse battery',
   }
 
-  it('accepte chaque nature déclarée, et refuse une nature inventée', async () => {
+  it('accepts every declared kind, and refuses an invented one', async () => {
     for (const kind of SECRET_KINDS) {
       const named = await addSecret({
         ...base,
@@ -264,7 +264,7 @@ b25lIGxpbmUgdHdvIGxpbmUgdGhyZWUgbGluZSBmb3VyIGxpbmUgZml2ZSBsaW5l
     ).rejects.toBeInstanceOf(ValidationError)
   })
 
-  it('conserve une valeur sur plusieurs lignes, octet pour octet', async () => {
+  it('keeps a multi-line value byte for byte', async () => {
     const { id } = await addSecret({
       ...base,
       name: 'deploy-signing-key',
@@ -277,7 +277,7 @@ b25lIGxpbmUgdHdvIGxpbmUgdGhyZWUgbGluZSBmb3VyIGxpbmUgZml2ZSBsaW5l
     expect(await revealSecret(id, base.passphrase)).toBe(PEM)
   })
 
-  it('accepte une valeur bien plus longue qu’une clé d’API', async () => {
+  it('accepts a value far longer than an API key', async () => {
     const long = 'x'.repeat(MAX_SECRET_VALUE_LENGTH)
     const { id } = await addSecret({ ...base, name: 'big', kind: 'certificate', value: long })
     expect((await revealSecret(id, base.passphrase)).length).toBe(MAX_SECRET_VALUE_LENGTH)
@@ -287,7 +287,7 @@ b25lIGxpbmUgdHdvIGxpbmUgdGhyZWUgbGluZSBmb3VyIGxpbmUgZml2ZSBsaW5l
     ).rejects.toBeInstanceOf(ValidationError)
   })
 
-  it('vaut « other » pour un identifiant scellé avant que les natures existent', async () => {
+  it('reads as “other” for a credential sealed before kinds existed', async () => {
     const db = await getDb()
     await db.put('secrets', {
       id: 'legacy-1',
@@ -302,7 +302,7 @@ b25lIGxpbmUgdHdvIGxpbmUgdGhyZWUgbGluZSBmb3VyIGxpbmUgZml2ZSBsaW5l
     expect(named.kind).toBe('other')
   })
 
-  it('garde la nature quand on corrige le nom ou l’usage', async () => {
+  it('keeps the kind when the name or the purpose is corrected', async () => {
     const { id } = await addSecret({
       ...base,
       name: 'webhook',

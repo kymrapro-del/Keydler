@@ -4,15 +4,15 @@ import { buildDemoTask } from '../src/demo/seed'
 import { buildFullExport, buildTaskExport, exportFilename } from '../src/export/notebook'
 import { completeTask, logStep, recordRefusal } from '../src/domain/task'
 
-describe('export d’un cahier', () => {
-  it('montre le contenu des preuves, que la restitution compacte cache', () => {
+describe('exporting a log', () => {
+  it('shows the evidence content that the compact render hides', () => {
     const output = buildTaskExport(buildDemoTask())
     expect(output).toContain('## Attached evidence')
     expect(output).toContain('auth suite: 183 passed, 0 failed, 0 skipped')
     expect(output).toContain('bench --auth-refresh')
   })
 
-  it('rend le journal des écritures, refus compris', () => {
+  it('renders the write log, refusals included', () => {
     let task = buildMeasureTask(1)
     task = recordRefusal(task, {
       operation: 'log_step',
@@ -27,7 +27,7 @@ describe('export d’un cahier', () => {
     expect(output).toContain('`log_step`')
   })
 
-  it('n’égare pas un détail contenant une barre verticale dans le tableau', () => {
+  it('does not lose a detail holding a vertical bar in the table', () => {
     let task = buildMeasureTask(2)
     task = logStep(
       task,
@@ -40,7 +40,7 @@ describe('export d’un cahier', () => {
     expect(line).toBeDefined()
   })
 
-  it('joint l’état complet, pour rejouer ou vérifier', () => {
+  it('attaches the full state, to replay or to check', () => {
     const task = buildMeasureTask(3)
     const output = buildTaskExport(task)
     const json = output.split('```json\n')[1].split('\n```')[0]
@@ -48,18 +48,18 @@ describe('export d’un cahier', () => {
     expect(JSON.parse(json).version).toBe(task.version)
   })
 
-  it('récolte tous les cahiers d’un appareil en un fichier', () => {
+  it('gathers every log on a device into one file', () => {
     const tasks = [buildMeasureTask(1), buildMeasureTask(2), buildMeasureTask(3)]
     const output = buildFullExport(tasks)
     expect(output).toContain('# 3 logs from Keydler')
     for (const t of tasks) expect(output).toContain(t.title)
   })
 
-  it('dit clairement qu’il n’y a rien à récolter', () => {
+  it('says plainly that there is nothing to gather', () => {
     expect(buildFullExport([])).toContain('No Keydler log')
   })
 
-  it('ne laisse pas une preuve refermer le bloc qui la contient', () => {
+  it('does not let evidence close the block that holds it', () => {
     let task = buildMeasureTask(4)
     task = logStep(
       task,
@@ -77,13 +77,13 @@ describe('export d’un cahier', () => {
     expect(output).toContain('````\n```\n# Faux titre injecté\n```\n````')
   })
 
-  it('survit à un horodatage hors plage plutôt que d’emporter tout l’export', () => {
+  it('survives an out-of-range timestamp rather than taking the export down', () => {
     const task = { ...buildMeasureTask(5), updatedAt: 1e20 }
     expect(() => buildTaskExport(task)).not.toThrow()
     expect(buildTaskExport(task)).toContain('unreadable timestamp')
   })
 
-  it('donne un nom de fichier stable et sans caractère hasardeux', () => {
+  it('gives a stable filename with no risky character', () => {
     const task = buildMeasureTask(5)
     const nom = exportFilename(task)
     expect(nom).toMatch(/^keydler-[a-z0-9-]+-v\d+\.md$/)
@@ -91,8 +91,8 @@ describe('export d’un cahier', () => {
   })
 })
 
-describe('export : cas limites', () => {
-  it('omet les sections vides plutôt que d’afficher des titres creux', () => {
+describe('export: edge cases', () => {
+  it('omits empty sections rather than showing hollow headings', () => {
     const nu = { ...buildMeasureTask(1), steps: [], audit: [], decisions: [] }
     const output = buildTaskExport(nu)
     expect(output).not.toContain('## Attached evidence')
@@ -100,7 +100,7 @@ describe('export : cas limites', () => {
     expect(output).toContain('## Full state')
   })
 
-  it('rend le résumé final d’une tâche close', () => {
+  it('renders the closing summary of a completed task', () => {
     const task = completeTask(
       buildMeasureTask(2),
       { summary: 'Approche retenue et livrée.', basedOnVersion: buildMeasureTask(2).version },
@@ -111,7 +111,7 @@ describe('export : cas limites', () => {
     expect(output).toContain('Approche retenue et livrée.')
   })
 
-  it('marque une preuve validée par un humain, et une autre non', () => {
+  it('marks one piece of evidence as checked by a human, and another not', () => {
     let task = buildDemoTask()
     const output = buildTaskExport(task)
     expect(output).toContain('- Checked by a human: no')

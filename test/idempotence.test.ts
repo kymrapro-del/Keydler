@@ -12,8 +12,8 @@ beforeEach(async () => {
   await clearDatabase()
 })
 
-describe('rejeu d’un même appel', () => {
-  it('n’écrit qu’une fois et rend la réponse du premier appel, mot pour mot', async () => {
+describe('replay of the same call', () => {
+  it('writes once and returns the answer of the first call, word for word', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
     const args = writeArgs(task, { action: 'Lu le module', result: 'trois entrées' }, id)
@@ -32,7 +32,7 @@ describe('rejeu d’un même appel', () => {
     expect(textOf(second)).toContain(`VERSION     ${task.version + 1}`)
   })
 
-  it('dit que c’est un rejeu, plutôt que de le laisser croire à un doublon', async () => {
+  it('says it is a replay, rather than letting it believe in a duplicate', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const args = writeArgs(task, { action: 'a', result: 'b' })
 
@@ -43,7 +43,7 @@ describe('rejeu d’un même appel', () => {
     expect(textOf(rejeu)).toContain('Nothing was written twice')
   })
 
-  it('passe AVANT le contrôle de version, sinon il ne servirait jamais', async () => {
+  it('runs BEFORE the version check, or it would never serve', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const args = writeArgs(task, { action: 'a', result: 'b' })
     await call(logStep, args)
@@ -57,7 +57,7 @@ describe('rejeu d’un même appel', () => {
     expect(currentTask().steps).toHaveLength(1)
   })
 
-  it('ne confond pas deux écritures distinctes au contenu identique', async () => {
+  it('does not confuse two distinct writes with identical content', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
 
     await call(logStep, writeArgs(task, { action: 'Relancé les tests', result: 'ok' }))
@@ -73,7 +73,7 @@ describe('rejeu d’un même appel', () => {
     expect(currentTask().steps).toHaveLength(2)
   })
 
-  it('refuse de rendre la réponse d’une autre opération sous le même jeton', async () => {
+  it('refuses to return the answer of another operation under the same token', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
@@ -92,7 +92,7 @@ describe('rejeu d’un même appel', () => {
     expect(currentTask().decisions).toHaveLength(0)
   })
 
-  it('ne consomme pas le jeton d’une écriture refusée', async () => {
+  it('does not consume the token of a refused write', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
 
@@ -113,7 +113,7 @@ describe('rejeu d’un même appel', () => {
     expect(currentTask().steps).toHaveLength(1)
   })
 
-  it('survit à un rechargement de la page', async () => {
+  it('survives a page reload', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const args = writeArgs(task, { action: 'a', result: 'b' })
     const first = await call(logStep, args)
@@ -127,7 +127,7 @@ describe('rejeu d’un même appel', () => {
     expect(currentTask().steps).toHaveLength(1)
   })
 
-  it('borne sa mémoire, et retombe alors sur un refus lisible plutôt qu’un doublon', async () => {
+  it('bounds its memory, and then falls back on a readable refusal rather than a duplicate', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const first = mutationId()
     await call(logStep, writeArgs(task, { action: 'la toute première', result: 'r' }, first))
@@ -149,8 +149,8 @@ describe('rejeu d’un même appel', () => {
   })
 })
 
-describe('collision de mutation_id', () => {
-  it('refuse un même jeton porté par des arguments différents, sans rien écrire', async () => {
+describe('mutation_id collision', () => {
+  it('refuses the same token carried by different arguments, writing nothing', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
 
@@ -171,7 +171,7 @@ describe('collision de mutation_id', () => {
     expect(currentTask().steps[0].action).toBe('Lu le module')
   })
 
-  it('rejoue quand les arguments sont les mêmes à l’ordre des clés près', async () => {
+  it('replays when the arguments are the same up to key order', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
 
@@ -196,7 +196,7 @@ describe('collision de mutation_id', () => {
     expect(currentTask().steps).toHaveLength(1)
   })
 
-  it('ignore les écarts que la validation efface de toute façon', async () => {
+  it('ignores the differences validation erases anyway', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
 
@@ -212,7 +212,7 @@ describe('collision de mutation_id', () => {
     expect(currentTask().steps).toHaveLength(1)
   })
 
-  it('distingue une collision d’arguments d’une collision d’opération', async () => {
+  it('tells an argument collision from an operation collision', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
@@ -237,7 +237,7 @@ describe('collision de mutation_id', () => {
     expect(currentTask().steps).toHaveLength(1)
   })
 
-  it('inscrit la collision au journal, sans mutation ni changement de version', async () => {
+  it('records the collision in the log, with no mutation and no version change', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'Lu le module', result: 'ok' }, id))
@@ -262,7 +262,7 @@ describe('collision de mutation_id', () => {
     expect(last.versionBefore).toBe(last.versionAfter)
   })
 
-  it('inscrit aussi la réutilisation pour un autre outil', async () => {
+  it('records the reuse for another tool too', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
@@ -281,7 +281,7 @@ describe('collision de mutation_id', () => {
     expect(currentTask().version).toBe(before.version)
   })
 
-  it('ne salit pas le journal pour un rejeu, qui n’est le refus de rien', async () => {
+  it('does not dirty the log for a replay, which refuses nothing', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const args = writeArgs(task, { action: 'a', result: 'b' })
     await call(logStep, args)
@@ -292,7 +292,7 @@ describe('collision de mutation_id', () => {
     expect(currentTask().audit).toHaveLength(before)
   })
 
-  it('n’accepte pas un enregistrement sans empreinte comme base de rejeu', async () => {
+  it('does not accept a record without a fingerprint as a basis for replay', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))

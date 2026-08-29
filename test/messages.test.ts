@@ -8,8 +8,8 @@ import {
 import { escapeHtml } from '../src/ui/escape'
 import { humanMessage, humanReason } from '../src/ui/messages'
 
-describe('messages destinés à l’humain', () => {
-  it('n’ordonne jamais à une personne d’appeler resume_task', () => {
+describe('messages meant for the human', () => {
+  it('never orders a person to call resume_task', () => {
     const messages = [
       humanMessage(new StaleStateError(5, 6), 'Adding the rule'),
       humanMessage(new ConcurrentWriteError(5, 6), 'Adding the rule'),
@@ -25,14 +25,14 @@ describe('messages destinés à l’humain', () => {
     }
   })
 
-  it('explique un conflit entre onglets en disant quoi faire', () => {
+  it('explains a conflict between tabs by saying what to do', () => {
     const m = humanMessage(new ConcurrentWriteError(5, 6), 'Adding the rule')
     expect(m).toContain('another tab')
     expect(m).toContain('version 6')
     expect(m).toContain('try again')
   })
 
-  it('nomme l’action qui a échoué', () => {
+  it('names the action that failed', () => {
     const m = humanMessage(
       new ValidationError('rule', 'must not be empty.', { code: 'empty' }),
       'Lifting the rule',
@@ -40,7 +40,7 @@ describe('messages destinés à l’humain', () => {
     expect(m.startsWith('Lifting the rule')).toBe(true)
   })
 
-  it('reformule les refus qu’une personne peut réellement déclencher', () => {
+  it('rewords the refusals a person can actually trigger', () => {
     const cas: Array<[ValidationError, string]> = [
       [
         new ValidationError('reason', 'must not be empty.', { code: 'empty' }),
@@ -74,7 +74,7 @@ describe('messages destinés à l’humain', () => {
     for (const [error, attendu] of cas) expect(humanReason(error)).toBe(attendu)
   })
 
-  it('couvre chaque code sans laisser passer le texte de l’agent', () => {
+  it('covers every code without letting the agent text through', () => {
     const codes: ValidationCode[] = [
       'empty',
       'too-long',
@@ -99,35 +99,35 @@ describe('messages destinés à l’humain', () => {
     }
   })
 
-  it('nomme un champ inconnu sans planter', () => {
+  it('names an unknown field without crashing', () => {
     const m = humanReason(
       new ValidationError('champInedit', 'must not be empty.', { code: 'empty' }),
     )
     expect(m).toContain('“champInedit”')
   })
 
-  it('rend une panne de stockage actionnable', () => {
+  it('makes a storage failure actionable', () => {
     const m = humanMessage(new Error('STORAGE UNAVAILABLE\nquota'), 'Adding')
     expect(m).toContain('Private browsing')
     expect(m).not.toContain('STORAGE UNAVAILABLE')
   })
 })
 
-describe('échappement', () => {
-  it('neutralise les guillemets, qui sortiraient d’un attribut', () => {
+describe('escaping', () => {
+  it('neutralises the quotes that would break out of an attribute', () => {
     expect(escapeHtml('x" onload="alert(1)')).toBe('x&quot; onload=&quot;alert(1)')
     expect(escapeHtml("x' onload='alert(1)")).toBe('x&#39; onload=&#39;alert(1)')
   })
 
-  it('neutralise une balise en position de contenu', () => {
+  it('neutralises a tag in content position', () => {
     expect(escapeHtml('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;')
   })
 
-  it('échappe l’esperluette en premier, sans double échappement', () => {
+  it('escapes the ampersand first, with no double escaping', () => {
     expect(escapeHtml('&lt;')).toBe('&amp;lt;')
   })
 
-  it('laisse un texte ordinaire intact', () => {
+  it('leaves ordinary text untouched', () => {
     expect(escapeHtml('Ne jamais modifier le schéma')).toBe('Ne jamais modifier le schéma')
   })
 })

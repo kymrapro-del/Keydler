@@ -17,7 +17,7 @@ import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { call, clearDatabase, currentTask, textOf, waitUntil, writeArgs } from './helpers'
 
-describe('une attente d’autorisation pendant que tout bouge', () => {
+describe('an approval wait while everything else moves', () => {
   beforeEach(async () => {
     __setApprovalTimeout(400)
     store.__resetStore()
@@ -31,7 +31,7 @@ describe('une attente d’autorisation pendant que tout bouge', () => {
     store.__resetStore()
   })
 
-  it('ne prétend pas à un accord quand la tâche est supprimée sous elle', async () => {
+  it('claims no agreement when the task is deleted under it', async () => {
     const pending = call(
       requestApprovalTool,
       writeArgs(currentTask(), { action: 'Do it', why: 'risky' }),
@@ -45,7 +45,7 @@ describe('une attente d’autorisation pendant que tout bouge', () => {
     expect(textOf(result)).not.toContain('ALLOWED')
   })
 
-  it('ne prétend pas à un accord quand on passe à un autre cahier', async () => {
+  it('claims no agreement when you switch to another notebook', async () => {
     const pending = call(
       requestApprovalTool,
       writeArgs(currentTask(), { action: 'Do it', why: 'risky' }),
@@ -58,8 +58,8 @@ describe('une attente d’autorisation pendant que tout bouge', () => {
   })
 })
 
-describe('chaînes d’annulation', () => {
-  it('remonte une suite de corrections d’un champ, une par une', () => {
+describe('undo chains', () => {
+  it('walks back a run of corrections to one field, one at a time', () => {
     let task = buildCoreTask()
     const title = task.title
     const but = task.goal
@@ -76,22 +76,22 @@ describe('chaînes d’annulation', () => {
     expect(undoable(task)).toBeNull()
   })
 
-  it('ne propose plus rien après avoir tout rendu', () => {
+  it('offers nothing more once everything is given back', () => {
     let task = renameTask(buildCoreTask(), 'Second name')
     task = undoLastSupervision(task)
     expect(undoable(task)).toBeNull()
     expect(() => undoLastSupervision(task)).toThrow()
   })
 
-  it('s’arrête net devant une écriture d’agent', () => {
+  it('stops dead at an agent write', () => {
     let task = renameTask(buildCoreTask(), 'Second name')
     task = addConstraint(task, { rule: 'An agent rule', basedOnVersion: null }, 'agent')
     expect(undoable(task)).toBeNull()
   })
 })
 
-describe('bornes des surfaces récentes', () => {
-  it('le résumé de ce qui attend reste court quel que soit le nombre', () => {
+describe('bounds of the recent surfaces', () => {
+  it('keeps the summary of what is waiting short, whatever the count', () => {
     let task = buildCoreTask()
     for (let i = 0; i < 200; i++) {
       task = addConstraint(task, { rule: `Proposed rule ${i}`, basedOnVersion: null }, 'agent')
@@ -100,7 +100,7 @@ describe('bornes des surfaces récentes', () => {
     expect(summary.length).toBeLessThan(70)
   })
 
-  it('le but survit à une clôture, et reste annulable après réouverture', () => {
+  it('carries the goal through a closing, and keeps it undoable after a reopening', () => {
     const installed = setGoal(buildCoreTask(), 'Ship it')
     const clos = completeTask(installed, { summary: 'Done', basedOnVersion: null }, 'human')
     expect(clos.goal).toBe('Ship it')
@@ -108,7 +108,7 @@ describe('bornes des surfaces récentes', () => {
     expect(() => setGoal(clos, 'Another goal')).not.toThrow()
   })
 
-  it('l’histoire d’une proposition acceptée nomme la décision', () => {
+  it('names the decision in the history of an accepted proposal', () => {
     const proposed = addConstraint(
       buildCoreTask(),
       { rule: 'A proposed rule', basedOnVersion: null },
@@ -121,7 +121,7 @@ describe('bornes des surfaces récentes', () => {
   })
 })
 
-describe('le filtre de recherche entre deux cahiers', () => {
+describe('the search filter between two notebooks', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -146,7 +146,7 @@ describe('le filtre de recherche entre deux cahiers', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('ne garde pas un filtre d’une tâche à l’autre', async () => {
+  it('does not carry a filter from one task to the next', async () => {
     const field = root.querySelector<HTMLInputElement>('#search')!
     field.value = 'token'
     field.dispatchEvent(new Event('input', { bubbles: true }))

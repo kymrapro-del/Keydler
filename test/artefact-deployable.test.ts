@@ -12,14 +12,14 @@ const scripts = paquet.scripts
 
 const PRODUISENT_DIST = ['build', 'build:trial']
 
-describe('les scripts qui produisent dist/', () => {
-  it.each(PRODUISENT_DIST)('%s fait les deux substitutions', (nom) => {
+describe('the scripts that produce dist/', () => {
+  it.each(PRODUISENT_DIST)('%s makes both substitutions', (nom) => {
     const script = scripts[nom]
     expect(script, nom).toContain('scripts/precache.mjs')
     expect(script, nom).toContain('scripts/headers.mjs')
   })
 
-  it.each(PRODUISENT_DIST)('%s les fait APRÈS vite build', (nom) => {
+  it.each(PRODUISENT_DIST)('%s makes them AFTER vite build', (nom) => {
     // Order is everything: substituting before building substitutes nothing.
     const script = scripts[nom]
     const construction = script.indexOf('vite build')
@@ -28,7 +28,7 @@ describe('les scripts qui produisent dist/', () => {
     expect(script.indexOf('scripts/headers.mjs'), nom).toBeGreaterThan(construction)
   })
 
-  it('aucun autre script ne construit dist/ en contournant les substitutions', () => {
+  it('leaves no other script building dist/ around the substitutions', () => {
     const contournent = Object.entries(scripts).filter(
       ([nom, corps]) =>
         nom !== 'check' &&
@@ -40,21 +40,21 @@ describe('les scripts qui produisent dist/', () => {
 })
 
 describe('npm run check', () => {
-  it('ne laisse pas derrière lui un dist/ à moitié construit', () => {
+  it('leaves no half-built dist/ behind', () => {
     // It used to end with a bare `vite build`. A `dist/` that looked complete
     // stayed on disk, and nothing told that folder apart from a good one.
     expect(scripts.check).not.toMatch(/(^|&&\s*)(ALLOW_NO_ORIGIN_TRIAL=1 )?vite build\s*$/)
     expect(scripts.check).toContain('npm run build')
   })
 
-  it('fait tourner le garde d’artefact', () => {
+  it('runs the artefact guard', () => {
     expect(scripts.check).toContain('npm run artefact')
     expect(scripts.artefact).toContain('scripts/artefact.mjs')
   })
 })
 
-describe('les gabarits que la construction doit réécrire', () => {
-  it('le service worker part d’un nom de cache reconnaissable comme non substitué', () => {
+describe('the templates the build must rewrite', () => {
+  it('the service worker starts from a cache name recognisable as unsubstituted', () => {
     // `artefact.mjs` refuses any name ending in `-dev`. If the template
     // changed to a normal looking name, the guard would no longer catch an
     // unsubstituted artefact going past.
@@ -63,14 +63,14 @@ describe('les gabarits que la construction doit réécrire', () => {
     expect(cache!.endsWith('-dev')).toBe(true)
   })
 
-  it('le service worker ne précharge aucun fichier empreinté avant substitution', () => {
+  it('the service worker precaches no fingerprinted file before substitution', () => {
     // The guard recognises a substituted artefact by SHELL citing files from
     // /assets/. If the template already cited some, it could no longer do so.
     const shell = /const SHELL = (\[[^\]]*\])/.exec(gabaritSw)?.[1] ?? ''
     expect([...shell.matchAll(/['"](\/assets\/[^'"]+)['"]/g)]).toHaveLength(0)
   })
 
-  it('la politique part d’un marqueur, jamais d’une empreinte en dur', () => {
+  it('the policy starts from a marker, never from a hard-coded hash', () => {
     // A hash written by hand in `public/_headers` would survive a missing
     // substitution with nothing to report it, and would silently drift from
     // the script actually built.

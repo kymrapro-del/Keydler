@@ -31,20 +31,20 @@ afterEach(() => {
   history.replaceState(null, '', '/')
 })
 
-describe('voir ce qu’un agent lit, sans agent', () => {
-  it('reste replié : ce n’est pas ce qu’on regarde d’abord', () => {
+describe('seeing what an agent reads, without an agent', () => {
+  it('stays collapsed: it is not what you look at first', () => {
     expect(inspector()).not.toBeNull()
     expect(inspector()!.hasAttribute('open')).toBe(false)
   })
 
-  it('liste chaque outil livré, aucun de plus', () => {
+  it('lists every tool shipped, and no more', () => {
     const noms = [...inspector()!.querySelectorAll('[data-tool]')].map((n) =>
       n.getAttribute('data-tool'),
     )
     expect(noms.sort()).toEqual(ALL_TOOLS.map((t) => t.name).sort())
   })
 
-  it('dit lesquels lisent et lesquels écrivent', () => {
+  it('says which ones read and which ones write', () => {
     for (const tool of ALL_TOOLS) {
       const bloc = inspector()!.querySelector(`[data-tool="${tool.name}"]`)!
       const attendu = READ_TOOLS.includes(tool) ? 'reads' : 'writes'
@@ -52,25 +52,25 @@ describe('voir ce qu’un agent lit, sans agent', () => {
     }
   })
 
-  it('montre la description exacte que l’agent reçoit, pas un résumé', () => {
+  it('shows the exact description the agent receives, not a summary', () => {
     for (const tool of ALL_TOOLS) {
       const bloc = inspector()!.querySelector(`[data-tool="${tool.name}"]`)!
       expect(bloc.textContent, tool.name).toContain(tool.description)
     }
   })
 
-  it('montre le schéma d’entrée tel qu’il est déclaré', () => {
+  it('shows the input schema exactly as declared', () => {
     const logStep = inspector()!.querySelector('[data-tool="log_step"]')!
     const schema = logStep.querySelectorAll('pre')[1]!.textContent!
     expect(JSON.parse(schema)).toEqual(ALL_TOOLS.find((t) => t.name === 'log_step')!.inputSchema)
   })
 
-  it('n’injecte aucun balisage venu d’une description', () => {
+  it('injects no markup coming from a description', () => {
     expect(inspector()!.querySelector('script')).toBeNull()
     expect(inspector()!.innerHTML).not.toContain('<script')
   })
 
-  it('dit d’où vient la liste : les objets réellement enregistrés', () => {
+  it('says where the list comes from: the objects actually registered', () => {
     expect(inspector()!.textContent!.toLowerCase()).toContain('registered')
   })
 })

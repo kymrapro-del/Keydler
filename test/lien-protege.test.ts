@@ -16,8 +16,8 @@ const PHRASE = 'la phrase que je t’ai dite au téléphone'
 // A URL fragment is a bearer capability: checking an identity would need a
 // server, demanding knowledge of a secret does not. That is NOT the same thing,
 // and these tests say which of the two is held.
-describe('un lien qu’une phrase de passe protège', () => {
-  it('se rouvre avec la bonne phrase, et rend le cahier intact', async () => {
+describe('a link a passphrase protects', () => {
+  it('reopens with the right passphrase, and returns the task intact', async () => {
     const task = buildDemoTask()
     const packed = await packSealedTask(task, PHRASE)
 
@@ -29,7 +29,7 @@ describe('un lien qu’une phrase de passe protège', () => {
     expect(relu.constraints.map((c) => c.rule)).toEqual(task.constraints.map((c) => c.rule))
   })
 
-  it('refuse une phrase fausse, et le dit comme une phrase fausse', async () => {
+  it('refuses a wrong passphrase, and says so as a wrong passphrase', async () => {
     // Not "this link is unreadable": someone who has just typed a passphrase
     // has to know that the passphrase is at fault, not the link.
     const packed = await packSealedTask(buildDemoTask(), PHRASE)
@@ -38,7 +38,7 @@ describe('un lien qu’une phrase de passe protège', () => {
     )
   })
 
-  it('ne laisse rien de lisible dans le lien', async () => {
+  it('leaves nothing readable in the link', async () => {
     const task = buildDemoTask()
     const packed = await packSealedTask(task, PHRASE)
 
@@ -52,7 +52,7 @@ describe('un lien qu’une phrase de passe protège', () => {
     }
   })
 
-  it('produit un lien différent à chaque fois, sur le même cahier', async () => {
+  it('produces a different link every time, on the same task', async () => {
     // Salt and IV drawn at random: two identical links would reveal that they
     // carry the same log, to anyone who saw both go by.
     const task = buildDemoTask()
@@ -61,7 +61,7 @@ describe('un lien qu’une phrase de passe protège', () => {
     expect(plain).not.toBe(deux)
   })
 
-  it('reste sous la borne de longueur, et le dit s’il la dépasse', async () => {
+  it('stays under the length bound, and says so when it goes over', async () => {
     const packed = await packSealedTask(buildDemoTask(), PHRASE)
     expect(packed.length).toBeLessThanOrEqual(MAX_LINK_LENGTH)
 
@@ -75,31 +75,31 @@ describe('un lien qu’une phrase de passe protège', () => {
     await expect(packSealedTask(huge, PHRASE)).rejects.toThrow(/Export this task/)
   })
 
-  it('refuse une phrase vide plutôt que de sceller avec rien', async () => {
+  it('refuses an empty passphrase rather than sealing with nothing', async () => {
     await expect(packSealedTask(buildDemoTask(), '   ')).rejects.toThrow()
   })
 })
 
-describe('les deux sortes de liens ne se confondent pas', () => {
-  it('reconnaît un lien ordinaire comme non protégé', async () => {
+describe('the two kinds of link are never confused', () => {
+  it('recognises an ordinary link as unprotected', async () => {
     const packed = await packTask(buildDemoTask())
     expect(isSealedLink(packed)).toBe(false)
     expect((await unpackTask(packed)).title).toBe(buildDemoTask().title)
   })
 
-  it('refuse de desceller un lien qui n’est pas scellé', async () => {
+  it('refuses to unseal a link that is not sealed', async () => {
     const packed = await packTask(buildDemoTask())
     await expect(unsealTask(packed, PHRASE)).rejects.toBeInstanceOf(UnreadableLinkError)
   })
 
-  it('refuse d’ouvrir un lien scellé par le chemin ordinaire', async () => {
+  it('refuses to open a sealed link by the ordinary path', async () => {
     // Without this the recipient would see "unreadable link" where they should
     // be asked for a passphrase.
     const packed = await packSealedTask(buildDemoTask(), PHRASE)
     await expect(unpackTask(packed)).rejects.toBeInstanceOf(UnreadableLinkError)
   })
 
-  it('refuse un lien scellé tronqué ou bricolé', async () => {
+  it('refuses a sealed link that is truncated or tampered with', async () => {
     const packed = await packSealedTask(buildDemoTask(), PHRASE)
     await expect(unsealTask(packed.slice(0, packed.length - 40), PHRASE)).rejects.toThrow()
     await expect(unsealTask('s' + 'A'.repeat(200), PHRASE)).rejects.toBeInstanceOf(

@@ -28,15 +28,15 @@ function noStorage() {
 
 afterEach(noStorage)
 
-describe('savoir si le travail tient sur cet appareil', () => {
-  it('dit « inconnu » quand le navigateur ne répond pas là-dessus', async () => {
+describe('knowing whether the work holds on this device', () => {
+  it('says "unknown" when the browser will not answer that', async () => {
     noStorage()
     const state = await readStorage()
     expect(state.persisted).toBeNull()
     expect(state.usage).toBeNull()
   })
 
-  it('rapporte l’état et la place occupée', async () => {
+  it('reports the state and the space taken', async () => {
     fakeStorage()
     const state = await readStorage()
     expect(state.persisted).toBe(false)
@@ -44,14 +44,14 @@ describe('savoir si le travail tient sur cet appareil', () => {
     expect(state.quota).toBe(1_073_741_824)
   })
 
-  it('survit à un navigateur qui refuse la question', async () => {
+  it('survives a browser that refuses the question', async () => {
     fakeStorage({ estimate: () => Promise.reject(new Error('nope')) })
     const state = await readStorage()
     expect(state.persisted).toBe(false)
     expect(state.usage).toBeNull()
   })
 
-  it('demande la durabilité, et rend ce que le navigateur a décidé', async () => {
+  it('asks for durability, and returns what the browser decided', async () => {
     fakeStorage({ persist: () => Promise.resolve(true) })
     expect(await askForPersistence()).toBe(true)
 
@@ -62,14 +62,14 @@ describe('savoir si le travail tient sur cet appareil', () => {
     expect(await askForPersistence()).toBeNull()
   })
 
-  it('n’affirme jamais que le travail est à l’abri quand il ne l’est pas', () => {
+  it('never claims the work is safe when it is not', () => {
     const fragile: StorageState = { persisted: false, usage: 1024, quota: 2048 }
     const text = describeStorage(fragile)
     expect(text.toLowerCase()).toContain('may')
     expect(text.toLowerCase()).not.toContain('safe')
   })
 
-  it('reste prudent même quand la durabilité est accordée', () => {
+  it('stays careful even when durability is granted', () => {
     const solide: StorageState = { persisted: true, usage: 1024, quota: 2048 }
     const text = describeStorage(solide)
     // The browser promises not to clear it on its own, not that nothing will
@@ -78,19 +78,19 @@ describe('savoir si le travail tient sur cet appareil', () => {
     expect(text.toLowerCase()).toContain('you can still')
   })
 
-  it('dit son ignorance plutôt que d’inventer', () => {
+  it('says it does not know rather than inventing', () => {
     expect(describeStorage({ persisted: null, usage: null, quota: null })).toMatch(
       /cannot|unknown/i,
     )
   })
 
-  it('rend la place occupée en unités lisibles', () => {
+  it('renders the space taken in readable units', () => {
     expect(describeStorage({ persisted: true, usage: 1_048_576, quota: 0 })).toContain('1.0 MB')
     expect(describeStorage({ persisted: true, usage: 2048, quota: 0 })).toContain('2 KB')
   })
 })
 
-describe('à l’écran', () => {
+describe('on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -117,13 +117,13 @@ describe('à l’écran', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('dit sous les détails techniques où en est le stockage', async () => {
+  it('says under the technical details where storage stands', async () => {
     const details = root.querySelector('details.technical')!
     await waitUntil(() => details.textContent!.includes('MB'), 'la mesure de stockage', 3000)
     expect(details.textContent).toMatch(/may/i)
   })
 
-  it('propose de le demander, et ne le fait pas dans le dos de l’humain', async () => {
+  it("offers to ask for it, and does not do it behind the human's back", async () => {
     await waitUntil(() => !!root.querySelector('#persist'), 'le bouton', 3000)
 
     const asked = vi.fn(() => Promise.resolve(true))
@@ -137,7 +137,7 @@ describe('à l’écran', () => {
     expect(root.querySelector('details.technical')!.textContent).toMatch(/will not|won’t/i)
   })
 
-  it('dit quand le navigateur a refusé, plutôt que de ne rien faire', async () => {
+  it('says when the browser declined, rather than doing nothing', async () => {
     await waitUntil(() => !!root.querySelector('#persist'), 'le bouton', 3000)
     fakeStorage({ persist: () => Promise.resolve(false) })
 
@@ -155,7 +155,7 @@ describe('à l’écran', () => {
     expect(root.querySelector('#persist')).not.toBeNull()
   })
 
-  it('signale une page hors ligne, et seulement alors', async () => {
+  it('flags an offline page, and only then', async () => {
     expect(root.querySelector('.offline')).toBeNull()
 
     Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false })

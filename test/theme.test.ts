@@ -11,15 +11,15 @@ beforeEach(() => {
   delete document.documentElement.dataset.theme
 })
 
-describe('choix du thème', () => {
-  it('part du système, et tourne en trois états', () => {
+describe('theme choice', () => {
+  it('starts from the system, and cycles through three states', () => {
     expect(readTheme()).toBe('system')
     expect(nextTheme('system')).toBe('light')
     expect(nextTheme('light')).toBe('dark')
     expect(nextTheme('dark')).toBe('system')
   })
 
-  it('marque la racine seulement quand le choix est explicite', () => {
+  it('marks the root only when the choice is explicit', () => {
     applyTheme('dark')
     expect(document.documentElement.dataset.theme).toBe('dark')
 
@@ -30,7 +30,7 @@ describe('choix du thème', () => {
     expect(document.documentElement.dataset.theme).toBeUndefined()
   })
 
-  it('se souvient du choix, et oublie le retour au système', () => {
+  it('remembers the choice, and forgets the return to system', () => {
     applyTheme('dark')
     expect(readTheme()).toBe('dark')
 
@@ -39,7 +39,7 @@ describe('choix du thème', () => {
     expect(localStorage.getItem('watch-log.theme')).toBeNull()
   })
 
-  it('survit à un stockage refusé sans casser la page', () => {
+  it('survives refused storage without breaking the page', () => {
     const real = Storage.prototype.setItem
     Storage.prototype.setItem = () => {
       throw new Error('denied')
@@ -53,7 +53,7 @@ describe('choix du thème', () => {
     Storage.prototype.setItem = real
   })
 
-  it('tient la couleur de la barre du navigateur à jour', () => {
+  it('keeps the browser bar color current', () => {
     applyTheme('dark')
     const dark = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
     expect(dark!.content).toBe('#131316')
@@ -65,14 +65,14 @@ describe('choix du thème', () => {
     expect((metas[0] as HTMLMetaElement).content).toBe('#ffffff')
   })
 
-  it('nomme l’état en clair', () => {
+  it('names the state in plain words', () => {
     expect(themeLabel('system')).toBe('Theme: system')
     expect(themeLabel('dark')).toBe('Theme: dark')
   })
 })
 
-describe('sans flash au chargement', () => {
-  it('lit le choix avant la première peinture, dans le document lui-même', () => {
+describe('no flash on load', () => {
+  it('reads the choice before the first paint, in the document itself', () => {
     // Reading it from the module would run after the first render: the page
     // would show for a fraction of a second in the system theme.
     const head = indexRaw.slice(0, indexRaw.indexOf('</head>'))
@@ -82,7 +82,7 @@ describe('sans flash au chargement', () => {
   })
 })
 
-describe('la bascule à l’écran', () => {
+describe('the toggle on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -106,13 +106,13 @@ describe('la bascule à l’écran', () => {
     delete document.documentElement.dataset.theme
   })
 
-  it('est joignable dès le premier écran', async () => {
+  it('is reachable from the first screen', async () => {
     await settled()
     const button = root.querySelector<HTMLButtonElement>('#toggle-theme')!
     expect(button.textContent).toContain('Theme: system')
   })
 
-  it('bascule au clic, et l’annonce', async () => {
+  it('switches on click, and announces it', async () => {
     await settled()
     root.querySelector<HTMLButtonElement>('#toggle-theme')!.click()
     await settled()
@@ -124,7 +124,7 @@ describe('la bascule à l’écran', () => {
     expect(document.activeElement).toBe(button)
   })
 
-  it('reste joignable depuis un cahier ouvert', async () => {
+  it('stays reachable from an open task', async () => {
     await store.openPreparedTask(buildDemoTask())
     await settled()
     expect(root.querySelector('#toggle-theme')).not.toBeNull()

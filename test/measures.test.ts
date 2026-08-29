@@ -3,13 +3,13 @@ import { MEASURES, buildMeasureTask } from '../src/demo/measures'
 import { renderTaskState } from '../src/domain/render'
 import { activeConstraints } from '../src/domain/task'
 
-describe('cahiers de mesure', () => {
-  it('en compte huit, numérotés sans trou', () => {
+describe('measurement notebooks', () => {
+  it('counts eight of them, numbered without a gap', () => {
     expect(MEASURES).toHaveLength(8)
     expect(MEASURES.map((m) => m.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
   })
 
-  it('donne à chacun une contrainte active et une approche condamnée motivée', () => {
+  it('gives each one an active rule and a condemned approach with a reason', () => {
     for (const spec of MEASURES) {
       const task = buildMeasureTask(spec.n)
       expect(activeConstraints(task)).toHaveLength(1)
@@ -19,7 +19,7 @@ describe('cahiers de mesure', () => {
     }
   })
 
-  it('restitue à l’agent l’approche condamnée et son motif', () => {
+  it('gives the agent back the condemned approach and its reason', () => {
     for (const spec of MEASURES) {
       const output = renderTaskState(buildMeasureTask(spec.n))
       expect(output).toContain(spec.condemned)
@@ -28,23 +28,23 @@ describe('cahiers de mesure', () => {
     }
   })
 
-  it('ne souffle pas la solution dans la prochaine action', () => {
+  it('does not give the solution away in the next action', () => {
     for (const spec of MEASURES) {
       expect(spec.next.toLowerCase()).toContain('choose and implement')
     }
   })
 
-  it('rend la provenance de l’approche condamnée', () => {
+  it('renders where the condemned approach came from', () => {
     const output = renderTaskState(buildMeasureTask(1))
     expect(output).toMatch(/REJECTED: do not retry\n {2}\[human\]/)
   })
 
-  it('porte un identifiant stable, pour ne pas empiler une ligne par chargement', () => {
+  it('carries a stable id, so it does not stack one row per load', () => {
     expect(buildMeasureTask(3).id).toBe('mesure-3')
     expect(buildMeasureTask(3).id).toBe(buildMeasureTask(3).id)
   })
 
-  it('refuse un numéro inconnu plutôt que de rendre un cahier vide', () => {
+  it('refuses an unknown number rather than returning an empty notebook', () => {
     expect(() => buildMeasureTask(99)).toThrow(/99/)
   })
 })

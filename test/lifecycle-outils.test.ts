@@ -35,8 +35,8 @@ afterEach(() => {
   resetUserAgentData()
 })
 
-describe('détection de la capacité', () => {
-  it('n’autorise le retrait dynamique qu’à partir de Chromium 153', () => {
+describe('capability detection', () => {
+  it('allows dynamic removal only from Chromium 153 on', () => {
     pretendChromium(DYNAMIC_UNREGISTER_MIN_CHROMIUM)
     expect(detectLifecycle().mode).toBe('dynamic')
 
@@ -44,7 +44,7 @@ describe('détection de la capacité', () => {
     expect(detectLifecycle().mode).toBe('dynamic')
   })
 
-  it('reste statique sur les versions de la cible du concours', () => {
+  it('stays static on the versions the contest targets', () => {
     for (const v of [149, 150, 151, 152]) {
       pretendChromium(v)
       const cycle = detectLifecycle()
@@ -53,21 +53,21 @@ describe('détection de la capacité', () => {
     }
   })
 
-  it('reste statique quand la version est inconnue', () => {
+  it('stays static when the version is unknown', () => {
     resetUserAgentData()
     const cycle = detectLifecycle()
     expect(cycle.mode).toBe('static')
     expect(cycle.chromiumMajor).toBeNull()
   })
 
-  it('reste statique hors Chromium, même sur un navigateur récent', () => {
+  it('stays static outside Chromium, even on a recent browser', () => {
     pretendChromium(200, 'Firefox')
     const cycle = detectLifecycle()
     expect(cycle.mode).toBe('static')
     expect(cycle.chromiumMajor).toBeNull()
   })
 
-  it('dit sur quoi elle se fonde, puisqu’elle ne peut pas le prouver', () => {
+  it('says what it rests on, since it cannot prove it', () => {
     pretendChromium(149)
     expect(detectLifecycle().reason).toMatch(/149/)
     resetUserAgentData()
@@ -75,10 +75,10 @@ describe('détection de la capacité', () => {
   })
 })
 
-describe('mode statique : la cible du concours', () => {
+describe('static mode: the contest target', () => {
   beforeEach(() => pretendChromium(151))
 
-  it('pose le jeu correspondant à l’état INITIAL, et rien de plus', async () => {
+  it('registers the set matching the INITIAL state, and nothing more', async () => {
     const fake = installModelContext()
     await registerTools()
 
@@ -86,7 +86,7 @@ describe('mode statique : la cible du concours', () => {
     expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
-  it('pose deux outils au chargement d’une tâche déjà close', async () => {
+  it('registers two tools when loading a task that is already closed', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     await store.mutate((s) => completeTask(s, { summary: 'Clos.', basedOnVersion: null }, 'human'))
 
@@ -99,7 +99,7 @@ describe('mode statique : la cible du concours', () => {
     expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
-  it('ne retire JAMAIS un outil pendant la vie du document', async () => {
+  it('NEVER removes a tool during the life of the document', async () => {
     const fake = installModelContext()
     const ouverte = await store.createAndOpenTask('Tâche', 'Continuer')
     await registerTools()
@@ -117,7 +117,7 @@ describe('mode statique : la cible du concours', () => {
     expect(getRegistrationState().toolNames).toHaveLength(ALL_TOOLS.length)
   })
 
-  it('laisse les écritures refuser proprement sur une tâche close', async () => {
+  it('lets the writes refuse cleanly on a closed task', async () => {
     const fake = installModelContext()
     await store.createAndOpenTask('Tâche', 'Continuer')
     await registerTools()
@@ -137,7 +137,7 @@ describe('mode statique : la cible du concours', () => {
     expect(store.currentTask()!.steps).toHaveLength(0)
   })
 
-  it('ajoute en revanche les écritures quand une tâche s’ouvre', async () => {
+  it('adds the writes instead when a task opens', async () => {
     const fake = installModelContext()
     await registerTools()
     expect(fake.names()).toHaveLength(READ_TOOLS.length)
@@ -150,10 +150,10 @@ describe('mode statique : la cible du concours', () => {
   })
 })
 
-describe('mode dynamique : Chromium 153 et au-delà', () => {
+describe('dynamic mode: Chromium 153 and beyond', () => {
   beforeEach(() => pretendChromium(DYNAMIC_UNREGISTER_MIN_CHROMIUM))
 
-  it('retire les écritures à la clôture', async () => {
+  it('removes the writes at closing', async () => {
     const fake = installModelContext()
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     await registerTools()
@@ -168,7 +168,7 @@ describe('mode dynamique : Chromium 153 et au-delà', () => {
     expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
-  it('les rend à la réouverture', async () => {
+  it('hands them back at reopening', async () => {
     const fake = installModelContext()
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     await registerTools()

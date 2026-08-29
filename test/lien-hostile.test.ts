@@ -42,8 +42,8 @@ async function gzip(text: string): Promise<Uint8Array> {
   return merged
 }
 
-describe('un lien hostile', () => {
-  it('refuse une charge qui se décompresse en une masse énorme', async () => {
+describe('a hostile link', () => {
+  it('refuses a payload that decompresses into an enormous mass', async () => {
     // A "zip bomb": a payload UNDER the input bound, at gzip's maximum ratio.
     // Since the link is opened by the victim, bounding the input protects
     // nothing: it is the output that has to be bounded.
@@ -54,7 +54,7 @@ describe('un lien hostile', () => {
     await expect(unpackTask(packed)).rejects.toThrow()
   })
 
-  it('refuse une charge dont le JSON est valide mais démesuré', async () => {
+  it('refuses a payload whose JSON is valid but oversized', async () => {
     const listes = JSON.stringify({
       id: 'flood',
       title: 'Flood',
@@ -68,8 +68,8 @@ describe('un lien hostile', () => {
   })
 })
 
-describe('une charge démesurée est refusée avant même d’être lue', () => {
-  it('refuse un lien plus long que ce que l’on sait produire, même valide', async () => {
+describe('an oversized payload is refused before it is even read', () => {
+  it('refuses a link longer than anything it can produce, valid or not', async () => {
     // A PERFECTLY valid task, simply too long. Without the input bound it
     // would be accepted: that is what isolates this particular guard.
     const valide = JSON.stringify({
@@ -82,7 +82,7 @@ describe('une charge démesurée est refusée avant même d’être lue', () => 
     await expect(unpackTask(packed)).rejects.toThrow()
   })
 
-  it('accepte le même cahier une fois sous la borne', async () => {
+  it('accepts the same log once it is under the bound', async () => {
     const valide = JSON.stringify(buildCoreTask())
     const packed = `p${toBase64Url(new TextEncoder().encode(valide))}`
     expect(packed.length).toBeLessThan(MAX_LINK_LENGTH)
@@ -91,8 +91,8 @@ describe('une charge démesurée est refusée avant même d’être lue', () => 
   })
 })
 
-describe('un cahier reçu ne porte pas un journal sans fin', () => {
-  it('applique la même borne qu’à l’écriture', () => {
+describe('a received log carries no endless audit trail', () => {
+  it('applies the same bound as on write', () => {
     const inflated = {
       ...buildCoreTask(),
       audit: Array.from({ length: MAX_AUDIT_ENTRIES * 3 }, (_, i) => ({
@@ -115,8 +115,8 @@ describe('un cahier reçu ne porte pas un journal sans fin', () => {
   })
 })
 
-describe('l’histoire d’un élément quand le journal a été élagué', () => {
-  it('ne laisse pas croire qu’elle est complète', () => {
+describe('the history of one item when the audit trail has been trimmed', () => {
+  it('does not let it look complete', () => {
     let task = buildCoreTask()
     const rule = task.constraints[0]
     task = setConstraintActive(task, rule.id, false)
@@ -134,8 +134,8 @@ describe('l’histoire d’un élément quand le journal a été élagué', () =
   })
 })
 
-describe('la garde anti-répétition', () => {
-  it('ne bloque pas une règle rendue à l’état de proposition puis reposée', () => {
+describe('the anti-repeat guard', () => {
+  it('does not block a rule returned to the proposed state and then added again', () => {
     const task = buildCoreTask()
     const declined = {
       ...task,

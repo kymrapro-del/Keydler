@@ -10,8 +10,8 @@ import {
 } from '../src/export/link'
 import type { TaskState } from '../src/domain/types'
 
-describe('un cahier qui tient dans un lien', () => {
-  it('fait l’aller-retour sans rien perdre', async () => {
+describe('a notebook that fits in a link', () => {
+  it('makes the round trip without losing anything', async () => {
     const task = buildDemoTask()
     const packed = await packTask(task)
     const back = await unpackTask(packed)
@@ -25,12 +25,12 @@ describe('un cahier qui tient dans un lien', () => {
     expect(back.audit.length).toBe(task.audit.length)
   })
 
-  it('ne produit que des caractères sûrs dans une adresse', async () => {
+  it('produces only characters that are safe in a URL', async () => {
     const packed = await packTask(buildDemoTask())
     expect(packed).toMatch(/^[A-Za-z0-9_-]+$/)
   })
 
-  it('refuse un cahier trop gros plutôt que de produire un lien cassé', async () => {
+  it('refuses a notebook too large rather than producing a broken link', async () => {
     let big = buildDemoTask()
     for (let i = 0; i < 400; i++) {
       big = logStep(
@@ -50,7 +50,7 @@ describe('un cahier qui tient dans un lien', () => {
     await expect(packTask(big)).rejects.toThrow(/export/i)
   })
 
-  it('reste sous la limite pour un cahier ordinaire', async () => {
+  it('stays under the limit for an ordinary notebook', async () => {
     let task = buildDemoTask()
     for (let i = 0; i < 20; i++) {
       task = addConstraint(task, { rule: `Rule number ${i}`, basedOnVersion: null }, 'human')
@@ -58,17 +58,17 @@ describe('un cahier qui tient dans un lien', () => {
     expect((await packTask(task)).length).toBeLessThan(MAX_LINK_LENGTH)
   })
 
-  it('refuse un fragment abîmé, sans faire tomber la page', async () => {
+  it('refuses a damaged fragment without bringing the page down', async () => {
     await expect(unpackTask('pas-du-tout-un-cahier')).rejects.toThrow()
     await expect(unpackTask('')).rejects.toThrow()
   })
 
-  it('refuse un fragment qui décode vers autre chose qu’un cahier', async () => {
+  it('refuses a fragment that decodes to something other than a notebook', async () => {
     const notATask = await packTask({ nope: true } as unknown as TaskState)
     await expect(unpackTask(notATask)).rejects.toThrow()
   })
 
-  it('marche sans CompressionStream, en se contentant d’être plus long', async () => {
+  it('works without CompressionStream, settling for being longer', async () => {
     const real = globalThis.CompressionStream
     // @ts-expect-error the API is removed on purpose to exercise the fallback
     delete globalThis.CompressionStream
@@ -82,7 +82,7 @@ describe('un cahier qui tient dans un lien', () => {
     }
   })
 
-  it('compresse réellement quand l’API est là', async () => {
+  it('compresses for real when the API is there', async () => {
     if (typeof globalThis.CompressionStream !== 'function') return
 
     const task = buildDemoTask()
@@ -98,8 +98,8 @@ describe('un cahier qui tient dans un lien', () => {
   })
 })
 
-describe('ce qu’un lien ne porte jamais', () => {
-  it('ne contient aucune valeur d’identifiant, puisque le cahier n’en tient pas', async () => {
+describe('what a link never carries', () => {
+  it('holds no credential value, since the notebook holds none', async () => {
     const packed = await packTask(buildDemoTask())
     const decoded = JSON.stringify(await unpackTask(packed))
     for (const mot of ['ciphertext', 'passphrase', 'sealed', 'secrets']) {
@@ -108,39 +108,39 @@ describe('ce qu’un lien ne porte jamais', () => {
   })
 })
 
-describe('lire le fragment d’une adresse', () => {
+describe('reading the fragment of a URL', () => {
   const original = window.location.hash
 
   afterEach(() => {
     history.replaceState(null, '', original || '/')
   })
 
-  it('ne trouve rien sur une adresse ordinaire', () => {
+  it('finds nothing on an ordinary URL', () => {
     history.replaceState(null, '', '/t/abc')
     expect(readLinkFragment()).toBeNull()
   })
 
-  it('trouve la charge quand elle est là', () => {
+  it('finds the payload when it is there', () => {
     history.replaceState(null, '', '/t/abc#log=AbC-_123')
     expect(readLinkFragment()).toBe('AbC-_123')
   })
 
-  it('ignore un fragment qui n’est pas le nôtre', () => {
+  it('ignores a fragment that is not ours', () => {
     history.replaceState(null, '', '/t/abc#section-2')
     expect(readLinkFragment()).toBeNull()
   })
 
-  it('refuse une charge aux caractères douteux plutôt que de la décoder', () => {
+  it('refuses a payload with doubtful characters rather than decoding it', () => {
     history.replaceState(null, '', '/t/abc#log=<script>')
     expect(readLinkFragment()).toBeNull()
   })
 })
 
-describe('la limite est annoncée, pas devinée', () => {
+describe('the limit is announced, not guessed', () => {
   beforeEach(() => vi.restoreAllMocks())
   afterEach(() => vi.restoreAllMocks())
 
-  it('tient dans ce que les navigateurs et les messageries acceptent', () => {
+  it('fits what browsers and mail clients accept', () => {
     expect(MAX_LINK_LENGTH).toBeLessThanOrEqual(16_000)
     expect(MAX_LINK_LENGTH).toBeGreaterThan(2_000)
   })

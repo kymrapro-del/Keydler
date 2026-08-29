@@ -25,8 +25,8 @@ const directive = (csp: string, nom: string) =>
     .map((d) => d.trim())
     .find((d) => d === nom || d.startsWith(`${nom} `)) ?? ''
 
-describe('la politique de sécurité du contenu', () => {
-  it('part de rien et n’ouvre que cette origine', () => {
+describe('the content security policy', () => {
+  it('starts from nothing and opens only this origin', () => {
     for (const csp of [cspHeaders, cspVercel]) {
       expect(directive(csp, 'default-src')).toBe("default-src 'none'")
       for (const nom of ['style-src', 'img-src', 'connect-src', 'manifest-src', 'worker-src']) {
@@ -35,7 +35,7 @@ describe('la politique de sécurité du contenu', () => {
     }
   })
 
-  it('n’autorise jamais ni `unsafe-inline` ni `unsafe-eval`', () => {
+  it('never allows `unsafe-inline` or `unsafe-eval`', () => {
     // The only inline script is allowed by its hash. `unsafe-inline` would empty
     // the policy of its whole point in a single word.
     for (const csp of [cspHeaders, cspVercel]) {
@@ -45,7 +45,7 @@ describe('la politique de sécurité du contenu', () => {
     }
   })
 
-  it('autorise le script d’amorce par une empreinte, et une seule', () => {
+  it('allows the bootstrap script by one hash, and only one', () => {
     // In the repo, `_headers` carries a marker: `scripts/headers.mjs` is what
     // computes the hash over the HTML actually built, substitutes it, and
     // refuses the build if `vercel.json` does not carry the same one.
@@ -56,7 +56,7 @@ describe('la politique de sécurité du contenu', () => {
     expect(directive(cspVercel, 'script-src')).toBe(`script-src 'self' ${dansVercel[0]}`)
   })
 
-  it('interdit le cadrage, la soumission de formulaire et la réécriture de base', () => {
+  it('forbids framing, form submission and base rewriting', () => {
     for (const csp of [cspHeaders, cspVercel]) {
       expect(directive(csp, 'frame-ancestors')).toBe("frame-ancestors 'none'")
       expect(directive(csp, 'form-action')).toBe("form-action 'none'")
@@ -66,7 +66,7 @@ describe('la politique de sécurité du contenu', () => {
   })
 })
 
-describe('les autres en-têtes', () => {
+describe('the other headers', () => {
   const attendus: [string, RegExp][] = [
     ['Strict-Transport-Security', /max-age=31536000/],
     ['X-Content-Type-Options', /^nosniff$/],
@@ -76,13 +76,13 @@ describe('les autres en-têtes', () => {
     ['Cross-Origin-Resource-Policy', /^same-origin$/],
   ]
 
-  it.each(attendus)('pose %s des deux côtés', (nom, motif) => {
+  it.each(attendus)('sets %s on both sides', (nom, motif) => {
     const fromFile = new RegExp(`${nom}:\\s*(.*)`).exec(headers)?.[1]?.trim() ?? ''
     expect(fromFile, `_headers ${nom}`).toMatch(motif)
     expect(vercelHeader(nom).trim(), `vercel.json ${nom}`).toMatch(motif)
   })
 
-  it('refuse toutes les permissions que le produit n’utilise pas', () => {
+  it('refuses every permission the product does not use', () => {
     // None is used: the page asks for no camera, no microphone, no location,
     // no payment. Refusing them costs zero and takes that much surface away
     // from a script that would manage to run anyway.
@@ -93,7 +93,7 @@ describe('les autres en-têtes', () => {
     }
   })
 
-  it('ne garde en cache que ce qui porte une empreinte', () => {
+  it('caches only what carries a hash in its name', () => {
     // Caching `index.html` would serve an old page asking for files that have
     // been deleted: the classic white screen after a deployment.
     expect(headers).toMatch(/\/assets\/\*\n\s+Cache-Control: public, max-age=31536000, immutable/)

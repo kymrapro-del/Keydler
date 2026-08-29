@@ -26,15 +26,15 @@ function entry(over: Partial<AuditEntry>): AuditEntry {
   }
 }
 
-describe('mise en mots du journal', () => {
-  it('dit qui a fait quoi, sans nom d’opération machine', () => {
+describe('the history put into words', () => {
+  it('says who did what, with no machine operation name', () => {
     const line = describeEntry(entry({ actor: 'human', operation: 'deactivate_constraint' }))
     expect(line.who).toBe('You')
     expect(line.what).toBe('lifted a rule')
     expect(line.what).not.toContain('deactivate_constraint')
   })
 
-  it('distingue une règle POSÉE par l’humain d’une règle PROPOSÉE par l’agent', () => {
+  it('tells a rule SET by the human from a rule PROPOSED by the agent', () => {
     expect(describeEntry(entry({ actor: 'human', operation: 'add_constraint' })).what).toBe(
       'added a rule',
     )
@@ -44,7 +44,7 @@ describe('mise en mots du journal', () => {
     )
   })
 
-  it('met la tentative à l’infinitif, pas au passé', () => {
+  it('puts an attempt in the infinitive, not in the past', () => {
     // "tried to recorded a step": the verb table is past tense for what did
     // happen, and a refused attempt precisely did not happen.
     for (const operation of ['log_step', 'add_constraint', 'reject_approach', 'complete_task']) {
@@ -57,7 +57,7 @@ describe('mise en mots du journal', () => {
     )
   })
 
-  it('explique un refus par sa cause, pas par son code', () => {
+  it('explains a refusal by its cause, not by its code', () => {
     const stale = describeEntry(
       entry({ outcome: 'refused', detail: 'stale write on v4, current v6' }),
     )
@@ -75,12 +75,12 @@ describe('mise en mots du journal', () => {
     ).toBe('the call was cancelled before it wrote')
   })
 
-  it('reporte le compteur de tentatives répétées', () => {
+  it('carries over the count of repeated attempts', () => {
     const line = describeEntry(entry({ outcome: 'refused', detail: 'stale write', repeated: 7 }))
     expect(line.repeated).toBe(7)
   })
 
-  it('nomme l’élagage comme un fait du système, pas de quelqu’un', () => {
+  it('names the trimming as a fact of the system, not of a person', () => {
     const line = describeEntry(
       entry({ operation: 'audit_trimmed', detail: '40 earlier entries dropped' }),
     )
@@ -88,13 +88,13 @@ describe('mise en mots du journal', () => {
     expect(line.refused).toBe(false)
   })
 
-  it('ne laisse jamais une opération inconnue sans phrase', () => {
+  it('never leaves an unknown operation without a sentence', () => {
     const line = describeEntry(entry({ operation: 'some_future_operation', actor: 'human' }))
     expect(line.what).toContain('some_future_operation')
     expect(line.what.length).toBeGreaterThan(5)
   })
 
-  it('rend le plus récent en premier', () => {
+  it('returns the most recent first', () => {
     const lines = describeHistory([
       entry({ id: 'a', at: 1 }),
       entry({ id: 'b', at: 2 }),
@@ -104,7 +104,7 @@ describe('mise en mots du journal', () => {
   })
 })
 
-describe('l’historique à l’écran', () => {
+describe('the history on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -134,7 +134,7 @@ describe('l’historique à l’écran', () => {
       c.querySelector('h2')?.textContent?.includes('History'),
     )!
 
-  it('montre le passé du cahier en langage humain', async () => {
+  it('shows the past of the log in human language', async () => {
     expect(section().textContent).toContain('recorded a step')
 
     // The excerpt shows only the most recent ones; creation is the oldest of
@@ -153,7 +153,7 @@ describe('l’historique à l’écran', () => {
     }
   })
 
-  it('rend un refus visible dans l’historique, avec sa cause', async () => {
+  it('makes a refusal visible in the history, with its cause', async () => {
     const stale = store.currentTask()!.version
     await store.mutate((s) =>
       addConstraint(s, { rule: 'A human rule', basedOnVersion: null }, 'human'),
@@ -177,7 +177,7 @@ describe('l’historique à l’écran', () => {
     expect(refused.textContent).toContain('the task had changed since it was read')
   })
 
-  it('reflète une action humaine dès qu’elle a lieu', async () => {
+  it('reflects a human action as soon as it happens', async () => {
     const step = store.currentTask()!.steps.find((s) => s.evidence !== null)!
     await store.mutate((s) => verifyEvidence(s, step.id, step.evidence!.content))
     await settled()
@@ -189,7 +189,7 @@ describe('l’historique à l’écran', () => {
     expect(section().textContent).toContain('lifted a rule')
   })
 
-  it('n’affiche qu’un extrait, et se déplie sur demande', async () => {
+  it('shows only an excerpt, and unfolds on request', async () => {
     for (let i = 0; i < 20; i++) {
       await store.mutate((s) =>
         addConstraint(s, { rule: `Rule number ${i}`, basedOnVersion: null }, 'human'),
@@ -220,7 +220,7 @@ describe('installable', () => {
     ),
   )
 
-  it('porte ce que Chrome exige pour proposer l’installation', () => {
+  it('carries what Chrome requires to offer installation', () => {
     expect(manifest.name).toBeTruthy()
     expect(manifest.short_name).toBeTruthy()
     expect(manifest.start_url).toBe('/')
@@ -229,7 +229,7 @@ describe('installable', () => {
     expect(manifest.background_color).toMatch(/^#[0-9a-f]{6}$/i)
   })
 
-  it('fournit les tailles attendues, dont une icône masquable', () => {
+  it('provides the expected sizes, including a maskable icon', () => {
     const sizes = manifest.icons.map((i: { sizes: string }) => i.sizes)
     expect(sizes).toContain('192x192')
     expect(sizes).toContain('512x512')
@@ -239,7 +239,7 @@ describe('installable', () => {
     expect(maskable.sizes).toBe('512x512')
   })
 
-  it('pointe vers des fichiers qui existent réellement', () => {
+  it('points at files that really exist', () => {
     for (const icon of manifest.icons as { src: string; type: string }[]) {
       expect(icon.type).toBe('image/png')
       // An icon declared but missing breaks installation with nothing to
@@ -248,7 +248,7 @@ describe('installable', () => {
     }
   })
 
-  it('est référencé par la page, avec une couleur de thème par mode', () => {
+  it('is referenced by the page, with one theme colour per mode', () => {
     const html = indexRaw
     expect(html).toContain('rel="manifest"')
     expect(html).toContain('/manifest.webmanifest')
@@ -256,7 +256,7 @@ describe('installable', () => {
     expect(html).toContain('prefers-color-scheme: dark')
   })
 
-  it('ne sert le service worker qu’en production', () => {
+  it('serves the service worker only in production', () => {
     const main = mainRaw
     // In development, a cache comes between hot reload and the page: you lose
     // hours debugging a version that no longer exists.
@@ -264,7 +264,7 @@ describe('installable', () => {
     expect(main).toMatch(/serviceWorker\s*\n?\s*\.register\(\s*'\/sw\.js'/)
   })
 
-  it('enregistre le service worker sans passer par le cache HTTP', () => {
+  it('registers the service worker without going through the HTTP cache', () => {
     // Measured in production: `_headers` asks for `no-cache` on `/sw.js` and
     // Cloudflare serves `max-age=14400` anyway, and a returning visitor kept
     // the old worker, and the old application, for up to four hours.
@@ -272,7 +272,7 @@ describe('installable', () => {
     expect(mainRaw).toContain("updateViaCache: 'none'")
   })
 
-  it('sert la page par le réseau d’abord, le cache seulement en secours', () => {
+  it('serves the page from the network first, the cache only as a fallback', () => {
     const sw = swRaw
     // Cache-first on the document would serve an old version after a deploy.
     // The asset files carry a fingerprint in their name: caching those

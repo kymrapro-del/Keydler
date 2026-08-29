@@ -17,32 +17,32 @@ beforeEach(() => {
   task = buildCoreTask()
 })
 
-describe('le journal retient ce qui a été remplacé', () => {
-  it('garde l’ancien titre quand la tâche est renommée', () => {
+describe('the audit trail keeps what was replaced', () => {
+  it('keeps the old title when the task is renamed', () => {
     const before = task.title
     const next = renameTask(task, 'A different name')
     expect(next.audit.at(-1)!.previous).toBe(before)
   })
 
-  it('garde l’ancienne prochaine action', () => {
+  it('keeps the old next action', () => {
     const before = task.next
     const next = setNext(task, { next: 'Something else entirely', basedOnVersion: null })
     expect(next.audit.at(-1)!.previous).toBe(before)
   })
 
-  it('garde l’ancienne formulation d’une règle', () => {
+  it('keeps the old wording of a rule', () => {
     const rule = task.constraints[0]
     const next = editConstraint(task, rule.id, 'A reworded rule')
     expect(next.audit.at(-1)!.previous).toBe(rule.rule)
   })
 
-  it('se lit dans l’historique, pas seulement dans les données', () => {
+  it('reads in the history, not only in the data', () => {
     const next = renameTask(task, 'A different name')
     const line = describeEntry(next.audit.at(-1)!)
     expect(line.detail).toContain(task.title)
   })
 
-  it('consigne une valeur vide plutôt que rien, quand il n’y avait rien', () => {
+  it('records an empty value rather than nothing, when there was nothing', () => {
     // Confusing "there was nothing" with "nothing was recorded" made it
     // impossible to undo the very first setting of a field.
     const sansNext = { ...task, next: null }
@@ -52,8 +52,8 @@ describe('le journal retient ce qui a été remplacé', () => {
   })
 })
 
-describe('annuler ce qui a été remplacé', () => {
-  it('rend son titre à la tâche', () => {
+describe('undoing what was replaced', () => {
+  it('gives the task its title back', () => {
     const before = task.title
     const renamed = renameTask(task, 'A different name')
     expect(undoable(renamed)).toContain('renamed')
@@ -62,21 +62,21 @@ describe('annuler ce qui a été remplacé', () => {
     expect(back.title).toBe(before)
   })
 
-  it('rend l’ancienne prochaine action', () => {
+  it('gives the old next action back', () => {
     const before = task.next!
     const changed = setNext(task, { next: 'Something else entirely', basedOnVersion: null })
     const back = undoLastSupervision(changed)
     expect(back.next).toBe(before)
   })
 
-  it('rend son ancienne formulation à une règle', () => {
+  it('gives a rule its old wording back', () => {
     const rule = task.constraints[0]
     const edited = editConstraint(task, rule.id, 'A reworded rule')
     const back = undoLastSupervision(edited)
     expect(back.constraints.find((c) => c.id === rule.id)!.rule).toBe(rule.rule)
   })
 
-  it('ne propose pas d’annuler ce qui a déjà été rechangé à la main', () => {
+  it('does not offer to undo what was already changed again by hand', () => {
     const renamed = renameTask(task, 'A different name')
     const again = renameTask(renamed, 'A third name')
 
@@ -85,7 +85,7 @@ describe('annuler ce qui a été remplacé', () => {
     expect(back.title).toBe('A different name')
   })
 
-  it('dit à l’agent ce qui a été rendu, en phrase', () => {
+  it('tells the agent what was given back, in a sentence', () => {
     const renamed = renameTask(task, 'A different name')
     const back = undoLastSupervision(renamed)
     const rendered = renderChanges(back, renamed.version)
