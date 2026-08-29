@@ -51,6 +51,17 @@ describe('les badges du README', () => {
     expect(ci).not.toMatch(/run:\s*(npx )?vite build\s*$/m)
   })
 
+  it('reproduit la notice de chaque dépendance qui atteint le navigateur', async () => {
+    // ISC et MIT demandent que leur mention de copyright accompagne le code
+    // distribue. `idb` est compilé DANS le fichier servi : la notice doit donc
+    // vivre dans le dépôt, pas seulement dans node_modules.
+    const notices = (await import('../THIRD-PARTY-NOTICES.md?raw')).default
+    for (const nom of Object.keys(paquet.dependencies)) {
+      expect(notices, nom).toContain(nom)
+    }
+    expect(notices).toContain('Copyright (c) 2016, Jake Archibald')
+  })
+
   it('ne promet la licence MIT que si le fichier la porte', async () => {
     const licence = (await import('../LICENSE?raw')).default
     expect(badge('license')).toBe('MIT')

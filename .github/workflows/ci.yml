@@ -18,20 +18,20 @@ jobs:
 
       - run: npm ci
 
-      # `npm run check` et rien d'autre. Détailler les étapes ici les faisait
-      # dériver : ce fichier lançait encore `vite build` nu, donc sans le garde
-      # d'artefact ni le vérificateur de liens que `check` a fini par contenir.
-      # Un badge posé sur un CI plus faible que la commande locale ment.
+      # `npm run check` and nothing else. Spelling out the steps here made them
+      # drift: this file was still running a bare `vite build`, so without the
+      # artifact guard or the link checker that `check` ended up containing.
+      # A badge sitting on a CI weaker than the local command lies.
       - name: check
         run: ALLOW_NO_ORIGIN_TRIAL=1 npm run check
 
-      # Le build d'essai sert les campagnes de mesure : il ne doit jamais
-      # produire de carte de source, faute de quoi un agent « navigateur seul »
-      # relit tout le code et l'isolement de l'essai est perdu.
-      - name: Build d'essai sans carte de source
+      # The trial build serves the measurement campaigns: it must never
+      # produce a source map, otherwise a "browser only" agent reads all the
+      # code again and the isolation of the trial is lost.
+      - name: Trial build without a source map
         run: |
           ALLOW_NO_ORIGIN_TRIAL=1 npm run build:trial
           if ls dist/assets/*.map 2>/dev/null; then
-            echo "Le build d'essai a produit une carte de source." >&2
+            echo "The trial build produced a source map." >&2
             exit 1
           fi

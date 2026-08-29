@@ -500,4 +500,13 @@ Internal documents and code comments are in French; the product is in English.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[![License](https://img.shields.io/badge/license-MIT-3d4ec8)](LICENSE)
+[![Third-party](https://img.shields.io/badge/bundled%20third--party-idb%20ISC-3d4ec8)](THIRD-PARTY-NOTICES.md)
+
+MIT, in [LICENSE](LICENSE). Use it, sell it, fork it; keep the notice.
+
+One dependency reaches the browser, [`idb`](https://github.com/jakearchibald/idb)
+under ISC, and its notice is reproduced in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) because ISC asks for it and the
+code really does ship. Nothing else in the bundle comes from anywhere else: no
+web fonts, no CDN, no external assets.
