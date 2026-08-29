@@ -1800,3 +1800,180 @@ Il avait frappé le **commentaire** qui cite la directive, pas la directive.
 Visé sur la bonne ligne, il meurt. Et une de mes épreuves était creuse —
 `empreintes.length + 1 === 1 + empreintes.length` est vrai de tout nombre ;
 réécrite pour comparer la directive entière.
+
+## 29 août 2026 — le premier déploiement réel, et ce qu'il a révélé
+
+Publié sur Cloudflare Pages, puis vérifié à froid dans Brave contre
+`https://keydler.pages.dev` — pas un `dist/` servi localement.
+
+### Ce que l'hébergeur fait vraiment
+
+| Vérification                                          | Résultat                                              |
+| ----------------------------------------------------- | ----------------------------------------------------- |
+| Les neuf en-têtes de sécurité sont servis             | oui, identiques au dépôt                              |
+| La CSP porte l'empreinte du script d'amorce           | `sha256-2MrDQX8a64K4rJscRFFoIUoixVRRP8gk2kHbN6aUmNk=` |
+| `/t/abc123` sur une URL jamais visitée                | **200**, pas 404 — le repli SPA fonctionne            |
+| Messages de console sur toute la session              | **aucun**                                             |
+| Le service worker précharge les vrais noms construits | `index-CEbglE2i.js`, `index-DOYQxzjx.css`             |
+| Rechargement réseau coupé                             | la page se charge, les 13 outils s'enregistrent       |
+| Écriture d'agent pendant la coupure                   | acceptée                                              |
+
+Cloudflare remplace le `no-cache` d'`index.html` par
+`public, max-age=0, must-revalidate`. Effet équivalent : revalidation à chaque
+fois. Laissé tel quel.
+
+### Trois défauts trouvés en production, qu'aucune épreuve ne couvrait
+
+C'est la quatrième fois de ce projet qu'un navigateur réel trouve en une minute
+ce que 868 épreuves vertes laissaient passer.
+
+`set_next_action` était la seule écriture d'agent qui ne transmettait pas sa
+version au domaine. Elle validait la **forme** du champ `based_on_version`, puis
+en jetait la valeur.
+
+1. **Une écriture périmée passait.** `based_on_version: 2` accepté alors que
+   l'état était en v4. Un agent tenant une vieille lecture écrasait la prochaine
+   action que l'humain venait de poser, sans refus.
+2. **L'entrée était signée `human`.** Le registre — la seule chose que ce
+   produit promet d'être honnête — attribuait à l'humain une écriture qu'aucun
+   humain n'avait faite. Un agent relisant l'historique en conclut « l'humain a
+   changé de direction pendant que je travaillais » et s'y range.
+3. **Un nom quand elle réussit, un autre quand elle échoue** : `set_next` appliqué,
+   `set_next_action` refusé. Le nom de l'outil n'apparaissait donc que sur les
+   échecs. `changes.ts` listait déjà les deux, ce qui montre que la duplication
+   avait été **contournée** plutôt que corrigée.
+
+Constaté sur le registre du cahier de production `abf4be0acb7c`, avant
+correction :
+
+```
+- set_next_action · agent · v4 · refused
+    next: not-a-string
+- set_next        · human · v4 → v5 · applied     ← écriture d'agent, signée humain
+    Point the apex DNS record at the Pages project
+```
+
+Après correction et redéploiement, la même séquence sur le même cahier :
+
+```
+- set_next_action · agent · v5 · refused
+    stale write on v2, current v5
+- set_next_action · agent · v5 → v6 · applied
+    Point the apex DNS record at the Pages project
+```
+
+Les deux entrées cohabitent dans ce registre : l'ancienne écrite par la version
+boguée, la nouvelle par la version corrigée.
+
+`setNext` prend désormais la même forme `(input, actor)` que tous les autres
+mutateurs. Sept épreuves, cinq mutants tués — dont les trois défauts d'origine.
+L'`undo` accepte encore l'ancien nom d'opération, pour ne pas retirer
+l'annulation aux cahiers écrits avant le renommage.
+
+### Ce qui n'est pas fait
+
+**Le domaine `keydler.com` n'est pas encore servi.** Il est rattaché au projet
+Pages, mais sa zone porte un enregistrement A périmé qui proxie vers une origine
+morte (`error code: 521`). Mon jeton a `zone (read)` et la lecture des
+enregistrements DNS a été refusée : je ne peux pas le corriger. Le domaine reste
+en `pending` côté Pages tant que ce n'est pas fait.
+
+**Le jeton d'origin trial n'est pas dans cette construction** — il n'est pas
+encore enregistré. La vérification ci-dessus s'appuie donc sur Brave lancé avec
+`--enable-features=WebMCP,WebMCPTesting`, comme toutes les précédentes, et **ne
+démontre pas** que WebMCP s'activera pour un juge sur un navigateur ordinaire.
+C'est ce que le jeton apportera, et il reste à poser.
+
+### 29 août 2026, plus tard — « l'origine est morte » était faux
+
+J'ai affirmé, ici et dans un message de commit, que l'enregistrement DNS de
+`keydler.com` pointait vers une origine morte, et j'en ai tiré qu'un
+contournement par route Worker ne risquait rien puisqu'il n'y avait « rien à
+casser ». Une relecture adverse a contredit la prémisse. Mesuré :
+
+```
+https://keydler.com  → 521
+http://keydler.com   → 302 → http://www.keydler.com → 200
+                       « Site en construction », en-têtes x-iplb-* (OVH)
+```
+
+Cloudflare joint l'origine sans peine en clair. Le 521 est un **défaut TLS**
+entre Cloudflare et OVH, pas une machine éteinte. Trois conséquences :
+
+1. l'enregistrement pointe vers une installation OVH vivante. La remplacer est
+   une décision à prendre, pas un nettoyage à faire ;
+2. « Always Use HTTPS » est **désactivé** sur la zone — sinon le http n'aurait
+   jamais atteint l'origine ;
+3. un motif de route sans schéma intercepte aussi le http. Le jeton d'origin
+   trial étant lié à `https://keydler.com`, une page servie en clair
+   fonctionnerait parfaitement et n'exposerait **aucun** outil WebMCP. Un juge
+   lirait « WebMCP is not available » sur un site d'apparence saine.
+
+C'est le troisième point qui compte : le contournement transformait un échec
+bruyant — un 521 que personne ne peut manquer — en échec silencieux, pendant
+la période de jugement. Les routes portent désormais leur schéma, mais le
+montage reste **préparé et non recommandé**, pour une raison que la relecture
+a mieux formulée que moi : il ferait de l'enregistrement OVH le pilier porteur
+du site, et survivrait à la correction du DNS en la masquant.
+
+**Ce qui a rendu l'erreur possible.** J'ai sondé `https://` et conclu sur
+`keydler.com`. Une seule requête en clair suffisait à me détromper, et je ne
+l'ai pas faite avant d'écrire une conclusion dans le dépôt.
+
+### Un refus utile, découvert en déployant
+
+Le déploiement a échoué avant tout cela, pour une raison sans rapport et
+instructive : le validateur d'assets de Workers **refuse** la réécriture SPA
+`/*  /index.html  200` de `_redirects`, qu'il tient pour une boucle infinie —
+là où Pages l'accepte. Deux validateurs, deux avis, sur le même fichier.
+
+Le Worker n'en a pas l'usage : `not_found_handling` fait le même travail.
+`public/.assetsignore` retire donc `_redirects` de cette livraison-là, sans
+toucher à celle de Pages, qui n'envoie pas les fichiers commençant par un
+point. Vérifié en local : `/t/abc123` rend 200 et porte la CSP.
+
+Rien n'a été attaché à la zone : zéro route, aucun déploiement, `keydler.com`
+inchangé.
+
+### Un harnais de mutation qui mentait
+
+Les premières mutations du Worker de redirection ont rapporté quatre
+survivants. Les quatre portaient des apostrophes, qui refermaient la chaîne du
+shell : les commandes n'ont jamais tourné, et le harnais a compté leur absence
+d'effet comme une survie. Un harnais qui ne vérifie pas que la mutation s'est
+appliquée mesure sa propre plomberie. Corrigé — il compare le fichier avant et
+après, et refuse de conclure si rien n'a changé. Neuf mutants, neuf tués.
+
+### 29 août 2026, fin de journée — keydler.com sert le site
+
+L'enregistrement DNS a été corrigé à la main : `keydler.com` est un CNAME
+proxifié vers le projet Pages. Le contournement par route Worker n'a donc pas
+lieu d'être, et rien n'a jamais été attaché à la zone. Vérifié à froid dans
+Brave, contre le domaine réel :
+
+| Vérification                                | Résultat                             |
+| ------------------------------------------- | ------------------------------------ |
+| `https://keydler.com`                       | **200**, les neuf en-têtes servis    |
+| `/t/abc123`, jamais visité                  | **200** — repli SPA                  |
+| `http://keydler.com`                        | **301** vers https                   |
+| `https://www.keydler.com/t/abc?source=chat` | 301, **chemin et requête préservés** |
+| En-têtes `x-iplb-*` (OVH)                   | **absents** — sorti du chemin        |
+| Domaine côté Pages                          | `active`, certificat `active`        |
+| Outils WebMCP, cahier ouvert                | **13**                               |
+| Rechargement réseau coupé                   | 13 outils, page servie du cache      |
+| Messages de console, session entière        | **aucun**                            |
+
+L'URL rendue par `resume_task` porte l'origine canonique — c'est elle que
+transportera un lien partagé.
+
+**La correction du jour, visible sur le domaine.** Un `set_next_action` sur une
+version périmée est refusé (`stale write on v2, current v3`), et l'interface
+l'annonce à l'humain sous le nom de l'outil : « An agent called
+`set_next_action` just now — and it was refused ». Ce matin, la même action
+réussie apparaissait sous `set_next`, signée `human`.
+
+**Ce qui reste, et qui est bloquant.** Le jeton d'origin trial n'est pas
+enregistré. Toute la vérification ci-dessus s'appuie sur Brave lancé avec
+`--enable-features=WebMCP,WebMCPTesting`. Elle **ne démontre pas** qu'un juge
+sur un navigateur ordinaire verrait le moindre outil. C'est le seul point qui
+sépare encore ce déploiement d'une candidature défendable.

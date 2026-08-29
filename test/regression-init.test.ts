@@ -13,9 +13,11 @@ describe('chargement initial concurrent à une écriture', () => {
   it('ne remplace pas l’état appliqué par une lecture du disque plus ancienne', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
 
-    const premier = store.mutate((s) => setNext(s, 'première'))
+    const premier = store.mutate((s) => setNext(s, { next: 'première', basedOnVersion: null }))
     const agent = call(resumeTaskTool)
-    const second = store.mutate((s) => setNext(s, 'nouvelle prochaine action'))
+    const second = store.mutate((s) =>
+      setNext(s, { next: 'nouvelle prochaine action', basedOnVersion: null }),
+    )
 
     await Promise.all([premier, agent, second])
     await settle(4)
@@ -34,9 +36,9 @@ describe('chargement initial concurrent à une écriture', () => {
     })
 
     const écritures = [
-      store.mutate((s) => setNext(s, 'une')),
+      store.mutate((s) => setNext(s, { next: 'une', basedOnVersion: null })),
       call(resumeTaskTool),
-      store.mutate((s) => setNext(s, 'deux')),
+      store.mutate((s) => setNext(s, { next: 'deux', basedOnVersion: null })),
     ]
     await Promise.all(écritures)
     await settle(4)

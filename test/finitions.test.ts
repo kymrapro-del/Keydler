@@ -194,7 +194,10 @@ describe('une preuve jointe après coup se relit comme telle', () => {
 
 describe('changer la prochaine action laisse une trace lisible', () => {
   it('dit ce que la prochaine action est devenue', () => {
-    const next = setNext(buildDemoTask(), 'Benchmark approach C against the p95 baseline')
+    const next = setNext(buildDemoTask(), {
+      next: 'Benchmark approach C against the p95 baseline',
+      basedOnVersion: null,
+    })
     expect(next.audit.at(-1)!.detail).toContain('Benchmark approach C')
   })
 })

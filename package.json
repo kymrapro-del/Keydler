@@ -11,14 +11,15 @@
     "preview": "vite preview --host",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "tsc --noEmit && npm run lint && npm run format:check && npm test && ALLOW_NO_ORIGIN_TRIAL=1 vite build",
+    "check": "tsc --noEmit && npm run lint && npm run format:check && npm test && ALLOW_NO_ORIGIN_TRIAL=1 npm run build && npm run artefact",
     "build:trial": "TRIAL=1 tsc --noEmit && TRIAL=1 vite build && node scripts/precache.mjs && node scripts/headers.mjs",
     "trial": "npm run build:trial && vite preview --port 5174",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "coverage": "vitest run --coverage",
-    "bench": "vitest run --config vitest.bench.config.ts"
+    "bench": "vitest run --config vitest.bench.config.ts",
+    "artefact": "node scripts/artefact.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
