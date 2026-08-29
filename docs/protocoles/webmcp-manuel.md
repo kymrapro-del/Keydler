@@ -19,7 +19,7 @@ Six vérifications, une demi-heure. À rejouer après toute modification de
 > - **Chromium 149–152, non-Chromium, version illisible** → mode statique :
 >   les outils, une fois posés, le restent, et refusent proprement.
 >
-> Relever le mode affiché AVANT de commencer, et suivre la colonne
+> Relever le mode affiché avant de commencer, et suivre la colonne
 > correspondante. Un mode inattendu invalide les vérifications 3 et 4.
 
 ---

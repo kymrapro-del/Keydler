@@ -1499,7 +1499,7 @@ L'onglet d'à côté gardait donc à l'écran un cahier disparu, et sa prochaine
 Le cahier revenait avec toutes ses étapes et toutes ses preuves collées, mais
 sans ses identifiants scellés, eux réellement effacés : l'humain croyait la
 donnée partie, elle revenait amputée, et chaque référence `${name}` pendait dans
-le vide. Sur l'opération que l'on fait précisément *parce qu'on veut que la
+le vide, et sur l'opération que l'on fait précisément parce qu'on veut que la
 donnée disparaisse.
 
 Le commit `26501e8` s'intitule « Verify … that deleting a task takes its

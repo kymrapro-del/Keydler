@@ -261,7 +261,7 @@ Rendu interactif sur 20 000 étapes (le cahier ne bouge pas, l'écran si) :
 27,7 ms → 25,6 ms. Modeste, et c'est le chiffre réel, pas les 5 ms qu'on
 pouvait espérer.
 
-Sur un cahier chargé en RÈGLES, c'est tout autre chose, et je ne l'avais pas
+Sur un cahier chargé en règles, c'est tout autre chose, et je ne l'avais pas
 vu en écrivant le paragraphe ci-dessus. La restitution passe alors par l'échelle
 de dégradation, qui la reconstruit une demi-douzaine de fois pour tenir dans le
 budget, et cela recommençait à chaque rendu de la page :
