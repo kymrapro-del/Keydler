@@ -3,7 +3,7 @@
 // pas être écrits à la main. Le nom du cache porte la même empreinte : sans
 // cela, `activate` ne supprimait jamais rien et une entrée fautive survivait à
 // tous les déploiements.
-const CACHE = 'watch-log-dev'
+const CACHE = 'keydler-dev'
 const SHELL = ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png']
 
 self.addEventListener('install', (event) => {

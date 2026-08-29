@@ -52,7 +52,7 @@ Do not mention WebMCP yet. Do not mention versions, storage, or tools.
 
 ## 0:20 – 0:45 · Set up the task
 
-**On screen:** the first screen of the Watch Log, then **Create a task**.
+**On screen:** the first screen of Keydler, then **Create a task**.
 
 Fill in, by hand, visibly:
 

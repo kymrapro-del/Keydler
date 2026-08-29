@@ -148,9 +148,9 @@ export function buildTaskExport(task: TaskState): string {
 }
 
 export function buildFullExport(tasks: readonly TaskState[]): string {
-  if (tasks.length === 0) return '# No watch log on this device\n'
+  if (tasks.length === 0) return '# No Keydler log on this device\n'
   return [
-    `# ${tasks.length} watch log${tasks.length > 1 ? 's' : ''}`,
+    `# ${tasks.length} log${tasks.length > 1 ? 's' : ''} from Keydler`,
     '',
     ...tasks.map(
       (t) =>
@@ -164,11 +164,11 @@ export function buildFullExport(tasks: readonly TaskState[]): string {
 }
 
 export function exportFilename(task: TaskState | null): string {
-  if (!task) return 'watch-logs.md'
+  if (!task) return 'keydler-logs.md'
   const base = task.title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 48)
-  return `watch-log-${base || task.id}-v${task.version}.md`
+  return `keydler-${base || task.id}-v${task.version}.md`
 }
