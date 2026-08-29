@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "license": "MIT",
-  "description": "Keydler — a browser-local, human-supervised task memory that agents read and write over WebMCP",
+  "description": "Keydler, a browser-local, human-supervised task memory that agents read and write over WebMCP",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && node scripts/precache.mjs && node scripts/headers.mjs",

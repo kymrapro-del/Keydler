@@ -12,7 +12,7 @@
 # quelqu'un qui croit cliquer ailleurs.
 #
 # `__CSP_SCRIPT_HASH__` est remplacé à la construction par `scripts/headers.mjs`
-# avec l'empreinte du seul script en ligne — l'amorce de thème, qui doit
+# avec l'empreinte du seul script en ligne, l'amorce de thème, qui doit
 # s'exécuter avant la première peinture sous peine de faire clignoter la page.
 
 /*
@@ -32,7 +32,7 @@
 
 # Ceux-là changent à chaque déploiement et ne portent pas d'empreinte. Les
 # mettre en cache ferait servir une ancienne page qui réclame des fichiers
-# supprimés — l'écran blanc classique.
+# supprimés : l'écran blanc classique.
 /index.html
   Cache-Control: no-cache
 /sw.js

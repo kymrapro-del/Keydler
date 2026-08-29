@@ -33,13 +33,13 @@ const BY_HUMAN: Record<string, string> = {
   create_task: 'created this task',
   add_constraint: 'added a binding rule',
   edit_constraint: 'reworded a rule',
-  deactivate_constraint: 'lifted a rule — it no longer binds you',
+  deactivate_constraint: 'lifted a rule: it no longer binds you',
   reactivate_constraint: 'restored a rule',
-  accept_constraint: 'accepted a proposed rule — it now binds you',
+  accept_constraint: 'accepted a proposed rule: it now binds you',
   decline_constraint: 'declined a proposed rule',
   reject_approach: 'ruled out an approach',
   edit_rejection: 'reworded a ruled-out approach',
-  accept_rejection: 'accepted a proposed rejection — do not retry it',
+  accept_rejection: 'accepted a proposed rejection: do not retry it',
   decline_rejection: 'declined a proposed rejection',
   answer_question: 'answered a question you were blocked on',
   ask_human: 'left a question on this task',
@@ -47,24 +47,24 @@ const BY_HUMAN: Record<string, string> = {
   log_step: 'recorded a step they did themselves',
   attach_evidence: 'attached evidence to a step',
   verify_evidence: 'checked evidence and marked it verified',
-  dispute_step: 'DISPUTED a step — they say it is wrong, do not build on it',
+  dispute_step: 'DISPUTED a step: they say it is wrong, do not build on it',
   withdraw_dispute: 'withdrew their dispute on a step',
   set_next: 'changed the next action',
   set_next_action: 'changed the next action',
   rename_task: 'renamed this task',
-  complete_task: 'closed this task — writes are refused now',
+  complete_task: 'closed this task: writes are refused now',
   reopen_task: 'reopened this task',
   archive_task: 'archived this task',
   unarchive_task: 'brought this task back',
   undo: 'undid their own last decision',
   allow_action: 'ALLOWED an action you asked about',
-  deny_action: 'DENIED an action you asked about — do not do it',
+  deny_action: 'DENIED an action you asked about: do not do it',
   request_approval: 'asked for permission to act',
 }
 
 const BY_AGENT: Record<string, string> = {
-  add_constraint: 'proposed a rule — not binding until a human accepts it',
-  reject_approach: 'proposed ruling out an approach — not binding yet',
+  add_constraint: 'proposed a rule, not binding until a human accepts it',
+  reject_approach: 'proposed ruling out an approach, not binding yet',
   add_decision: 'recorded a decision',
   log_step: 'recorded a step',
   attach_evidence: 'attached evidence to a step',
@@ -139,7 +139,7 @@ export function renderChanges(state: TaskState, sinceVersion: number): string {
 
   if (incomplete) {
     lines.push('')
-    lines.push('INCOMPLETE — this log is bounded and older entries were dropped.')
+    lines.push('INCOMPLETE: this log is bounded and older entries were dropped.')
     lines.push('What follows is only what survived. Call resume_task for the whole')
     lines.push('current state rather than trusting this list to be exhaustive.')
   }
@@ -157,13 +157,13 @@ export function renderChanges(state: TaskState, sinceVersion: number): string {
     for (const e of shown) lines.push(line(e))
     if (entries.length > shown.length) {
       lines.push(
-        `  ${entries.length - shown.length} more, older — read them with read_task_detail on "audit".`,
+        `  ${entries.length - shown.length} more, older. Read them with read_task_detail on "audit".`,
       )
     }
   }
 
   budget(binding, 'CHANGES WHAT YOU MAY DO', '  Re-read these before continuing.')
-  budget(rest, 'ALSO HAPPENED', '  Informational — it does not change what binds you.')
+  budget(rest, 'ALSO HAPPENED', '  Informational: it does not change what binds you.')
 
   lines.push('')
   lines.push(`Write with based_on_version: ${state.version}`)

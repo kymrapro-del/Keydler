@@ -2,22 +2,12 @@ import { describe, expect, it } from 'vitest'
 import headers from '../public/_headers?raw'
 import vercelBrut from '../vercel.json?raw'
 
-/**
- * La page tient un coffre d'identifiants chiffrés et expose treize outils
- * qu'un agent peut appeler. Un script injecté y aurait accès à tout ce que
- * l'humain voit ; un cadrage invisible ferait cliquer « Allow » sur une demande
- * d'autorisation à quelqu'un qui croit cliquer ailleurs.
- *
- * Ces épreuves tiennent la politique par ses DIRECTIVES, pas par sa chaîne :
- * une politique se réécrit, et c'est en la réécrivant qu'on l'affaiblit sans
- * s'en apercevoir. Elles gardent aussi les deux hébergeurs alignés — une
- * politique stricte d'un côté et permissive de l'autre rassure sans protéger.
- *
- * Vérifié de surcroît dans Brave, `dist/` servi avec ces en-têtes : un script
- * en ligne injecté, un script de CDN, un `fetch` sortant, une image-balise
- * vers une autre origine et un cadrage de la page ont tous été refusés par le
- * navigateur, et l'application fonctionne sans une seule erreur de console.
- */
+// La page tient un coffre d'identifiants chiffrés et treize outils appelables
+// par un agent : un script injecté y aurait accès à tout. Les épreuves tiennent
+// la politique par ses DIRECTIVES, qu'on affaiblit en la réécrivant, et gardent
+// les deux hébergeurs alignés. Vérifié dans Brave sur `dist/` : script en ligne,
+// script de CDN, `fetch` sortant, image-balise et cadrage tous refusés, sans une
+// erreur de console.
 const vercel = JSON.parse(vercelBrut) as {
   headers: { source: string; headers: { key: string; value: string }[] }[]
 }

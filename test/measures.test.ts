@@ -24,7 +24,7 @@ describe('cahiers de mesure', () => {
       const output = renderTaskState(buildMeasureTask(spec.n))
       expect(output).toContain(spec.condemned)
       expect(output).toContain(spec.constraint)
-      expect(output).toContain('REJECTED — do not retry')
+      expect(output).toContain('REJECTED: do not retry')
     }
   })
 
@@ -36,7 +36,7 @@ describe('cahiers de mesure', () => {
 
   it('rend la provenance de l’approche condamnée', () => {
     const output = renderTaskState(buildMeasureTask(1))
-    expect(output).toMatch(/REJECTED — do not retry\n {2}\[human\]/)
+    expect(output).toMatch(/REJECTED: do not retry\n {2}\[human\]/)
   })
 
   it('porte un identifiant stable, pour ne pas empiler une ligne par chargement', () => {

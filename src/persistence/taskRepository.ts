@@ -23,12 +23,9 @@ export async function saveTask(state: TaskState, expectedVersion?: number): Prom
     // champs du cahier : aucun miroir à maintenir, donc rien qui dérive.
     const àJour = await tasks.index('by-id-version').getKey([state.id, expectedVersion])
     if (àJour === undefined) {
-      // Deux cas se ressemblent ici : le cahier a bougé, ou il a DISPARU. Le
-      // second passait pour « pas encore créé » et retombait sur le `put` —
-      // ce qui ressuscitait un cahier supprimé dans un autre onglet, sans les
-      // identifiants scellés, eux bel et bien effacés. Une écriture qui porte
-      // une version attendue est une mise à jour ; une création passe par le
-      // chemin sans version.
+      // Le cahier a bougé, ou il a DISPARU : le second cas passait pour « pas
+      // encore créé » et retombait sur le `put`, ressuscitant un cahier supprimé
+      // dans un autre onglet sans ses identifiants scellés, eux bien effacés.
       const existe = await tasks.getKey(state.id)
       tx.abort()
       tx.done.catch(() => undefined)
@@ -80,7 +77,7 @@ export async function loadLastTask(): Promise<TaskState | undefined> {
     if (task) return task
   }
 
-  // Le repli — plus de dernier cahier connu — rapatriait TOUS les cahiers du
+  // Le repli (plus de dernier cahier connu) rapatriait TOUS les cahiers du
   // poste pour n'en garder qu'un : 22 ms pour trente. L'index est déjà trié
   // par date d'écriture ; on n'a besoin que de ses clés, et l'on ne descend
   // vers le suivant que si le plus récent est illisible, comme avant.

@@ -40,7 +40,7 @@ function tasksChanged(): void {
   tasksRevisionCounter += 1
 }
 
-/** Le nombre de cahiers a changé — les autres onglets doivent relire la liste. */
+/** Le nombre de cahiers a changé, et les autres onglets doivent relire la liste. */
 function tasksChangedEverywhere(): void {
   tasksChanged()
   announce(null, 0)
@@ -71,7 +71,7 @@ export async function init(taskId?: string): Promise<void> {
   // Ouvrir le canal ICI, et pas à la première annonce. Un onglet qui ne fait
   // que lire n'annonce jamais rien : créé paresseusement, il restait sourd, et
   // c'était précisément l'onglet à réveiller. Trouvé en navigateur, avec deux
-  // onglets — la suite ne l'a pas vu, parce que chacun de ses magasins avait
+  // onglets. La suite ne l'a pas vu, parce que chacun de ses magasins avait
   // écrit avant d'écouter.
   bus()
 
@@ -199,7 +199,7 @@ export async function deleteCurrentTask(): Promise<void> {
     tasksChanged()
     // Nommer le cahier supprimé, et pas seulement « la liste a changé » : sans
     // cela l'autre onglet gardait un cahier disparu à l'écran, et sa prochaine
-    // écriture le ressuscitait — amputé de ses identifiants scellés, eux bien
+    // écriture le ressuscitait, amputé de ses identifiants scellés, eux bien
     // effacés.
     announce(current.id, 0, true)
     const suivant = await loadLastTask()
@@ -269,17 +269,10 @@ async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskSta
   return next
 }
 
-/**
- * Deux onglets sur la même tâche : l'un écrivait, l'autre gardait son écran
- * d'avant. Mesuré, un second onglet a rouvert la tâche et écrit jusqu'à v31
- * pendant que le premier affichait encore v29 et « Task closed ». Il ne
- * l'apprenait qu'en tentant d'écrire — la sûreté tenait, l'écran mentait.
- *
- * `BroadcastChannel` ne livre pas au contexte qui poste : personne ne réagit
- * donc à sa propre annonce, et il n'y a pas d'écho à filtrer. La relecture
- * passe par la file d'écriture, sinon elle pourrait s'intercaler au milieu
- * d'une écriture en cours et remettre en place un état déjà dépassé.
- */
+// Deux onglets sur la même tâche : mesuré, le second a écrit jusqu'à v31 pendant
+// que le premier affichait encore v29 et « Task closed ». `BroadcastChannel` ne
+// livre pas au contexte qui poste, donc pas d'écho à filtrer. La relecture passe
+// par la file d'écriture, sinon elle s'intercalerait dans une écriture en cours.
 const CHANNEL = 'cahier-de-quart'
 
 type Announcement = { id: string | null; version: number; gone?: boolean }
@@ -321,18 +314,11 @@ function announce(id: string | null, version: number, gone = false): void {
   }
 }
 
-/**
- * Une rafale d'annonces ne doit pas produire une rafale de relectures. Mesuré
- * sur un cahier de 20 000 étapes : 50 annonces coûtaient 50 lectures et
- * 1702 ms, dont 1668 ms jetés — la désérialisation de l'enregistrement est le
- * coût, pas la normalisation. Et comme la file d'écriture est partagée avec
- * les écritures locales, ces relectures retardaient les écritures de cet
- * onglet d'un facteur 51.
- *
- * On ne retient donc qu'une relecture par cahier : la version la plus haute
- * annoncée suffit à décider s'il faut relire, et le disque rendra de toute
- * façon ce qu'il porte au moment où l'on y va.
- */
+// Une rafale d'annonces ne doit pas produire une rafale de relectures : mesuré
+// sur un cahier de 20 000 étapes, 50 annonces coûtaient 1702 ms dont 1668 jetés
+// (la désérialisation de l'enregistrement, pas la normalisation) et retardaient
+// d'un facteur 51 les écritures locales, qui partagent la file. Une relecture par
+// cahier suffit : la version la plus haute annoncée décide s'il faut relire.
 const relecturesAttendues = new Map<string, number>()
 
 function planifierRelecture(id: string, version: number): void {
@@ -355,7 +341,7 @@ async function resyncFromDisk(id: string): Promise<void> {
     const fresh = await loadTask(id)
     // Revérifier la liaison APRÈS l'attente : la garde posée à la réception du
     // message ne dit rien de ce qui s'est passé pendant la lecture, et écrire
-    // ici sans la refaire rebasculait l'écran — et `boundId` — sur le cahier
+    // ici sans la refaire rebasculait l'écran (et `boundId`) sur le cahier
     // précédent, juste après que l'utilisateur en a ouvert un autre.
     if (id !== snapshot.boundId) return
     if (fresh) setSnapshot({ status: 'ready', task: fresh, error: null, boundId: fresh.id })

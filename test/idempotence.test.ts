@@ -165,7 +165,7 @@ describe('collision de mutation_id', () => {
     })
 
     expect(second.isError).toBe(true)
-    expect(textOf(second)).not.toContain('OK — log_step recorded')
+    expect(textOf(second)).not.toContain('OK: log_step recorded')
     expect(textOf(second)).toContain('mutation_id')
     expect(currentTask().steps).toHaveLength(1)
     expect(currentTask().steps[0].action).toBe('Lu le module')

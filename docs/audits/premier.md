@@ -1,4 +1,4 @@
-# Audit — 28 août 2026
+# Audit du 28 août 2026
 
 Recherche approfondie de défauts, menée sur la totalité du dépôt. Ce document
 dit ce qui a été cherché, ce qui a été trouvé, ce qui a été corrigé, et ce qui
@@ -6,7 +6,7 @@ reste connu et non traité. Les points laissés ouverts y figurent au même titr
 que les correctifs : un audit qui ne liste que ses succès n'est pas utilisable.
 
 **État au moment de l'audit :** 663 tests, 95,8 % de couverture, contrôle
-complet vert. **À la fin :** 667 tests, 4 nouveaux couvrant les défauts trouvés.
+complet vert. À la fin : 667 tests, 4 nouveaux couvrant les défauts trouvés.
 
 ---
 
@@ -14,13 +14,13 @@ complet vert. **À la fin :** 667 tests, 4 nouveaux couvrant les défauts trouv�
 
 Quatre passes, dans cet ordre.
 
-1. **Revue statique par zone** — domaine, magasin, persistance, outils WebMCP,
+1. **Revue statique par zone** : domaine, magasin, persistance, outils WebMCP,
    interface, export, coffre.
-2. **Sondes de cas limites** — cahier vide, textes aux longueurs maximales,
+2. **Sondes de cas limites** : cahier vide, textes aux longueurs maximales,
    caractères hostiles, bornes de pagination, versions absurdes.
-3. **Sondes en navigateur réel** — Brave 151 / Chromium 151, build de
+3. **Sondes en navigateur réel** : Brave 151 / Chromium 151, build de
    production, pilotage `chrome-devtools-mcp`, y compris multi-onglets.
-4. **Tests de mutation** — le code est volontairement cassé sur treize
+4. **Tests de mutation** : le code est volontairement cassé sur treize
    garanties, et l'on vérifie que la suite rougit. Un test qui reste vert sur du
    code faux ne prouve rien.
 
@@ -31,9 +31,9 @@ Quatre passes, dans cet ordre.
 ### 1. Les identifiants scellés survivaient à la suppression de la tâche
 
 **Gravité : élevée.** `deleteSecretsForTask` existait dans le coffre et
-**n'était appelée nulle part**. Supprimer une tâche retirait la tâche du magasin
+n'était appelée nulle part. Supprimer une tâche retirait la tâche du magasin
 `tasks` et laissait ses secrets scellés dans `secrets`, hors d'atteinte de
-l'écran — aucune tâche pour les lister — mais bien présents sur le disque.
+l'écran (aucune tâche pour les lister), mais bien présents sur le disque.
 
 L'humain qui supprime une tâche croit avoir tout supprimé. Dans un produit dont
 le coffre est un argument de tête, c'est un défaut de confidentialité, pas une
@@ -46,7 +46,7 @@ l'identifiant supprimé, l'autre qu'un autre cahier n'est pas touché.
 ### 2. Les repères de lecture s'accumulaient sans fin
 
 **Gravité : faible.** Chaque cahier ouvert écrit une clé
-`watch-log:seen:<id>` dans `localStorage`. Elle n'était jamais effacée — ni à la
+`watch-log:seen:<id>` dans `localStorage`. Elle n'était jamais effacée, ni à la
 suppression de la tâche, ni jamais. Relevé dans le navigateur : trois clés
 subsistaient pour des cahiers qui n'existaient plus.
 
@@ -64,7 +64,7 @@ relève du stockage navigateur, pas de la vue. Déplacé en
 
 **Gravité : très faible.** `#import-file` porte l'attribut `hidden`, donc il ne
 figure pas dans l'arbre d'accessibilité et aucun lecteur d'écran ne le
-rencontre — le signalement de la sonde était un faux positif. Un `aria-label` a
+rencontre : le signalement de la sonde était un faux positif. Un `aria-label` a
 tout de même été ajouté : il ne coûte rien et clôt la question pour le prochain
 audit.
 
@@ -86,29 +86,29 @@ audit.
 ### Multi-onglets, dans le vrai navigateur
 
 Deux pages ouvertes sur le même cahier. Une règle ajoutée dans l'onglet 2
-apparaît **automatiquement** dans l'onglet 1 (v3, règle visible). Une écriture
-d'agent fondée sur v2 depuis l'onglet 1 est refusée avec le message juste —
-« Another page has since written v3 » — et le refus s'affiche en langage humain
+apparaît automatiquement dans l'onglet 1 (v3, règle visible). Une écriture
+d'agent fondée sur v2 depuis l'onglet 1 est refusée avec le message juste,
+« Another page has since written v3 », et le refus s'affiche en langage humain
 dans la carte Activity.
 
 ### Migration de schéma
 
-Un cahier écrit en `schemaVersion: 4` — avant l'existence des questions, des
-autorisations et des contestations — se lit sans exception, reçoit les tableaux
-manquants vides, et traverse **toutes** les surfaces : restitution, export,
+Un cahier écrit en `schemaVersion: 4` (avant l'existence des questions, des
+autorisations et des contestations) se lit sans exception, reçoit les tableaux
+manquants vides, et traverse toutes les surfaces : restitution, export,
 `needsYou`, `undoable`, recherche, et chacune des neuf sections de
 `read_task_detail`.
 
 ### Caractères hostiles et cas dégénérés
 
 - `<img src=x onerror=alert(1)>` saisi comme titre de tâche : affiché
-  littéralement, **aucun élément injecté**, console vide, rien dans le titre de
+  littéralement, aucun élément injecté, console vide, rien dans le titre de
   l'onglet.
 - Recherche avec `(b)`, `[c]`, `*e*`, `+f+`, `?g?`, `|h|`, `\` : aucune
-  exception, résultats corrects — la recherche ne construit pas d'expression
-  régulière à partir de la requête.
+  exception, résultats corrects, car la recherche ne construit pas
+  d'expression régulière à partir de la requête.
 - Japonais, émoji hors du plan de base, marque de sens d'écriture : aller-retour
-  dans un lien partagé **octet pour octet**.
+  dans un lien partagé octet pour octet.
 - Cahier entièrement vide : traverse toutes les surfaces sans tomber.
 - Textes aux longueurs maximales partout : `resume_task` tient sous 400 jetons.
 - `offset` au-delà de la fin d'une section : dit « past the end » plutôt que de
@@ -117,10 +117,10 @@ manquants vides, et traverse **toutes** les surfaces : restitution, export,
 ### Saisie humaine pendant qu'un agent écrit
 
 Formulaire d'étape ouvert, texte saisi, écriture d'agent par WebMCP entre-temps,
-puis soumission : **la saisie survit au rendu**, l'étape s'enregistre, le
+puis soumission : la saisie survit au rendu, l'étape s'enregistre, le
 formulaire se referme.
 
-### Tests de mutation — treize garanties, treize tuées
+### Tests de mutation : treize garanties, treize tuées
 
 Chaque ligne ci-dessous a été cassée dans le code source, la suite exécutée, et
 le code restauré. Aucun mutant n'a survécu.
@@ -146,8 +146,8 @@ le code restauré. Aucun mutant n'a survécu.
 - Aucun `TODO`, `FIXME` ni `HACK` dans les sources.
 - Aucun `any`, explicite ou par assertion.
 - Un seul `console.warn`, sur une mise à jour de stockage bloquée par un autre
-  onglet — délibéré.
-- `npm audit` : **0 vulnérabilité**. Aucune dépendance de production.
+  onglet. Délibéré.
+- `npm audit` : 0 vulnérabilité. Aucune dépendance de production.
 - Bundle : 160 Ko de JavaScript, 12 Ko de CSS.
 - Accessibilité : tous les champs visibles étiquetés, aucun saut de niveau de
   titre, aucun bouton sans nom accessible, aucun débordement horizontal.
@@ -162,7 +162,7 @@ Ces points sont des choix ou des limites assumées. Ils ne sont pas des oublis.
 
 Archiver n'est pas clore. Un cahier archivé garde son statut `active`, donc la
 barre « Needs you » continue d'y annoncer ce qui n'est pas tranché. C'est
-défendable — ouvrir un cahier archivé et voir ce qui restait est utile — mais
+défendable (ouvrir un cahier archivé et voir ce qui restait est utile), mais
 c'est un choix, pas une évidence. À revoir si l'archivage devient un usage
 courant.
 
@@ -177,7 +177,7 @@ passerait inaperçue.
 ### Couverture des chemins d'erreur de stockage
 
 `db.ts` est à 73 %, `validate.ts` à 81 % : ce qui manque est presque
-exclusivement des branches d'échec du navigateur — base bloquée par un autre
+exclusivement des branches d'échec du navigateur : base bloquée par un autre
 onglet, stockage refusé. Elles sont coûteuses à simuler et sans conséquence sur
 la logique. Signalées plutôt que poursuivies.
 
@@ -185,12 +185,12 @@ la logique. Signalées plutôt que poursuivies.
 
 Changer de cahier met `revealed` à `null` directement au lieu de passer par
 `hideRevealed()`, donc le minuteur de 45 secondes court encore et déclenchera un
-rendu inutile. Sans conséquence — la valeur est déjà retirée, et le démontage
-nettoie — mais c'est une incohérence.
+rendu inutile. Sans conséquence (la valeur est déjà retirée, et le démontage
+nettoie), mais c'est une incohérence.
 
 ### Le retrait dynamique des outils sous Chromium ≥ 153
 
-Toujours **non vérifié**, comme dans toutes les passes précédentes : ce poste
+Toujours non vérifié, comme dans toutes les passes précédentes : ce poste
 tourne sous Chromium 151. La politique en vigueur est statique et refuse
 proprement ; c'est ce que les tests démontrent, et rien de plus n'est affirmé.
 

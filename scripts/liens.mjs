@@ -2,15 +2,10 @@ import { readFile, readdir, access } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, relative, resolve } from 'node:path'
 
-/**
- * Un lien mort dans un README est la première chose que voit quelqu'un qui
- * ouvre le dépôt, et la dernière que remarque celui qui l'écrit. Ce script les
- * cherche pour de bon : il résout chaque cible RELATIVEMENT au fichier qui la
- * cite, ce qu'une recherche par motif ne peut pas faire.
- *
- * Il ignore les adresses externes : les vérifier demanderait le réseau et
- * rendrait la barrière dépendante de sites tiers.
- */
+// Chaque cible est résolue RELATIVEMENT au fichier qui la cite, ce qu'une
+// recherche par motif ne peut pas faire. Les adresses externes sont ignorées :
+// les vérifier demanderait le réseau et rendrait la barrière dépendante de
+// sites tiers.
 const racine = fileURLToPath(new URL('../', import.meta.url))
 
 async function fichiers(dossier) {

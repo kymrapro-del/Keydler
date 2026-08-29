@@ -72,7 +72,7 @@ describe('savoir si le travail tient sur cet appareil', () => {
   it('reste prudent même quand la durabilité est accordée', () => {
     const solide: StorageState = { persisted: true, usage: 1024, quota: 2048 }
     const texte = describeStorage(solide)
-    // Le navigateur promet de ne pas l'effacer tout seul — pas que rien
+    // Le navigateur promet de ne pas l'effacer tout seul, pas que rien
     // n'arrivera jamais.
     expect(texte).toMatch(/will not|won’t/i)
     expect(texte.toLowerCase()).toContain('you can still')

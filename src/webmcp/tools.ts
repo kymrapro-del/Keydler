@@ -129,7 +129,7 @@ async function requireTask(): Promise<TaskState> {
 
 function okText(operation: string, version: number): string {
   return [
-    `OK — ${operation} recorded.`,
+    `OK: ${operation} recorded.`,
     `VERSION     ${version}`,
     'Use this version for your next write.',
   ].join('\n')
@@ -478,7 +478,7 @@ type Decided = { decision: 'allowed' | 'denied'; action: string }
 /**
  * Attendre qu'un humain tranche. C'est le seul endroit du produit où un appel
  * d'outil bloque : sans page ouverte devant quelqu'un, cette attente n'aurait
- * aucun sens — et c'est précisément ce que WebMCP rend possible.
+ * aucun sens, et c'est précisément ce que WebMCP rend possible.
  */
 function waitForDecision(
   approvalId: string,
@@ -560,11 +560,11 @@ export const requestApprovalTool: ModelContextTool = {
         `Nobody decided within ${Math.round(approvalTimeout / 1000)} seconds:`,
         `  ${mine.action}`,
         '',
-        'NO ANSWER IS NOT APPROVAL. Nobody was there — treat this exactly as a',
+        'NO ANSWER IS NOT APPROVAL. Nobody was there. Treat this exactly as a',
         'refusal. Do not do it. Say plainly that you asked and got no answer.',
         stillWaiting
           ? 'The request is still on the page; the human will see it when they return.'
-          : 'The request has since been decided — call resume_task to read it.',
+          : 'The request has since been decided: call resume_task to read it.',
       ].join('\n'),
     )
   },
@@ -662,7 +662,7 @@ export const completeTaskTool: ModelContextTool = {
             ? []
             : [
                 '',
-                'LEFT UNRESOLVED — say this in your hand-over, do not imply it was settled:',
+                'LEFT UNRESOLVED (say this in your hand-over, do not imply it was settled):',
                 ...remaining,
               ]),
         ].join('\n'),
@@ -675,7 +675,7 @@ export const completeTaskTool: ModelContextTool = {
       [
         ...result.content.map((c) => c.text),
         '',
-        'LEFT UNRESOLVED — say this in your hand-over, do not imply it was settled:',
+        'LEFT UNRESOLVED (say this in your hand-over, do not imply it was settled):',
         ...remaining,
       ].join('\n'),
     )

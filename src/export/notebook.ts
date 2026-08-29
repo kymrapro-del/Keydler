@@ -39,7 +39,7 @@ function questions(task: TaskState): string[] {
     '',
     `- Asked by: ${q.source} at v${q.addedAtVersion}`,
     `- Why it blocks: ${q.why}`,
-    `- Answer: ${q.answer === null ? '**still open — nobody has answered**' : q.answer}`,
+    `- Answer: ${q.answer === null ? '**still open, nobody has answered**' : q.answer}`,
     ...(q.answeredAt === null ? [] : [`- Answered: ${horodatage(q.answeredAt)}`]),
     '',
   ])
@@ -61,7 +61,7 @@ function autorisations(task: TaskState): string[] {
     '',
     `- Asked by: ${a.source} at v${a.addedAtVersion}`,
     `- Why it needed a human: ${a.why}`,
-    `- Decision: ${a.decision === null ? '**never decided — nobody answered**' : a.decision}`,
+    `- Decision: ${a.decision === null ? '**never decided, nobody answered**' : a.decision}`,
     ...(a.decidedAt === null ? [] : [`- Decided: ${horodatage(a.decidedAt)}`]),
     '',
   ])
@@ -116,7 +116,7 @@ function preuves(task: TaskState): string[] {
     '## Attached evidence',
     '',
     'The compact state shows only how much each step is trusted. Here is the',
-    'evidence in full — this is where a claim holds up, or does not.',
+    'evidence in full: this is where a claim holds up, or does not.',
     '',
     ...blocs,
   ]
@@ -154,7 +154,7 @@ export function buildFullExport(tasks: readonly TaskState[]): string {
     '',
     ...tasks.map(
       (t) =>
-        `- ${t.title} — v${t.version}, ${t.steps.length} step${t.steps.length === 1 ? '' : 's'}`,
+        `- ${t.title} (v${t.version}, ${t.steps.length} step${t.steps.length === 1 ? '' : 's'})`,
     ),
     '',
     '---',

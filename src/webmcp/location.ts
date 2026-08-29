@@ -1,15 +1,9 @@
 const PREFIX = '/t/'
 
 /**
- * L'adresse où envoyer quelqu'un qui cherche « son compte ». Il n'y en a pas :
- * cette page répond à la question que pose un bouton « Sign in » — où sont mes
- * affaires, et comment les emmener ailleurs — sans rien promettre de faux.
- *
- * Elle existe comme ADRESSE, et pas seulement comme panneau replié dans un
- * cahier ouvert, parce qu'une page d'accueil doit pouvoir y pointer. C'est
- * toute la raison d'être de cette route : quelqu'un qui arrive de l'extérieur
- * n'a aucun cahier ouvert, donc ne voyait jusqu'ici ni la liste de ses
- * cahiers, ni l'export, ni l'import.
+ * Il n'y a pas de compte : cette page répond à ce que cherche un bouton « Sign in »,
+ * c'est-à-dire où sont mes affaires et comment les emmener ailleurs. Elle existe comme ADRESSE parce que qui
+ * vient de l'extérieur n'a aucun cahier ouvert, donc ne voyait ni liste, ni export, ni import.
  */
 export const WORKSPACE_PATH = '/workspace'
 

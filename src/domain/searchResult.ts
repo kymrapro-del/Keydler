@@ -33,7 +33,7 @@ function clip(value: string): string {
 }
 
 function renderMatch(match: Match): string {
-  const lines = [`- ${HEADINGS[match.kind]} — ${match.label}`, `  ${clip(match.text)}`]
+  const lines = [`- ${HEADINGS[match.kind]}: ${match.label}`, `  ${clip(match.text)}`]
   if (match.context) lines.push(`  ${clip(match.context)}`)
   return lines.join('\n')
 }
@@ -43,7 +43,7 @@ function nothingFound(query: string): string {
     'NO MATCH',
     `Nothing in this task mentions "${query}".`,
     '',
-    'An empty search does not prove the work was never attempted — this log',
+    'An empty search does not prove the work was never attempted: this log',
     'may simply use different words. Read the sections with read_task_detail',
     'before concluding that an approach is untried, and ask the human if it',
     'still matters.',
@@ -71,7 +71,7 @@ export function renderSearch(task: TaskState, query: string, limit: number): str
   ]
 
   if (all.length > shown.length) {
-    header.push(`MORE        ${all.length - shown.length} more not shown — narrow the query`)
+    header.push(`MORE        ${all.length - shown.length} more not shown: narrow the query`)
   }
 
   const footer = [

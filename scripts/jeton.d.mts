@@ -1,7 +1,7 @@
 /**
  * `jeton.mjs` est du JavaScript simple : il tourne dans Node pendant la
  * construction, hors du programme TypeScript. Sans ces déclarations, chaque
- * import depuis une épreuve exigeait un `@ts-expect-error` — c'est-à-dire de
+ * import depuis une épreuve exigeait un `@ts-expect-error`, c'est-à-dire de
  * TAIRE une erreur plutôt que de la résoudre, et de perdre au passage toute
  * vérification de type sur ce que le module rend vraiment.
  */

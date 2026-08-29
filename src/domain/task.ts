@@ -218,7 +218,7 @@ function assertActive(state: TaskState, operation: string): void {
     throw new ValidationError(
       'status',
       `task "${state.title}" is already completed; ${operation} is no longer accepted. ` +
-        'Retrying will not help — ask the human to reopen the task if work remains.',
+        'Retrying will not help, so ask the human to reopen the task if work remains.',
       { code: 'already-completed', retryable: false },
     )
   }
@@ -448,8 +448,8 @@ export function attachEvidence(
   if (step.evidence) {
     throw new ValidationError(
       'stepId',
-      'this step already carries evidence. Replacing it would destroy the record — ' +
-        'log a new step instead.',
+      'this step already carries evidence. Replacing it would destroy the record. ' +
+        'Log a new step instead.',
       { code: 'already-has-evidence', retryable: false },
     )
   }
@@ -834,11 +834,10 @@ function wordsOf(value: string): string {
 }
 
 /**
- * La garde compare la nouveauté à TOUT ce qui est déjà posé. Replier la
- * nouveauté une fois par comparaison la repliait autant de fois qu'il y a
- * d'entrées : mesuré, ajouter une règle passait de 0,051 ms à 100 règles à
- * 1,789 ms à 2000. Le balayage reste linéaire — c'est la question posée —
- * mais il ne refait plus le même travail à chaque pas.
+ * La garde compare la nouveauté à TOUT ce qui est déjà posé ; la replier une fois par
+ * comparaison la repliait autant de fois qu'il y a d'entrées. Mesuré, ajouter une règle
+ * passait de 0,051 ms à 100 règles à 1,789 ms à 2000. Le balayage reste linéaire, c'est
+ * la question posée.
  */
 function repeats(existing: readonly string[], candidate: string): boolean {
   const words = wordsOf(candidate)
@@ -931,7 +930,7 @@ export function answerQuestion(
       operation: 'answer_question',
       actor: 'human',
       basedOnVersion: null,
-      detail: `${found.question} — ${text}`,
+      detail: `Q: ${found.question} A: ${text}`,
       patch: {
         questions: state.questions.map((q) =>
           q.id === id ? { ...q, answer: text, answeredAt: now } : q,
@@ -1065,10 +1064,9 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
 }
 
 /**
- * On ne remonte que la fin du journal, et on s'arrête à la première écriture
- * qui n'est pas une décision annulable de l'humain. « Annuler » veut dire
- * défaire ce que l'on vient de faire ; remonter par-dessus le travail d'un
- * agent reviendrait à révoquer une décision d'il y a une semaine d'un clic.
+ * On ne remonte que la fin du journal, et on s'arrête à la première écriture qui n'est pas
+ * une décision annulable de l'humain : remonter par-dessus le travail d'un agent
+ * révoquerait d'un clic une décision d'il y a une semaine.
  */
 const UNDOABLE_OPERATIONS = new Set([
   'deactivate_constraint',
@@ -1246,7 +1244,7 @@ export function disputeStep(
       operation: 'dispute_step',
       actor: 'human',
       basedOnVersion: null,
-      detail: `${step.action} — ${text}`,
+      detail: `${step.action}. ${text}`,
       targetId: id,
       patch: {
         steps: state.steps.map((s) =>
@@ -1321,7 +1319,7 @@ export function answeredQuestions(state: TaskState): OpenQuestion[] {
 /**
  * Les règles en vigueur d'un autre cahier, reprises comme des règles humaines :
  * quelqu'un a choisi de les porter ici, elles engagent donc d'emblée. Rien
- * d'autre ne suit — ni le travail, ni les rejets, ni le journal.
+ * d'autre ne suit : ni le travail, ni les rejets, ni le journal.
  */
 export function copyRulesInto(
   target: TaskState,
@@ -1388,12 +1386,10 @@ export function evidenceCounts(state: TaskState): EvidenceCounts {
 }
 
 /**
- * Ce qui part avec un export ou un lien partageable, et que personne ne relit
- * avant d'envoyer : une sortie de commande collée entière peut porter un
- * jeton, un nom de machine interne ou un nom de client.
- *
- * Les identifiants scellés, eux, vivent hors de `TaskState` et ne PEUVENT pas
- * voyager — c'est structurel, pas une précaution. Les preuves, si.
+ * Ce qui part avec un export ou un lien partageable sans que personne ne le relise : une
+ * sortie de commande collée entière peut porter un jeton, un nom de machine interne, un nom
+ * de client. Les identifiants scellés, eux, vivent hors de `TaskState` et ne peuvent
+ * structurellement pas voyager ; les preuves, si.
  */
 export function attachedEvidenceCount(state: TaskState): number {
   return state.steps.filter((s) => s.evidence !== null).length

@@ -1,4 +1,4 @@
-# Le concours, ce qu'on en sait — 28 août 2026
+# Le concours, ce qu'on en sait au 28 août 2026
 
 Recherche menée par trois agents en parallèle sur les sources primaires : la
 page Devpost et ses onglets, la FAQ d'OpenAI, la documentation Chrome, le dépôt
@@ -19,24 +19,24 @@ listé à la fin, et cette section n'est pas courte.
 | Jugement                      | 4 → 21 septembre              |
 | Annonce                       | ~23 septembre (peut glisser)  |
 
-**Le gel est le point le plus contraignant, et il n'est pas sur la page des
-règles.** L'unique mise à jour publiée par les organisateurs précise que la
-description, la vidéo, le dépôt **et le site en ligne** sont figés à la clôture,
+Le gel est le point le plus contraignant, et il n'est pas sur la page des
+règles. L'unique mise à jour publiée par les organisateurs précise que la
+description, la vidéo, le dépôt et le site en ligne sont figés à la clôture,
 et que « any edit, no matter how minor, risks your eligibility for prizes ».
 
-Conséquence pratique : **aucun commit sur le dépôt soumis et aucun redéploiement
-après le 3 septembre 13 h PT**, et le gel doit probablement tenir jusqu'à
+Conséquence pratique : aucun commit sur le dépôt soumis et aucun redéploiement
+après le 3 septembre 13 h PT, et le gel doit probablement tenir jusqu'à
 l'annonce. Le dernier commit doit être posé plusieurs heures avant, pas dans la
 dernière minute.
 
 ## La vidéo est plus exigeante que la page des règles ne le laisse croire
 
-- Moins de trois minutes, sur YouTube, **réglée sur Public** — la formulation
+- Moins de trois minutes, sur YouTube, réglée sur Public : la formulation
   est « publicly visible », et rien ne dit qu'« unlisted » suffit.
 - **Narration audio obligatoire.** Un écran capturé avec de la musique est
   explicitement déclaré non conforme.
-- La synthèse vocale par IA est **explicitement autorisée**.
-- Montrer le projet qui fonctionne dans les **dix à quinze premières secondes**.
+- La synthèse vocale par IA est explicitement autorisée.
+- Montrer le projet qui fonctionne dans les dix à quinze premières secondes.
 
 ## Une contradiction qu'il faut porter
 
@@ -48,14 +48,14 @@ Les règles sont déclarées prévalentes. La FAQ contient par ailleurs un artef
 de copier-coller (« Since there's no video ») qui contredit la vidéo
 obligatoire : elle n'est pas fiable.
 
-**Il faut donc supposer les deux** : l'écrit et la vidéo doivent tenir seuls,
+Il faut donc supposer les deux : l'écrit et la vidéo doivent tenir seuls,
 _et_ l'URL doit fonctionner à froid.
 
 ## L'environnement de démonstration peut produire une démo vide
 
-La documentation d'OpenAI indique que les outils de site exigent **GPT-5.6 Sol
-ou Terra** ; **Luna a WebMCP désactivé**. Le navigateur intégré de ChatGPT ne
-découvre par ailleurs **aucun outil enregistré dans une iframe**, même de même
+La documentation d'OpenAI indique que les outils de site exigent GPT-5.6 Sol
+ou Terra ; Luna a WebMCP désactivé. Le navigateur intégré de ChatGPT ne
+découvre par ailleurs aucun outil enregistré dans une iframe, même de même
 origine, et ne prend pas en charge l'API déclarative.
 
 Filmer contre Luna reviendrait à filmer une page sans outils.
@@ -66,38 +66,38 @@ Filmer contre Luna reviendrait à filmer une page sans outils.
 
 C'est la conclusion la plus utile de cette recherche, et elle est désagréable.
 
-Sur **397 dépôts décrits** créés pendant la fenêtre du concours, **65 (~16 %)**
+Sur 397 dépôts décrits créés pendant la fenêtre du concours, 65 (~16 %)
 mettent en avant l'approbation humaine, le gating de propositions ou le
-consentement — davantage que le commerce (27), les formulaires (30) ou les jeux
+consentement, davantage que le commerce (27), les formulaires (30) ou les jeux
 (21). Deux projets implémentent une autorisation bloquante presque à
-l'identique. Un projet, **Remnic Canvas**, recoupe deux des trois piliers de
+l'identique. Un projet, Remnic Canvas, recoupe deux des trois piliers de
 Keydler : mémoire locale en IndexedDB exposée par WebMCP, survivant aux
-conversations, où chaque écriture est une proposition que l'humain approuve —
+conversations, où chaque écriture est une proposition que l'humain approuve,
 avec une démo en ligne et une page Devpost publique.
 
-La mémoire persistante est six fois plus rare (**11 sur 397**), et les
+La mémoire persistante est six fois plus rare (11 sur 397), et les
 concurrents directs sur ce terrain sont cinq ou six. L'opacité des identifiants
 a aussi ses analogues directs.
 
 **Position honnête** : rien dans la combinaison n'est inoccupé, sauf la
-combinaison elle-même et le modèle de contenu — _travail fait, règles à suivre,
-erreurs à ne pas refaire_. C'est cela qu'il faut mettre en tête de l'écrit, avec
-l'ingénierie de supervision et de durabilité. Pas « agent proposes, human
+combinaison elle-même et le modèle de contenu (_travail fait, règles à suivre,
+erreurs à ne pas refaire_). C'est cela qu'il faut mettre en tête de l'écrit,
+avec l'ingénierie de supervision et de durabilité. Pas « agent proposes, human
 approves », qu'un juge ayant lu cinquante dossiers aura lu cinquante fois.
 
 ## Ce qu'il ne faut PAS ajouter
 
 Un agent de recherche a recommandé d'adopter `title`, `getTools()`,
-`toolchange`, `additionalProperties: false` et les budgets de 1,5 k. **Les cinq
-sont déjà en place** — il a reconnu n'avoir jamais lu le source. Vérifié :
+`toolchange`, `additionalProperties: false` et les budgets de 1,5 k. Les cinq
+sont déjà en place. Il a reconnu n'avoir jamais lu le source. Vérifié :
 `src/webmcp/tools.ts` porte treize titres, `register.ts:137` appelle
 `getTools()`, `register.ts:174` écoute `toolchange`, `schemas.ts` a six
 `additionalProperties: false`, et `src/domain/budget.ts` tient les budgets.
 
 Ce qui survit de cet agent, et qui est vérifiable :
 
-- **`exposedTo`** est la seule option d'enregistrement inutilisée — et elle est
-  **inerte sur la surface de jugement**, puisque le navigateur de ChatGPT ne
+- **`exposedTo`** est la seule option d'enregistrement inutilisée, et elle est
+  inerte sur la surface de jugement, puisque le navigateur de ChatGPT ne
   découvre aucun outil d'iframe. L'adopter ne change rien qu'un juge puisse
   observer.
 - **`destructiveHint`, `idempotentHint`, `openWorldHint`, `outputSchema`, les
@@ -110,7 +110,7 @@ Ce qui survit de cet agent, et qui est vérifiable :
 - **Antériorité du projet** : les 97 commits datent tous du 26 août ou après,
   aucun avant le 25. Rien à déclarer.
 - **Licence** : `LICENSE` MIT à la racine. Reste à confirmer que GitHub l'affiche
-  dans l'encadré « About » et que le dépôt est **public** — un clic, pas une
+  dans l'encadré « About » et que le dépôt est public. Un clic, pas une
   tâche.
 
 ---

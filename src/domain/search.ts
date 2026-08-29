@@ -104,7 +104,7 @@ export function searchTask(task: TaskState, query: string): Match[] {
     found.push({
       kind: 'question',
       label: q.answer === null ? 'Question, still open' : 'Question, answered',
-      text: q.answer === null ? q.question : `${q.question} — ${q.answer}`,
+      text: q.answer === null ? q.question : `${q.question} : ${q.answer}`,
       context: q.why,
     })
   }

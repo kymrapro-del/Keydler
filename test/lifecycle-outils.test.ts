@@ -75,7 +75,7 @@ describe('détection de la capacité', () => {
   })
 })
 
-describe('mode statique — la cible du concours', () => {
+describe('mode statique : la cible du concours', () => {
   beforeEach(() => pretendChromium(151))
 
   it('pose le jeu correspondant à l’état INITIAL, et rien de plus', async () => {
@@ -112,7 +112,7 @@ describe('mode statique — la cible du concours', () => {
       })
     await settle(8)
 
-    expect(textOf(résultat)).toContain('OK — complete_task recorded.')
+    expect(textOf(résultat)).toContain('OK: complete_task recorded.')
     expect(fake.names()).toHaveLength(ALL_TOOLS.length)
     expect(getRegistrationState().toolNames).toHaveLength(ALL_TOOLS.length)
   })
@@ -150,7 +150,7 @@ describe('mode statique — la cible du concours', () => {
   })
 })
 
-describe('mode dynamique — Chromium 153 et au-delà', () => {
+describe('mode dynamique : Chromium 153 et au-delà', () => {
   beforeEach(() => pretendChromium(DYNAMIC_UNREGISTER_MIN_CHROMIUM))
 
   it('retire les écritures à la clôture', async () => {

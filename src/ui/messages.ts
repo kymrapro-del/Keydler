@@ -46,7 +46,7 @@ export function humanReason(error: ValidationError): string {
     case 'bad-enum':
       return `${field} is not one of the accepted values.`
     case 'not-found':
-      return `${field} could not be found — the page may have changed since.`
+      return `${field} could not be found. The page may have changed since.`
     case 'no-evidence':
       return 'that step has no evidence to review.'
     case 'already-active':
@@ -60,7 +60,7 @@ export function humanReason(error: ValidationError): string {
     case 'mutation-id-collision':
       return `${field} has already been used, with different details.`
     case 'content-not-reviewed':
-      return 'the evidence on screen no longer matches the one on file — read it again before approving.'
+      return 'the evidence on screen no longer matches the one on file: read it again before approving.'
     case 'not-proposed':
       return 'that proposal has already been decided.'
     case 'already-has-evidence':
@@ -76,7 +76,7 @@ export function humanMessage(error: unknown, action: string): string {
   if (error instanceof ConcurrentWriteError) {
     return (
       `${action}: another tab changed this task in the meantime. ` +
-      `It has just been reloaded at version ${error.foundVersion} — try again.`
+      `It has just been reloaded at version ${error.foundVersion}, so try again.`
     )
   }
   if (error instanceof StaleStateError) {

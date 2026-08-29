@@ -34,7 +34,7 @@ describe('pagination', () => {
 
     const page = textOf(await call(readTaskDetailTool, { section: 'steps', limit: 5 }))
     expect(page).toContain('PAGE        1–5 of 12')
-    expect(page).toContain('MORE        7 left — call again with offset: 5')
+    expect(page).toContain('MORE        7 left, call again with offset: 5')
     expect(page).toContain('Étape 0')
     expect(page).toContain('Étape 4')
     expect(page).not.toContain('Étape 5')
@@ -60,13 +60,13 @@ describe('pagination', () => {
   it('dit explicitement qu’une section est épuisée, plutôt que de rendre une page muette', async () => {
     await cahierChargé(3)
     const page = textOf(await call(readTaskDetailTool, { section: 'steps' }))
-    expect(page).toContain('MORE        none — this is the end of the section')
+    expect(page).toContain('MORE        none, this is the end of the section')
   })
 
   it('dit qu’une section est vide, sans laisser croire à une panne', async () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     const page = textOf(await call(readTaskDetailTool, { section: 'decisions' }))
-    expect(page).toContain('PAGE        empty — this section holds nothing')
+    expect(page).toContain('PAGE        empty, this section holds nothing')
   })
 
   it('signale un décalage au-delà de la fin, et dit lequel serait valable', async () => {
@@ -200,7 +200,7 @@ describe('section credentials', () => {
     expect(rendu).toContain('${service-0-api-key}')
     expect(rendu).toContain('${service-4-api-key}')
     expect(rendu).not.toContain('${service-5-api-key}')
-    expect(rendu).toMatch(/MORE\s+3 left — call again with offset: 5/)
+    expect(rendu).toMatch(/MORE\s+3 left, call again with offset: 5/)
   })
 
   it('ne porte que la projection publique : jamais une valeur, jamais un scellé', () => {

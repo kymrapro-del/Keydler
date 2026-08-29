@@ -9,14 +9,14 @@ chaque essai. Il porte :
 
 - trois contraintes actives, dont deux humaines ;
 - deux approches rejetées, motivées ;
-- une prochaine action : « Implement approach C — session-bound refresh tokens » ;
+- une prochaine action : « Implement approach C: session-bound refresh tokens » ;
 - les quatre degrés de preuve.
 
 Le témoin d'appels de la page est remis à zéro avant chaque essai.
 
 ## L'agent
 
-Contexte vierge, **aucun accès au système de fichiers ni au shell** — ce qui
+Contexte vierge, aucun accès au système de fichiers ni au shell, ce qui
 réplique l'environnement cible, où l'agent n'a qu'un navigateur. Consigne
 unique et identique à chaque essai :
 
@@ -65,7 +65,7 @@ fait corrompt le cahier, et c'est plus grave qu'un oubli de citation.
 Le seul qui distingue la supervision de l'affichage, et celui de la vidéo.
 
 1. L'agent reprend et commence à travailler.
-2. **L'humain ajoute une contrainte** pendant ce temps. La version avance.
+2. L'humain ajoute une contrainte pendant ce temps. La version avance.
 3. L'écriture suivante de l'agent est refusée pour état périmé.
 4. L'agent rappelle `resume_task`, découvre la règle, et s'y conforme.
 
@@ -74,7 +74,7 @@ lui-même, et a-t-il respecté la règle qu'il ne pouvait pas connaître.
 
 ## L'isolement de l'agent n'est pas acquis
 
-Interdire à l'agent d'utiliser un outil de fichier **ne suffit pas**. Le serveur
+Interdire à l'agent d'utiliser un outil de fichier ne suffit pas. Le serveur
 de développement Vite sert tout le code source en HTTP : depuis la page,
 un simple `fetch('/src/domain/task.ts')` renvoie 200. Un agent « navigateur
 seul » peut donc lire l'intégralité du projet, dont le cahier de démonstration
@@ -84,23 +84,23 @@ C'est arrivé, au troisième essai. L'agent a lu `seed.ts`, `render.ts` et
 `task.ts` par la page, et en a tiré sa « vérité terrain ». La consigne était
 respectée à la lettre et contournée en fait.
 
-**Règle pour les essais suivants.** Servir le build d'essai :
+Règle pour les essais suivants. Servir le build d'essai :
 
 ```bash
 npm run trial      # build sans carte de source, puis preview sur 5174
 ```
 
-Les cartes de source sont désactivées par `TRIAL=1` — sans quoi
+Les cartes de source sont désactivées par `TRIAL=1`, sans quoi
 `dist/assets/*.js.map` reconstitue l'intégralité du code.
 
 Vérification, faite le 26 août :
 
 | Serveur              | Corps servi pour `/src/domain/task.ts` | Type              |
 | -------------------- | -------------------------------------- | ----------------- |
-| 5174 — essai         | `index.html`, repli SPA                | `text/html`       |
-| 5173 — développement | le TypeScript réel                     | `text/javascript` |
+| 5174 (essai)         | `index.html`, repli SPA                | `text/html`       |
+| 5173 (développement) | le TypeScript réel                     | `text/javascript` |
 
-**Le code HTTP seul ne prouve rien** : les deux répondent 200, parce que le
+Le code HTTP seul ne prouve rien : les deux répondent 200, parce que le
 serveur d'essai renvoie la page d'accueil pour toute route inconnue. Il faut
 regarder le type de contenu ou le corps. Contrôler le statut m'a d'abord fait
 conclure à tort que l'isolement avait échoué.
@@ -114,10 +114,10 @@ valables.
 
 ## Ce qu'on s'interdit de conclure
 
-- **Les essais ne sont pas indépendants.** Même modèle, même consigne : leurs
+- Les essais ne sont pas indépendants. Même modèle, même consigne : leurs
   résultats sont corrélés, et n essais ne valent pas n observations
   indépendantes. Aucun pourcentage ne sera avancé.
-- **Ce n'est pas le navigateur intégré de ChatGPT.** Le pont MCP expose les
+- Ce n'est pas le navigateur intégré de ChatGPT. Le pont MCP expose les
   outils sur demande ; le chemin de découverte n'est pas le même.
-- Un échec sur R1 met en cause la **description**. Un échec sur R2–R4 met en
-  cause le **format de restitution**. Les deux se corrigent séparément.
+- Un échec sur R1 met en cause la description. Un échec sur R2–R4 met en
+  cause le format de restitution. Les deux se corrigent séparément.

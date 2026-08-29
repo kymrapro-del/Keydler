@@ -59,13 +59,9 @@ describe('offrir le cahier dans un lien', () => {
     expect(copied!.split('#')[0]).toContain('/t/')
   })
 
-  /**
-   * Le lien emporte les preuves telles qu'elles ont été collées, et une sortie
-   * de commande peut porter un jeton ou le nom d'une machine interne. Le
-   * produit se donne pour règle de dire ce qu'il fait ; il ne le disait pas
-   * ici, et pas au bon moment : une fois l'adresse dans le presse-papier, la
-   * décision est déjà prise.
-   */
+  // Le lien emporte les preuves telles quelles, et une sortie de commande peut
+  // porter un jeton ou le nom d'une machine interne. Le dire après le clic ne
+  // sert à rien : l'adresse est déjà dans le presse-papier.
   it('prévient de ce qui voyage AVANT le clic, pas après', async () => {
     const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
 
@@ -144,7 +140,7 @@ describe('recevoir un cahier par un lien', () => {
   it('ne contredit pas l’offre par un bandeau « cette tâche n’existe pas »', async () => {
     await arriveWith(await packTask(buildDemoTask()))
 
-    // L'adresse pointe bien vers une tâche absente — mais le lien porte
+    // L'adresse pointe bien vers une tâche absente, mais le lien porte
     // justement de quoi la créer. Dire les deux à la fois affole pour rien.
     expect(root.textContent).not.toContain('does not exist on this device')
     expect(offer()).toBeDefined()
@@ -235,7 +231,7 @@ describe('le lien protégé, depuis l’écran', () => {
   })
 
   it('n’annonce pas ce qu’il ne fait pas', async () => {
-    // La phrase ne vérifie pas une identité — elle vérifie la connaissance
+    // La phrase ne vérifie pas une identité : elle vérifie la connaissance
     // d'un secret. L'écran doit le dire, et dire pourquoi.
     const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
     expect(zone).toContain('Nobody can tell who opens a link')

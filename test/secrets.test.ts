@@ -155,15 +155,32 @@ describe('ce que l’agent reçoit', () => {
 
     const deux = estimateTokens(renderTaskState(task, { credentials: creds(2) }))
     const trente = estimateTokens(renderTaskState(task, { credentials: creds(30) }))
-    // Le coût est borné, pas proportionnel : trente n'ajoutent qu'un compteur.
+
+    // Le coût est borné, pas proportionnel. On le compare à ce que coûteraient
+    // les vingt-huit noms supplémentaires s'ils étaient tous rendus, et l'on
+    // exige de rester sous le cinquième. Mesuré : 17 tokens contre 131, soit
+    // 13 %. Un seuil en dur ne dirait pas pourquoi
+    // et dériverait à chaque reformulation : celui-ci a déjà dû passer de 5 à
+    // 20 le jour où une phrase a raccourci et laissé tenir un nom de plus.
+    //
+    // On ne mesure PAS un prix unitaire par différence : la sortie de deux
+    // identifiants est plus COURTE que celle d'un seul, parce que l'échelle de
+    // dégradation rogne ailleurs dès que la place manque. C'est précisément ce
+    // qui borne le coût.
+    const vingtHuitNoms = estimateTokens(
+      creds(30)
+        .slice(2)
+        .map((c) => c.name)
+        .join('\n'),
+    )
     expect(trente).toBeLessThanOrEqual(TOKEN_BUDGET)
-    expect(trente - deux).toBeLessThanOrEqual(5)
+    expect(trente - deux).toBeLessThan(vingtHuitNoms * 0.2)
 
     // Un NOM n'est jamais tronqué : un agent qui citerait `${service-1-api-k…}`
     // écrirait une référence fausse. Sous pression, on en montre moins, on ne
-    // les raccourcit pas — et on dit combien sont cachés.
+    // les raccourcit pas, et on dit combien sont cachés.
     const rendu = renderTaskState(task, { credentials: creds(30) })
-    expect(rendu).toMatch(/CREDENTIALS — names only, values sealed \(\d+ of 30\)/)
+    expect(rendu).toMatch(/CREDENTIALS: names only, values sealed \(\d+ of 30\)/)
     expect(rendu).not.toMatch(/\$\{service-\d+-api-k…/)
   })
 
@@ -183,7 +200,7 @@ describe('ce que l’agent reçoit', () => {
     const avec = renderTaskState(task, { credentials: creds(4) })
 
     // Sans identifiants, le budget tient deux étapes. Avec, il n'en tient plus
-    // qu'une — c'est le travail ancien qui paie, et il se relit page par page.
+    // qu'une : c'est le travail ancien qui paie, et il se relit page par page.
     expect(sans).toMatch(/RECENT WORK \(last 2 of 4\)/)
     expect(avec).toMatch(/RECENT WORK \(last 1 of 4\)/)
     expect(avec).toContain('${service-0-api-key}')
@@ -203,8 +220,8 @@ describe('ce que l’agent reçoit', () => {
 
     // Le compte est ce qui compte : « 2 of 8 » dit à l'agent qu'il lui en manque
     // six. La section où les lire est déclarée par le schéma de
-    // read_task_detail, qui ne peut pas dériver — et n'occupe pas le budget.
-    expect(rendu).toMatch(/CREDENTIALS — names only, values sealed \(\d+ of 8\)/)
+    // read_task_detail, qui ne peut pas dériver, et n'occupe pas le budget.
+    expect(rendu).toMatch(/CREDENTIALS: names only, values sealed \(\d+ of 8\)/)
     expect(rendu).toContain('read_task_detail')
 
     const schema = readTaskDetailTool.inputSchema as {

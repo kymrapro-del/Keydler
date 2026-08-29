@@ -6,10 +6,9 @@ import type { TaskState } from '../domain/types'
 export const FRAGMENT_KEY = 'log='
 
 /**
- * Une adresse trop longue est tronquée en silence par des messageries et des
- * terminaux. Mieux vaut refuser clairement et renvoyer vers l'export en
- * fichier, qui n'a pas de limite. La borne laisse passer un cahier ordinaire
- * même sans CompressionStream — sinon le repli ne servirait à rien.
+ * Une adresse trop longue est tronquée en silence par messageries et terminaux : mieux
+ * vaut refuser et renvoyer vers l'export en fichier, sans limite. La borne laisse passer
+ * un cahier ordinaire même sans CompressionStream, sinon le repli ne servirait à rien.
  */
 export const MAX_LINK_LENGTH = 16_000
 
@@ -19,7 +18,7 @@ export class TooLargeForLinkError extends Error {
   constructor(length: number) {
     super(
       `This log needs ${length} characters and a link holds ${MAX_LINK_LENGTH}. ` +
-        'Use “Export this task” and send the file instead — it has no limit.',
+        'Use “Export this task” and send the file instead, which has no limit.',
     )
     this.name = 'TooLargeForLinkError'
   }
@@ -122,19 +121,10 @@ async function expand(bytes: Uint8Array): Promise<Uint8Array> {
 }
 
 /**
- * Un lien porte le cahier entier. Personne ne peut savoir qui l'ouvre : un
- * fragment d'URL est une capacité au porteur, et vérifier une identité
- * demanderait un serveur, que ce produit n'a pas et ne veut pas.
- *
- * Ce qui est possible sans serveur, c'est d'exiger la connaissance d'un
- * secret. Ce n'est pas la même chose qu'authentifier quelqu'un, et il ne faut
- * pas le vendre comme tel — mais cela règle la fuite qui compte vraiment : un
- * lien oublié dans un fil de discussion devient un bloc de chiffré inutile.
- *
- * Le chiffrement est celui du coffre, sans une ligne de crypto nouvelle :
- * AES-GCM 256, clé dérivée par PBKDF2-SHA256 à 600 000 itérations, sel et IV
- * tirés au hasard à chaque scellement. On chiffre APRÈS avoir compressé — un
- * chiffré ne se compresse pas.
+ * Un fragment d'URL est une capacité au porteur : sans serveur, on ne peut qu'exiger
+ * un secret, pas authentifier. Un lien oublié dans un fil devient un bloc de chiffré
+ * inutile. Chiffrement du coffre, sans crypto nouvelle : AES-GCM 256, PBKDF2-SHA256 à
+ * 600 000 itérations, APRÈS compression, car un chiffré ne se compresse pas.
  */
 export const SEALED_MARKER = 's'
 

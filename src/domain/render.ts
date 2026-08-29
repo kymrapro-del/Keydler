@@ -16,14 +16,10 @@ import { referenceSyntax, type SecretName } from './secret'
 import { sinceThen } from './elapsed'
 
 /**
- * Chrome recommande 1,5 k caractères par sortie d'outil. À quatre caractères
- * par token — la mesure qu'utilise `estimateTokens` — cela ferait 375, et le
- * budget vise 400. Descendre à 375 a été essayé, puis retiré : mesuré, cela
- * faisait passer une restitution ordinaire de 1506 à 1489 caractères, dix-sept
- * de gagnés, et cela coûtait un nom d'identifiant à l'écran sur un cahier
- * chargé. Les restitutions réelles tiennent déjà sous 1,5 k ; celles qui
- * débordent portent un nombre anormal de règles, où le plancher de douze
- * obligations est un choix assumé et documenté.
+ * Chrome recommande 1,5 k caractères par sortie d'outil, soit 375 tokens à quatre caractères
+ * par token, la mesure d'`estimateTokens`. Descendre de 400 à 375 a été essayé puis retiré :
+ * une restitution ordinaire passait de 1506 à 1489 caractères, dix-sept de gagnés, contre un
+ * nom d'identifiant perdu à l'écran sur un cahier chargé.
  */
 export const TOKEN_BUDGET = 400
 
@@ -62,14 +58,10 @@ export type RenderOptions = {
 const CLIP_FLOOR = 0.4
 
 /**
- * Les règles et les approches écartées n'étaient bornées par rien. Mesuré :
- * dix règles suffisaient à dépasser le budget (487 tokens), et deux mille le
- * portaient à 37 800 — 94 fois ce qui est annoncé. L'échelle de dégradation
- * ne pouvait rien y faire : elle ne coupait que l'histoire.
- *
- * On les coupe donc en dernier, jamais en dessous de ce plancher, et jamais
- * sans le dire : une obligation hors du cadre reste une obligation, et
- * l'agent doit savoir qu'il lui en manque plutôt que de croire avoir tout lu.
+ * Rien ne bornait les règles ni les approches écartées : dix règles suffisaient à dépasser
+ * le budget (487 tokens), deux mille le portaient à 37 800 (94 fois l'annoncé) et
+ * l'échelle de dégradation ne coupait que l'histoire. On les coupe donc en dernier, jamais
+ * sous ce plancher et jamais sans le dire : l'agent doit savoir qu'il lui en manque.
  */
 const MIN_BINDING_SHOWN = 12
 
@@ -95,7 +87,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     ...proposedConstraints(state).map((p) => ({ kind: 'constraint', text: p.rule })),
     ...proposedRejections(state).map((p) => ({
       kind: 'rejection',
-      text: `${p.approach} — ${p.reason}`,
+      text: `${p.approach}: ${p.reason}`,
     })),
   ]
 
@@ -113,7 +105,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push(`SUMMARY     ${clip(state.summary, c(300))}`)
   } else {
     lines.push(
-      `NEXT        ${state.next ? clip(state.next, c(200)) : '(not set — decide and log it)'}`,
+      `NEXT        ${state.next ? clip(state.next, c(200)) : '(not set: decide and log it)'}`,
     )
   }
   if (state.goal) {
@@ -126,8 +118,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('')
     lines.push(
       attente.length > shown.length
-        ? `AWAITING YOUR APPROVAL — the agent is blocked (${shown.length} of ${attente.length})`
-        : `AWAITING YOUR APPROVAL — the agent is blocked (${attente.length})`,
+        ? `AWAITING YOUR APPROVAL: the agent is blocked (${shown.length} of ${attente.length})`
+        : `AWAITING YOUR APPROVAL: the agent is blocked (${attente.length})`,
     )
     for (const a of shown) {
       lines.push(`  ${clip(a.action, c(150))}`)
@@ -155,8 +147,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('')
     lines.push(
       contestées.length > shown.length
-        ? `DISPUTED BY THE HUMAN — treat as wrong (${shown.length} of ${contestées.length})`
-        : `DISPUTED BY THE HUMAN — treat as wrong (${contestées.length})`,
+        ? `DISPUTED BY THE HUMAN: treat as wrong (${shown.length} of ${contestées.length})`
+        : `DISPUTED BY THE HUMAN: treat as wrong (${contestées.length})`,
     )
     for (const s of shown) {
       lines.push(`  ${clip(s.action, c(120))}`)
@@ -170,8 +162,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('')
     lines.push(
       ouvertes.length > shown.length
-        ? `WAITING ON THE HUMAN — blocked until answered (${shown.length} of ${ouvertes.length})`
-        : `WAITING ON THE HUMAN — blocked until answered (${ouvertes.length})`,
+        ? `WAITING ON THE HUMAN: blocked until answered (${shown.length} of ${ouvertes.length})`
+        : `WAITING ON THE HUMAN: blocked until answered (${ouvertes.length})`,
     )
     for (const q of shown) {
       lines.push(`  Q: ${clip(q.question, c(150))}`)
@@ -198,14 +190,14 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   // ont pu vieillir. On ne le dit que si c'est vrai, et jamais à la minute.
   const dormant = sinceThen(state.updatedAt)
   if (dormant !== null && Date.now() - state.updatedAt >= 24 * 60 * 60 * 1000) {
-    lines.push(`LAST WRITE  ${dormant} — check that what is below still holds`)
+    lines.push(`LAST WRITE  ${dormant}. Check that what is below still holds`)
   }
 
   const rules = active.slice(0, recentConstraints)
   const rulesHidden = active.length - rules.length
 
   lines.push('')
-  lines.push(`CONSTRAINTS — binding (${active.length})`)
+  lines.push(`CONSTRAINTS: binding (${active.length})`)
   if (active.length === 0) {
     lines.push('  (none)')
   } else {
@@ -213,7 +205,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
       lines.push(`  [${constraint.source}] ${clip(constraint.rule, c(160))}`)
     }
     if (rulesHidden > 0) {
-      lines.push(`  ${rulesHidden} more not shown here — THEY ARE STILL BINDING.`)
+      lines.push(`  ${rulesHidden} more not shown here. THEY ARE STILL BINDING.`)
       lines.push('  Read them with read_task_detail on constraints before you act.')
     }
   }
@@ -224,14 +216,14 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('')
     lines.push(
       hidden > 0
-        ? `REJECTED — do not retry (${shown.length} of ${condamnées.length} shown)`
-        : 'REJECTED — do not retry',
+        ? `REJECTED: do not retry (${shown.length} of ${condamnées.length} shown)`
+        : 'REJECTED: do not retry',
     )
     for (const r of shown) {
-      lines.push(`  [${r.source}] ${clip(r.approach, c(84))} — ${clip(r.reason, c(104))}`)
+      lines.push(`  [${r.source}] ${clip(r.approach, c(84))}: ${clip(r.reason, c(104))}`)
     }
     if (hidden > 0) {
-      lines.push(`  ${hidden} more not shown here — they were ruled out too.`)
+      lines.push(`  ${hidden} more not shown here. They were ruled out too.`)
       lines.push('  Read them with read_task_detail on rejections before proposing an approach.')
     }
   }
@@ -241,8 +233,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('')
     lines.push(
       propositions.length > shown.length
-        ? `PROPOSED BY AN AGENT — NOT binding (${shown.length} of ${propositions.length} shown)`
-        : `PROPOSED BY AN AGENT — NOT binding (${propositions.length})`,
+        ? `PROPOSED BY AN AGENT: NOT binding (${shown.length} of ${propositions.length} shown)`
+        : `PROPOSED BY AN AGENT: NOT binding (${propositions.length})`,
     )
     for (const p of shown) lines.push(`  ${p.kind}: ${clip(p.text, c(140))}`)
     lines.push('  No human has approved these. Weigh them; do not treat them as rules.')
@@ -257,7 +249,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
         : 'DECISIONS',
     )
     for (const d of shown) {
-      lines.push(`  ${clip(d.choice, c(90))} — ${clip(d.rationale, c(110))}`)
+      lines.push(`  ${clip(d.choice, c(90))}: ${clip(d.rationale, c(110))}`)
     }
   }
 
@@ -271,7 +263,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     )
     for (const s of shown) {
       lines.push(
-        `  ${CONFIDENCE_TAG[s.confidence]} ${clip(s.action, c(80))} — ${clip(s.result, c(90))}`,
+        `  ${CONFIDENCE_TAG[s.confidence]} ${clip(s.action, c(80))}: ${clip(s.result, c(90))}`,
       )
     }
   }
@@ -282,11 +274,11 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('')
     lines.push(
       all.length > shown.length
-        ? `CREDENTIALS — names only, values sealed (${shown.length} of ${all.length})`
-        : `CREDENTIALS — names only, values sealed (${all.length})`,
+        ? `CREDENTIALS: names only, values sealed (${shown.length} of ${all.length})`
+        : `CREDENTIALS: names only, values sealed (${all.length})`,
     )
     for (const secret of shown) {
-      lines.push(`  ${referenceSyntax(secret.name)} — ${clip(secret.purpose, c(90))}`)
+      lines.push(`  ${referenceSyntax(secret.name)}: ${clip(secret.purpose, c(90))}`)
     }
     lines.push('  Write these as ${name}; no tool here returns a value.')
   }
@@ -304,7 +296,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     lines.push('  A refused write means this state moved: call what_changed, or resume_task.')
   } else {
     lines.push('TASK CLOSED')
-    lines.push('  This task is complete. Writes are refused — do not log further work.')
+    lines.push('  This task is complete. Writes are refused. Do not log further work.')
     lines.push('  If work remains, ask the human to reopen it.')
   }
 

@@ -3,25 +3,10 @@ import { addConstraint, createTask, setNext } from '../src/domain/task'
 import { StaleStateError } from '../src/domain/errors'
 import type { TaskState } from '../src/domain/types'
 
-/**
- * `set_next_action` était la seule écriture d'agent qui ne passait pas sa
- * version au domaine : elle validait la FORME du champ `based_on_version`,
- * puis jetait la valeur. Trois conséquences, toutes constatées sur le
- * déploiement réel avant d'être corrigées :
- *
- *   1. une écriture périmée passait. Un agent qui avait lu l'état il y a
- *      longtemps écrasait la prochaine action que l'humain venait de poser,
- *      sans que rien ne le refuse ;
- *   2. l'entrée était consignée `actor: 'human'`. Le registre — la seule
- *      chose que ce produit promet d'être honnête — attribuait à l'humain
- *      une écriture qu'aucun humain n'avait faite ;
- *   3. l'opération s'appelait `set_next` quand elle réussissait et
- *      `set_next_action` quand elle échouait. Un agent relisant l'historique
- *      voyait deux actions là où il n'y en avait qu'une.
- *
- * Aucune épreuve ne couvrait cela. `changes.ts` listait même les deux noms,
- * ce qui montre que la duplication avait été contournée, pas corrigée.
- */
+// `set_next_action` validait la forme de `based_on_version` puis jetait la valeur. Sur le
+// déploiement réel : une écriture périmée écrasait la prochaine action que l'humain venait de
+// poser, l'entrée était consignée `actor: 'human'`, et l'opération s'appelait `set_next` en
+// succès, `set_next_action` en échec.
 describe('set_next_action, écrit par un agent', () => {
   let cahier: TaskState
 
@@ -53,7 +38,7 @@ describe('set_next_action, écrit par un agent', () => {
 
   it('garde la version invoquée dans le registre', () => {
     // Sans elle, on ne peut pas relire après coup sur quel état l'agent
-    // s'appuyait — c'est-à-dire savoir s'il travaillait à l'aveugle.
+    // s'appuyait, c'est-à-dire savoir s'il travaillait à l'aveugle.
     const après = setNext(cahier, { next: 'Autre chose', basedOnVersion: cahier.version }, 'agent')
     expect(après.audit[après.audit.length - 1].basedOnVersion).toBe(cahier.version)
   })

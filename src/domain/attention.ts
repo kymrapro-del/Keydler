@@ -14,12 +14,10 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
-/**
- * Le pendant humain de `resume_task` : ce que la page sait et que personne
- * n'a encore tranché, dans l'ordre où cela coûte de ne pas le voir. Une
- * demande d'autorisation bloque un agent en ce moment même ; une étape
- * affirmée sans preuve attendra.
- */
+// Le pendant humain de `resume_task` : ce que personne n'a encore tranché, dans l'ordre où
+// cela coûte de ne pas le voir. Une autorisation bloque un agent en ce moment même, une
+// étape affirmée sans preuve attendra.
+
 /**
  * Une pastille de sélecteur ne se lit pas si elle énumère tout : on nomme ce
  * qui coûte le plus de rater, et on compte le reste.

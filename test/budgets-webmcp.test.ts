@@ -6,38 +6,19 @@ import { MAX_MATCHES, renderSearch } from '../src/domain/searchResult'
 import type { TaskState } from '../src/domain/types'
 import { ALL_TOOLS } from '../src/webmcp/tools'
 
-/**
- * Chrome publie des budgets de caractères pour les outils WebMCP : 30 par nom,
- * 500 par description d'outil, 150 par description de paramètre, 1,5 k par
- * sortie. Ce sont des recommandations et non des limites dures — au-delà, on
- * « tombe sur les garde-fous des agents » et l'on obtient de moins bons
- * résultats.
- *
- * Ce fichier les tient. Une description se réécrit à chaque fois qu'on trouve
- * une meilleure formulation, et c'est justement là qu'elle regrossit.
- *
- * https://developer.chrome.com/docs/ai/webmcp/secure-tools
- */
+// Budgets de caractères recommandés par Chrome pour WebMCP : 30 par nom, 500 par
+// description d'outil, 150 par description de paramètre, 1,5 k par sortie. Ce ne sont
+// pas des limites dures : au-delà, on tombe sur les garde-fous des agents.
+// https://developer.chrome.com/docs/ai/webmcp/secure-tools
 
 const MAX_NAME = 30
 const MAX_TOOL_DESCRIPTION = 500
 const MAX_PARAM_DESCRIPTION = 150
-/**
- * Chrome recommande 1,5 k caractères par sortie. Le budget du produit,
- * `TOKEN_BUDGET`, vaut 400 tokens, soit 1600 caractères à la mesure qu'il
- * emploie : 6,7 % au-dessus de la recommandation. Descendre à 375 pour tomber
- * pile a été essayé puis retiré — mesuré, cela gagnait dix-sept caractères sur
- * une restitution ordinaire et coûtait un nom d'identifiant à l'écran.
- *
- * C'est donc la borne du produit qui est tenue ici, exprimée dans l'unité de
- * Chrome, et l'écart est écrit plutôt que maquillé.
- *
- * La mesure se fait AVEC l'adresse de la tâche, parce que l'outil la passe
- * toujours : sans elle on mesurait 1484 caractères pour une restitution qui en
- * fait 1528 une fois appelée — un test qui se rassurait sur autre chose que ce
- * qui part. Relevé dans Brave 151, par `execute_webmcp_tool` : 1528, soit
- * 1,9 % au-dessus de la recommandation et dans le budget du produit.
- */
+// Chrome recommande 1,5 k caractères par sortie ; `TOKEN_BUDGET` vaut 400 tokens, soit
+// 1600 caractères à sa mesure : 6,7 % au-dessus. Descendre à 375 gagnait dix-sept
+// caractères sur une restitution ordinaire et coûtait un nom d'identifiant à l'écran.
+// On mesure AVEC l'adresse de la tâche, que l'outil passe toujours : sans elle, 1484
+// caractères pour une sortie qui en fait 1528, relevé dans Brave 151, 1,9 % au-dessus.
 const MAX_OUTPUT = 1_600
 
 type Schema = {
@@ -114,7 +95,7 @@ describe('les budgets de caractères que Chrome recommande', () => {
     // Et rien n'est caché : l'en-tête compte ce qui est montré sur ce qui a été
     // trouvé, et dit quoi faire du reste.
     expect(texte).toMatch(/MATCHES {5}\d+ shown of 30 found/)
-    expect(texte).toContain('more not shown — narrow the query')
+    expect(texte).toContain('more not shown: narrow the query')
   })
 
   it('rend au moins une correspondance, même démesurée', () => {
@@ -165,12 +146,8 @@ describe('ce que la coupe ne devait pas emporter', () => {
   // forme du source plutôt qu'au message.
   const flat = (name: string) => of(name).description.replace(/\s+/g, ' ')
 
-  /**
-   * Les descriptions ont été raccourcies d'un tiers pour tenir le budget. La
-   * règle appliquée : **une description instruit, le README explique** — on a
-   * coupé les justifications, pas les instructions. Ces épreuves nomment les
-   * instructions qui devaient survivre à la coupe.
-   */
+  // Descriptions raccourcies d'un tiers pour tenir le budget : une description
+  // instruit, le README explique. Voici les instructions qui devaient survivre.
   it('garde le moment où appeler chaque outil', () => {
     for (const tool of ALL_TOOLS) {
       expect(tool.description, tool.name).toMatch(/Call this/)

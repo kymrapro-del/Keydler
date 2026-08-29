@@ -240,7 +240,7 @@ describe('restitution', () => {
 
     const output = renderTaskState(task)
     expect(output).toContain('Ne jamais modifier le schéma')
-    expect(output).toContain('REJECTED — do not retry')
+    expect(output).toContain('REJECTED: do not retry')
     expect(output).toContain('JWT variante B')
     expect(output).toContain('based_on_version: 3')
   })
@@ -290,7 +290,7 @@ describe('budget de restitution sous pression', () => {
       task = addConstraint(
         task,
         {
-          rule: `Contrainte ${i} — énoncée assez longuement pour peser sur le budget`,
+          rule: `Contrainte ${i} : énoncée assez longuement pour peser sur le budget`,
           basedOnVersion: task.version,
         },
         'human',
@@ -317,35 +317,29 @@ describe('budget de restitution sous pression', () => {
     const moyen = renderTaskState(chargé(8, 6))
 
     expect(léger).toContain('détaillé à dessein pour occuper')
-    // Chargé, tout est encore là — mais coupé.
+    // Chargé, tout est encore là, mais coupé.
     for (let i = 0; i < 8; i++) expect(moyen).toContain(`Approche condamnée numéro ${i}`)
     expect(moyen).not.toContain(
       'Motif 7, détaillé à dessein pour occuper de la place dans la restitution',
     )
   })
 
-  /**
-   * L'ancienne promesse était de ne JAMAIS retirer une obligation. Mesurée,
-   * elle rendait 37 800 tokens pour deux mille règles — 94 fois le budget
-   * annoncé. Une restitution pareille n'est pas lue : elle est tronquée par
-   * la fenêtre de contexte du modèle, en silence et hors de notre portée.
-   *
-   * Le choix n'est donc pas « tout garder ou couper », mais « couper ici en
-   * le disant, ou laisser couper ailleurs sans que personne le sache ».
-   */
+  // Ne JAMAIS retirer une obligation rendait 37 800 tokens pour deux mille
+  // règles, soit 94 fois le budget, et une restitution que la fenêtre de contexte
+  // tronque en silence. Couper ici en le disant, ou laisser couper ailleurs.
   it('en dernier recours retire des obligations, et le dit sans détour', () => {
     const output = renderTaskState(chargé(30, 10))
 
     expect(output).toContain('Approche condamnée numéro 0')
-    expect(output).toContain('REJECTED — do not retry (12 of 30 shown)')
-    expect(output).toContain('18 more not shown here — they were ruled out too.')
+    expect(output).toContain('REJECTED: do not retry (12 of 30 shown)')
+    expect(output).toContain('18 more not shown here. They were ruled out too.')
     expect(output).toContain('read_task_detail on rejections')
   })
 
   it('dit d’une règle retirée qu’elle engage TOUJOURS', () => {
     const output = renderTaskState(chargé(0, 40))
 
-    expect(output).toContain('CONSTRAINTS — binding (40)')
+    expect(output).toContain('CONSTRAINTS: binding (40)')
     expect(output).toContain('THEY ARE STILL BINDING')
     expect(output).toContain('read_task_detail on constraints')
   })

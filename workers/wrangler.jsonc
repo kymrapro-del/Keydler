@@ -1,6 +1,6 @@
 // Le second Worker du contournement décrit dans `../wrangler.jsonc` : il ne
 // sert aucun fichier et ne fait que renvoyer www vers l'apex. Séparé du
-// Worker qui sert le site pour que celui-ci reste sans script — voir
+// Worker qui sert le site pour que celui-ci reste sans script. Voir
 // `www.js` pour la raison.
 {
   "name": "keydler-www",

@@ -1,25 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import worker from '../workers/www.js'
 
-/**
- * Ce Worker remplace une Redirect Rule que le jeton de déploiement n'a pas le
- * droit de poser. Il ne fait qu'une chose, et ce qu'il garde tient à des
- * détails qui ne se voient pas à l'œil :
- *
- *   - le chemin et la requête doivent survivre. Un lien profond `/t/:id`
- *     renvoyé vers la racine ouvrirait une page vide ;
- *   - il ne doit pas se rediriger vers lui-même. Une route mal posée ferait
- *     une boucle infinie, et une boucle sur le domaine de production pendant
- *     le jugement d'un concours ne se rattrape pas ;
- *   - il ne doit jamais renvoyer vers `http:`.
- *
- * `wrangler dev --local` ne permet PAS de vérifier cela : il construit
- * `request.url` depuis l'adresse d'écoute et ignore l'en-tête `Host`, donc
- * toutes les requêtes lui parviennent comme venant de `127.0.0.1`. Une
- * première tentative de vérification par `curl -H Host:` a donné trois fois la
- * même réponse et n'a rien prouvé. D'où ces épreuves, qui appellent le
- * gestionnaire directement avec l'URL voulue.
- */
+// Ce Worker remplace une Redirect Rule que le jeton de déploiement n'a pas le droit de poser.
+// `wrangler dev --local` ne permet PAS de le vérifier : il construit `request.url` depuis
+// l'adresse d'écoute et ignore l'en-tête `Host`, donc tout lui parvient comme venant de
+// `127.0.0.1`. D'où ces appels directs au gestionnaire, avec l'URL voulue.
 const appeler = (url: string): Response => worker.fetch(new Request(url)) as Response
 
 describe('la redirection de www vers l’apex', () => {

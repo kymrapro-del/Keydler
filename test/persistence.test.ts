@@ -41,17 +41,10 @@ describe('persistance', () => {
     expect((await loadLastTask())?.id).toBe(second.id)
   })
 
-  /**
-   * Le repli — plus de dernier cahier connu — rapatriait TOUS les cahiers du
-   * poste pour n'en garder qu'un. Il descend maintenant l'index par date, et
-   * ne lit que ce qu'il rend. Ce qu'il faut vérifier, c'est qu'il rend
-   * toujours la même chose : le plus récent, et le suivant si celui-là est
-   * illisible.
-   *
-   * Les dates sont posées à la main. Deux cahiers créés dans la même
-   * milliseconde portent la même date, et « le plus récent » n'a alors pas de
-   * réponse — l'épreuve inventerait un ordre que le produit ne promet pas.
-   */
+  // Le repli (plus de dernier cahier connu) rapatriait TOUS les cahiers du
+  // poste pour n'en garder qu'un ; il descend maintenant l'index par date.
+  // Les dates sont posées à la main : deux cahiers créés dans la même
+  // milliseconde n'ont pas de « plus récent », et le produit n'en promet pas.
   async function poser(id: string, updatedAt: number, schemaVersion = SCHEMA_VERSION) {
     await putTask({ ...buildCoreTask(), id, title: id, updatedAt } as never)
     const db = await getDb()

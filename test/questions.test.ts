@@ -52,10 +52,10 @@ describe('une question pour l’humain', () => {
       'agent',
     )
     const id = openQuestions(asked)[0].id
-    const answered = answerQuestion(asked, id, 'Yes — it changes the checkout copy.')
+    const answered = answerQuestion(asked, id, 'Yes, it changes the checkout copy.')
 
     expect(openQuestions(answered)).toHaveLength(0)
-    expect(answeredQuestions(answered)[0].answer).toBe('Yes — it changes the checkout copy.')
+    expect(answeredQuestions(answered)[0].answer).toBe('Yes, it changes the checkout copy.')
     expect(answeredQuestions(answered)[0].answeredAt).toBeTypeOf('number')
     expect(answered.audit.at(-1)).toMatchObject({ operation: 'answer_question', actor: 'human' })
   })

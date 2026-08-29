@@ -46,7 +46,7 @@ describe('un lien hostile', () => {
   it('refuse une charge qui se décompresse en une masse énorme', async () => {
     // Un « zip bomb » : une charge SOUS la borne d'entrée, au ratio maximal de
     // gzip. Le lien étant ouvert par la victime, borner l'entrée ne protège de
-    // rien — c'est la sortie qu'il faut borner.
+    // rien : c'est la sortie qu'il faut borner.
     const énorme = JSON.stringify({ id: 'bomb', title: 'x'.repeat(6_000_000), version: 1 })
     const packed = `z${toBase64Url(await gzip(énorme))}`
     expect(packed.length).toBeLessThan(MAX_LINK_LENGTH)

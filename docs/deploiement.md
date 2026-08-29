@@ -6,18 +6,17 @@ WebMCP on in a browser, and pointing an agent at it.
 
 ### Deploying it
 
-It is live at **https://keydler.com**, served by Cloudflare Pages, with
+It is live at https://keydler.com, served by Cloudflare Pages, with
 `www.keydler.com` redirecting to it. The apex is the canonical origin and the
-www address must never serve anything: they are two origins, and everything
-here is origin-scoped — the
-IndexedDB database, the theme preference, "while you were away", the cross-tab
-channel, the service worker cache. A log created on one is invisible from the
-other, and a `/t/:id` link minted here opens an empty page there. The
-origin-trial token is bound to one origin too, so on the wrong one WebMCP never
-activates at all.
+www address must never serve anything. They are two origins, and everything
+here is origin-scoped: the IndexedDB database, the theme preference, "while you
+were away", the cross-tab channel, the service worker cache. A log created on
+one is invisible from the other, and a `/t/:id` link minted here opens an empty
+page there. The origin-trial token is bound to one origin too, so on the wrong
+one WebMCP never activates at all.
 
-`vercel.json` carries that redirect. **Cloudflare Pages cannot** — `_redirects`
-matches paths, not hosts — so there it is a Redirect Rule set by hand in the
+`vercel.json` carries that redirect. Cloudflare Pages cannot (`_redirects`
+matches paths, not hosts), so there it is a Redirect Rule set by hand in the
 dashboard. Because a forgotten rule is invisible (both addresses answer, each
 with its own data), `src/canonical.ts` also sends www to the apex from the page
 itself. That is a backstop, not a substitute: a 301 happens before the page
@@ -26,13 +25,13 @@ loads, this happens after.
 The address moves to `/t/:id` as soon as a task is open, so a host without an
 SPA rewrite 404s on every reload, bookmark and shared link. `public/_redirects`
 covers Netlify and Cloudflare Pages, `vercel.json` covers Vercel; anything else
-needs the equivalent. This is invisible locally — `vite preview` rewrites by
+needs the equivalent. This is invisible locally: `vite preview` rewrites by
 itself, a bare static server does not.
 
 `npm run build` and `npm run build:trial` both run `scripts/precache.mjs`, which
 writes the built asset names into `dist/sw.js`, and `scripts/headers.mjs`, which
-seals the CSP on the hash of the inline theme script. **`vite build` alone
-produces a folder that looks complete and cannot be served**: the policy still
+seals the CSP on the hash of the inline theme script. `vite build` alone
+produces a folder that looks complete and cannot be served: the policy still
 carries `'__CSP_SCRIPT_HASH__'`, which is not a valid source expression, so the
 inline script is blocked; and the service worker precaches nothing under a fixed
 cache name that never invalidates. Neither is visible in `dist/`.
@@ -50,7 +49,7 @@ npm run bench
 
 `bench` is the scaling harness behind [`docs/echelle.md`](echelle.md).
 It is kept out of `npm test` on purpose: it runs for minutes, and a duration is
-not an assertion — a time threshold in the suite starts blinking on the first
+not an assertion. A time threshold in the suite starts blinking on the first
 loaded machine. What the bench finds becomes an ordinary test instead: a node
 bound, a token count, a bounded list.
 
@@ -62,10 +61,10 @@ connection is missing.
 In origin trial since Chrome 149. Locally, no token is needed:
 
 1. open `chrome://flags/#enable-webmcp-testing`
-2. set it to **Enabled**
+2. set it to Enabled
 3. restart the browser and reload the page
 
-**Brave works.** Verified on Brave 151 / Chromium 151 on Linux.
+Brave works. Verified on Brave 151 / Chromium 151 on Linux.
 
 For a deployed origin, put a token in `.env`:
 
@@ -94,8 +93,8 @@ claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest --browserUrl ht
 Two non-obvious points: the toggle in `brave://inspect/#remote-debugging` opens
 no port, and Chromium ≥ 136 refuses remote debugging on the default profile. The
 feature is called `WebMCPTesting` in Brave 151 while `chrome-devtools-mcp`
-advertises `WebMCP` — pass both.
+advertises `WebMCP`. Pass both.
 
-The trial build is **required** for a valid run: the dev server serves the whole
+The trial build is required for a valid run: the dev server serves the whole
 source over HTTP, and a browser-only agent can then read the entire project with
 `fetch`.

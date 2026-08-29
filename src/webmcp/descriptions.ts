@@ -1,17 +1,7 @@
 /**
- * Chrome recommande 500 caractères par description d'outil et 150 par
- * description de paramètre, « pour ne pas tomber sur les garde-fous des
- * agents ». Ce ne sont pas des limites dures, mais une description qui
- * déborde est lue moins bien, et il y en a treize à lire d'un coup.
- *
- * La règle éditoriale qui a permis de tenir : **une description d'outil
- * instruit, le README explique**. Ce qui a été coupé, ce sont les
- * justifications — pourquoi la règle existe — et les rappels de protocole qui
- * figuraient déjà dans le schéma, dans le bloc WRITE PROTOCOL de `resume_task`
- * et dans les refus. Aucune instruction n'a été retirée.
- *
- * `test/budgets-webmcp.test.ts` tient ces bornes, pour qu'elles ne dérivent
- * pas à la prochaine rédaction.
+ * Chrome recommande 500 caractères par description d'outil et 150 par description de
+ * paramètre : pas des limites dures, mais il y en a treize à lire d'un coup. Une
+ * description instruit, le README explique ; `test/budgets-webmcp.test.ts` tient ces bornes.
  */
 
 export const RESUME_TASK_DESCRIPTION = `Persistent, human-supervised checkpoint for the current task. It holds:
@@ -32,8 +22,8 @@ rejection's whole reason, to page through older work, or to check what
 is proposed but not approved.
 
 Ask for one section at a time. Pages are small; the reply says how many
-entries remain and the offset to continue from. To get one entry whole —
-including evidence that pages truncate — pass its id.
+entries remain and the offset to continue from. To get one entry whole,
+including evidence that pages truncate, pass its id.
 
 Read-only: this never changes the task, and needs no version.`
 
@@ -44,7 +34,7 @@ been tried here and what came of it. It looks through the steps and
 their evidence, the rules, the ruled-out approaches, the decisions, and
 the history of refused writes.
 
-Finding nothing does not prove the work was never attempted — the log
+Finding nothing does not prove the work was never attempted: the log
 may use other words. Say so rather than concluding it is untried.
 
 Read-only: this never changes the task, and needs no version.`
@@ -55,33 +45,33 @@ Call this when a write is refused as stale, and whenever you come back
 to a task you read earlier. It answers: what did the human do while I
 was working?
 
-The reply separates what changes what you may do — a rule added, a
-proposal accepted, a question answered — from what merely happened. If
+The reply separates what changes what you may do (a rule added, a
+proposal accepted, a question answered) from what merely happened. If
 the log had to drop older entries it says so; fall back to resume_task.
 
 Read-only: this never changes the task.`
 
 export const LOG_STEP_DESCRIPTION = `Record one completed step in the task's log, with its evidence.
 
-Call this immediately AFTER finishing a unit of work — a file changed, a
+Call this immediately AFTER finishing a unit of work: a file changed, a
 command run, a test run. Do not batch several steps into one call, and
 do not call it for work you only intend to do.
 
 Attach evidence when you have any: a step without it is recorded as merely
-claimed. Evidence you attach is recorded as attached, not as verified —
-only a human who reads it can mark it verified. Do not describe your own
+claimed. Evidence you attach is recorded as attached, not as verified.
+Only a human who reads it can mark it verified. Do not describe your own
 output as confirmed.`
 
 export const ADD_DECISION_DESCRIPTION = `Record a choice and the reasoning behind it.
 
 Call this whenever you pick one option over another for a reason that
-would not be obvious from the code alone — a trade-off, a constraint you
+would not be obvious from the code alone: a trade-off, a constraint you
 worked around, an assumption you made. This is the "why", which every
 summary loses first.`
 
 export const REJECT_APPROACH_DESCRIPTION = `Propose that an approach was tried and must not be retried.
 
-Call this the moment an approach is ruled out — it failed, it broke
+Call this the moment an approach is ruled out: it failed, it broke
 something, it lost a benchmark. Recording it stops a later conversation
 re-discovering the same dead end. A reason is mandatory: a rejection
 without one is useless to whoever reads it next.
@@ -92,7 +82,7 @@ your own authority.`
 
 export const ADD_CONSTRAINT_DESCRIPTION = `Propose a rule that should hold for the rest of this task.
 
-Call this when you learn a durable restriction — an API must stay
+Call this when you learn a durable restriction: an API must stay
 unchanged, a dependency cannot be added. resume_task returns them in
 every later conversation, so they survive the loss of this one.
 
@@ -112,21 +102,21 @@ by the next conversation. Record the question, do the parts that do not
 depend on it, and say what is blocked.
 
 It stays open until answered, and resume_task shows it to every later
-conversation — so ask once.`
+conversation, so ask once.`
 
 export const ATTACH_EVIDENCE_DESCRIPTION = `Attach evidence to a step you already logged without any.
 
-Call this when proof arrives after the fact — a suite that finished, a
+Call this when proof arrives after the fact: a suite that finished, a
 build that completed, a link that became available. It turns a step
 recorded as merely claimed into one with evidence attached.
 
 It does not mark the step verified: only a human who reads the evidence
 can do that. A step that already carries evidence is refused rather than
-overwritten — record a new step instead.`
+overwritten. Record a new step instead.`
 
 export const SET_NEXT_ACTION_DESCRIPTION = `Change the single next action, without recording work.
 
-Call this when the next action changes but nothing was completed — you
+Call this when the next action changes but nothing was completed: you
 learned something that redirects the task, or you are ending a
 conversation and want the next one to start in the right place.
 
@@ -153,15 +143,13 @@ Write the summary for someone who was not present: what was done, what
 was decided, and what remains out of scope.`
 
 /**
- * Le protocole complet — pourquoi une version périmée est refusée, comment
- * rejouer une écriture sans la dupliquer — est enseigné là où il sert : dans
- * le bloc WRITE PROTOCOL de `resume_task`, et dans le texte des refus quand on
- * s'y prend mal. Ici, on dit quoi mettre.
+ * Le protocole complet est enseigné là où il sert : le bloc WRITE PROTOCOL de
+ * `resume_task`, et le texte des refus. Ici, on dit seulement quoi mettre.
  */
 export const BASED_ON_VERSION_DESCRIPTION =
   'The version from your most recent resume_task. If the task has moved since, ' +
-  'the write is refused — call resume_task again.'
+  'the write is refused. Call resume_task again.'
 
 export const MUTATION_ID_DESCRIPTION =
   'A fresh unique id for THIS write. If you get no reply, retry with the SAME ' +
-  'mutation_id and arguments — the write happens once. Never reuse one.'
+  'mutation_id and arguments: the write happens once. Never reuse one.'

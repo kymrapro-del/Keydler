@@ -118,7 +118,7 @@ async function sync(modelContext: ModelContextLike): Promise<void> {
     toolNames: posés,
     failures,
     lifecycle,
-    error: failures.length > 0 ? failures.map((f) => `${f.name} — ${f.reason}`).join(' ; ') : null,
+    error: failures.length > 0 ? failures.map((f) => `${f.name}: ${f.reason}`).join(' ; ') : null,
     observedTools: state.observedTools,
   })
 }

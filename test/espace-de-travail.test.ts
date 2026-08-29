@@ -4,20 +4,9 @@ import { __renderNow, mount } from '../src/ui/bench'
 import * as store from '../src/store/taskStore'
 import { clearDatabase } from './helpers'
 
-/**
- * `/workspace` est ce qu'un bouton « Sign in » doit atteindre sur un produit
- * qui n'a ni compte, ni serveur, ni session.
- *
- * Ce qui la rend nécessaire : la liste des cahiers, l'export et l'import
- * existaient déjà, mais dans des panneaux repliés À L'INTÉRIEUR d'un cahier
- * ouvert. Quelqu'un qui arrive d'une page d'accueil n'en a aucun, donc ne
- * voyait rien de tout cela. Une page d'accueil a besoin d'une ADRESSE où
- * pointer, pas d'un panneau.
- *
- * Ces épreuves tiennent les trois choses qui cassent en silence : l'adresse
- * doit survivre (`reflectAddress` la réécrit à chaque rendu), la liste doit se
- * peupler SANS cahier ouvert, et ouvrir un cahier depuis là doit en sortir.
- */
+// `/workspace` est ce qu'un bouton « Sign in » doit atteindre sur un produit sans compte ni
+// serveur. La liste des cahiers, l'export et l'import existaient déjà, mais repliés à l'intérieur
+// d'un cahier ouvert : qui arrive d'une page d'accueil n'en a aucun, et ne voyait donc rien.
 describe('l’adresse de l’espace de travail', () => {
   it('reconnaît la sienne, avec ou sans barre finale', () => {
     expect(isWorkspacePath(WORKSPACE_PATH)).toBe(true)
@@ -31,6 +20,30 @@ describe('l’adresse de l’espace de travail', () => {
     for (const autre of ['/', '/t/abc', '/workspaces', '/workspace-2', '/Workspace', '']) {
       expect(isWorkspacePath(autre), autre).toBe(false)
     }
+  })
+})
+
+describe('la porte d’entrée depuis l’accueil', () => {
+  it('est un lien, pas un bouton', async () => {
+    // Un contrôle qui change l'adresse doit être un <a href> : clic-milieu,
+    // Ctrl+clic et lecteurs d'écran en dépendent. C'est aussi le seul chemin
+    // d'exploration qu'un moteur trouve sur ce site, qui n'a aucune autre ancre.
+    localStorage.clear()
+    store.__resetStore()
+    await clearDatabase()
+    document.body.innerHTML = '<div id="app"></div>'
+    const racine = document.querySelector<HTMLElement>('#app')!
+    history.replaceState(null, '', '/')
+
+    const démonter = mount(racine)
+    await store.init()
+    for (let i = 0; i < 8; i++) await new Promise((r) => setTimeout(r, 0))
+    __renderNow()
+
+    const porte = racine.querySelector('#go-workspace')
+    expect(porte?.tagName).toBe('A')
+    expect(porte?.getAttribute('href')).toBe(WORKSPACE_PATH)
+    démonter()
   })
 })
 
@@ -83,13 +96,9 @@ describe('la page de l’espace de travail', () => {
   })
 
   it('liste TOUS les cahiers du poste, pas seulement celui qui est ouvert', async () => {
-    // C'est ce que la page apporte : la liste existait, mais dans un panneau
-    // replié à l'intérieur d'un cahier. Ici elle est la page.
-    //
-    // Note : `store.init()` sans identifiant rouvre le dernier cahier, et
-    // `deleteCurrentTask` en rouvre un autre. Il n'existe donc aucun état où
-    // des cahiers existent sans qu'aucun soit ouvert — une première version de
-    // cette épreuve prétendait le contraire, et une mutation l'a démentie.
+    // `store.init()` sans identifiant rouvre le dernier cahier et `deleteCurrentTask` en rouvre
+    // un autre : aucun état n'a des cahiers sans qu'un soit ouvert. Une première version de cette
+    // épreuve prétendait le contraire, et une mutation l'a démentie.
     await store.init()
     await store.createAndOpenTask('Refactor the auth module', 'Map the entry points')
     await store.createAndOpenTask('Ship the landing page', 'Replace the sign-in button')
@@ -150,7 +159,7 @@ describe('la page de l’espace de travail', () => {
   })
 
   it('ne promet la confidentialité que par ce qui est vérifiable', async () => {
-    // Une première rédaction disait « nobody else can read it — not even us ».
+    // Une première rédaction disait « nobody else can read it, not even us ».
     // C'est une promesse sur la confiance : nous servons le code, donc nous
     // pourrions le changer. Ce qui est démontrable, c'est qu'il n'y a aucune
     // destination et que la politique de sécurité bloque les autres origines.

@@ -135,13 +135,9 @@ function resetDrafts(): void {
 
 let creating = false
 
-/**
- * La vue « espace de travail », atteinte par `/workspace`. Elle existe parce
- * qu'une page d'accueil a besoin d'un endroit où envoyer quelqu'un qui cherche
- * son compte : jusqu'ici, la liste des cahiers, l'export et l'import vivaient
- * dans des panneaux repliés À L'INTÉRIEUR d'un cahier ouvert, donc invisibles
- * pour qui arrive de l'extérieur sans en avoir un.
- */
+// La vue `/workspace` : jusqu'ici la liste des cahiers, l'export et l'import
+// vivaient dans des panneaux repliés à l'intérieur d'un cahier ouvert, donc
+// invisibles pour qui arrive de l'extérieur sans en avoir un.
 let atWorkspace = false
 
 let credentials: SecretName[] = []
@@ -423,7 +419,7 @@ function renderLanding(): string {
       ${form}
       <p class="muted landing__note">
         Everything stays in this browser. No account, no server.
-        <button type="button" id="go-workspace" class="btn btn--quiet">Your workspace</button>
+        <a href="${WORKSPACE_PATH}" id="go-workspace" class="btn btn--quiet">Your workspace</a>
       </p>
     </section>`
 }
@@ -448,7 +444,7 @@ function renderGoal(task: TaskState): string {
       ${
         task.goal
           ? escapeHtml(task.goal)
-          : '<span class="muted">nobody has said yet — an agent reads the next action but not the destination.</span>'
+          : '<span class="muted">nobody has said yet: an agent reads the next action but not the destination.</span>'
       }
       <button type="button" id="edit-goal" class="btn btn--quiet">
         ${task.goal ? 'Change what done means' : 'Say what done means'}
@@ -481,7 +477,7 @@ function renderNext(task: TaskState): string {
           : `<p class="hero__value">${
               task.next
                 ? escapeHtml(task.next)
-                : '<span class="muted">Not set yet — the agent will decide and record it.</span>'
+                : '<span class="muted">Not set yet. The agent will decide and record it.</span>'
             }</p>
              <div class="actions">
                <button type="button" id="edit-next" class="btn btn--quiet">Change it</button>
@@ -496,20 +492,14 @@ const MAX_ROWS = 8
 function remainder(total: number): string {
   const hidden = total - MAX_ROWS
   return hidden > 0
-    ? `<p class="muted">${hidden} older ${plural(hidden, 'entry', 'entries')} not shown — the export has them all.</p>`
+    ? `<p class="muted">${hidden} older ${plural(hidden, 'entry', 'entries')} not shown. The export has them all.</p>`
     : ''
 }
 
-/**
- * Une liste que rien ne borne finit par rendre la page injouable. Mesuré :
- * 2000 règles portaient un aller-retour de rendu de 17 ms à 501 ms, pour
- * 1,2 Mo de HTML et 10 000 nœuds — et la page se redessine à chaque frappe
- * dans la recherche. Les étapes étaient déjà bornées ; les règles, les
- * approches écartées, les questions et les autorisations ne l'étaient pas.
- *
- * On borne donc l'affichage, jamais en silence : le nombre caché est écrit,
- * et un bouton ouvre la liste entière. C'est le même marché que l'historique.
- */
+// 2000 règles portaient un aller-retour de rendu de 17 ms à 501 ms, pour 1,2 Mo
+// de HTML et 10 000 nœuds, et la page se redessine à chaque frappe dans la
+// recherche. On borne donc l'affichage, jamais en silence : le nombre caché est
+// écrit, et un bouton ouvre la liste entière.
 const expanded = new Set<string>()
 
 function capped<T>(id: string, items: readonly T[], limit = MAX_ROWS): T[] {
@@ -529,7 +519,7 @@ function disputeForm(step: Step): string {
         <div class="field">
           <label for="dispute-reason">Why this is wrong</label>
           <textarea id="dispute-reason" rows="3" autocomplete="off"
-                    placeholder="What actually happened — every later conversation reads this"></textarea>
+                    placeholder="What actually happened: every later conversation reads this"></textarea>
         </div>
         <div class="actions">
           <button type="submit" class="btn btn--danger">Mark it wrong</button>
@@ -573,7 +563,7 @@ function renderStepRow(step: Step, active: boolean): string {
       <span class="chip chip--${step.confidence}">${CONFIDENCE_LABEL[step.confidence]}</span>
       <span class="row__text">
         <strong>${escapeHtml(step.action)}</strong>
-        <span class="muted"> — ${escapeHtml(step.result)}</span>
+        <span class="muted">(${escapeHtml(step.result)})</span>
         ${
           step.dispute
             ? `<span class="row__dispute">You say: ${escapeHtml(step.dispute.reason)}</span>`
@@ -645,7 +635,7 @@ function renderCompletedWork(task: TaskState): string {
                <button type="button" id="cancel-step" class="btn">Cancel</button>
              </div>
              <p class="muted">
-               Work you record yourself counts as verified by you — you were there.
+               Work you record yourself counts as verified by you, because you were there.
              </p>
            </form>`
         : `<div class="actions">
@@ -693,7 +683,7 @@ function renderTrail(task: TaskState, id: string): string {
             (l) => `<li class="event">
               <span class="event__when">${escapeHtml(new Date(l.at).toLocaleString('en-GB'))}</span>
               <span class="event__what"><strong>${escapeHtml(l.who)}</strong> ${escapeHtml(l.what)}${
-                l.detail ? ` — ${escapeHtml(l.detail)}` : ''
+                l.detail ? ` (${escapeHtml(l.detail)})` : ''
               }</span>
             </li>`,
           )
@@ -710,7 +700,7 @@ function renderRules(task: TaskState): string {
   // L'ordre de pose est conservé : trier les règles en vigueur devant les
   // règles levées faisait sauter la ligne que l'on venait de lever, sous le
   // curseur. On borne dans l'ordre, et on DIT combien d'obligations tombent
-  // hors de la fenêtre — c'est la garantie qui comptait, pas l'ordre.
+  // hors de la fenêtre : c'est la garantie qui comptait, pas l'ordre.
   const shown = capped('rules', decided, LIST_PREVIEW)
   const hiddenBinding = decided
     .slice(shown.length)
@@ -759,7 +749,7 @@ function renderRules(task: TaskState): string {
   const warning =
     hiddenBinding > 0
       ? `<p class="muted">${hiddenBinding} ${plural(hiddenBinding, 'rule', 'rules')} still in
-           force ${plural(hiddenBinding, 'is', 'are')} not shown — open the full list before
+           force ${plural(hiddenBinding, 'is', 'are')} not shown. Open the full list before
            you rely on this one.</p>`
       : ''
 
@@ -783,7 +773,7 @@ function renderDontRetry(task: TaskState): string {
         <span class="chip chip--${r.source}">${r.source === 'human' ? 'You' : 'Agent'}</span>
         <span class="row__text">
           <strong>${escapeHtml(r.approach)}</strong>
-          <span class="muted"> — ${escapeHtml(r.reason)}</span>
+          <span class="muted">(${escapeHtml(r.reason)})</span>
         </span>
         <button type="button" class="btn btn--quiet" data-edit-rejection="${escapeHtml(r.id)}"
                 aria-label="Reword: ${escapeHtml(r.approach)}">Reword</button>
@@ -808,7 +798,7 @@ function renderDontRetry(task: TaskState): string {
          </form>
          <p class="muted">
            The reason is required. Without it, the next conversation avoids a word
-           instead of understanding a problem — and loses the part still worth keeping.
+           instead of understanding a problem, and loses the part still worth keeping.
          </p>`
       : ''
 
@@ -834,7 +824,7 @@ function renderMatch(match: Match, q: string): string {
       <span class="chip chip--evidence">${escapeHtml(match.label)}</span>
       <span class="row__text">
         <strong>${highlight(match.text, q)}</strong>
-        ${match.context ? `<span class="muted"> — ${highlight(match.context, q)}</span>` : ''}
+        ${match.context ? `<span class="muted">(${highlight(match.context, q)})</span>` : ''}
       </span>
     </li>`
 }
@@ -881,7 +871,7 @@ function renderSearchResults(task: TaskState | null): string {
         .slice(0, 40)
         .map((m) => renderMatch(m, q))
         .join('')}</ul>
-       ${here.length > 40 ? `<p class="muted">${here.length - 40} more not shown — narrow the search.</p>` : ''}`
+       ${here.length > 40 ? `<p class="muted">${here.length - 40} more not shown. Narrow the search.</p>` : ''}`
     : '<p class="empty">Nothing in this task.</p>'
 
   const elsewhereBody = elsewhere.length
@@ -893,7 +883,7 @@ function renderSearchResults(task: TaskState | null): string {
             }</span>
             <span class="row__text">
               <strong>${highlight(t.title, q)}</strong>
-              ${t.next ? `<span class="muted"> — ${highlight(t.next, q)}</span>` : ''}
+              ${t.next ? `<span class="muted">(${highlight(t.next, q)})</span>` : ''}
             </span>
             <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
           </li>`,
@@ -930,7 +920,7 @@ function renderSwitcher(task: TaskState): string {
         }</span>
         <span class="row__text">
           <strong>${escapeHtml(t.title)}</strong>
-          <span class="muted"> — ${escapeHtml(t.next ?? 'no next action')}</span>
+          <span class="muted">(${escapeHtml(t.next ?? 'no next action')})</span>
           ${badge ? `<span class="needs__badge">${escapeHtml(badge)}</span>` : ''}
         </span>
         <button type="button" class="btn btn--quiet" data-archive="${escapeHtml(t.id)}"
@@ -970,8 +960,8 @@ function renderSealedOffer(): string {
   return `<section class="card card--away" aria-labelledby="sealed-title">
       <h2 id="sealed-title" class="card__title">A protected log</h2>
       <p class="muted">
-        Somebody sent you a sealed link. Nothing about the log can be read —
-        not even its name — until the passphrase they gave you separately is
+        Somebody sent you a sealed link. Nothing about the log can be read
+        (not even its name) until the passphrase they gave you separately is
         entered here. It is checked on this device; no server sees it.
       </p>
       <form id="form-sealed" class="form" novalidate>
@@ -998,7 +988,7 @@ function renderOffer(): string {
   return `<section class="card card--away" aria-labelledby="offer-title">
       <h2 id="offer-title" class="card__title">A shared log</h2>
       <p class="muted">
-        Somebody sent you this link, and the whole log travelled inside it — no
+        Somebody sent you this link, and the whole log travelled inside it. No
         server saw it. Nothing has been written here yet.
       </p>
       <ul class="rows">
@@ -1006,7 +996,7 @@ function renderOffer(): string {
           <span class="chip chip--human">shared</span>
           <span class="row__text">
             <strong>${escapeHtml(offered.title)}</strong>
-            <span class="muted"> — ${escapeHtml(counts)}</span>
+            <span class="muted">(${escapeHtml(counts)})</span>
           </span>
         </li>
       </ul>
@@ -1049,7 +1039,7 @@ function renderAgentLive(): string {
 
   return `<p class="agent-live" role="status">
       An agent called <code>${escapeHtml(call.tool)}</code> ${escapeHtml(when)}${
-        call.refused ? ' — and it was refused' : ''
+        call.refused ? ', and it was refused' : ''
       }.
     </p>`
 }
@@ -1057,7 +1047,7 @@ function renderAgentLive(): string {
 function renderOffline(): string {
   if (online) return ''
   return `<p class="offline" role="status">
-      <strong>Offline.</strong> Everything here is on this device, so nothing stops —
+      <strong>Offline.</strong> Everything here is on this device, so nothing stops:
       the page and this log both work without a network.
     </p>`
 }
@@ -1106,7 +1096,7 @@ function renderPermission(task: TaskState): string {
             <span class="chip chip--claimed">blocked</span>
             <span class="row__text">
               <strong>${escapeHtml(a.action)}</strong>
-              <span class="muted"> — ${escapeHtml(a.why)}</span>
+              <span class="muted">(${escapeHtml(a.why)})</span>
             </span>
             <button type="button" class="btn btn--primary" data-allow="${escapeHtml(a.id)}"
                     aria-label="Allow: ${escapeHtml(a.action)}">Allow</button>
@@ -1120,7 +1110,7 @@ function renderPermission(task: TaskState): string {
   return `<section class="card card--permission" aria-labelledby="permission-title">
       <h2 id="permission-title" class="card__title">Permission to act</h2>
       <p class="muted">
-        An agent is <strong>waiting on this right now</strong> — it stopped before doing
+        An agent is <strong>waiting on this right now</strong>: it stopped before doing
         something it cannot undo. If nobody answers, it is told plainly that silence is
         not approval.
       </p>
@@ -1143,7 +1133,7 @@ function renderAway(task: TaskState): string {
           <span class="chip chip--${l.who === 'You' ? 'human' : 'agent'}">${escapeHtml(l.who)}</span>
           <span class="row__text">
             <strong>${escapeHtml(l.what)}</strong>
-            ${l.detail ? `<span class="muted"> — ${escapeHtml(l.detail)}</span>` : ''}
+            ${l.detail ? `<span class="muted">(${escapeHtml(l.detail)})</span>` : ''}
           </span>
         </li>`,
     )
@@ -1184,7 +1174,7 @@ function renderWaiting(task: TaskState): string {
               <div class="field">
                 <label for="answer-text">Your answer</label>
                 <textarea id="answer-text" rows="3" autocomplete="off"
-                          placeholder="Answer in your own words — the next conversation reads this"></textarea>
+                          placeholder="Answer in your own words: the next conversation reads this"></textarea>
               </div>
               <div class="actions">
                 <button type="submit" class="btn btn--primary">Answer it</button>
@@ -1198,7 +1188,7 @@ function renderWaiting(task: TaskState): string {
             <span class="chip chip--agent">asked by ${q.source === 'human' ? 'you' : 'an agent'}</span>
             <span class="row__text">
               <strong>${escapeHtml(q.question)}</strong>
-              <span class="muted"> — ${escapeHtml(q.why)}</span>
+              <span class="muted">(${escapeHtml(q.why)})</span>
             </span>
             ${
               task.status === 'active'
@@ -1218,7 +1208,7 @@ function renderWaiting(task: TaskState): string {
           <span class="chip chip--human">answered</span>
           <span class="row__text">
             <strong>${escapeHtml(q.question)}</strong>
-            <span class="muted"> — ${escapeHtml(q.answer ?? '')}</span>
+            <span class="muted">(${escapeHtml(q.answer ?? '')})</span>
           </span>
         </li>`,
     )
@@ -1245,17 +1235,11 @@ function renderWaiting(task: TaskState): string {
     </section>`
 }
 
-/**
- * Le panneau technique montre EXACTEMENT ce que `resume_task` rendrait. Ce
- * texte coûte 5 ms sur un cahier de 20 000 étapes, et il était recalculé à
- * chaque rendu — donc à chaque frappe dans la recherche, pour un panneau replié
- * la plupart du temps.
- *
- * Le cahier est immuable et remplacé en entier à chaque écriture : comparer les
- * identités suffit. La minute entre dans la clé parce que la restitution porte
- * une ligne qui dépend de l'heure (« LAST WRITE … ») ; sans elle, l'aperçu
- * finirait par mentir sur l'âge du cahier.
- */
+// Le texte de `resume_task` coûte 5 ms sur un cahier de 20 000 étapes, et il
+// était recalculé à chaque rendu, donc à chaque frappe dans la recherche, pour
+// un panneau replié la plupart du temps. Le cahier étant immuable et remplacé
+// en entier, comparer les identités suffit ; la minute entre dans la clé parce
+// que la restitution porte une ligne qui dépend de l'heure (« LAST WRITE … »).
 let briefing: {
   task: TaskState
   credentials: readonly SecretName[]
@@ -1292,7 +1276,7 @@ function renderHandoff(task: TaskState): string {
 
   // L'avertissement doit tomber AVANT le clic, pas après : une fois l'adresse
   // dans le presse-papier, la décision est prise. Et il ne paraît que s'il est
-  // vrai — un avertissement affiché sans raison s'apprend à ne plus être lu.
+  // vrai : un avertissement affiché sans raison s'apprend à ne plus être lu.
   const carried = attachedEvidenceCount(task)
   const carriedNote =
     carried > 0
@@ -1300,7 +1284,7 @@ function renderHandoff(task: TaskState): string {
           carried === 1
             ? 'One piece of evidence travels with it, pasted exactly as it was.'
             : `${carried} pieces of evidence travel with it, pasted exactly as they were.`
-        } Command output often holds a token or an internal hostname — read what it
+        } Command output often holds a token or an internal hostname. Read what it
            carries before you send this on. Sealed credentials never travel.</span>`
       : ''
 
@@ -1311,7 +1295,7 @@ function renderHandoff(task: TaskState): string {
       <button type="button" id="copy-sealed-link" class="btn btn--quiet">Copy a protected link</button>
       <span class="muted">
         A protected link is sealed with a passphrase you give them another way.
-        Nobody can tell who opens a link — that would need a server — but a
+        Nobody can tell who opens a link (that would need a server), but a
         sealed one is useless to anyone who does not know the phrase.
       </span>
       ${carriedNote}
@@ -1377,7 +1361,7 @@ function renderCredentials(task: TaskState): string {
           <span class="chip chip--human">${escapeHtml(secretKindLabel(secret.kind))}</span>
           <span class="row__text">
             <code>\${${escapeHtml(secret.name)}}</code>
-            <span class="muted"> — ${escapeHtml(secret.purpose)}</span>
+            <span class="muted">(${escapeHtml(secret.purpose)})</span>
           </span>
           <button type="button" class="btn btn--quiet" data-edit-secret="${escapeHtml(secret.id)}"
                   aria-label="Correct the name or purpose of ${escapeHtml(secret.name)}">Correct</button>
@@ -1441,7 +1425,7 @@ function renderCredentials(task: TaskState): string {
       ${form}
       <p class="muted">
         Sealed with a passphrase that is never stored, and never written to an
-        export. This is not an audited secret manager — and anything you reveal on
+        export. This is not an audited secret manager, and anything you reveal on
         screen can be read by an agent that drives this browser.
       </p>
     </section>`
@@ -1459,7 +1443,7 @@ function renderProposals(task: TaskState): string {
       id: r.id,
       kind: 'rejection' as const,
       label: 'Don’t retry',
-      text: `${r.approach} — ${r.reason}`,
+      text: `${r.approach}: ${r.reason}`,
     })),
   ]
 
@@ -1516,7 +1500,7 @@ function renderEvidence(task: TaskState): string {
   return `<section class="card" aria-labelledby="evidence-title">
       <h2 id="evidence-title" class="card__title">Evidence to review</h2>
       <p class="muted">
-        Read it before you decide — your click is what says a human checked this.
+        Read it before you decide: your click is what says a human checked this.
         Nothing an agent attaches counts as verified on its own, and “Wrong”
         marks it so every later conversation sees your reason.
       </p>
@@ -1552,7 +1536,7 @@ function readBeforeWrite(total: number, blindWrites: number, sawRead: boolean): 
     return `<p class="notice notice--stale" role="status">
         ${blindWrites} ${plural(blindWrites, 'write', 'writes')} arrived
         <strong>without reading this page first</strong>. That agent was working from
-        its own memory, not from this log — check what it recorded.
+        its own memory, not from this log. Check what it recorded.
       </p>`
   }
 
@@ -1606,7 +1590,7 @@ function renderHistory(task: TaskState): string {
           <strong>${line.who}</strong> ${escapeHtml(line.what)}${
             line.repeated > 1 ? ` <span class="muted">×${line.repeated}</span>` : ''
           }
-          ${line.detail ? `<span class="muted"> — ${escapeHtml(line.detail)}</span>` : ''}
+          ${line.detail ? `<span class="muted">(${escapeHtml(line.detail)})</span>` : ''}
         </span>
       </li>`,
     )
@@ -1622,7 +1606,7 @@ function renderHistory(task: TaskState): string {
   return `<section class="card" aria-labelledby="history-title">
       <h2 id="history-title" class="card__title">History</h2>
       <p class="muted">
-        Everything recorded on this task, newest first — including writes that
+        Everything recorded on this task, newest first, including writes that
         were refused. The oldest entries are dropped once the log gets long.
       </p>
       ${rows ? `<ol class="events">${rows}</ol>` : '<p class="empty">Nothing yet.</p>'}
@@ -1644,7 +1628,7 @@ function renderToolInspector(): string {
   }).join('')
 
   return `<details id="tools" class="technical">
-      <summary>What an agent reads — ${ALL_TOOLS.length} tools, verbatim</summary>
+      <summary>What an agent reads: ${ALL_TOOLS.length} tools, verbatim</summary>
       <div class="technical__body">
         <p class="muted">
           The registered tool objects themselves: the same descriptions and schemas
@@ -1661,7 +1645,7 @@ function renderTechnical(task: TaskState | null): string {
   const surface = availability.supported ? availability.surface : 'none'
   const webmcp =
     phase === 'registered' || phase === 'partial'
-      ? `<p><strong>WebMCP active</strong> — ${toolNames.length} ${plural(toolNames.length, 'tool', 'tools')} registered, read from <code>${surface}.modelContext</code>.</p>
+      ? `<p><strong>WebMCP active</strong>: ${toolNames.length} ${plural(toolNames.length, 'tool', 'tools')} registered, read from <code>${surface}.modelContext</code>.</p>
          ${error ? `<p>Some tools could not be registered: ${escapeHtml(error)}</p>` : ''}`
       : phase === 'failed'
         ? `<p><strong>Registration failed.</strong> ${escapeHtml(error ?? 'unknown reason')}</p>`
@@ -1679,7 +1663,7 @@ function renderTechnical(task: TaskState | null): string {
         <p class="mono">Observed through <code>getTools()</code>: ${
           observedTools === null ? '(not read)' : escapeHtml(observedTools.join(' · ')) || '(none)'
         }</p>
-        <p class="muted">Lifecycle: <strong>${lifecycle.mode}</strong> — ${escapeHtml(lifecycle.reason)}</p>
+        <p class="muted">Lifecycle: <strong>${lifecycle.mode}</strong> (${escapeHtml(lifecycle.reason)})</p>
         <p class="muted">${escapeHtml(describeStorage(storage))}</p>
         ${
           storage.persisted === false
@@ -1704,7 +1688,7 @@ function renderTechnical(task: TaskState | null): string {
         </div>
         <p class="muted">
           An export carries the evidence exactly as pasted. Sealed credentials are never
-          included — they are kept outside the log, so they cannot travel with it.
+          included. They are kept outside the log, so they cannot travel with it.
         </p>
       </div>
     </details>`
@@ -1755,15 +1739,10 @@ function renderDashboard(task: TaskState): string {
     ${renderTechnical(task)}`
 }
 
-/**
- * Ce que remplace un bouton « Sign in » sur un produit qui n'a ni compte, ni
- * serveur, ni session. Un compte rend deux services : retrouver ses affaires,
- * et les avoir sur un autre appareil. Le premier est déjà vrai ici — le
- * navigateur EST le compte — mais rien ne le disait. Le second se fait par un
- * fichier, et la page dit pourquoi ce n'est pas un lien : un cahier réellement
- * utilisé n'y tient pas. Mesuré : 60 pas font 17 349 caractères scellés, la
- * limite d'une URL est 16 000, le même cahier en fichier fait 85 657.
- */
+// Ce que remplace un bouton « Sign in » ici : le navigateur EST le compte, mais
+// rien ne le disait. Le second appareil se sert par un fichier et non par un
+// lien, parce qu'un cahier réellement utilisé n'y tient pas : 60 pas font
+// 17 349 caractères scellés contre 16 000 pour une URL, et 85 657 en fichier.
 function renderWorkspace(): string {
   const n = allTasks.length
   // `TaskCard` ne porte ni le nombre de pas ni la version, à dessein : les y
@@ -1777,7 +1756,7 @@ function renderWorkspace(): string {
         }</span>
         <span class="row__text">
           <strong>${escapeHtml(t.title)}</strong>
-          ${t.next ? `<span class="muted"> — ${escapeHtml(t.next)}</span>` : ''}
+          ${t.next ? `<span class="muted">(${escapeHtml(t.next)})</span>` : ''}
         </span>
         <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
       </li>`,
@@ -1793,7 +1772,7 @@ function renderWorkspace(): string {
       <p class="landing__lede">
         There is nothing to sign in to. Keydler has no account and no server:
         opening this site on this device is the whole of it. What you write is
-        never sent anywhere — there is nowhere to send it, and this page's
+        never sent anywhere: there is nowhere to send it, and this page's
         content security policy blocks every other origin.
       </p>
       ${alertBlock()}
@@ -1822,7 +1801,7 @@ function renderWorkspace(): string {
         <p class="muted">
           Exporting writes every log on this device into one file. Importing it
           somewhere else brings them in. From that moment the two run
-          separately — nothing keeps them in step, and no copy of either exists
+          separately: nothing keeps them in step, and no copy of either exists
           anywhere but on the devices holding it.
         </p>
         <p class="muted">
@@ -2521,7 +2500,7 @@ function bindSupervision(): void {
     const task = store.currentTask()
     if (!task) return
     humanError = null
-    // Pour les agents sans WebMCP — l'immense majorité aujourd'hui. Le texte
+    // Pour les agents sans WebMCP, l'immense majorité aujourd'hui. Le texte
     // est celui de resume_task, pas une variante rédigée pour l'écran.
     const body = [
       'Read this before doing anything. It is the shared log for the task we are',
@@ -2533,7 +2512,7 @@ function bindSupervision(): void {
     ].join('\n')
 
     void navigator.clipboard?.writeText(body).then(
-      () => showNotice('Copied. Paste it to any assistant — WebMCP or not.'),
+      () => showNotice('Copied. Paste it to any assistant, WebMCP or not.'),
       (error: unknown) => {
         humanError = humanMessage(error, 'Copying the log')
         scheduleRender()
@@ -2553,7 +2532,7 @@ function bindSupervision(): void {
         () =>
           showNotice(
             attachedEvidenceCount(task) > 0
-              ? 'Link copied. It carries the whole log, evidence included — the person you send it to gets their own copy of all of it.'
+              ? 'Link copied. It carries the whole log, evidence included. The person you send it to gets their own copy of all of it.'
               : 'Link copied. It carries the whole log; the person you send it to gets a copy.',
           ),
         (error: unknown) => {
@@ -2567,7 +2546,7 @@ function bindSupervision(): void {
     const task = store.currentTask()
     if (!task) return
     const phrase = window.prompt(
-      'Passphrase for this link? Give it to them another way — not in the same message.',
+      'Passphrase for this link? Give it to them another way, not in the same message.',
     )
     if (!phrase?.trim()) return
     humanError = null
@@ -2578,7 +2557,7 @@ function bindSupervision(): void {
       .then(
         () =>
           showNotice(
-            'Protected link copied. Without the passphrase it is unreadable — send the phrase another way.',
+            'Protected link copied. Without the passphrase it is unreadable. Send the phrase another way.',
           ),
         (error: unknown) => {
           humanError = humanMessage(error, 'Building that protected link')
@@ -2617,7 +2596,7 @@ function bindSupervision(): void {
         // corrige en réessayant, l'autre non.
         humanError =
           error instanceof WrongPassphraseError
-            ? 'That passphrase does not open this link. Ask them to repeat it — the link itself is fine.'
+            ? 'That passphrase does not open this link. Ask them to repeat it: the link itself is fine.'
             : humanMessage(error, 'Opening that protected link')
         renderNow()
       },
@@ -2783,7 +2762,16 @@ function bindTechnical(): void {
 
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
 
-  document.querySelector('#go-workspace')?.addEventListener('click', () => {
+  // Un lien plutôt qu'un bouton : il change l'adresse, donc le clic-milieu,
+  // le Ctrl+clic et « ouvrir dans un nouvel onglet » doivent marcher, et un
+  // lecteur d'écran doit l'annoncer comme une destination. C'est aussi le seul
+  // <a href> de la page, donc le seul chemin d'exploration qu'un moteur voit.
+  document.querySelector('#go-workspace')?.addEventListener('click', (e) => {
+    // On ne détourne que le clic simple : les modificateurs et le bouton du
+    // milieu doivent garder le comportement natif du navigateur.
+    const clic = e as MouseEvent
+    if (clic.metaKey || clic.ctrlKey || clic.shiftKey || clic.altKey || clic.button !== 0) return
+    e.preventDefault()
     atWorkspace = true
     renderNow()
   })
@@ -2927,7 +2915,7 @@ function render(): void {
 
   // Sans la version du cahier ouvert : les lignes du sélecteur n'en dépendent
   // pas, et l'y mettre faisait relire TOUS les cahiers du poste à chaque
-  // écriture — 61 ms et 15,9 Mo lus pour produire 9 ko de fiches, mesuré sur
+  // écriture : 61 ms et 15,9 Mo lus pour produire 9 ko de fiches, mesuré sur
   // 20 cahiers de 2000 étapes.
   const listKey = openTask ? `${openTask.id}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
@@ -2946,7 +2934,7 @@ function render(): void {
 
   // N'importe quel élément identifié, pas seulement les champs : une écriture
   // d'agent redessine la page, et sans cela le focus retombait sur `body`
-  // depuis n'importe quel bouton — au clavier, on repart du début de la page.
+  // depuis n'importe quel bouton : au clavier, on repart du début de la page.
   const focusedId =
     !focused && active instanceof HTMLElement && active.id && root.contains(active)
       ? active.id
@@ -2954,14 +2942,9 @@ function render(): void {
 
   const html = `<main id="content">${renderBody()}</main>`
 
-  // Trois sources réveillent le rendu — le magasin, les appels d'outil, les
-  // (dés)enregistrements — et beaucoup ne changent rien à l'écran. Mesuré sur
-  // la suite d'interface : 30 % des rendus produisaient un HTML identique au
-  // précédent, et payaient quand même la reconstruction du DOM, le
-  // rattachement de tous les écouteurs et la valse du focus.
-  //
-  // La comparaison coûte un parcours de chaîne ; ce qu'elle évite coûte bien
-  // davantage. Et elle épargne au passage la sélection en cours.
+  // 30 % des rendus produisaient un HTML identique au précédent et payaient
+  // quand même la reconstruction du DOM, le rattachement de tous les écouteurs
+  // et la valse du focus. La comparaison épargne aussi la sélection en cours.
   if (html === painted) {
     announce()
     reflectAddress()

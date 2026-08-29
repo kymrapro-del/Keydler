@@ -4,7 +4,7 @@ Everything here was written while building the thing it describes, and none of
 it is marketing. Where a number appears, it was measured; where something was
 not verified, the text says so.
 
-Most of it is in French — the language the work was done in. The product, its
+Most of it is in French, the language the work was done in. The product, its
 interface and the [README](../README.md) are in English.
 
 ## Start here
@@ -12,7 +12,7 @@ interface and the [README](../README.md) are in English.
 | Document                           | What it holds                                                                                                     |
 | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | [verification.md](verification.md) | The honest journal. Every check run, in order, including the ones that failed and the mistakes made while probing |
-| [echelle.md](echelle.md)           | What happens at scale, and what it costs — measured on real logs, not estimated                                   |
+| [echelle.md](echelle.md)           | What happens at scale, and what it costs (measured on real logs, not estimated)                                   |
 | [concours.md](concours.md)         | What the contest research actually established, and what it did not                                               |
 
 ## The product
@@ -43,11 +43,11 @@ How to reproduce the work rather than take its word.
 
 ## Measurements
 
-- [mesures/taches.md](mesures/taches.md) — the tasks the campaign runs
-- [mesures/resultats.md](mesures/resultats.md) — what came out of them
+- [mesures/taches.md](mesures/taches.md): the tasks the campaign runs
+- [mesures/resultats.md](mesures/resultats.md): what came out of them
 
 ## Elsewhere
 
-- [plan.md](plan.md) — what was planned, and what changed on contact with the work
-- [../CONTRIBUTING.md](../CONTRIBUTING.md) — conventions this repository holds to
-- [../SECURITY.md](../SECURITY.md) — what is protected, what is not, and how to report a flaw
+- [plan.md](plan.md): what was planned, and what changed on contact with the work
+- [../CONTRIBUTING.md](../CONTRIBUTING.md): conventions this repository holds to
+- [../SECURITY.md](../SECURITY.md): what is protected, what is not, and how to report a flaw

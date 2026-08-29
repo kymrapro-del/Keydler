@@ -4,23 +4,12 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { lireJeton } from './jeton.mjs'
 
-/**
- * `dist/` peut avoir l'air complet et n'être pas déployable.
- *
- * `vite build` seul produit les onze bons fichiers, aux bons noms. Mais deux
- * substitutions se font APRÈS lui — `precache.mjs` écrit les noms réellement
- * construits dans le service worker, `headers.mjs` scelle la politique sur
- * l'empreinte du script en ligne. Sans elles :
- *
- *   - la CSP porte `'__CSP_SCRIPT_HASH__'`, qui n'est pas une source valide.
- *     Le script d'amorce du thème est alors BLOQUÉ par le navigateur ;
- *   - le service worker ne précharge rien et s'appelle `keydler-dev`, un nom
- *     fixe qui ne s'invalide jamais d'un déploiement à l'autre.
- *
- * Rien de tout cela ne se voit en regardant le dossier. Ce script refuse
- * l'artefact plutôt que de compter sur la vigilance de qui déploie — le jour
- * où l'on déploie vite est précisément celui où l'on ne vérifie pas.
- */
+// `dist/` peut avoir l'air complet et n'être pas déployable : deux
+// substitutions se font APRÈS `vite build`. Sans elles, la CSP porte
+// `'__CSP_SCRIPT_HASH__'`, qui n'est pas une source valide et fait BLOQUER le
+// script d'amorce du thème, et le service worker ne précharge rien sous le nom
+// de cache fixe `keydler-dev`, qui ne s'invalide jamais. Rien de cela ne se
+// voit en regardant le dossier.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 const racine = fileURLToPath(new URL('../', import.meta.url))
 
@@ -85,7 +74,7 @@ if (sw !== null) {
 }
 
 // L'empreinte doit correspondre au HTML réellement construit, et `vercel.json`
-// la porte en dur — il est lu depuis le dépôt au déploiement, pas depuis dist.
+// la porte en dur : il est lu depuis le dépôt au déploiement, pas depuis dist.
 if (html !== null && headers !== null) {
   const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
   if (scripts.length !== 1) {
@@ -105,7 +94,7 @@ if (html !== null && headers !== null) {
     if (!vercel.includes(attendue)) {
       grief(
         'vercel.json a dérivé de l’empreinte du script en ligne.',
-        `Reportez ${attendue} dans vercel.json — une politique périmée rassure sans protéger.`,
+        `Reportez ${attendue} dans vercel.json. Une politique périmée rassure sans protéger.`,
       )
     }
   }
@@ -114,7 +103,7 @@ if (html !== null && headers !== null) {
 // Tout le reste peut être parfait et le produit rester invisible : sans jeton
 // d'origin trial valide pour l'origine servie, `document.modelContext` n'existe
 // pas et un juge lit « WebMCP is not available in this browser ».
-// `ALLOW_NO_ORIGIN_TRIAL=1` lève l'exigence — c'est ce que fait `npm run check`,
+// `ALLOW_NO_ORIGIN_TRIAL=1` lève l'exigence : c'est ce que fait `npm run check`,
 // qui construit pour vérifier, pas pour publier.
 const ORIGINES_SERVIES = ['https://keydler.com', 'https://keydler.pages.dev']
 const FONCTIONNALITE = 'WebMCP'
