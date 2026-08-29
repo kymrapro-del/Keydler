@@ -95,8 +95,10 @@ import {
   onRegistrationChange,
   recentlyActive,
   resetCalls,
+  isWorkspacePath,
   taskPath,
   taskUrl,
+  WORKSPACE_PATH,
 } from '../webmcp'
 
 let root: HTMLElement | null = null
@@ -132,6 +134,15 @@ function resetDrafts(): void {
 }
 
 let creating = false
+
+/**
+ * La vue « espace de travail », atteinte par `/workspace`. Elle existe parce
+ * qu'une page d'accueil a besoin d'un endroit où envoyer quelqu'un qui cherche
+ * son compte : jusqu'ici, la liste des cahiers, l'export et l'import vivaient
+ * dans des panneaux repliés À L'INTÉRIEUR d'un cahier ouvert, donc invisibles
+ * pour qui arrive de l'extérieur sans en avoir un.
+ */
+let atWorkspace = false
 
 let credentials: SecretName[] = []
 let revealed: { id: string; value: string } | null = null
@@ -412,6 +423,7 @@ function renderLanding(): string {
       ${form}
       <p class="muted landing__note">
         Everything stays in this browser. No account, no server.
+        <button type="button" id="go-workspace" class="btn btn--quiet">Your workspace</button>
       </p>
     </section>`
 }
@@ -1743,6 +1755,101 @@ function renderDashboard(task: TaskState): string {
     ${renderTechnical(task)}`
 }
 
+/**
+ * Ce que remplace un bouton « Sign in » sur un produit qui n'a ni compte, ni
+ * serveur, ni session. Un compte rend deux services : retrouver ses affaires,
+ * et les avoir sur un autre appareil. Le premier est déjà vrai ici — le
+ * navigateur EST le compte — mais rien ne le disait. Le second se fait par un
+ * fichier, et la page dit pourquoi ce n'est pas un lien : un cahier réellement
+ * utilisé n'y tient pas. Mesuré : 60 pas font 17 349 caractères scellés, la
+ * limite d'une URL est 16 000, le même cahier en fichier fait 85 657.
+ */
+function renderWorkspace(): string {
+  const n = allTasks.length
+  // `TaskCard` ne porte ni le nombre de pas ni la version, à dessein : les y
+  // remettre ferait relire tous les cahiers du poste pour dessiner une liste.
+  // La prochaine action est de toute façon ce qui aide à reconnaître le sien.
+  const rows = allTasks
+    .map(
+      (t) => `<li class="row">
+        <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
+          t.archived ? 'archived' : t.status === 'completed' ? 'closed' : 'open'
+        }</span>
+        <span class="row__text">
+          <strong>${escapeHtml(t.title)}</strong>
+          ${t.next ? `<span class="muted"> — ${escapeHtml(t.next)}</span>` : ''}
+        </span>
+        <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
+      </li>`,
+    )
+    .join('')
+
+  return `<section class="landing">
+      <div class="eyebrow-row">
+        <p class="landing__eyebrow">Keydler</p>
+        ${renderThemeToggle()}
+      </div>
+      <h1 class="landing__headline">Your workspace lives in this browser.</h1>
+      <p class="landing__lede">
+        There is nothing to sign in to. Keydler has no account and no server:
+        opening this site on this device is the whole of it. What you write is
+        never sent anywhere — there is nowhere to send it, and this page's
+        content security policy blocks every other origin.
+      </p>
+      ${alertBlock()}
+
+      <section class="card" aria-labelledby="here-title">
+        <h2 id="here-title" class="card__title">
+          ${n === 0 ? 'Nothing is stored here yet' : `${n} ${plural(n, 'log', 'logs')} on this device`}
+        </h2>
+        ${
+          n === 0
+            ? `<p class="muted">
+                 Start one, or bring one in from a file you exported elsewhere.
+               </p>`
+            : `<ul class="rows">${rows}</ul>`
+        }
+        <div class="actions">
+          <button type="button" id="new-task" class="btn btn--primary">New task</button>
+          <button type="button" id="import" class="btn">Import a file</button>
+          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown"
+                 aria-label="Choose an exported file to import" hidden />
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="move-title">
+        <h2 id="move-title" class="card__title">Moving to another device</h2>
+        <p class="muted">
+          Exporting writes every log on this device into one file. Importing it
+          somewhere else brings them in. From that moment the two run
+          separately — nothing keeps them in step, and no copy of either exists
+          anywhere but on the devices holding it.
+        </p>
+        <p class="muted">
+          Send a file rather than a link when the log is real: a link has to fit
+          in an address, and a log of sixty steps does not.
+        </p>
+        <div class="actions">
+          <button type="button" id="export-all" class="btn">Export all logs</button>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="cost-title">
+        <h2 id="cost-title" class="card__title">What that costs you</h2>
+        <p class="muted">
+          Clearing this site's data deletes every log here, and there is no
+          copy on a server to restore from. That is the same property that
+          keeps your work private, seen from the other side. Export before you
+          clear, and before you switch browsers.
+        </p>
+      </section>
+
+      <div class="actions">
+        <button type="button" id="leave-workspace" class="btn btn--quiet">Back</button>
+      </div>
+    </section>`
+}
+
 function renderBody(): string {
   const { status, task, error, boundId } = store.getSnapshot()
 
@@ -1772,6 +1879,7 @@ function renderBody(): string {
   // déjà ouvert : sans cela, « New task » ne montrait rien depuis un tableau
   // de bord, le formulaire ne vivant que dans l'écran d'accueil.
   if (creating) return renderLanding()
+  if (atWorkspace) return renderWorkspace()
   return task ? renderDashboard(task) : renderLanding()
 }
 
@@ -2296,6 +2404,10 @@ function bindSupervision(): void {
   }
 
   document.querySelector('#new-task')?.addEventListener('click', () => {
+    // Depuis `/workspace`, créer un cahier doit en SORTIR : le formulaire de
+    // création et l'espace de travail sont deux vues, et rester sur la seconde
+    // masquerait la première.
+    atWorkspace = false
     creating = true
     clearNotice()
     humanError = null
@@ -2306,6 +2418,7 @@ function bindSupervision(): void {
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open]')) {
     button.addEventListener('click', () => {
       clearNotice()
+      atWorkspace = false
       void store.openTask(button.dataset.open!).catch((error: unknown) => {
         humanError = humanMessage(error, 'Opening the task')
         scheduleRender()
@@ -2670,6 +2783,18 @@ function bindTechnical(): void {
 
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
 
+  document.querySelector('#go-workspace')?.addEventListener('click', () => {
+    atWorkspace = true
+    renderNow()
+  })
+
+  document.querySelector('#leave-workspace')?.addEventListener('click', () => {
+    // On revient d'où l'on vient : sur un cahier si un cahier est ouvert,
+    // sur l'accueil sinon. `reflectAddress` remet l'adresse en accord.
+    atWorkspace = false
+    renderNow()
+  })
+
   document.querySelector('#export-one')?.addEventListener('click', () => {
     const task = store.currentTask()
     if (task) download(exportFilename(task), buildTaskExport(task))
@@ -2738,7 +2863,7 @@ function reflectAddress(): void {
 
   if (status === 'loading') return
 
-  const wanted = boundId ? taskPath(boundId) : '/'
+  const wanted = atWorkspace ? WORKSPACE_PATH : boundId ? taskPath(boundId) : '/'
   if (location.pathname === wanted) return
   try {
     history.replaceState(null, '', `${wanted}${location.search}`)
@@ -3069,6 +3194,7 @@ export function mount(target: HTMLElement): () => void {
   carryRules = false
   searchFilter = 'all'
   showArchived = false
+  atWorkspace = typeof location !== 'undefined' && isWorkspacePath(location.pathname)
 
   render()
   const subscriptions = [
