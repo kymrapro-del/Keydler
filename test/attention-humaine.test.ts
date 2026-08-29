@@ -63,12 +63,12 @@ describe('ce qui attend l’humain', () => {
     expect(needsYou(task).find((i) => i.kind === 'evidence')!.count).toBe(attente)
 
     const step = task.steps.find((s) => s.confidence === 'evidence')!
-    const après = verifyEvidence(task, step.id, step.evidence!.content)
-    expect(needsYou(après).find((i) => i.kind === 'evidence')!.count).toBe(attente - 1)
+    const after = verifyEvidence(task, step.id, step.evidence!.content)
+    expect(needsYou(after).find((i) => i.kind === 'evidence')!.count).toBe(attente - 1)
 
-    const autre = après.steps.find((s) => s.confidence === 'evidence')!
-    const contesté = disputeStep(après, autre.id, 'wrong branch')
-    expect(needsYou(contesté).find((i) => i.kind === 'evidence')).toBeUndefined()
+    const other = after.steps.find((s) => s.confidence === 'evidence')!
+    const disputed = disputeStep(after, other.id, 'wrong branch')
+    expect(needsYou(disputed).find((i) => i.kind === 'evidence')).toBeUndefined()
   })
 
   it('ne signale rien sur une tâche close', () => {

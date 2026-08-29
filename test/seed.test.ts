@@ -58,20 +58,20 @@ describe('cahier de démonstration', () => {
 
   it('ne contredit pas ce qu’il affirme : le diff touche bien deux fichiers', () => {
     const task = buildDemoTask()
-    const étape = task.steps.find((s) => s.result.includes('2 files touched'))
-    expect(étape).toBeDefined()
+    const step = task.steps.find((s) => s.result.includes('2 files touched'))
+    expect(step).toBeDefined()
 
-    const fichiers = (étape!.evidence!.content.match(/^\+\+\+ /gm) ?? []).length
-    expect(fichiers).toBe(2)
+    const files = (step!.evidence!.content.match(/^\+\+\+ /gm) ?? []).length
+    expect(files).toBe(2)
   })
 
   it('ne contredit pas les contraintes qu’il porte : la signature exportée est intacte', () => {
     const task = buildDemoTask()
-    const étape = task.steps.find((s) => s.result.includes('public API unchanged'))
-    const diff = étape!.evidence!.content
+    const step = task.steps.find((s) => s.result.includes('public API unchanged'))
+    const diff = step!.evidence!.content
 
-    const exportsSupprimés = diff.split('\n').filter((l) => /^-\s*export /.test(l))
-    expect(exportsSupprimés).toEqual([])
+    const removedExports = diff.split('\n').filter((l) => /^-\s*export /.test(l))
+    expect(removedExports).toEqual([])
   })
 
   it('est reproductible : deux constructions donnent la même forme', () => {

@@ -89,13 +89,13 @@ describe('les budgets de caractères que Chrome recommande', () => {
       })),
     }
 
-    const texte = renderSearch(task, 'zebra', MAX_MATCHES)
-    expect(texte.length).toBeLessThanOrEqual(MAX_TOOL_OUTPUT)
+    const text = renderSearch(task, 'zebra', MAX_MATCHES)
+    expect(text.length).toBeLessThanOrEqual(MAX_TOOL_OUTPUT)
 
     // And nothing is hidden: the header counts what is shown out of what was
     // found, and says what to do with the rest.
-    expect(texte).toMatch(/MATCHES {5}\d+ shown of 30 found/)
-    expect(texte).toContain('more not shown: narrow the query')
+    expect(text).toMatch(/MATCHES {5}\d+ shown of 30 found/)
+    expect(text).toContain('more not shown: narrow the query')
   })
 
   it('rend au moins une correspondance, même démesurée', () => {
@@ -117,8 +117,8 @@ describe('les budgets de caractères que Chrome recommande', () => {
         },
       ],
     }
-    const texte = renderSearch(task, 'zebra', MAX_MATCHES)
-    expect(texte).toContain('1 shown of 1 found')
+    const text = renderSearch(task, 'zebra', MAX_MATCHES)
+    expect(text).toContain('1 shown of 1 found')
   })
 
   it('rend une restitution ordinaire dans le budget du produit', () => {
@@ -129,10 +129,10 @@ describe('les budgets de caractères que Chrome recommande', () => {
       ['core', buildCoreTask()],
       ['demo', buildDemoTask()],
     ] as const) {
-      const envoyé = renderTaskState(task, { url: `http://localhost:5173/t/${task.id}` })
-      expect(envoyé.length, nom).toBeLessThanOrEqual(MAX_OUTPUT)
+      const sent = renderTaskState(task, { url: `http://localhost:5173/t/${task.id}` })
+      expect(sent.length, nom).toBeLessThanOrEqual(MAX_OUTPUT)
       // And within reach of Chrome's recommendation, without having aimed for it.
-      expect(envoyé.length, nom).toBeLessThan(1_560)
+      expect(sent.length, nom).toBeLessThan(1_560)
     }
   })
 })

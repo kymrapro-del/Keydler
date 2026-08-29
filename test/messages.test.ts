@@ -71,7 +71,7 @@ describe('messages destinés à l’humain', () => {
         'this task is closed. Reopen it if there is work left.',
       ],
     ]
-    for (const [erreur, attendu] of cas) expect(humanReason(erreur)).toBe(attendu)
+    for (const [error, attendu] of cas) expect(humanReason(error)).toBe(attendu)
   })
 
   it('couvre chaque code sans laisser passer le texte de l’agent', () => {

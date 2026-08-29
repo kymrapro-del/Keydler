@@ -31,44 +31,44 @@ describe('l’adresse', () => {
 
 describe('reprise liée', () => {
   it('rend la tâche nommée par l’adresse, pas la dernière touchée', async () => {
-    const première = await store.createAndOpenTask('Première tâche', 'A')
+    const first = await store.createAndOpenTask('Première tâche', 'A')
     const seconde = await store.createAndOpenTask('Seconde tâche', 'B')
-    expect(seconde.id).not.toBe(première.id)
+    expect(seconde.id).not.toBe(first.id)
 
     store.__resetStore()
-    await store.init(première.id)
+    await store.init(first.id)
 
-    const rendu = textOf(await call(resumeTaskTool))
-    expect(rendu).toContain('Première tâche')
-    expect(rendu).not.toContain('Seconde tâche')
-    expect(rendu).toContain(`TASK ID     ${première.id}`)
+    const rendered = textOf(await call(resumeTaskTool))
+    expect(rendered).toContain('Première tâche')
+    expect(rendered).not.toContain('Seconde tâche')
+    expect(rendered).toContain(`TASK ID     ${first.id}`)
   })
 
   it('nomme la tâche dans toute réponse, pour qu’une substitution se voie', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
-    const rendu = textOf(await call(resumeTaskTool))
-    expect(rendu).toContain(`TASK ID     ${task.id}`)
+    const rendered = textOf(await call(resumeTaskTool))
+    expect(rendered).toContain(`TASK ID     ${task.id}`)
     expect(resumeTaskTool.description).toContain('TASK ID')
   })
 
   it('refuse plutôt que de substituer, quand le cahier lié a disparu', async () => {
-    const première = await store.createAndOpenTask('Première tâche', 'A')
+    const first = await store.createAndOpenTask('Première tâche', 'A')
     await store.createAndOpenTask('Seconde tâche', 'B')
 
     store.__resetStore()
-    await store.init(première.id)
+    await store.init(first.id)
     await store.deleteCurrentTask()
 
     store.__resetStore()
-    await store.init(première.id)
+    await store.init(first.id)
 
     const result = await call(resumeTaskTool)
     expect(result.isError).toBe(true)
-    const rendu = textOf(result)
-    expect(rendu).toContain('TASK NOT FOUND')
-    expect(rendu).toContain(première.id)
-    expect(rendu).toContain('has not')
-    expect(rendu).not.toContain('Seconde tâche')
+    const rendered = textOf(result)
+    expect(rendered).toContain('TASK NOT FOUND')
+    expect(rendered).toContain(first.id)
+    expect(rendered).toContain('has not')
+    expect(rendered).not.toContain('Seconde tâche')
   })
 
   it('refuse aussi toute écriture sur un cahier lié disparu', async () => {
@@ -105,8 +105,8 @@ describe('reprise liée', () => {
 
     store.__resetStore()
     await store.init('jamais-existé')
-    const rendu = textOf(await call(resumeTaskTool))
-    expect(rendu).toContain('TASK NOT FOUND')
-    expect(rendu).not.toContain('NO ACTIVE TASK')
+    const rendered = textOf(await call(resumeTaskTool))
+    expect(rendered).toContain('TASK NOT FOUND')
+    expect(rendered).not.toContain('NO ACTIVE TASK')
   })
 })

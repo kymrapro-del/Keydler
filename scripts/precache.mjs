@@ -21,19 +21,19 @@ if (actifs.length === 0) {
   process.exit(1)
 }
 
-const chemin = join(dist, 'sw.js')
-const source = await readFile(chemin, 'utf8')
+const path = join(dist, 'sw.js')
+const source = await readFile(path, 'utf8')
 const shell = ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png', ...actifs]
 const version = createHash('sha256').update(shell.join('|')).digest('hex').slice(0, 12)
 
-const écrit = source
+const written = source
   .replace(/^const CACHE = .*$/m, `const CACHE = 'keydler-${version}'`)
   .replace(/^const SHELL = .*$/m, `const SHELL = ${JSON.stringify(shell)}`)
 
-if (écrit === source) {
+if (written === source) {
   console.error('precache: ni CACHE ni SHELL trouvés dans dist/sw.js')
   process.exit(1)
 }
 
-await writeFile(chemin, écrit)
+await writeFile(path, written)
 console.log(`precache: ${shell.length} entrées, cache keydler-${version}`)

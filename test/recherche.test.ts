@@ -40,9 +40,9 @@ describe('recherche dans un cahier', () => {
   it('replie un accent déjà décomposé, que NFD laisse tel quel', () => {
     // "é" written e + U+0301: the length does not change on decomposition, so
     // nothing signals that a diacritic is left to strip.
-    const décomposé = 'caf\u0065\u0301 ferme'
-    expect(décomposé.normalize('NFD')).toHaveLength(décomposé.length)
-    expect(matches(décomposé, 'cafe')).toBe(true)
+    const split = 'caf\u0065\u0301 ferme'
+    expect(split.normalize('NFD')).toHaveLength(split.length)
+    expect(matches(split, 'cafe')).toBe(true)
   })
 
   it('replie un caractère dont la MINUSCULE seule sort de l’ASCII', () => {

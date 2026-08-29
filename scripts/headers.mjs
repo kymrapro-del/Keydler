@@ -23,24 +23,24 @@ if (scripts.length !== 1) {
   process.exit(1)
 }
 
-const empreinte = `sha256-${createHash('sha256').update(scripts[0][1], 'utf8').digest('base64')}`
+const fingerprint = `sha256-${createHash('sha256').update(scripts[0][1], 'utf8').digest('base64')}`
 
-const chemin = join(dist, '_headers')
-const modele = await readFile(chemin, 'utf8')
+const path = join(dist, '_headers')
+const modele = await readFile(path, 'utf8')
 if (!modele.includes('__CSP_SCRIPT_HASH__')) {
   console.error('headers: __CSP_SCRIPT_HASH__ absent de dist/_headers')
   process.exit(1)
 }
-await writeFile(chemin, modele.replaceAll('__CSP_SCRIPT_HASH__', empreinte))
+await writeFile(path, modele.replaceAll('__CSP_SCRIPT_HASH__', fingerprint))
 
 const vercel = await readFile(join(racine, 'vercel.json'), 'utf8')
-if (!vercel.includes(empreinte)) {
+if (!vercel.includes(fingerprint)) {
   console.error(
     `headers: vercel.json ne porte pas l'empreinte du script en ligne.\n` +
-      `Attendue : ${empreinte}\n` +
+      `Attendue : ${fingerprint}\n` +
       "Le script d'amorce a changé : reportez cette valeur dans vercel.json.",
   )
   process.exit(1)
 }
 
-console.log(`headers: politique scellée sur ${empreinte}`)
+console.log(`headers: politique scellée sur ${fingerprint}`)

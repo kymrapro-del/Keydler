@@ -82,7 +82,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   const proven = provenStepCount(state)
   const counts = evidenceCounts(state)
   const active = activeConstraints(state)
-  const condamnées = acceptedRejections(state)
+  const ruledOut = acceptedRejections(state)
   const propositions = [
     ...proposedConstraints(state).map((p) => ({ kind: 'constraint', text: p.rule })),
     ...proposedRejections(state).map((p) => ({
@@ -127,13 +127,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  const tranchées = decidedApprovals(state)
-  if (tranchées.length > 0 && recentApprovals > 0) {
-    const shown = tranchées.slice(-recentApprovals)
+  const decided = decidedApprovals(state)
+  if (decided.length > 0 && recentApprovals > 0) {
+    const shown = decided.slice(-recentApprovals)
     lines.push('')
     lines.push(
-      tranchées.length > shown.length
-        ? `DECIDED BY THE HUMAN (last ${shown.length} of ${tranchées.length})`
+      decided.length > shown.length
+        ? `DECIDED BY THE HUMAN (last ${shown.length} of ${decided.length})`
         : 'DECIDED BY THE HUMAN',
     )
     for (const a of shown) {
@@ -141,14 +141,14 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  const contestées = disputedSteps(state)
-  if (contestées.length > 0) {
-    const shown = contestées.slice(-recentDisputes)
+  const disputed = disputedSteps(state)
+  if (disputed.length > 0) {
+    const shown = disputed.slice(-recentDisputes)
     lines.push('')
     lines.push(
-      contestées.length > shown.length
-        ? `DISPUTED BY THE HUMAN: treat as wrong (${shown.length} of ${contestées.length})`
-        : `DISPUTED BY THE HUMAN: treat as wrong (${contestées.length})`,
+      disputed.length > shown.length
+        ? `DISPUTED BY THE HUMAN: treat as wrong (${shown.length} of ${disputed.length})`
+        : `DISPUTED BY THE HUMAN: treat as wrong (${disputed.length})`,
     )
     for (const s of shown) {
       lines.push(`  ${clip(s.action, c(120))}`)
@@ -171,13 +171,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  const répondues = answeredQuestions(state)
-  if (répondues.length > 0 && recentAnswers > 0) {
-    const shown = répondues.slice(-recentAnswers)
+  const answered = answeredQuestions(state)
+  if (answered.length > 0 && recentAnswers > 0) {
+    const shown = answered.slice(-recentAnswers)
     lines.push('')
     lines.push(
-      répondues.length > shown.length
-        ? `ANSWERED BY THE HUMAN (last ${shown.length} of ${répondues.length})`
+      answered.length > shown.length
+        ? `ANSWERED BY THE HUMAN (last ${shown.length} of ${answered.length})`
         : 'ANSWERED BY THE HUMAN',
     )
     for (const q of shown) {
@@ -210,13 +210,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  if (condamnées.length > 0) {
-    const shown = condamnées.slice(0, recentRejections)
-    const hidden = condamnées.length - shown.length
+  if (ruledOut.length > 0) {
+    const shown = ruledOut.slice(0, recentRejections)
+    const hidden = ruledOut.length - shown.length
     lines.push('')
     lines.push(
       hidden > 0
-        ? `REJECTED: do not retry (${shown.length} of ${condamnées.length} shown)`
+        ? `REJECTED: do not retry (${shown.length} of ${ruledOut.length} shown)`
         : 'REJECTED: do not retry',
     )
     for (const r of shown) {
@@ -408,7 +408,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   // starts from the real length, otherwise half of infinity is still
   // infinity and the descent never ends.
   const fitConstraints = Math.min(recentConstraints, active.length)
-  const fitRejections = Math.min(recentRejections, condamnées.length)
+  const fitRejections = Math.min(recentRejections, ruledOut.length)
   if (fitConstraints > MIN_BINDING_SHOWN || fitRejections > MIN_BINDING_SHOWN) {
     return renderTaskState(state, {
       ...options,

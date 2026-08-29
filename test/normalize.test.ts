@@ -12,7 +12,7 @@ async function clear() {
   await Promise.all([tx.objectStore('tasks').clear(), tx.objectStore('meta').clear(), tx.done])
 }
 
-async function écrireBrut(record: unknown) {
+async function writeRaw(record: unknown) {
   const db = await getDb()
   await db.put('tasks', record as never)
 }
@@ -21,7 +21,7 @@ beforeEach(clear)
 
 describe('normalisation à la lecture', () => {
   it('survit à un enregistrement sans journal ni tableaux', async () => {
-    await écrireBrut({ id: 'ancien', title: 'Cahier d’hier', version: 7, updatedAt: 1 })
+    await writeRaw({ id: 'ancien', title: 'Cahier d’hier', version: 7, updatedAt: 1 })
 
     const task = await loadTask('ancien')
     expect(task).toBeDefined()
@@ -67,7 +67,7 @@ describe('normalisation à la lecture', () => {
 
   it('conserve un identifiant tel quel : c’est la clé primaire', async () => {
     const bizarre = 'x" onload="alert(1)'
-    await écrireBrut({ id: bizarre, title: 'Cahier', version: 3, updatedAt: 1 })
+    await writeRaw({ id: bizarre, title: 'Cahier', version: 3, updatedAt: 1 })
 
     const relu = await loadTask(bizarre)
     expect(relu?.id).toBe(bizarre)
@@ -87,7 +87,7 @@ describe('normalisation à la lecture', () => {
   })
 
   it('refuse un enregistrement écrit par une version plus récente', async () => {
-    await écrireBrut({ id: 'futur', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
+    await writeRaw({ id: 'futur', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
 
     await expect(loadTask('futur')).rejects.toBeInstanceOf(FutureSchemaError)
   })
@@ -95,7 +95,7 @@ describe('normalisation à la lecture', () => {
   it('n’emporte pas toute la liste pour un enregistrement illisible', async () => {
     const sain = createTask({ title: 'Sain', next: 'Continuer' })
     await saveTask(sain)
-    await écrireBrut({ id: 'futur', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
+    await writeRaw({ id: 'futur', title: 'X', version: 1, schemaVersion: SCHEMA_VERSION + 1 })
 
     const tasks = await listTasks()
     expect(tasks.map((t) => t.title)).toEqual(['Sain'])

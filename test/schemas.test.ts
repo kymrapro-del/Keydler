@@ -19,26 +19,26 @@ type Schema = {
 const schemaOf = (name: string): Schema =>
   ALL_TOOLS.find((t) => t.name === name)!.inputSchema as Schema
 
-function objets(schema: Schema, chemin = '$'): [string, Schema][] {
-  const ici: [string, Schema][] = schema.type === 'object' ? [[chemin, schema]] : []
-  const enfants = Object.entries(schema.properties ?? {}).flatMap(([clé, valeur]) =>
-    objets(valeur, `${chemin}.${clé}`),
+function objets(schema: Schema, path = '$'): [string, Schema][] {
+  const here: [string, Schema][] = schema.type === 'object' ? [[path, schema]] : []
+  const enfants = Object.entries(schema.properties ?? {}).flatMap(([key, value]) =>
+    objets(value, `${path}.${key}`),
   )
-  return [...ici, ...enfants]
+  return [...here, ...enfants]
 }
 
 describe('durcissement', () => {
   it('refuse tout champ inconnu, aux racines COMME dans les objets imbriqués', () => {
     for (const tool of ALL_TOOLS) {
-      for (const [chemin, objet] of objets(tool.inputSchema as Schema)) {
-        expect(objet.additionalProperties, `${tool.name} ${chemin}`).toBe(false)
+      for (const [path, objet] of objets(tool.inputSchema as Schema)) {
+        expect(objet.additionalProperties, `${tool.name} ${path}`).toBe(false)
       }
     }
   })
 
   it('atteint bien l’objet imbriqué qu’on croit vérifier', () => {
-    const chemins = objets(schemaOf('log_step')).map(([c]) => c)
-    expect(chemins).toContain('$.evidence')
+    const paths = objets(schemaOf('log_step')).map(([c]) => c)
+    expect(paths).toContain('$.evidence')
   })
 
   it('déclare les bornes de longueur que le domaine applique', () => {
@@ -110,9 +110,9 @@ describe('ce que la description doit porter faute d’annotation', () => {
       // is where an agent reads it while filling in the call, and repeating it
       // in both only inflated a budget Chrome recommends holding to. What
       // matters is that it is said once.
-      const schéma = tool.inputSchema as Schema
-      expect(schéma.required, tool.name).toContain('mutation_id')
-      const jeton = schéma.properties!.mutation_id.description!
+      const theSchema = tool.inputSchema as Schema
+      expect(theSchema.required, tool.name).toContain('mutation_id')
+      const jeton = theSchema.properties!.mutation_id.description!
       expect(jeton, tool.name).toContain('retry with the SAME mutation_id')
       expect(jeton, tool.name).toContain('the write happens once')
     }

@@ -19,16 +19,16 @@ describe('résumer ce qui attend, en peu de mots', () => {
       { question: 'q?', why: 'w', basedOnVersion: null },
       'agent',
     )
-    const résumé = summariseNeeds(needsYou({ ...task, steps: [], constraints: [], rejected: [] }))
-    expect(résumé).toContain('1 question')
+    const summary = summariseNeeds(needsYou({ ...task, steps: [], constraints: [], rejected: [] }))
+    expect(summary).toContain('1 question')
   })
 
   it('compte le reste plutôt que de tout énumérer', () => {
     const task = buildCoreTask()
-    const résumé = summariseNeeds(needsYou(task))!
+    const summary = summariseNeeds(needsYou(task))!
     // A full list inside a switcher badge does not get read.
-    expect(résumé).toMatch(/\+\d+ more|and \d+ more/)
-    expect(résumé.length).toBeLessThan(60)
+    expect(summary).toMatch(/\+\d+ more|and \d+ more/)
+    expect(summary.length).toBeLessThan(60)
   })
 
   it('met en tête ce qui bloque un agent', () => {
@@ -92,12 +92,12 @@ describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
 
-    const bloquée = requestApproval(
+    const blocked = requestApproval(
       { ...buildCoreTask(), title: 'Migration work' },
       { action: 'Drop the table', why: 'irreversible', basedOnVersion: null },
       'agent',
     )
-    await store.openPreparedTask(bloquée)
+    await store.openPreparedTask(blocked)
     await store.createAndOpenTask('Quiet task', 'Nothing pending')
     await settled()
   })
@@ -112,11 +112,11 @@ describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
     await waitUntil(() => !!switcher()?.textContent?.includes('Migration work'), 'la liste', 3000)
     __renderNow()
 
-    const ligne = [...switcher()!.querySelectorAll('li')].find((li) =>
+    const line = [...switcher()!.querySelectorAll('li')].find((li) =>
       li.textContent!.includes('Migration work'),
     )!
     // The title does not contain the word: it really is the badge speaking.
-    const badge = ligne.querySelector('.needs__badge')!
+    const badge = line.querySelector('.needs__badge')!
     expect(badge).not.toBeNull()
     expect(badge.textContent).toMatch(/blocked/i)
   })
@@ -126,10 +126,10 @@ describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
     await waitUntil(() => !!switcher()?.textContent?.includes('Quiet task'), 'la liste', 3000)
     __renderNow()
 
-    const ligne = [...switcher()!.querySelectorAll('li')].find((li) =>
+    const line = [...switcher()!.querySelectorAll('li')].find((li) =>
       li.textContent!.includes('Quiet task'),
     )!
-    expect(ligne.querySelector('.needs__badge')).toBeNull()
+    expect(line.querySelector('.needs__badge')).toBeNull()
   })
 
   it('dit dans l’en-tête qu’un agent vient d’appeler un outil', async () => {

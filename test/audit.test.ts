@@ -8,53 +8,53 @@ function ctx(seed = 0) {
   return { now: 1_700_000_000_000, newId: () => `id-${n++}` }
 }
 
-function tâche(): TaskState {
+function task(): TaskState {
   return createTask({ title: 'Tâche', next: 'Continuer' }, ctx())
 }
 
-const refus = (état: TaskState, version: number | null, décalage = 0) =>
+const refusal = (state: TaskState, version: number | null, offset = 0) =>
   recordRefusal(
-    état,
+    state,
     { operation: 'log_step', actor: 'agent', basedOnVersion: version, detail: 'stale' },
-    ctx(1000 + décalage),
+    ctx(1000 + offset),
   )
 
 describe('journal d’audit', () => {
   it('compte une tentative répétée à l’identique au lieu de l’empiler', () => {
-    let t = tâche()
-    const avant = t.audit.length
+    let t = task()
+    const before = t.audit.length
 
-    for (let i = 0; i < 5; i++) t = refus(t, 1, i)
+    for (let i = 0; i < 5; i++) t = refusal(t, 1, i)
 
-    expect(t.audit).toHaveLength(avant + 1)
+    expect(t.audit).toHaveLength(before + 1)
     expect(t.audit.at(-1)).toMatchObject({ outcome: 'refused', repeated: 5 })
   })
 
   it('n’assimile pas deux refus qui diffèrent', () => {
-    let t = tâche()
-    const avant = t.audit.length
+    let t = task()
+    const before = t.audit.length
 
-    t = refus(t, 1, 0)
-    t = refus(t, 2, 1)
+    t = refusal(t, 1, 0)
+    t = refusal(t, 2, 1)
 
-    expect(t.audit).toHaveLength(avant + 2)
+    expect(t.audit).toHaveLength(before + 2)
     expect(t.audit.at(-1)?.repeated).toBeUndefined()
   })
 
   it('ne fusionne jamais une réussite avec ce qui la précède', () => {
-    let t = tâche()
+    let t = task()
     // Two DIFFERENT rules: a word-for-word repeat has been refused ever since
     // a guard exists, and this case is about merging entries, not about
     // duplicates.
     t = addConstraint(t, { rule: 'R one', basedOnVersion: 1 }, 'human', ctx(10))
     t = addConstraint(t, { rule: 'R two', basedOnVersion: 2 }, 'human', ctx(20))
 
-    const appliquées = t.audit.filter((e) => e.outcome === 'applied')
-    expect(appliquées).toHaveLength(3)
+    const applied = t.audit.filter((e) => e.outcome === 'applied')
+    expect(applied).toHaveLength(3)
   })
 
   it('borne le journal et dit combien a été élagué', () => {
-    let t = tâche()
+    let t = task()
     let v = t.version
 
     for (let i = 0; i < MAX_AUDIT_ENTRIES + 40; i++) {
@@ -73,13 +73,13 @@ describe('journal d’audit', () => {
     expect(marque).toBeDefined()
     expect(marque!.detail).toMatch(/^\d+ earlier entries dropped/)
 
-    const élaguées = Number(marque!.detail.match(/^(\d+)/)![1])
-    const conservées = t.audit.filter((e) => e.operation !== 'audit_trimmed').length
-    expect(élaguées + conservées).toBe(MAX_AUDIT_ENTRIES + 40 + 1)
+    const trimmed = Number(marque!.detail.match(/^(\d+)/)![1])
+    const kept = t.audit.filter((e) => e.operation !== 'audit_trimmed').length
+    expect(trimmed + kept).toBe(MAX_AUDIT_ENTRIES + 40 + 1)
   })
 
   it('le contenu du cahier survit à l’élagage du journal', () => {
-    let t = tâche()
+    let t = task()
     let v = t.version
     for (let i = 0; i < MAX_AUDIT_ENTRIES + 10; i++) {
       t = logStep(

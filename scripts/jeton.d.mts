@@ -9,7 +9,7 @@
 /** What an origin trial token carries, once its payload is read. */
 export type Jeton = {
   /** Set when the token could not be read; the other fields are then absent. */
-  erreur?: string
+  error?: string
   version?: number
   /** The exact origin, port included: `https://keydler.com:443`. */
   origine?: string
@@ -23,4 +23,4 @@ export type Jeton = {
 export function lireJeton(base64: string): Jeton
 
 /** Splits the environment variable: one origin, one token. */
-export function tokensDe(brut: string | undefined): string[]
+export function tokensDe(raw: string | undefined): string[]

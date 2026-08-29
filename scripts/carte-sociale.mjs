@@ -17,7 +17,7 @@ const racine = fileURLToPath(new URL('../', import.meta.url))
 const FOND = '#131316'
 const SURFACE = '#1c1c20'
 const BORDURE = '#34343a'
-const TEXTE = '#e6e6ea'
+const TEXT = '#e6e6ea'
 const ATTENUE = '#a0a0ac'
 const ACCENT = '#a3adf5'
 
@@ -30,10 +30,10 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" v
   <text x="120" y="112" font-family="${police}" font-size="26" font-weight="700"
         letter-spacing="4" fill="${ACCENT}">KEYDLER</text>
 
-  <text x="120" y="268" font-family="${police}" font-size="58" font-weight="700" fill="${TEXTE}">
+  <text x="120" y="268" font-family="${police}" font-size="58" font-weight="700" fill="${TEXT}">
     A shared memory for you
   </text>
-  <text x="120" y="336" font-family="${police}" font-size="58" font-weight="700" fill="${TEXTE}">
+  <text x="120" y="336" font-family="${police}" font-size="58" font-weight="700" fill="${TEXT}">
     and your AI.
   </text>
 
@@ -53,17 +53,17 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" v
 </svg>
 `
 
-const chemin = join(racine, 'public', 'og.png')
+const path = join(racine, 'public', 'og.png')
 await writeFile('/tmp/og.svg', svg, 'utf8')
 
 try {
-  execFileSync('rsvg-convert', ['-w', '1200', '-h', '630', '-o', chemin, '/tmp/og.svg'])
+  execFileSync('rsvg-convert', ['-w', '1200', '-h', '630', '-o', path, '/tmp/og.svg'])
 } catch {
-  execFileSync('magick', ['-background', 'none', '/tmp/og.svg', '-resize', '1200x630', chemin])
+  execFileSync('magick', ['-background', 'none', '/tmp/og.svg', '-resize', '1200x630', path])
 }
 
 const { statSync } = await import('node:fs')
-const octets = statSync(chemin).size
+const octets = statSync(path).size
 console.log(`carte sociale: public/og.png, ${(octets / 1024).toFixed(1)} ko`)
 if (octets > 1_000_000) {
   console.error('carte sociale: plus de 1 Mo, certaines plateformes refuseraient de la charger.')

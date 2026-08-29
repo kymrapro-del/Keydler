@@ -43,11 +43,11 @@ describe('suivre ce qui est arrivé à une seule règle', () => {
   })
 
   it('ne mélange pas deux règles', () => {
-    const [un, deux] = activeConstraints(task)
-    let next = setConstraintActive(task, un.id, false)
+    const [plain, deux] = activeConstraints(task)
+    let next = setConstraintActive(task, plain.id, false)
     next = setConstraintActive(next, deux.id, false)
 
-    expect(historyOf(next, un.id).entries).toHaveLength(1)
+    expect(historyOf(next, plain.id).entries).toHaveLength(1)
     expect(historyOf(next, deux.id).entries).toHaveLength(1)
   })
 
@@ -58,10 +58,10 @@ describe('suivre ce qui est arrivé à une seule règle', () => {
   })
 
   it('n’oublie pas une règle proposée puis acceptée', () => {
-    const proposée = addConstraint(task, { rule: 'A proposed rule', basedOnVersion: null }, 'agent')
-    const id = proposée.constraints.at(-1)!.id
+    const proposed = addConstraint(task, { rule: 'A proposed rule', basedOnVersion: null }, 'agent')
+    const id = proposed.constraints.at(-1)!.id
     // The proposal itself has no target: it is the decision that has one.
-    expect(historyOf(proposée, id).entries).toEqual([])
+    expect(historyOf(proposed, id).entries).toEqual([])
   })
 })
 
@@ -151,7 +151,7 @@ describe('depuis la page', () => {
 })
 
 describe('une histoire élaguée le dit', () => {
-  function saturé(): { task: TaskState; ruleId: string } {
+  function makeSaturated(): { task: TaskState; ruleId: string } {
     let next = buildCoreTask()
     const rule = activeConstraints(next)[0]
     next = setConstraintActive(next, rule.id, false)
@@ -163,7 +163,7 @@ describe('une histoire élaguée le dit', () => {
   }
 
   it('ne prétend pas être complète quand le journal a été élagué', () => {
-    const { task, ruleId } = saturé()
+    const { task, ruleId } = makeSaturated()
     const trail = historyOf(task, ruleId)
 
     // This rule's entries fell out of the bounded audit log: saying nothing
@@ -180,10 +180,10 @@ describe('une histoire élaguée le dit', () => {
   })
 
   it('avertit même quand il reste des entrées à montrer', () => {
-    const { task: avant, ruleId } = saturé()
-    const saturée = setConstraintActive(avant, ruleId, true)
+    const { task: beforeState, ruleId } = makeSaturated()
+    const saturated = setConstraintActive(beforeState, ruleId, true)
 
-    const trail = historyOf(saturée, ruleId)
+    const trail = historyOf(saturated, ruleId)
     expect(trail.entries.length).toBeGreaterThan(0)
     expect(trail.mayBeIncomplete).toBe(true)
   })
@@ -235,10 +235,10 @@ describe('l’avertissement à l’écran', () => {
   it('propose encore l’histoire même quand tout a été élagué', async () => {
     // With no surviving entry, hiding the button would keep the pruning quiet.
     const task = store.currentTask()!
-    const oubliée = task.constraints[1]
-    expect(root.querySelector(`[data-trail="${oubliée.id}"]`)).not.toBeNull()
+    const forgotten = task.constraints[1]
+    expect(root.querySelector(`[data-trail="${forgotten.id}"]`)).not.toBeNull()
 
-    root.querySelector<HTMLButtonElement>(`[data-trail="${oubliée.id}"]`)!.click()
+    root.querySelector<HTMLButtonElement>(`[data-trail="${forgotten.id}"]`)!.click()
     __renderNow()
     expect(root.querySelector('.trail')!.textContent).toMatch(/older|dropped|earlier/i)
   })

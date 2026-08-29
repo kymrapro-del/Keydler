@@ -18,7 +18,7 @@ if (redirectToCanonical()) {
 const root = document.querySelector<HTMLElement>('#app')
 if (!root) throw new Error('#app introuvable')
 
-const lié = currentTaskIdFromLocation()
+const bound = currentTaskIdFromLocation()
 
 mount(root)
 
@@ -37,12 +37,12 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 }
 
 void (async () => {
-  await store.init(lié ?? undefined)
+  await store.init(bound ?? undefined)
 
   const n = Number(new URLSearchParams(location.search).get('mesure'))
   if (!n) return
 
-  const voulue = buildMeasureTask(n)
-  if (store.currentTask()?.title === voulue.title) return
-  await store.openPreparedTask(voulue)
+  const wanted = buildMeasureTask(n)
+  if (store.currentTask()?.title === wanted.title) return
+  await store.openPreparedTask(wanted)
 })()

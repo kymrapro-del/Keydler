@@ -16,9 +16,9 @@ export function chromiumMajorVersion(): number | null {
     ?.userAgentData
   if (!data || !Array.isArray(data.brands)) return null
 
-  for (const entrée of data.brands) {
-    if (typeof entrée?.brand !== 'string' || entrée.brand.toLowerCase() !== 'chromium') continue
-    const version = Number.parseInt(String(entrée.version), 10)
+  for (const entry of data.brands) {
+    if (typeof entry?.brand !== 'string' || entry.brand.toLowerCase() !== 'chromium') continue
+    const version = Number.parseInt(String(entry.version), 10)
     return Number.isInteger(version) ? version : null
   }
   return null

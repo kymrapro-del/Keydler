@@ -56,9 +56,9 @@ describe('un lien qu’une phrase de passe protège', () => {
     // Salt and IV drawn at random: two identical links would reveal that they
     // carry the same log, to anyone who saw both go by.
     const task = buildDemoTask()
-    const un = await packSealedTask(task, PHRASE)
+    const plain = await packSealedTask(task, PHRASE)
     const deux = await packSealedTask(task, PHRASE)
-    expect(un).not.toBe(deux)
+    expect(plain).not.toBe(deux)
   })
 
   it('reste sous la borne de longueur, et le dit s’il la dépasse', async () => {
@@ -71,8 +71,8 @@ describe('un lien qu’une phrase de passe protège', () => {
       { length: 4000 },
       (_, i) => `${i}-${Math.abs(Math.sin(i) * 1e15).toString(36)}`,
     ).join(' ')
-    const énorme = { ...buildDemoTask(), title: bruit }
-    await expect(packSealedTask(énorme, PHRASE)).rejects.toThrow(/Export this task/)
+    const huge = { ...buildDemoTask(), title: bruit }
+    await expect(packSealedTask(huge, PHRASE)).rejects.toThrow(/Export this task/)
   })
 
   it('refuse une phrase vide plutôt que de sceller avec rien', async () => {

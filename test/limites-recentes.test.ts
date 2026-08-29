@@ -61,7 +61,7 @@ describe('une attente d’autorisation pendant que tout bouge', () => {
 describe('chaînes d’annulation', () => {
   it('remonte une suite de corrections d’un champ, une par une', () => {
     let task = buildCoreTask()
-    const titre = task.title
+    const title = task.title
     const but = task.goal
     task = renameTask(task, 'Second name')
     task = setGoal(task, 'A first goal')
@@ -71,7 +71,7 @@ describe('chaînes d’annulation', () => {
     task = undoLastSupervision(task)
     task = undoLastSupervision(task)
 
-    expect(task.title).toBe(titre)
+    expect(task.title).toBe(title)
     expect(task.goal).toBe(but)
     expect(undoable(task)).toBeNull()
   })
@@ -96,28 +96,28 @@ describe('bornes des surfaces récentes', () => {
     for (let i = 0; i < 200; i++) {
       task = addConstraint(task, { rule: `Proposed rule ${i}`, basedOnVersion: null }, 'agent')
     }
-    const résumé = summariseNeeds(needsYou(task))!
-    expect(résumé.length).toBeLessThan(70)
+    const summary = summariseNeeds(needsYou(task))!
+    expect(summary.length).toBeLessThan(70)
   })
 
   it('le but survit à une clôture, et reste annulable après réouverture', () => {
-    const posé = setGoal(buildCoreTask(), 'Ship it')
-    const clos = completeTask(posé, { summary: 'Done', basedOnVersion: null }, 'human')
+    const installed = setGoal(buildCoreTask(), 'Ship it')
+    const clos = completeTask(installed, { summary: 'Done', basedOnVersion: null }, 'human')
     expect(clos.goal).toBe('Ship it')
     // Setting a goal on a closed task stays possible: the human stays in charge.
     expect(() => setGoal(clos, 'Another goal')).not.toThrow()
   })
 
   it('l’histoire d’une proposition acceptée nomme la décision', () => {
-    const proposée = addConstraint(
+    const proposed = addConstraint(
       buildCoreTask(),
       { rule: 'A proposed rule', basedOnVersion: null },
       'agent',
     )
-    const id = proposée.constraints.at(-1)!.id
-    const acceptée = setConstraintStanding(proposée, id, 'accepted')
+    const id = proposed.constraints.at(-1)!.id
+    const accepted = setConstraintStanding(proposed, id, 'accepted')
 
-    expect(historyOf(acceptée, id).entries.map((e) => e.operation)).toEqual(['accept_constraint'])
+    expect(historyOf(accepted, id).entries.map((e) => e.operation)).toEqual(['accept_constraint'])
   })
 })
 

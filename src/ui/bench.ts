@@ -1123,10 +1123,10 @@ function renderAway(task: TaskState): string {
   const since = awaySince
   if (since === null || since >= task.version) return ''
 
-  const depuis = task.audit.filter((e) => e.versionAfter > since)
-  if (depuis.length === 0) return ''
+  const sinceWhen = task.audit.filter((e) => e.versionAfter > since)
+  if (sinceWhen.length === 0) return ''
 
-  const shown = describeHistory(depuis.slice(-8))
+  const shown = describeHistory(sinceWhen.slice(-8))
   const rows = shown
     .map(
       (l) => `<li class="row">
@@ -1142,13 +1142,13 @@ function renderAway(task: TaskState): string {
   return `<section class="card card--away" aria-labelledby="away-title">
       <h2 id="away-title" class="card__title">While you were away</h2>
       <p class="muted">
-        ${depuis.length} ${plural(depuis.length, 'write', 'writes')} since you last had this
+        ${sinceWhen.length} ${plural(sinceWhen.length, 'write', 'writes')} since you last had this
         page open, at v${since}.
       </p>
       <ul class="rows">${rows}</ul>
       ${
-        depuis.length > shown.length
-          ? `<p class="muted">${depuis.length - shown.length} older still, in the history below.</p>`
+        sinceWhen.length > shown.length
+          ? `<p class="muted">${sinceWhen.length - shown.length} older still, in the history below.</p>`
           : ''
       }
       <div class="actions">

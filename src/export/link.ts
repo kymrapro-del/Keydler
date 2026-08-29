@@ -130,8 +130,8 @@ export const SEALED_MARKER = 's'
 
 export async function packSealedTask(task: TaskState, passphrase: string): Promise<string> {
   const clair = await packTask(task, { unbounded: true })
-  const scellé = await seal(clair, requirePassphrase(passphrase))
-  const packed = `${SEALED_MARKER}${toBase64Url(bytesOf(JSON.stringify(scellé)))}`
+  const sealed = await seal(clair, requirePassphrase(passphrase))
+  const packed = `${SEALED_MARKER}${toBase64Url(bytesOf(JSON.stringify(sealed)))}`
   if (packed.length > MAX_LINK_LENGTH) throw new TooLargeForLinkError(packed.length)
   return packed
 }
@@ -149,7 +149,7 @@ export async function unsealTask(packed: string, passphrase: string): Promise<Ta
   if (packed.length > MAX_LINK_LENGTH) throw new UnreadableLinkError()
   if (!SAFE.test(packed)) throw new UnreadableLinkError()
 
-  let scellé: SealedValue
+  let sealed: SealedValue
   try {
     const json = new TextDecoder().decode(fromBase64Url(packed.slice(1)))
     const lu = JSON.parse(json) as Partial<SealedValue>
@@ -161,7 +161,7 @@ export async function unsealTask(packed: string, passphrase: string): Promise<Ta
     ) {
       throw new UnreadableLinkError()
     }
-    scellé = lu as SealedValue
+    sealed = lu as SealedValue
   } catch {
     throw new UnreadableLinkError()
   }
@@ -169,7 +169,7 @@ export async function unsealTask(packed: string, passphrase: string): Promise<Ta
   // `unseal` throws `WrongPassphraseError`, which has to travel up as it is:
   // “the passphrase is wrong” and “this link is unreadable” are not the same
   // thing to say to someone who has just typed a passphrase.
-  const clair = await unseal(scellé, requirePassphrase(passphrase))
+  const clair = await unseal(sealed, requirePassphrase(passphrase))
   return unpackTask(clair)
 }
 

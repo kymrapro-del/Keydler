@@ -179,9 +179,9 @@ describe('ce que l’agent reçoit', () => {
     // A NAME is never truncated: an agent quoting `${service-1-api-k…}` would
     // write a false reference. Under pressure we show fewer of them, we do not
     // shorten them, and we say how many are hidden.
-    const rendu = renderTaskState(task, { credentials: creds(30) })
-    expect(rendu).toMatch(/CREDENTIALS: names only, values sealed \(\d+ of 30\)/)
-    expect(rendu).not.toMatch(/\$\{service-\d+-api-k…/)
+    const output = renderTaskState(task, { credentials: creds(30) })
+    expect(output).toMatch(/CREDENTIALS: names only, values sealed \(\d+ of 30\)/)
+    expect(output).not.toMatch(/\$\{service-\d+-api-k…/)
   })
 
   it('sacrifie le travail ancien avant de cacher un nom d’identifiant', () => {
@@ -196,20 +196,20 @@ describe('ce que l’agent reçoit', () => {
 
     // The budget goes first on the older work, which is re-read page by page,
     // before touching the credentials.
-    const sans = renderTaskState(task)
-    const avec = renderTaskState(task, { credentials: creds(4) })
+    const without = renderTaskState(task)
+    const withCreds = renderTaskState(task, { credentials: creds(4) })
 
     // Without credentials the budget holds two steps. With them it holds only
     // one: the older work pays, and it is re-read page by page.
-    expect(sans).toMatch(/RECENT WORK \(last 2 of 4\)/)
-    expect(avec).toMatch(/RECENT WORK \(last 1 of 4\)/)
-    expect(avec).toContain('${service-0-api-key}')
-    expect(avec).toContain('${service-1-api-key}')
-    expect(estimateTokens(avec)).toBeLessThanOrEqual(TOKEN_BUDGET)
+    expect(without).toMatch(/RECENT WORK \(last 2 of 4\)/)
+    expect(withCreds).toMatch(/RECENT WORK \(last 1 of 4\)/)
+    expect(withCreds).toContain('${service-0-api-key}')
+    expect(withCreds).toContain('${service-1-api-key}')
+    expect(estimateTokens(withCreds)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
   it('dit clairement qu’il en cache, plutôt que de paraître complet', () => {
-    const rendu = renderTaskState(buildDemoTask(), {
+    const output = renderTaskState(buildDemoTask(), {
       credentials: Array.from({ length: 8 }, (_, i) => ({
         id: `s${i}`,
         name: `service-${i}-api-key`,
@@ -221,8 +221,8 @@ describe('ce que l’agent reçoit', () => {
     // The count is what counts: "2 of 8" tells the agent six are missing. The
     // section where to read them is declared by the read_task_detail schema,
     // which cannot drift, and does not take up the budget.
-    expect(rendu).toMatch(/CREDENTIALS: names only, values sealed \(\d+ of 8\)/)
-    expect(rendu).toContain('read_task_detail')
+    expect(output).toMatch(/CREDENTIALS: names only, values sealed \(\d+ of 8\)/)
+    expect(output).toContain('read_task_detail')
 
     const schema = readTaskDetailTool.inputSchema as {
       properties: { section: { enum: string[] } }

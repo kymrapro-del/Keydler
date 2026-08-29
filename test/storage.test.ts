@@ -35,12 +35,12 @@ describe('stockage indisponible', () => {
     loadLastTask.mockRejectedValue(new Error('IndexedDB is not available in this context'))
 
     const result = await resumeTaskTool.execute({}, exec())
-    const texte = result.content[0].text
+    const text = result.content[0].text
 
     expect(result.isError).toBe(true)
-    expect(texte).toContain('STORAGE UNAVAILABLE')
-    expect(texte).not.toContain('NO ACTIVE TASK')
-    expect(texte).toContain('Do NOT assume there is no task')
+    expect(text).toContain('STORAGE UNAVAILABLE')
+    expect(text).not.toContain('NO ACTIVE TASK')
+    expect(text).toContain('Do NOT assume there is no task')
   })
 
   it('une écriture échoue clairement plutôt que d’inventer un cahier vide', async () => {

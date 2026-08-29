@@ -10,7 +10,7 @@ const MAX_RETENUS = 20
 const READS = new Set(['resume_task', 'what_changed', 'read_task_detail', 'search_task'])
 
 let total = 0
-let refusés = 0
+let refusedCalls = 0
 let recents: Call[] = []
 let sawRead = false
 let blindWrites = 0
@@ -18,7 +18,7 @@ const listeners = new Set<() => void>()
 
 export function recordCall(tool: string, refused: boolean): void {
   total += 1
-  if (refused) refusés += 1
+  if (refused) refusedCalls += 1
 
   if (READS.has(tool)) {
     if (!refused) sawRead = true
@@ -41,7 +41,7 @@ export type WitnessState = {
 }
 
 export function getWitness(): WitnessState {
-  return { total, refused: refusés, sawRead, blindWrites, recents: [...recents] }
+  return { total, refused: refusedCalls, sawRead, blindWrites, recents: [...recents] }
 }
 
 export const RECENT_WINDOW = 10 * 60_000
@@ -65,7 +65,7 @@ export function onCall(listener: () => void): () => void {
 
 export function resetCalls(): void {
   total = 0
-  refusés = 0
+  refusedCalls = 0
   sawRead = false
   blindWrites = 0
   recents = []

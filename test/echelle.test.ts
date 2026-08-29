@@ -131,10 +131,10 @@ describe('la page ne grandit pas avec les données', () => {
     })
 
     const nœuds = root.querySelectorAll('*').length
-    const taille = root.innerHTML.length
+    const size = root.innerHTML.length
 
     expect(nœuds).toBeLessThan(1200)
-    expect(taille).toBeLessThan(300_000)
+    expect(size).toBeLessThan(300_000)
   })
 
   it('borne chaque liste séparément, pour qu’aucune ne passe entre les mailles', async () => {
@@ -211,24 +211,24 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
 describe('ne redessine pas ce qui n’a pas changé', () => {
   it('garde les mêmes nœuds quand rien ne bouge', async () => {
     await open({ constraints: rules(3) })
-    const avant = card('rules-title')
+    const beforeState = card('rules-title')
 
     __renderNow()
     __renderNow()
 
     // The same DOM object, not just the same text: that is the proof that
     // nothing was rebuilt.
-    expect(card('rules-title')).toBe(avant)
+    expect(card('rules-title')).toBe(beforeState)
   })
 
   it('redessine dès que l’état change vraiment', async () => {
     await open({ constraints: rules(3) })
-    const avant = card('rules-title')
+    const beforeState = card('rules-title')
 
     await store.mutate((s) => ({ ...s, version: s.version + 1, constraints: rules(4) }))
     __renderNow()
 
-    expect(card('rules-title')).not.toBe(avant)
+    expect(card('rules-title')).not.toBe(beforeState)
     expect(cardText('rules-title')).toContain('shard 3')
   })
 
@@ -261,15 +261,15 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
     root.querySelector<HTMLInputElement>('#new-constraint')!.setSelectionRange(6, 6)
     __renderNow()
 
-    const après = root.querySelector<HTMLInputElement>('#new-constraint')!
-    expect(document.activeElement).toBe(après)
-    expect(après.selectionStart).toBe(6)
+    const after = root.querySelector<HTMLInputElement>('#new-constraint')!
+    expect(document.activeElement).toBe(after)
+    expect(after.selectionStart).toBe(6)
   })
 })
 
 describe('le poste entier ne fait pas grandir la page non plus', () => {
-  async function poser(nombre: number): Promise<void> {
-    for (let i = 0; i < nombre; i++) {
+  async function poser(count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
       await store.openPreparedTask({
         ...buildCoreTask(),
         id: `t${i}`,
@@ -281,7 +281,7 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
     __renderNow()
     // The task list is re-read asynchronously after the render.
     await waitUntil(
-      () => (root.textContent ?? '').includes(`${nombre} tasks on this device`),
+      () => (root.textContent ?? '').includes(`${count} tasks on this device`),
       'la liste des cahiers',
     )
     __renderNow()

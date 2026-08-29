@@ -64,18 +64,18 @@ describe('savoir si le travail tient sur cet appareil', () => {
 
   it('n’affirme jamais que le travail est à l’abri quand il ne l’est pas', () => {
     const fragile: StorageState = { persisted: false, usage: 1024, quota: 2048 }
-    const texte = describeStorage(fragile)
-    expect(texte.toLowerCase()).toContain('may')
-    expect(texte.toLowerCase()).not.toContain('safe')
+    const text = describeStorage(fragile)
+    expect(text.toLowerCase()).toContain('may')
+    expect(text.toLowerCase()).not.toContain('safe')
   })
 
   it('reste prudent même quand la durabilité est accordée', () => {
     const solide: StorageState = { persisted: true, usage: 1024, quota: 2048 }
-    const texte = describeStorage(solide)
+    const text = describeStorage(solide)
     // The browser promises not to clear it on its own, not that nothing will
     // ever happen.
-    expect(texte).toMatch(/will not|won’t/i)
-    expect(texte.toLowerCase()).toContain('you can still')
+    expect(text).toMatch(/will not|won’t/i)
+    expect(text.toLowerCase()).toContain('you can still')
   })
 
   it('dit son ignorance plutôt que d’inventer', () => {

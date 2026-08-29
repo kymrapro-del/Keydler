@@ -7,8 +7,8 @@
 const CANONIQUE = 'keydler.com'
 
 export function redirectToCanonical(location: Location = window.location): boolean {
-  const hôte = location.hostname
-  if (hôte !== `www.${CANONIQUE}`) return false
+  const host = location.hostname
+  if (host !== `www.${CANONIQUE}`) return false
 
   // The fragment travels along: it sometimes carries a whole log.
   location.replace(`https://${CANONIQUE}${location.pathname}${location.search}${location.hash}`)

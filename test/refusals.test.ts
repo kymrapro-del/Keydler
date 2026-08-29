@@ -21,15 +21,15 @@ beforeEach(async () => {
 describe('refus consignés', () => {
   it('journalise une version manquante, qui n’atteint jamais la mutation', async () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
-    const avant = store.currentTask()!.audit.length
+    const before = store.currentTask()!.audit.length
 
     const result = await logStep().execute({ action: 'a', result: 'b' }, exec())
 
     expect(result.isError).toBe(true)
-    const après = store.currentTask()!
-    expect(après.audit.length).toBe(avant + 1)
-    expect(après.audit.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
-    expect(après.version).toBe(1)
+    const after = store.currentTask()!
+    expect(after.audit.length).toBe(before + 1)
+    expect(after.audit.at(-1)).toMatchObject({ outcome: 'refused', operation: 'log_step' })
+    expect(after.version).toBe(1)
   })
 
   it('journalise une version illisible', async () => {
@@ -46,7 +46,7 @@ describe('refus consignés', () => {
 
   it('ne consigne pas deux fois un refus déjà journalisé par le magasin', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
-    const avant = store.currentTask()!.audit.length
+    const before = store.currentTask()!.audit.length
 
     const result = await rejectApproach().execute(
       {
@@ -59,7 +59,7 @@ describe('refus consignés', () => {
     )
 
     expect(result.isError).toBe(true)
-    expect(store.currentTask()!.audit.length).toBe(avant + 1)
+    expect(store.currentTask()!.audit.length).toBe(before + 1)
   })
 
   it('dit que rien n’a été écrit et donne la version pour réessayer', async () => {
@@ -70,10 +70,10 @@ describe('refus consignés', () => {
       exec(),
     )
 
-    const texte = result.content[0].text
-    expect(texte).toContain('INVALID INPUT')
-    expect(texte).toContain('Nothing was written.')
-    expect(texte).toContain(`based_on_version: ${task.version}`)
+    const text = result.content[0].text
+    expect(text).toContain('INVALID INPUT')
+    expect(text).toContain('Nothing was written.')
+    expect(text).toContain(`based_on_version: ${task.version}`)
   })
 
   it('n’ajoute pas ce rappel à un refus pour état périmé', async () => {
@@ -89,16 +89,16 @@ describe('refus consignés', () => {
       exec(),
     )
 
-    const texte = result.content[0].text
-    expect(texte).toContain('STALE STATE')
+    const text = result.content[0].text
+    expect(text).toContain('STALE STATE')
     // The "retry with based_on_version" reminder makes no sense here: the
     // version the agent held is precisely the one that was refused.
-    expect(texte).not.toMatch(/Retry with based_on_version/i)
+    expect(text).not.toMatch(/Retry with based_on_version/i)
     // The refusal must name the tool made for this exact case, not only the
     // full re-read: it is an agent's most frequent path.
-    expect(texte).toContain('what_changed')
-    expect(texte).toContain(`since_version: ${task.version}`)
-    expect(texte).toContain('resume_task')
+    expect(text).toContain('what_changed')
+    expect(text).toContain(`since_version: ${task.version}`)
+    expect(text).toContain('resume_task')
   })
 })
 
@@ -121,11 +121,11 @@ describe('conseil de réessai', () => {
       exec(),
     )
 
-    const texte = result.content[0].text
+    const text = result.content[0].text
     expect(result.isError).toBe(true)
-    expect(texte).not.toContain('Retry with based_on_version')
-    expect(texte).toContain('Retrying will not help')
-    expect(texte).toContain('ask the human to reopen')
+    expect(text).not.toContain('Retry with based_on_version')
+    expect(text).toContain('Retrying will not help')
+    expect(text).toContain('ask the human to reopen')
   })
 
   it('suggère toujours le réessai quand l’entrée est simplement à corriger', async () => {

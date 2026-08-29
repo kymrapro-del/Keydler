@@ -45,9 +45,9 @@ describe('supprimer une tâche ne laisse rien derrière', () => {
   })
 
   it('ne touche pas aux identifiants des autres cahiers', async () => {
-    const gardé = await store.openPreparedTask(buildCoreTask())
+    const kept = await store.openPreparedTask(buildCoreTask())
     await addSecret({
-      taskId: gardé.id,
+      taskId: kept.id,
       name: 'kept-key',
       purpose: 'stays',
       kind: 'token',
@@ -68,7 +68,7 @@ describe('supprimer une tâche ne laisse rien derrière', () => {
     await store.deleteCurrentTask()
 
     expect(await listSecretNames(jetable.id)).toHaveLength(0)
-    expect(await listSecretNames(gardé.id)).toHaveLength(1)
+    expect(await listSecretNames(kept.id)).toHaveLength(1)
   })
 
   it('oublie aussi le repère de lecture, qui sinon s’accumule sans fin', async () => {
@@ -83,15 +83,15 @@ describe('supprimer une tâche ne laisse rien derrière', () => {
   })
 
   it('n’oublie que le sien', async () => {
-    const gardé = await store.openPreparedTask(buildCoreTask())
-    markSeen(gardé.id, 3)
+    const kept = await store.openPreparedTask(buildCoreTask())
+    markSeen(kept.id, 3)
     const jetable = await store.createAndOpenTask('To delete', 'x')
     markSeen(jetable.id, 2)
 
     await store.deleteCurrentTask()
 
     expect(seenVersion(jetable.id)).toBeNull()
-    expect(seenVersion(gardé.id)).toBe(3)
-    forgetSeen(gardé.id)
+    expect(seenVersion(kept.id)).toBe(3)
+    forgetSeen(kept.id)
   })
 })

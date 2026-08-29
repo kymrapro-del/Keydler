@@ -13,8 +13,8 @@ export function isWorkspacePath(pathname: string): boolean {
 
 export function taskIdFromPath(pathname: string): string | null {
   if (!pathname.startsWith(PREFIX)) return null
-  const brut = pathname.slice(PREFIX.length).split('/')[0]
-  return /^[A-Za-z0-9_-]{1,64}$/.test(brut) ? brut : null
+  const raw = pathname.slice(PREFIX.length).split('/')[0]
+  return /^[A-Za-z0-9_-]{1,64}$/.test(raw) ? raw : null
 }
 
 export function taskPath(id: string): string {

@@ -46,8 +46,8 @@ describe('ce qu’un onglet apprend de l’autre', () => {
     // The trap: the channel was opened on the first ANNOUNCEMENT. A tab that
     // only reads announces nothing, so it stayed deaf, and it is exactly the
     // one that had to be woken. Here the store does not write once.
-    const posé = await store.createAndOpenTask('Écrite ailleurs', undefined)
-    const id = posé.id
+    const installed = await store.createAndOpenTask('Écrite ailleurs', undefined)
+    const id = installed.id
     store.__resetStore()
     await store.init(id)
     expect(store.currentTask()!.version).toBe(1)
@@ -64,12 +64,12 @@ describe('ce qu’un onglet apprend de l’autre', () => {
 
   it('ignore une annonce qui concerne une autre tâche', async () => {
     const task = await store.createAndOpenTask('La mienne', undefined)
-    const avant = store.currentTask()!.version
+    const before = store.currentTask()!.version
 
     annonce('une-autre-tache', 99)
     await new Promise((r) => setTimeout(r, 30))
 
-    expect(store.currentTask()!.version).toBe(avant)
+    expect(store.currentTask()!.version).toBe(before)
     expect(store.currentTask()!.id).toBe(task.id)
   })
 
@@ -90,8 +90,8 @@ describe('ce qu’un onglet apprend de l’autre', () => {
 
   it('prévient les autres pages de ses propres écritures', async () => {
     const task = await store.createAndOpenTask('Partagée', undefined)
-    const reçues: { id: string | null; version: number; gone?: boolean }[] = []
-    autreOnglet.onmessage = (e) => reçues.push(e.data)
+    const received: { id: string | null; version: number; gone?: boolean }[] = []
+    autreOnglet.onmessage = (e) => received.push(e.data)
 
     await store.mutate((s) =>
       logStep(s, { action: 'a', result: 'b', basedOnVersion: s.version }, 'agent'),
@@ -99,8 +99,8 @@ describe('ce qu’un onglet apprend de l’autre', () => {
 
     // We wait for the announcement of THIS task: creation already emitted one
     // for the list, which arrives asynchronously and would win the race.
-    await waitUntil(() => reçues.some((m) => m.id === task.id), 'l’annonce de la tâche')
-    expect(reçues).toContainEqual({
+    await waitUntil(() => received.some((m) => m.id === task.id), 'l’annonce de la tâche')
+    expect(received).toContainEqual({
       id: task.id,
       version: store.currentTask()!.version,
       gone: false,
@@ -109,12 +109,12 @@ describe('ce qu’un onglet apprend de l’autre', () => {
 
   it('réveille la liste des cahiers quand une autre page en crée un', async () => {
     await store.createAndOpenTask('La mienne', undefined)
-    const avant = store.tasksRevision()
+    const before = store.tasksRevision()
 
     // A creation elsewhere: the id does not concern us, but the list
     // does.
     autreOnglet.postMessage({ id: null, version: 0 })
-    await waitUntil(() => store.tasksRevision() > avant, 'la révision de la liste')
+    await waitUntil(() => store.tasksRevision() > before, 'la révision de la liste')
   })
 })
 

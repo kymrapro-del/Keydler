@@ -12,21 +12,21 @@ import type { TaskState } from '../src/domain/types'
 // earlier call would make the test hollow.
 function ancienneBase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const requête = indexedDB.open('cahier-de-quart', 2)
-    requête.onupgradeneeded = () => {
-      const db = requête.result
+    const request = indexedDB.open('cahier-de-quart', 2)
+    request.onupgradeneeded = () => {
+      const db = request.result
       const tasks = db.createObjectStore('tasks', { keyPath: 'id' })
       tasks.createIndex('by-updatedAt', 'updatedAt')
       db.createObjectStore('meta')
       const secrets = db.createObjectStore('secrets', { keyPath: 'id' })
       secrets.createIndex('by-taskId', 'taskId')
     }
-    requête.onsuccess = () => resolve(requête.result)
-    requête.onerror = () => reject(requête.error)
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
   })
 }
 
-function écrireÀLAncienne(db: IDBDatabase, task: TaskState): Promise<void> {
+function writeOldStyle(db: IDBDatabase, task: TaskState): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('tasks', 'readwrite')
     tx.objectStore('tasks').put({ ...task, schemaVersion: 10 })
@@ -37,10 +37,10 @@ function écrireÀLAncienne(db: IDBDatabase, task: TaskState): Promise<void> {
 
 describe('un cahier écrit avant l’index reste protégé', () => {
   it('migre, puis refuse une écriture périmée et dit la version réelle', async () => {
-    const posé: TaskState = { ...buildCoreTask(), id: 'ancien', version: 7 }
+    const installed: TaskState = { ...buildCoreTask(), id: 'ancien', version: 7 }
 
     const vieille = await ancienneBase()
-    await écrireÀLAncienne(vieille, posé)
+    await writeOldStyle(vieille, installed)
     vieille.close()
 
     // First contact between the application code and the database: this is
@@ -57,9 +57,9 @@ describe('un cahier écrit avant l’index reste protégé', () => {
 
     // At a stale version: refused, and the message carries the REAL version,
     // without which the caller would not know what to rebase on.
-    const erreur = await saveTask({ ...relu!, version: 9 }, 7).catch((e) => e)
-    expect(erreur).toBeInstanceOf(ConcurrentWriteError)
-    expect((erreur as ConcurrentWriteError).message).toContain('8')
+    const error = await saveTask({ ...relu!, version: 9 }, 7).catch((e) => e)
+    expect(error).toBeInstanceOf(ConcurrentWriteError)
+    expect((error as ConcurrentWriteError).message).toContain('8')
     expect((await loadTask('ancien'))?.version).toBe(8)
   })
 
@@ -68,16 +68,16 @@ describe('un cahier écrit avant l’index reste protégé', () => {
   // and letting it through resurrected it with all its steps and its evidence, but
   // without its sealed credentials, which really were erased.
   it('refuse de ressusciter un cahier supprimé, et ne le recrée pas', async () => {
-    const posé: TaskState = { ...buildCoreTask(), id: 'supprime', version: 3 }
-    await saveTask(posé)
+    const installed: TaskState = { ...buildCoreTask(), id: 'supprime', version: 3 }
+    await saveTask(installed)
     expect((await loadTask('supprime'))?.version).toBe(3)
 
     const db = await getDb()
     await db.delete('tasks', 'supprime')
 
-    const erreur = await saveTask({ ...posé, version: 4 }, 3).catch((e) => e)
-    expect(erreur).toBeInstanceOf(TaskGoneError)
-    expect((erreur as Error).message).toContain('was deleted')
+    const error = await saveTask({ ...installed, version: 4 }, 3).catch((e) => e)
+    expect(error).toBeInstanceOf(TaskGoneError)
+    expect((error as Error).message).toContain('was deleted')
     expect(await loadTask('supprime')).toBeUndefined()
   })
 

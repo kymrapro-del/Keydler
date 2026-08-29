@@ -86,12 +86,12 @@ describe('offrir le cahier dans un lien', () => {
 
   it('compte au singulier quand il n’y a qu’une preuve', async () => {
     const demo = buildDemoTask()
-    const une = {
+    const one = {
       ...demo,
       id: 'une-preuve',
       steps: demo.steps.filter((s) => s.evidence !== null).slice(0, 1),
     }
-    await store.openPreparedTask(une)
+    await store.openPreparedTask(one)
     await settled()
 
     const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
@@ -240,18 +240,18 @@ describe('le lien protégé, depuis l’écran', () => {
 
   it('ne dit rien du cahier tant que la phrase n’est pas donnée', async () => {
     const packed = await packSealedTask(store.currentTask()!, 'la phrase du téléphone')
-    const titre = store.currentTask()!.title
+    const title = store.currentTask()!.title
     await arriveWith(packed)
 
-    const texte = root.textContent!.replace(/\s+/g, ' ')
-    expect(texte).toContain('A protected log')
-    expect(texte).not.toContain(titre)
+    const text = root.textContent!.replace(/\s+/g, ' ')
+    expect(text).toContain('A protected log')
+    expect(text).not.toContain(title)
     expect(root.querySelector('#sealed-passphrase')).not.toBeNull()
   })
 
   it('ouvre avec la bonne phrase, et propose la copie comme d’habitude', async () => {
     const packed = await packSealedTask(store.currentTask()!, 'la phrase du téléphone')
-    const titre = store.currentTask()!.title
+    const title = store.currentTask()!.title
     await arriveWith(packed)
 
     type('sealed-passphrase', 'la phrase du téléphone')
@@ -259,7 +259,7 @@ describe('le lien protégé, depuis l’écran', () => {
     await waitUntil(() => root.textContent!.includes('A shared log'), 'l’offre')
     __renderNow()
 
-    expect(root.textContent).toContain(titre)
+    expect(root.textContent).toContain(title)
     expect(root.querySelector('#accept-link')).not.toBeNull()
   })
 

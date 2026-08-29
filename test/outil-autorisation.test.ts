@@ -73,11 +73,11 @@ describe('request_approval', () => {
     )
 
     expect(result.isError).toBe(true)
-    const texte = textOf(result)
-    expect(texte).toContain('NO ANSWER')
-    expect(texte).not.toContain('ALLOWED')
+    const text = textOf(result)
+    expect(text).toContain('NO ANSWER')
+    expect(text).not.toContain('ALLOWED')
     // Silence is not approval: that is the sentence that matters most here.
-    expect(texte.toLowerCase()).toContain('is not approval')
+    expect(text.toLowerCase()).toContain('is not approval')
     // The request stays open: the human will find it on coming back.
     expect(pendingApprovals(currentTask())).toHaveLength(1)
   })
@@ -125,13 +125,13 @@ describe('request_approval', () => {
   })
 
   it('ne rend JAMAIS la décision d’une demande antérieure au même libellé', async () => {
-    const même = {
+    const same = {
       action: 'Run the migration against the staging replica',
       why: 'It rewrites 40k rows.',
     }
 
     // First request: allowed.
-    const first = call(requestApprovalTool, writeArgs(currentTask(), même))
+    const first = call(requestApprovalTool, writeArgs(currentTask(), same))
     await decide('allowed')
     expect(textOf(await first)).toContain('ALLOWED')
 
@@ -139,7 +139,7 @@ describe('request_approval', () => {
     // “allowed” would authorize an action nobody signed off. It is the worst
     // failure this tool can have.
     __setApprovalTimeout(60)
-    const second = await call(requestApprovalTool, writeArgs(currentTask(), même))
+    const second = await call(requestApprovalTool, writeArgs(currentTask(), same))
 
     expect(textOf(second)).toContain('NO ANSWER')
     expect(textOf(second)).not.toContain('ALLOWED by the human')

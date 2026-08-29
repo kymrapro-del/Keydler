@@ -56,8 +56,8 @@ describe('inventaire', () => {
   it('n’annonce jamais une annotation que WebMCP ne transporte pas', () => {
     const connues = new Set(['readOnlyHint', 'untrustedContentHint'])
     for (const tool of ALL_TOOLS) {
-      for (const clé of Object.keys(tool.annotations ?? {})) {
-        expect(connues).toContain(clé)
+      for (const key of Object.keys(tool.annotations ?? {})) {
+        expect(connues).toContain(key)
       }
     }
   })
@@ -233,9 +233,9 @@ describe('cycle de vie des outils', () => {
     expect(changements.length).toBeGreaterThan(0)
     expect(changements.at(-1)).toContain('log_step')
 
-    const état = await registerTools()
-    expect(état.observedTools).not.toBeNull()
-    expect(état.observedTools).toContain('log_step')
+    const snapshotState = await registerTools()
+    expect(snapshotState.observedTools).not.toBeNull()
+    expect(snapshotState.observedTools).toContain('log_step')
   })
 
   it('garde les écritures posées à la clôture, faute de garantie de retrait', async () => {
@@ -245,13 +245,13 @@ describe('cycle de vie des outils', () => {
     expect(fake.names()).toContain('log_step')
 
     const complete = ALL_TOOLS.find((t) => t.name === 'complete_task')!
-    const résultat = await call(complete, writeArgs(task, { summary: 'Terminé, rien ne reste.' }))
+    const outcome = await call(complete, writeArgs(task, { summary: 'Terminé, rien ne reste.' }))
     await settle(6)
 
     expect(getRegistrationState().lifecycle.mode).toBe('static')
     expect(fake.names()).toHaveLength(ALL_TOOLS.length)
 
-    expect(textOf(résultat)).toContain('OK: complete_task recorded.')
+    expect(textOf(outcome)).toContain('OK: complete_task recorded.')
     expect(textOf(await call(resumeTaskTool))).toContain('TASK CLOSED')
   })
 
@@ -260,11 +260,11 @@ describe('cycle de vie des outils', () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     await registerTools()
 
-    const avant = [...fake.attempts]
+    const before = [...fake.attempts]
     await store.mutate((s) => ({ ...s, updatedAt: s.updatedAt + 1 }))
     await settle()
 
-    expect(fake.attempts).toEqual(avant)
+    expect(fake.attempts).toEqual(before)
     expect(fake.names()).toContain('log_step')
   })
 
@@ -273,16 +273,16 @@ describe('cycle de vie des outils', () => {
     fake.failOn.add('reject_approach')
     await store.createAndOpenTask('Tâche', 'Continuer')
 
-    const état = await registerTools()
+    const snapshotState = await registerTools()
 
-    expect(état.phase).toBe('partial')
-    expect(état.toolNames).toContain('resume_task')
-    expect(état.toolNames).toContain('log_step')
-    expect(état.toolNames).not.toContain('reject_approach')
-    expect(état.failures.map((f) => f.name)).toEqual(['reject_approach'])
-    expect(état.error).toContain('reject_approach')
+    expect(snapshotState.phase).toBe('partial')
+    expect(snapshotState.toolNames).toContain('resume_task')
+    expect(snapshotState.toolNames).toContain('log_step')
+    expect(snapshotState.toolNames).not.toContain('reject_approach')
+    expect(snapshotState.failures.map((f) => f.name)).toEqual(['reject_approach'])
+    expect(snapshotState.error).toContain('reject_approach')
 
-    expect(fake.names()).toEqual([...état.toolNames].sort())
+    expect(fake.names()).toEqual([...snapshotState.toolNames].sort())
   })
 
   it('continue d’annoncer l’outil manquant, même quand un tour n’a rien à poser', async () => {
@@ -295,9 +295,9 @@ describe('cycle de vie des outils', () => {
     await settle()
 
     const { getRegistrationState } = await import('../src/webmcp/register')
-    const état = getRegistrationState()
-    expect(état.phase).toBe('partial')
-    expect(état.failures.map((f) => f.name)).toEqual(['reject_approach'])
+    const snapshotState = getRegistrationState()
+    expect(snapshotState.phase).toBe('partial')
+    expect(snapshotState.failures.map((f) => f.name)).toEqual(['reject_approach'])
     expect(fake.names()).not.toContain('reject_approach')
   })
 
@@ -387,7 +387,7 @@ describe('annulation', () => {
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     const controller = new AbortController()
 
-    const première = call(logStep, writeArgs(task, { action: 'première', result: 'ok' }))
+    const firstOne = call(logStep, writeArgs(task, { action: 'première', result: 'ok' }))
     const seconde = call(
       logStep,
       {
@@ -400,7 +400,7 @@ describe('annulation', () => {
     )
     controller.abort()
 
-    await première
+    await firstOne
     const result = await seconde
 
     expect(result.isError).toBe(true)
@@ -410,11 +410,11 @@ describe('annulation', () => {
     expect(final.steps.map((s) => s.action)).toEqual(['première'])
     expect(final.version).toBe(task.version + 1)
 
-    const dernière = final.audit.at(-1)!
-    expect(dernière.outcome).toBe('refused')
-    expect(dernière.operation).toBe('log_step')
-    expect(dernière.detail).toContain('cancelled')
-    expect(dernière.versionBefore).toBe(dernière.versionAfter)
+    const last = final.audit.at(-1)!
+    expect(last.outcome).toBe('refused')
+    expect(last.operation).toBe('log_step')
+    expect(last.detail).toContain('cancelled')
+    expect(last.versionBefore).toBe(last.versionAfter)
   })
 
   it('laisse une trace du refus, pour que l’écran le montre', async () => {

@@ -115,8 +115,8 @@ async function requireTask(): Promise<TaskState> {
   const panne = store.storageFailure()
   if (panne) throw storageError(panne)
 
-  const manquante = store.missingTaskId()
-  if (manquante) throw new Error(renderMissingTask(manquante))
+  const missing = store.missingTaskId()
+  if (missing) throw new Error(renderMissingTask(missing))
 
   const task = store.currentTask()
   if (!task) {
@@ -154,11 +154,11 @@ function intentionDe(
   tool: ModelContextTool,
   input: Record<string, unknown>,
 ): Record<string, unknown> {
-  const propriétés = (tool.inputSchema as { properties?: Record<string, unknown> }).properties ?? {}
+  const properties = (tool.inputSchema as { properties?: Record<string, unknown> }).properties ?? {}
   const intention: Record<string, unknown> = {}
-  for (const clé of Object.keys(propriétés)) {
-    if (clé === 'based_on_version' || clé === 'mutation_id') continue
-    if (clé in input) intention[clé] = input[clé]
+  for (const key of Object.keys(properties)) {
+    if (key === 'based_on_version' || key === 'mutation_id') continue
+    if (key in input) intention[key] = input[key]
   }
   return intention
 }
@@ -222,10 +222,10 @@ export const resumeTaskTool: ModelContextTool = {
       const panne = store.storageFailure()
       if (panne) throw storageError(panne)
 
-      const manquante = store.missingTaskId()
-      if (manquante) {
+      const missing = store.missingTaskId()
+      if (missing) {
         recordCall('resume_task', true)
-        return failure(renderMissingTask(manquante))
+        return failure(renderMissingTask(missing))
       }
 
       const task = store.currentTask()

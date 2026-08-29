@@ -10,8 +10,8 @@
  * fallback surface, each need one. Chrome reads every tag and keeps the one
  * that matches, so carrying them all costs nothing.
  */
-export function tokensDe(brut) {
-  return (brut ?? '')
+export function tokensDe(raw) {
+  return (raw ?? '')
     .split(/[,\n]/)
     .map((t) => t.trim())
     .filter((t) => t.length > 0)
@@ -22,25 +22,25 @@ export function lireJeton(base64) {
   try {
     octets = Buffer.from(base64, 'base64')
   } catch {
-    return { erreur: 'ce n’est pas du base64' }
+    return { error: 'ce n’est pas du base64' }
   }
-  if (octets.length < 70) return { erreur: `trop court (${octets.length} octets)` }
+  if (octets.length < 70) return { error: `trop court (${octets.length} octets)` }
 
   const version = octets[0]
   if (version !== 2 && version !== 3) {
-    return { erreur: `version inconnue (${version}), 2 ou 3 attendues` }
+    return { error: `version inconnue (${version}), 2 ou 3 attendues` }
   }
 
   const longueur = octets.readUInt32BE(65)
   if (longueur === 0 || 69 + longueur > octets.length) {
-    return { erreur: `longueur de charge utile incohérente (${longueur})` }
+    return { error: `longueur de charge utile incohérente (${longueur})` }
   }
 
   let charge
   try {
     charge = JSON.parse(octets.subarray(69, 69 + longueur).toString('utf8'))
   } catch {
-    return { erreur: 'charge utile illisible' }
+    return { error: 'charge utile illisible' }
   }
 
   return {

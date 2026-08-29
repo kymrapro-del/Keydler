@@ -57,8 +57,8 @@ export function onRegistrationChange(listener: () => void): () => void {
 
 export function toolsForCurrentState(): ModelContextTool[] {
   const { status, task } = store.getSnapshot()
-  const écrivable = status === 'ready' && task !== null && task.status === 'active'
-  return écrivable ? [...READ_TOOLS, ...WRITE_TOOLS] : [...READ_TOOLS]
+  const writable = status === 'ready' && task !== null && task.status === 'active'
+  return writable ? [...READ_TOOLS, ...WRITE_TOOLS] : [...READ_TOOLS]
 }
 
 const registered = new Map<string, AbortController>()
@@ -81,10 +81,10 @@ async function sync(modelContext: ModelContextLike): Promise<void> {
     }
   }
 
-  const àPoser = voulus.filter((t) => !registered.has(t.name))
+  const toInstall = voulus.filter((t) => !registered.has(t.name))
 
   const issues = await Promise.allSettled(
-    àPoser.map(async (tool) => {
+    toInstall.map(async (tool) => {
       const controller = new AbortController()
       try {
         await modelContext.registerTool(tool, { signal: controller.signal })
@@ -101,7 +101,7 @@ async function sync(modelContext: ModelContextLike): Promise<void> {
     if (issue.status === 'fulfilled') {
       registered.set(issue.value.tool.name, issue.value.controller)
     } else {
-      motifs.set(àPoser[i].name, raison(issue.reason))
+      motifs.set(toInstall[i].name, raison(issue.reason))
     }
   })
 
@@ -109,13 +109,13 @@ async function sync(modelContext: ModelContextLike): Promise<void> {
     .filter((t) => !registered.has(t.name))
     .map((t) => ({ name: t.name, reason: motifs.get(t.name) ?? 'not registered' }))
 
-  const posés = [...registered.keys()]
+  const installed = [...registered.keys()]
   const availability = checkAvailability()
 
   setState({
-    phase: failures.length === 0 ? 'registered' : posés.length > 0 ? 'partial' : 'failed',
+    phase: failures.length === 0 ? 'registered' : installed.length > 0 ? 'partial' : 'failed',
     availability,
-    toolNames: posés,
+    toolNames: installed,
     failures,
     lifecycle,
     error: failures.length > 0 ? failures.map((f) => `${f.name}: ${f.reason}`).join(' ; ') : null,
@@ -146,7 +146,7 @@ function unregisterAll(): void {
   registered.clear()
 }
 
-let détacher: (() => void) | null = null
+let detach: (() => void) | null = null
 
 export async function registerTools(): Promise<RegistrationState> {
   const guarded = globalThis as GuardedGlobal
@@ -173,10 +173,10 @@ export async function registerTools(): Promise<RegistrationState> {
   const surToolChange = () => void observeRegisteredTools(modelContext)
   modelContext.addEventListener?.('toolchange', surToolChange)
 
-  const désabonner = store.subscribe(() => void syncQueued(modelContext))
+  const unsubscribe = store.subscribe(() => void syncQueued(modelContext))
 
-  détacher = () => {
-    désabonner()
+  detach = () => {
+    unsubscribe()
     modelContext.removeEventListener?.('toolchange', surToolChange)
     unregisterAll()
   }
@@ -191,8 +191,8 @@ export async function registerTools(): Promise<RegistrationState> {
 export function __resetRegistration(): void {
   const guarded = globalThis as GuardedGlobal
   delete guarded[GUARD]
-  détacher?.()
-  détacher = null
+  detach?.()
+  detach = null
   file = Promise.resolve()
   unregisterAll()
   listeners.clear()

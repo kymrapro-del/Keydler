@@ -168,34 +168,34 @@ function appendAudit(audit: AuditEntry[], entry: AuditEntry): AuditEntry[] {
     last.basedOnVersion === entry.basedOnVersion &&
     last.versionBefore === entry.versionBefore
 
-  const suivant = identique
+  const following = identique
     ? [...audit.slice(0, -1), { ...last, repeated: (last.repeated ?? 1) + 1, at: entry.at }]
     : [...audit, entry]
 
-  if (suivant.length <= MAX_AUDIT_ENTRIES) return suivant
+  if (following.length <= MAX_AUDIT_ENTRIES) return following
 
-  const àÉlaguer = suivant.length - MAX_AUDIT_ENTRIES + 1
-  const élagués = suivant.slice(0, àÉlaguer)
-  const déjàÉlaguées = élagués.reduce(
+  const toTrim = following.length - MAX_AUDIT_ENTRIES + 1
+  const trimmed = following.slice(0, toTrim)
+  const alreadyTrimmed = trimmed.reduce(
     (n, e) =>
       n + (e.operation === 'audit_trimmed' ? Number(e.detail.match(/^(\d+)/)?.[1] ?? 0) : 0),
     0,
   )
-  const compte = élagués.filter((e) => e.operation !== 'audit_trimmed').length + déjàÉlaguées
+  const count = trimmed.filter((e) => e.operation !== 'audit_trimmed').length + alreadyTrimmed
 
   const marque: AuditEntry = {
     id: `${entry.id}-trim`,
     operation: 'audit_trimmed',
     actor: entry.actor,
-    versionBefore: élagués[0].versionBefore,
-    versionAfter: élagués[élagués.length - 1].versionAfter,
+    versionBefore: trimmed[0].versionBefore,
+    versionAfter: trimmed[trimmed.length - 1].versionAfter,
     basedOnVersion: null,
     outcome: 'applied',
-    detail: `${compte} earlier entries dropped to keep the log bounded`,
+    detail: `${count} earlier entries dropped to keep the log bounded`,
     at: entry.at,
   }
 
-  return [marque, ...suivant.slice(àÉlaguer)]
+  return [marque, ...following.slice(toTrim)]
 }
 
 export function recordMutation(state: TaskState, record: MutationRecord): TaskState {

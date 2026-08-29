@@ -77,8 +77,8 @@ describe('les autres en-têtes', () => {
   ]
 
   it.each(attendus)('pose %s des deux côtés', (nom, motif) => {
-    const côtéFichier = new RegExp(`${nom}:\\s*(.*)`).exec(headers)?.[1]?.trim() ?? ''
-    expect(côtéFichier, `_headers ${nom}`).toMatch(motif)
+    const fromFile = new RegExp(`${nom}:\\s*(.*)`).exec(headers)?.[1]?.trim() ?? ''
+    expect(fromFile, `_headers ${nom}`).toMatch(motif)
     expect(vercelHeader(nom).trim(), `vercel.json ${nom}`).toMatch(motif)
   })
 
@@ -87,8 +87,8 @@ describe('les autres en-têtes', () => {
     // no payment. Refusing them costs zero and takes that much surface away
     // from a script that would manage to run anyway.
     for (const source of [headers, vercelHeader('Permissions-Policy')]) {
-      for (const clé of ['camera', 'microphone', 'geolocation', 'payment', 'usb', 'serial']) {
-        expect(source, clé).toContain(`${clé}=()`)
+      for (const key of ['camera', 'microphone', 'geolocation', 'payment', 'usb', 'serial']) {
+        expect(source, key).toContain(`${key}=()`)
       }
     }
   })

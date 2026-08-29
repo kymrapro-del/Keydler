@@ -51,8 +51,8 @@ describe('ce que l’agent lit du temps', () => {
   })
 
   it('se tait quand l’horodatage n’est pas lisible', () => {
-    const cassé = { ...buildCoreTask(), updatedAt: 0 }
-    expect(renderTaskState(cassé)).not.toContain('LAST WRITE')
+    const broken = { ...buildCoreTask(), updatedAt: 0 }
+    expect(renderTaskState(broken)).not.toContain('LAST WRITE')
   })
 })
 
@@ -61,8 +61,8 @@ describe('reprendre les règles d’un cahier', () => {
     const source = buildCoreTask()
     const cible = copyRulesInto(createTask({ title: 'New task' }), source)
 
-    const attendues = activeConstraints(source).map((c) => c.rule)
-    expect(activeConstraints(cible).map((c) => c.rule)).toEqual(attendues)
+    const expected = activeConstraints(source).map((c) => c.rule)
+    expect(activeConstraints(cible).map((c) => c.rule)).toEqual(expected)
 
     // Not the work, not the rejections, not the other one's write log.
     expect(cible.steps).toHaveLength(0)
@@ -83,9 +83,9 @@ describe('reprendre les règles d’un cahier', () => {
   it('laisse une trace de leur provenance dans le journal', () => {
     const source = buildCoreTask()
     const cible = copyRulesInto(createTask({ title: 'New task' }), source)
-    const entrée = cible.audit.at(-1)!
-    expect(entrée.operation).toBe('copy_rules')
-    expect(entrée.detail).toContain(source.title)
+    const entry = cible.audit.at(-1)!
+    expect(entry.operation).toBe('copy_rules')
+    expect(entry.detail).toContain(source.title)
   })
 
   it('n’écrit rien quand il n’y a aucune règle à reprendre', () => {
@@ -96,13 +96,15 @@ describe('reprendre les règles d’un cahier', () => {
 
   it('ne recopie pas une règle levée', () => {
     const source = buildCoreTask()
-    const levée = source.constraints[0]
-    const avecLevée = {
+    const lifted = source.constraints[0]
+    const withLift = {
       ...source,
-      constraints: source.constraints.map((c) => (c.id === levée.id ? { ...c, active: false } : c)),
+      constraints: source.constraints.map((c) =>
+        c.id === lifted.id ? { ...c, active: false } : c,
+      ),
     }
-    const cible = copyRulesInto(createTask({ title: 'New' }), avecLevée)
-    expect(cible.constraints.some((c) => c.rule === levée.rule)).toBe(false)
+    const cible = copyRulesInto(createTask({ title: 'New' }), withLift)
+    expect(cible.constraints.some((c) => c.rule === lifted.rule)).toBe(false)
   })
 })
 
@@ -147,7 +149,7 @@ describe('depuis la page', () => {
   })
 
   it('crée la tâche avec les règles reprises quand la case est cochée', async () => {
-    const attendues = activeConstraints(store.currentTask()!).map((c) => c.rule)
+    const expected = activeConstraints(store.currentTask()!).map((c) => c.rule)
 
     root.querySelector<HTMLButtonElement>('#new-task')!.click()
     __renderNow()
@@ -169,7 +171,7 @@ describe('depuis la page', () => {
     )
     __renderNow()
 
-    expect(activeConstraints(store.currentTask()!).map((c) => c.rule)).toEqual(attendues)
+    expect(activeConstraints(store.currentTask()!).map((c) => c.rule)).toEqual(expected)
     expect(store.currentTask()!.steps).toHaveLength(0)
   })
 

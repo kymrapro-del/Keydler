@@ -28,7 +28,7 @@ const VALIDE = { origin: 'https://keydler.com:443', feature: 'WebMCP', expiry: D
 describe('la lecture d’un jeton', () => {
   it('rend l’origine, la fonctionnalité et l’expiration', () => {
     const j = lireJeton(fabriquer(VALIDE))
-    expect(j.erreur).toBeUndefined()
+    expect(j.error).toBeUndefined()
     expect(j.origine).toBe('https://keydler.com:443')
     expect(j.fonctionnalite).toBe('WebMCP')
     // `expire` is null on a payload with no date: asserting it first fails
@@ -63,18 +63,18 @@ describe('ce que la lecture refuse', () => {
     ['un jeton tronqué', fabriquer(VALIDE).slice(0, 40)],
   ]
 
-  it.each(mauvais)('refuse %s', (_nom, valeur) => {
-    expect(lireJeton(valeur).erreur).toBeDefined()
+  it.each(mauvais)('refuse %s', (_nom, value) => {
+    expect(lireJeton(value).error).toBeDefined()
   })
 
   it('refuse une version inconnue', () => {
-    expect(lireJeton(fabriquer(VALIDE, 9)).erreur).toMatch(/version/)
+    expect(lireJeton(fabriquer(VALIDE, 9)).error).toMatch(/version/)
   })
 
   it('refuse une longueur de charge utile incohérente', () => {
     const octets = depuisBase64(fabriquer(VALIDE))
     new DataView(octets.buffer).setUint32(65, 9_999, false)
-    expect(lireJeton(enBase64(octets)).erreur).toMatch(/longueur/)
+    expect(lireJeton(enBase64(octets)).error).toMatch(/longueur/)
   })
 })
 

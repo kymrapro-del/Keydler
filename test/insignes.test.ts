@@ -38,8 +38,8 @@ describe('les badges du README', () => {
   })
 
   it('pointe le badge d’intégration continue sur un flux qui existe', () => {
-    const chemin = /actions\/workflows\/([\w.-]+)\/badge\.svg/.exec(readme)?.[1]
-    expect(chemin).toBe('ci.yml')
+    const path = /actions\/workflows\/([\w.-]+)\/badge\.svg/.exec(readme)?.[1]
+    expect(path).toBe('ci.yml')
   })
 
   it('ne pose un badge d’intégration continue que si elle lance bien `check`', () => {

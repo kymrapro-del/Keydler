@@ -167,10 +167,10 @@ describe('clore une tâche dit ce qui restait en suspens', () => {
     )
 
     expect(result.isError).toBeFalsy()
-    const texte = textOf(result)
-    expect(texte).toContain('LEFT UNRESOLVED')
-    expect(texte).toContain('1 question')
-    expect(texte.toLowerCase()).toContain('proposal')
+    const text = textOf(result)
+    expect(text).toContain('LEFT UNRESOLVED')
+    expect(text).toContain('1 question')
+    expect(text.toLowerCase()).toContain('proposal')
     store.__resetStore()
   })
 

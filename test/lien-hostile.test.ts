@@ -47,8 +47,8 @@ describe('un lien hostile', () => {
     // A "zip bomb": a payload UNDER the input bound, at gzip's maximum ratio.
     // Since the link is opened by the victim, bounding the input protects
     // nothing: it is the output that has to be bounded.
-    const énorme = JSON.stringify({ id: 'bomb', title: 'x'.repeat(6_000_000), version: 1 })
-    const packed = `z${toBase64Url(await gzip(énorme))}`
+    const huge = JSON.stringify({ id: 'bomb', title: 'x'.repeat(6_000_000), version: 1 })
+    const packed = `z${toBase64Url(await gzip(huge))}`
     expect(packed.length).toBeLessThan(MAX_LINK_LENGTH)
 
     await expect(unpackTask(packed)).rejects.toThrow()
@@ -93,7 +93,7 @@ describe('une charge démesurée est refusée avant même d’être lue', () => 
 
 describe('un cahier reçu ne porte pas un journal sans fin', () => {
   it('applique la même borne qu’à l’écriture', () => {
-    const gonflé = {
+    const inflated = {
       ...buildCoreTask(),
       audit: Array.from({ length: MAX_AUDIT_ENTRIES * 3 }, (_, i) => ({
         id: `e${i}`,
@@ -108,7 +108,7 @@ describe('un cahier reçu ne porte pas un journal sans fin', () => {
       })),
     }
 
-    const propre = normalizeTask(gonflé as never)!
+    const propre = normalizeTask(inflated as never)!
     expect(propre.audit.length).toBe(MAX_AUDIT_ENTRIES)
     // It is the most recent ones that survive, as on write.
     expect(propre.audit.at(-1)!.detail).toBe(`entry ${MAX_AUDIT_ENTRIES * 3 - 1}`)

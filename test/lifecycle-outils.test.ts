@@ -105,14 +105,14 @@ describe('mode statique : la cible du concours', () => {
     await registerTools()
     expect(fake.names()).toContain('complete_task')
 
-    const résultat = await fake.tools
+    const result = await fake.tools
       .get('complete_task')!
       .execute(writeArgs(ouverte, { summary: 'Terminé, rien ne reste.' }), {
         signal: new AbortController().signal,
       })
     await settle(8)
 
-    expect(textOf(résultat)).toContain('OK: complete_task recorded.')
+    expect(textOf(result)).toContain('OK: complete_task recorded.')
     expect(fake.names()).toHaveLength(ALL_TOOLS.length)
     expect(getRegistrationState().toolNames).toHaveLength(ALL_TOOLS.length)
   })
@@ -124,15 +124,15 @@ describe('mode statique : la cible du concours', () => {
     await store.mutate((s) => completeTask(s, { summary: 'Clos.', basedOnVersion: null }, 'human'))
     await settle(4)
 
-    const refus = await fake.tools
+    const refusal = await fake.tools
       .get('log_step')!
       .execute(writeArgs(store.currentTask()!, { action: 'a', result: 'b' }), {
         signal: new AbortController().signal,
       })
 
-    expect(refus.isError).toBe(true)
-    expect(textOf(refus)).toContain('already completed')
-    expect(textOf(refus)).toContain('reopen')
+    expect(refusal.isError).toBe(true)
+    expect(textOf(refusal)).toContain('already completed')
+    expect(textOf(refusal)).toContain('reopen')
     expect(textOf(await call(resumeTaskTool))).toContain('TASK CLOSED')
     expect(store.currentTask()!.steps).toHaveLength(0)
   })

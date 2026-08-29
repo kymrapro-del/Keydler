@@ -69,11 +69,11 @@ describe('conflit entre pages', () => {
     )
 
     expect(result.isError).toBe(true)
-    const texte = result.content[0].text
-    expect(texte).toContain('STALE STATE')
-    expect(texte).toContain('what_changed')
-    expect(texte).toContain('resume_task')
-    expect(texte.startsWith('STALE STATE')).toBe(true)
+    const text = result.content[0].text
+    expect(text).toContain('STALE STATE')
+    expect(text).toContain('what_changed')
+    expect(text).toContain('resume_task')
+    expect(text.startsWith('STALE STATE')).toBe(true)
   })
 
   it('réussit une fois la version rafraîchie', async () => {
@@ -85,13 +85,13 @@ describe('conflit entre pages', () => {
     await store.mutate((s) => s).catch(() => undefined)
     const v = store.currentTask()!.version
 
-    const après = await store.mutateAsAgent(
+    const after = await store.mutateAsAgent(
       storeWrite('log_step', v, { n: v }, (s) =>
         logStep(s, { action: 'a', result: 'b', basedOnVersion: v }, 'agent'),
       ),
     )
-    expect(après.version).toBe(v + 1)
-    expect(après.replayed).toBe(false)
+    expect(after.version).toBe(v + 1)
+    expect(after.replayed).toBe(false)
     expect(store.currentTask()!.steps).toHaveLength(1)
   })
 })

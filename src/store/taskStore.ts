@@ -200,10 +200,10 @@ export async function deleteCurrentTask(): Promise<void> {
     // other tab kept a vanished task on screen, and its next write brought it
     // back, stripped of its sealed credentials, which had been erased.
     announce(current.id, 0, true)
-    const suivant = await loadLastTask()
-    if (suivant) {
-      await setLastTaskId(suivant.id)
-      setSnapshot({ status: 'ready', task: suivant, error: null, boundId: suivant.id })
+    const following = await loadLastTask()
+    if (following) {
+      await setLastTaskId(following.id)
+      setSnapshot({ status: 'ready', task: following, error: null, boundId: following.id })
     } else {
       setSnapshot({ status: 'empty', task: null, error: null, boundId: null })
     }
@@ -294,7 +294,7 @@ function bus(): BroadcastChannel | null {
           // to it, and its write brought it back.
           setSnapshot({ status: 'missing', task: null, error: null, boundId: id })
         } else if (version > (snapshot.task?.version ?? 0)) {
-          planifierRelecture(id, version)
+          scheduleReread(id, version)
         }
       }
       for (const listener of listeners) listener()
@@ -317,19 +317,19 @@ function announce(id: string | null, version: number, gone = false): void {
 // (deserializing the record, not normalizing it) and delayed local writes, which
 // share the queue, by a factor of 51. One re-read per task is enough: the highest
 // version announced decides whether to re-read.
-const relecturesAttendues = new Map<string, number>()
+const pendingRereads = new Map<string, number>()
 
-function planifierRelecture(id: string, version: number): void {
-  const déjàEnFile = relecturesAttendues.has(id)
-  relecturesAttendues.set(id, Math.max(relecturesAttendues.get(id) ?? 0, version))
-  if (déjàEnFile) return
+function scheduleReread(id: string, version: number): void {
+  const alreadyQueued = pendingRereads.has(id)
+  pendingRereads.set(id, Math.max(pendingRereads.get(id) ?? 0, version))
+  if (alreadyQueued) return
 
   void enqueue(async () => {
-    const visée = relecturesAttendues.get(id) ?? 0
-    relecturesAttendues.delete(id)
+    const target = pendingRereads.get(id) ?? 0
+    pendingRereads.delete(id)
     // The open task can have changed between the announcement and its turn in the queue.
     if (id !== snapshot.boundId) return
-    if (visée <= (snapshot.task?.version ?? 0)) return
+    if (target <= (snapshot.task?.version ?? 0)) return
     await resyncFromDisk(id)
   })
 }
@@ -377,45 +377,45 @@ export async function mutateAsAgent(
       throw new Error('NO ACTIVE TASK\nNo log is open on this device.')
     }
 
-    let rendu = ''
+    let rendered = ''
     try {
       if (write.signal?.aborted) throw new CancelledError(write.operation)
 
-      const déjàFaite = findMutation(ouvert, write.mutationId)
-      if (déjàFaite) {
-        if (déjàFaite.operation !== write.operation) {
+      const alreadyDone = findMutation(ouvert, write.mutationId)
+      if (alreadyDone) {
+        if (alreadyDone.operation !== write.operation) {
           throw new ValidationError(
             'mutation_id',
-            `was already used for ${déjàFaite.operation}; a mutation_id identifies one write and cannot be reused. ` +
+            `was already used for ${alreadyDone.operation}; a mutation_id identifies one write and cannot be reused. ` +
               'Use a fresh one.',
             { code: 'mutation-id-reused', retryable: false },
           )
         }
-        if (déjàFaite.fingerprint !== write.fingerprint) {
+        if (alreadyDone.fingerprint !== write.fingerprint) {
           throw new ValidationError(
             'mutation_id',
-            `was already used for a ${déjàFaite.operation} call with different arguments. ` +
+            `was already used for a ${alreadyDone.operation} call with different arguments. ` +
               'A mutation_id identifies one write. Nothing was written. ' +
               'Use a fresh mutation_id for this work, or resend the original arguments to get the original reply.',
             { code: 'mutation-id-collision', retryable: false },
           )
         }
-        return { text: déjàFaite.result, replayed: true, version: déjàFaite.version }
+        return { text: alreadyDone.result, replayed: true, version: alreadyDone.version }
       }
 
-      const appliqué = await applyLocked((state) => {
+      const applied = await applyLocked((state) => {
         const next = write.mutate(state)
-        rendu = write.render(next)
+        rendered = write.render(next)
         return recordMutation(next, {
           id: write.mutationId,
           operation: write.operation,
           version: next.version,
           fingerprint: write.fingerprint,
-          result: rendu,
+          result: rendered,
           at: next.updatedAt,
         })
       })
-      return { text: rendu, replayed: false, version: appliqué.version }
+      return { text: rendered, replayed: false, version: applied.version }
     } catch (error) {
       const current = snapshot.task
       if (current) {

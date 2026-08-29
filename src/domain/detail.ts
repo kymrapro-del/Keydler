@@ -88,12 +88,12 @@ function indent(value: string, prefix = '    '): string {
 function evidenceLines(step: Step, full: boolean): string[] {
   if (!step.evidence) return ['  evidence: none. This step is a claim, nothing was attached.']
   const { kind, content, verifiedAt } = step.evidence
-  const tronqué = !full && content.length > EVIDENCE_PREVIEW
-  const shown = tronqué ? `${content.slice(0, EVIDENCE_PREVIEW)}…` : content
+  const truncated = !full && content.length > EVIDENCE_PREVIEW
+  const shown = truncated ? `${content.slice(0, EVIDENCE_PREVIEW)}…` : content
   return [
     `  evidence kind: ${kind}`,
     `  human-checked: ${verifiedAt === null ? 'no, supplied by its author, not verified' : 'yes'}`,
-    tronqué
+    truncated
       ? `  evidence (first ${EVIDENCE_PREVIEW} of ${content.length} chars, request id "${step.id}" for all of it):`
       : '  evidence:',
     indent(shown),

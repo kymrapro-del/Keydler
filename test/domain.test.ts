@@ -283,7 +283,7 @@ describe('restitution', () => {
 })
 
 describe('budget de restitution sous pression', () => {
-  function chargé(nbRejets: number, nbContraintes: number): TaskState {
+  function loaded(nbRejets: number, nbContraintes: number): TaskState {
     let task = seedTask()
     let n = 0
     for (let i = 0; i < nbContraintes; i++) {
@@ -313,10 +313,10 @@ describe('budget de restitution sous pression', () => {
   }
 
   it('raccourcit les lignes avant d’en retirer', () => {
-    const léger = renderTaskState(chargé(2, 2))
-    const moyen = renderTaskState(chargé(8, 6))
+    const light = renderTaskState(loaded(2, 2))
+    const moyen = renderTaskState(loaded(8, 6))
 
-    expect(léger).toContain('détaillé à dessein pour occuper')
+    expect(light).toContain('détaillé à dessein pour occuper')
     // Loaded, everything is still there, but cut short.
     for (let i = 0; i < 8; i++) expect(moyen).toContain(`Approche condamnée numéro ${i}`)
     expect(moyen).not.toContain(
@@ -328,7 +328,7 @@ describe('budget de restitution sous pression', () => {
   // rules, 94 times the budget, and a render the context window truncates in
   // silence. Cut here and say so, or let it be cut elsewhere.
   it('en dernier recours retire des obligations, et le dit sans détour', () => {
-    const output = renderTaskState(chargé(30, 10))
+    const output = renderTaskState(loaded(30, 10))
 
     expect(output).toContain('Approche condamnée numéro 0')
     expect(output).toContain('REJECTED: do not retry (12 of 30 shown)')
@@ -337,7 +337,7 @@ describe('budget de restitution sous pression', () => {
   })
 
   it('dit d’une règle retirée qu’elle engage TOUJOURS', () => {
-    const output = renderTaskState(chargé(0, 40))
+    const output = renderTaskState(loaded(0, 40))
 
     expect(output).toContain('CONSTRAINTS: binding (40)')
     expect(output).toContain('THEY ARE STILL BINDING')
@@ -345,10 +345,10 @@ describe('budget de restitution sous pression', () => {
   })
 
   it('garde un plancher d’obligations, et borne vraiment la restitution', () => {
-    const output = renderTaskState(chargé(0, 300))
+    const output = renderTaskState(loaded(0, 300))
 
-    const montrées = output.split('\n').filter((l) => l.includes('Contrainte ')).length
-    expect(montrées).toBeGreaterThanOrEqual(12)
+    const shown = output.split('\n').filter((l) => l.includes('Contrainte ')).length
+    expect(shown).toBeGreaterThanOrEqual(12)
     // Without this bound, the same measurement gave 37,800 tokens at 2000 rules.
     expect(estimateTokens(output)).toBeLessThan(1000)
   })
@@ -356,16 +356,16 @@ describe('budget de restitution sous pression', () => {
   it('montre les mêmes obligations d’un appel à l’autre', () => {
     // Cutting from the end would slide the window on every addition: the agent
     // would see a rule it had read disappear, without that rule changing.
-    const avant = renderTaskState(chargé(0, 40))
-    const après = renderTaskState(chargé(0, 60))
+    const before = renderTaskState(loaded(0, 40))
+    const afterState = renderTaskState(loaded(0, 60))
 
-    expect(avant).toContain('Contrainte 0')
-    expect(après).toContain('Contrainte 0')
-    expect(après).toContain('Contrainte 11')
+    expect(before).toContain('Contrainte 0')
+    expect(afterState).toContain('Contrainte 0')
+    expect(afterState).toContain('Contrainte 11')
   })
 
   it('respecte le budget tant que les contraintes le permettent', () => {
-    const task = chargé(4, 3)
+    const task = loaded(4, 3)
     expect(estimateTokens(renderTaskState(task))).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
@@ -384,7 +384,7 @@ describe('budget de restitution sous pression', () => {
   })
 
   it('reste déterministe : deux rendus du même état sont identiques', () => {
-    const task = chargé(30, 10)
+    const task = loaded(30, 10)
     expect(renderTaskState(task)).toBe(renderTaskState(task))
   })
 })

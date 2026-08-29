@@ -16,11 +16,11 @@ const racine = fileURLToPath(new URL('../', import.meta.url))
 const griefs = []
 const grief = (quoi, pourquoi) => griefs.push(`${quoi}\n    ${pourquoi}`)
 
-const lire = async (chemin) => {
+const lire = async (path) => {
   try {
-    return await readFile(join(dist, chemin), 'utf8')
+    return await readFile(join(dist, path), 'utf8')
   } catch {
-    grief(`dist/${chemin} est absent.`, 'La construction ne s’est pas terminée.')
+    grief(`dist/${path} est absent.`, 'La construction ne s’est pas terminée.')
     return null
   }
 }
@@ -45,20 +45,20 @@ if (sw !== null) {
   // JavaScript, the substituted version in JSON: we pick up the paths named
   // without assuming which of the two we are reading.
   const shell = /const SHELL = (\[[^\]]*\])/.exec(sw)?.[1]
-  const empreintés = [...(shell ?? '').matchAll(/['"](\/assets\/[^'"]+)['"]/g)].map((m) => m[1])
+  const fingerprinted = [...(shell ?? '').matchAll(/['"](\/assets\/[^'"]+)['"]/g)].map((m) => m[1])
 
   if (shell === undefined) {
     grief('dist/sw.js ne contient aucune liste SHELL.', '`scripts/precache.mjs` n’a pas tourné.')
-  } else if (empreintés.length === 0) {
+  } else if (fingerprinted.length === 0) {
     grief(
       'dist/sw.js ne précharge aucun fichier de dist/assets.',
       'Hors ligne, la page se chargerait sans son script ni sa feuille de style.',
     )
   } else {
-    const fantômes = empreintés.filter((p) => !construits.includes(p))
-    if (fantômes.length > 0) {
+    const ghosts = fingerprinted.filter((p) => !construits.includes(p))
+    if (ghosts.length > 0) {
       grief(
-        `dist/sw.js précharge ${fantômes.length} fichier(s) qui n’existe(nt) pas : ${fantômes.join(', ')}`,
+        `dist/sw.js précharge ${ghosts.length} fichier(s) qui n’existe(nt) pas : ${ghosts.join(', ')}`,
         'Le préchargement échouerait et le service worker ne s’installerait pas.',
       )
     }
@@ -83,18 +83,18 @@ if (html !== null && headers !== null) {
       'Chaque script en ligne doit être autorisé par son empreinte.',
     )
   } else {
-    const attendue = `sha256-${createHash('sha256').update(scripts[0][1], 'utf8').digest('base64')}`
-    if (!headers.includes(attendue)) {
+    const expected = `sha256-${createHash('sha256').update(scripts[0][1], 'utf8').digest('base64')}`
+    if (!headers.includes(expected)) {
       grief(
         'dist/_headers ne porte pas l’empreinte du script réellement construit.',
-        `Attendue : ${attendue}`,
+        `Attendue : ${expected}`,
       )
     }
     const vercel = await readFile(join(racine, 'vercel.json'), 'utf8')
-    if (!vercel.includes(attendue)) {
+    if (!vercel.includes(expected)) {
       grief(
         'vercel.json a dérivé de l’empreinte du script en ligne.',
-        `Reportez ${attendue} dans vercel.json. Une politique périmée rassure sans protéger.`,
+        `Reportez ${expected} dans vercel.json. Une politique périmée rassure sans protéger.`,
       )
     }
   }
@@ -125,10 +125,10 @@ if (html !== null && process.env.ALLOW_NO_ORIGIN_TRIAL !== '1') {
   }
 
   const couvertes = new Set()
-  for (const brut of balises) {
-    const jeton = lireJeton(brut)
-    if (jeton.erreur) {
-      grief(`Un jeton origin-trial est illisible : ${jeton.erreur}.`, 'Recopiez-le tel qu’émis.')
+  for (const raw of balises) {
+    const jeton = lireJeton(raw)
+    if (jeton.error) {
+      grief(`Un jeton origin-trial est illisible : ${jeton.error}.`, 'Recopiez-le tel qu’émis.')
       continue
     }
     if (jeton.fonctionnalite !== FONCTIONNALITE) {

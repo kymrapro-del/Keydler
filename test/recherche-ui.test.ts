@@ -298,25 +298,25 @@ describe('filtrer les résultats par nature', () => {
    * they will find on clicking.
    */
   it('porte le compte exact de chaque nature, et leur somme', () => {
-    const trouvés = searchTask(store.currentTask()!, 'token')
+    const found = searchTask(store.currentTask()!, 'token')
     const attendu = new Map<string, number>()
-    for (const m of trouvés) attendu.set(m.kind, (attendu.get(m.kind) ?? 0) + 1)
+    for (const m of found) attendu.set(m.kind, (attendu.get(m.kind) ?? 0) + 1)
 
-    const compte = (bouton: HTMLButtonElement) =>
+    const count = (bouton: HTMLButtonElement) =>
       Number(/\((\d+)\)\s*$/.exec(bouton.textContent!.trim())![1])
 
     for (const bouton of root.querySelectorAll<HTMLButtonElement>('[data-filter]')) {
       const nature = bouton.dataset.filter!
-      expect(compte(bouton), nature).toBe(
-        nature === 'all' ? trouvés.length : (attendu.get(nature) ?? 0),
+      expect(count(bouton), nature).toBe(
+        nature === 'all' ? found.length : (attendu.get(nature) ?? 0),
       )
     }
 
     // And "All" really is the sum of the others, not a number of its own.
     const parNature = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
       .filter((b) => b.dataset.filter !== 'all')
-      .reduce((n, b) => n + compte(b), 0)
-    expect(parNature).toBe(trouvés.length)
+      .reduce((n, b) => n + count(b), 0)
+    expect(parNature).toBe(found.length)
   })
 
   it('range les natures dans l’ordre où le cahier les présente', () => {
@@ -330,16 +330,16 @@ describe('filtrer les résultats par nature', () => {
   })
 
   it('réduit aux seules lignes de la nature choisie', async () => {
-    const avant = rows().length
+    const before = rows().length
     const bouton = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')].find(
       (b) => b.dataset.filter === 'step',
     )!
     bouton.click()
     __renderNow()
 
-    const après = rows().length
-    expect(après).toBeGreaterThan(0)
-    expect(après).toBeLessThan(avant)
+    const after = rows().length
+    expect(after).toBeGreaterThan(0)
+    expect(after).toBeLessThan(before)
     for (const li of rows()) {
       expect(li.textContent!.toUpperCase()).toContain('STEP')
     }
@@ -358,15 +358,15 @@ describe('filtrer les résultats par nature', () => {
   })
 
   it('revient à tout, et le compte du titre suit le filtre', async () => {
-    const tout = rows().length
+    const all = rows().length
     root.querySelector<HTMLButtonElement>('[data-filter="step"]')!.click()
     __renderNow()
-    const filtré = rows().length
-    expect(root.querySelector('#search-title')!.textContent).toContain(String(filtré))
+    const filtered = rows().length
+    expect(root.querySelector('#search-title')!.textContent).toContain(String(filtered))
 
     root.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click()
     __renderNow()
-    expect(rows().length).toBe(tout)
+    expect(rows().length).toBe(all)
   })
 
   it('oublie le filtre quand la recherche change', async () => {

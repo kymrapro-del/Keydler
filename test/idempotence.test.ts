@@ -18,17 +18,17 @@ describe('rejeu d’un même appel', () => {
     const id = mutationId()
     const args = writeArgs(task, { action: 'Lu le module', result: 'trois entrées' }, id)
 
-    const premier = await call(logStep, args)
+    const first = await call(logStep, args)
     const second = await call(logStep, args)
 
-    expect(premier.isError).toBeUndefined()
+    expect(first.isError).toBeUndefined()
     expect(second.isError).toBeUndefined()
 
     const final = currentTask()
     expect(final.steps).toHaveLength(1)
     expect(final.version).toBe(task.version + 1)
 
-    expect(textOf(second)).toContain(textOf(premier))
+    expect(textOf(second)).toContain(textOf(first))
     expect(textOf(second)).toContain(`VERSION     ${task.version + 1}`)
   })
 
@@ -96,38 +96,41 @@ describe('rejeu d’un même appel', () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
 
-    const refusé = await call(logStep, {
+    const refused = await call(logStep, {
       action: 'a',
       result: 'b',
       based_on_version: task.version + 99,
       mutation_id: id,
     })
-    expect(refusé.isError).toBe(true)
+    expect(refused.isError).toBe(true)
 
-    const réussi = await call(logStep, writeArgs(currentTask(), { action: 'a', result: 'b' }, id))
-    expect(réussi.isError).toBeUndefined()
-    expect(textOf(réussi)).not.toContain('Replay')
+    const succeeded = await call(
+      logStep,
+      writeArgs(currentTask(), { action: 'a', result: 'b' }, id),
+    )
+    expect(succeeded.isError).toBeUndefined()
+    expect(textOf(succeeded)).not.toContain('Replay')
     expect(currentTask().steps).toHaveLength(1)
   })
 
   it('survit à un rechargement de la page', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const args = writeArgs(task, { action: 'a', result: 'b' })
-    const premier = await call(logStep, args)
+    const first = await call(logStep, args)
 
     store.__resetStore()
     await store.init(task.id)
 
     const rejeu = await call(logStep, args)
     expect(rejeu.isError).toBeUndefined()
-    expect(textOf(rejeu)).toContain(textOf(premier))
+    expect(textOf(rejeu)).toContain(textOf(first))
     expect(currentTask().steps).toHaveLength(1)
   })
 
   it('borne sa mémoire, et retombe alors sur un refus lisible plutôt qu’un doublon', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
-    const premier = mutationId()
-    await call(logStep, writeArgs(task, { action: 'la toute première', result: 'r' }, premier))
+    const first = mutationId()
+    await call(logStep, writeArgs(task, { action: 'la toute première', result: 'r' }, first))
 
     for (let i = 0; i < MAX_MUTATION_RECORDS + 2; i++) {
       await call(logStep, writeArgs(currentTask(), { action: `étape ${i}`, result: 'r' }))
@@ -135,11 +138,11 @@ describe('rejeu d’un même appel', () => {
 
     const final = currentTask()
     expect(final.mutations.length).toBeLessThanOrEqual(MAX_MUTATION_RECORDS)
-    expect(final.mutations.some((m) => m.id === premier)).toBe(false)
+    expect(final.mutations.some((m) => m.id === first)).toBe(false)
 
     const tardif = await call(
       logStep,
-      writeArgs(task, { action: 'la toute première', result: 'r' }, premier),
+      writeArgs(task, { action: 'la toute première', result: 'r' }, first),
     )
     expect(tardif.isError).toBe(true)
     expect(textOf(tardif)).toContain('STALE STATE')
@@ -151,11 +154,8 @@ describe('collision de mutation_id', () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
 
-    const premier = await call(
-      logStep,
-      writeArgs(task, { action: 'Lu le module', result: 'ok' }, id),
-    )
-    expect(premier.isError).toBeUndefined()
+    const first = await call(logStep, writeArgs(task, { action: 'Lu le module', result: 'ok' }, id))
+    expect(first.isError).toBeUndefined()
 
     const second = await call(logStep, {
       action: 'Supprimé le cache',
@@ -175,7 +175,7 @@ describe('collision de mutation_id', () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const id = mutationId()
 
-    const premier = await call(logStep, {
+    const first = await call(logStep, {
       action: 'Lancé la suite',
       result: '183 passés',
       evidence: { kind: 'command_output', content: '$ npm test' },
@@ -192,7 +192,7 @@ describe('collision de mutation_id', () => {
     })
 
     expect(rejeu.isError).toBeUndefined()
-    expect(textOf(rejeu)).toContain(textOf(premier))
+    expect(textOf(rejeu)).toContain(textOf(first))
     expect(currentTask().steps).toHaveLength(1)
   })
 
@@ -217,7 +217,7 @@ describe('collision de mutation_id', () => {
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
 
-    const autreOpération = await call(addDecision, {
+    const otherOperation = await call(addDecision, {
       choice: 'Approche C',
       rationale: 'moins coûteuse',
       based_on_version: currentTask().version,
@@ -230,8 +230,8 @@ describe('collision de mutation_id', () => {
       mutation_id: id,
     })
 
-    expect(textOf(autreOpération)).toContain('already used for log_step')
-    expect(textOf(autreOpération)).not.toContain('different arguments')
+    expect(textOf(otherOperation)).toContain('already used for log_step')
+    expect(textOf(otherOperation)).not.toContain('different arguments')
     expect(textOf(autresArguments)).toContain('different arguments')
     expect(currentTask().decisions).toHaveLength(0)
     expect(currentTask().steps).toHaveLength(1)
@@ -242,24 +242,24 @@ describe('collision de mutation_id', () => {
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'Lu le module', result: 'ok' }, id))
 
-    const avant = currentTask()
+    const before = currentTask()
     const result = await call(logStep, {
       action: 'Supprimé le cache',
       result: 'ok',
-      based_on_version: avant.version,
+      based_on_version: before.version,
       mutation_id: id,
     })
     expect(result.isError).toBe(true)
 
-    const après = currentTask()
-    expect(après.version).toBe(avant.version)
-    expect(après.steps).toHaveLength(1)
+    const after = currentTask()
+    expect(after.version).toBe(before.version)
+    expect(after.steps).toHaveLength(1)
 
-    const dernière = après.audit.at(-1)!
-    expect(dernière.outcome).toBe('refused')
-    expect(dernière.operation).toBe('log_step')
-    expect(dernière.detail).toContain('mutation-id-collision')
-    expect(dernière.versionBefore).toBe(dernière.versionAfter)
+    const last = after.audit.at(-1)!
+    expect(last.outcome).toBe('refused')
+    expect(last.operation).toBe('log_step')
+    expect(last.detail).toContain('mutation-id-collision')
+    expect(last.versionBefore).toBe(last.versionAfter)
   })
 
   it('inscrit aussi la réutilisation pour un autre outil', async () => {
@@ -267,18 +267,18 @@ describe('collision de mutation_id', () => {
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
 
-    const avant = currentTask()
+    const before = currentTask()
     await call(addDecision, {
       choice: 'Approche C',
       rationale: 'moins coûteuse',
-      based_on_version: avant.version,
+      based_on_version: before.version,
       mutation_id: id,
     })
 
-    const dernière = currentTask().audit.at(-1)!
-    expect(dernière).toMatchObject({ outcome: 'refused', operation: 'add_decision' })
-    expect(dernière.detail).toContain('mutation-id-reused')
-    expect(currentTask().version).toBe(avant.version)
+    const last = currentTask().audit.at(-1)!
+    expect(last).toMatchObject({ outcome: 'refused', operation: 'add_decision' })
+    expect(last.detail).toContain('mutation-id-reused')
+    expect(currentTask().version).toBe(before.version)
   })
 
   it('ne salit pas le journal pour un rejeu, qui n’est le refus de rien', async () => {
@@ -286,10 +286,10 @@ describe('collision de mutation_id', () => {
     const args = writeArgs(task, { action: 'a', result: 'b' })
     await call(logStep, args)
 
-    const avant = currentTask().audit.length
+    const before = currentTask().audit.length
     await call(logStep, args)
 
-    expect(currentTask().audit).toHaveLength(avant)
+    expect(currentTask().audit).toHaveLength(before)
   })
 
   it('n’accepte pas un enregistrement sans empreinte comme base de rejeu', async () => {
@@ -297,11 +297,11 @@ describe('collision de mutation_id', () => {
     const id = mutationId()
     await call(logStep, writeArgs(task, { action: 'a', result: 'b' }, id))
 
-    const brut = currentTask()
+    const raw = currentTask()
     await store.openPreparedTask({
-      ...brut,
-      mutations: brut.mutations.map((m) => ({ ...m, fingerprint: undefined })),
-    } as unknown as typeof brut)
+      ...raw,
+      mutations: raw.mutations.map((m) => ({ ...m, fingerprint: undefined })),
+    } as unknown as typeof raw)
 
     store.__resetStore()
     await store.init(task.id)

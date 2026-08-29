@@ -64,9 +64,9 @@ describe('une rafale d’annonces ne coûte qu’une relecture', () => {
     // without which the screen would stay behind.
     const task = await store.createAndOpenTask('Deux vagues', undefined)
 
-    const avancer = async (règle: string) => {
+    const avancer = async (rule: string) => {
       const disque = await loadTask(task.id)
-      await saveTask(addConstraint(disque!, { rule: règle, basedOnVersion: null }, 'human'))
+      await saveTask(addConstraint(disque!, { rule: rule, basedOnVersion: null }, 'human'))
     }
 
     await avancer('Première vague')

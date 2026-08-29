@@ -40,20 +40,20 @@ describe('clôture et réouverture', () => {
   })
 
   it('laisse l’humain rouvrir ce que l’agent a clos', () => {
-    const closée = close()
-    expect(closée.status).toBe('completed')
+    const closed = close()
+    expect(closed.status).toBe('completed')
 
-    const rouverte = reopenTask(closée, 'Le flux de rafraîchissement reste à faire', ctx(30))
+    const rouverte = reopenTask(closed, 'Le flux de rafraîchissement reste à faire', ctx(30))
 
     expect(rouverte.status).toBe('active')
     expect(rouverte.next).toBe('Le flux de rafraîchissement reste à faire')
-    expect(rouverte.version).toBe(closée.version + 1)
+    expect(rouverte.version).toBe(closed.version + 1)
     expect(rouverte.audit.at(-1)).toMatchObject({ operation: 'reopen_task', actor: 'human' })
   })
 
   it('conserve le résumé final : c’est une trace, pas un mensonge à effacer', () => {
-    const closée = close()
-    const rouverte = reopenTask(closée, 'Il reste du travail', ctx(30))
+    const closed = close()
+    const rouverte = reopenTask(closed, 'Il reste du travail', ctx(30))
     expect(rouverte.summary).toBe('Refactorisation terminée.')
   })
 
@@ -74,9 +74,9 @@ describe('clôture et réouverture', () => {
   })
 
   it('laisse valider une preuve même après clôture', () => {
-    const closée = close()
-    const vérifiée = verifyEvidence(closée, closée.steps[0].id, '183 passed', ctx(30))
-    expect(vérifiée.steps[0].confidence).toBe('human_verified')
+    const closed = close()
+    const verified = verifyEvidence(closed, closed.steps[0].id, '183 passed', ctx(30))
+    expect(verified.steps[0].confidence).toBe('human_verified')
   })
 
   it('dit clairement qu’il n’y a rien à reprendre, sans conseil trompeur', () => {

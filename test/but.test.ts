@@ -36,20 +36,20 @@ describe('ce que « terminé » veut dire', () => {
   })
 
   it('se retire, sans que ce soit une erreur', () => {
-    const posé = setGoal(task, BUT)
-    expect(setGoal(posé, '   ').goal).toBeNull()
+    const installed = setGoal(task, BUT)
+    expect(setGoal(installed, '   ').goal).toBeNull()
   })
 
   it('refuse d’être réécrit à l’identique', () => {
-    const posé = setGoal(task, BUT)
-    expect(() => setGoal(posé, BUT)).toThrow(ValidationError)
+    const installed = setGoal(task, BUT)
+    expect(() => setGoal(installed, BUT)).toThrow(ValidationError)
   })
 
   it('s’annule comme les autres corrections d’un champ', () => {
-    const posé = setGoal(task, 'A first attempt')
-    const changé = setGoal(posé, BUT)
-    expect(undoable(changé)).toContain('what done')
-    expect(undoLastSupervision(changé).goal).toBe('A first attempt')
+    const installed = setGoal(task, 'A first attempt')
+    const changed = setGoal(installed, BUT)
+    expect(undoable(changed)).toContain('what done')
+    expect(undoLastSupervision(changed).goal).toBe('A first attempt')
   })
 })
 
@@ -88,10 +88,10 @@ describe('clore une tâche qui avait un but', () => {
     const result = await call(completeTaskTool, writeArgs(currentTask(), { summary: 'Done.' }))
 
     expect(result.isError).toBeFalsy()
-    const texte = textOf(result)
-    expect(texte).toContain('DONE WHEN')
-    expect(texte).toContain(BUT)
-    expect(texte.toLowerCase()).toContain('say whether')
+    const text = textOf(result)
+    expect(text).toContain('DONE WHEN')
+    expect(text).toContain(BUT)
+    expect(text.toLowerCase()).toContain('say whether')
   })
 
   it('ne rappelle rien quand aucun but n’avait été posé', async () => {
