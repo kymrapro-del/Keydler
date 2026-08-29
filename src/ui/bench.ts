@@ -421,6 +421,12 @@ function renderLanding(): string {
         Everything stays in this browser. No account, no server.
         <a href="${WORKSPACE_PATH}" id="go-workspace" class="btn btn--quiet">Your workspace</a>
       </p>
+      <p class="muted landing__credits">
+        Google Fonts · Material Design 3 · Google Icons
+      </p>
+      <p class="muted landing__credits landing__credits--models">
+        Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna
+      </p>
     </section>`
 }
 
@@ -1736,7 +1742,11 @@ function renderDashboard(task: TaskState): string {
     ${searching() ? '' : renderEvidence(task)}
     ${searching() ? '' : renderActivity(task)}
     ${searching() ? '' : renderHistory(task)}
-    ${renderTechnical(task)}`
+    ${renderTechnical(task)}
+    <footer class="page-credits">
+      <p class="page-credits__design">Google Fonts · Material Design 3 · Google Icons</p>
+      <p class="page-credits__models">Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna</p>
+    </footer>`
 }
 
 // What a "Sign in" button is replaced by here: the browser IS the account, but
@@ -1826,6 +1836,12 @@ function renderWorkspace(): string {
       <div class="actions">
         <button type="button" id="leave-workspace" class="btn btn--quiet">Back</button>
       </div>
+      <p class="muted landing__credits">
+        Google Fonts · Material Design 3 · Google Icons
+      </p>
+      <p class="muted landing__credits landing__credits--models">
+        Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna
+      </p>
     </section>`
 }
 

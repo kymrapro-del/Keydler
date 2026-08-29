@@ -1,0 +1,23 @@
+Copyright (c) 2026 Moon1pact.
+
+Keydler software is MIT-licensed. The complete notices are NOTICE and
+THIRD-PARTY-NOTICES.md in the source repository.
+
+Keydler brand and product assets (icons, Open Graph image, screenshots)
+are Copyright (c) 2026 Moon1pact.
+
+This interface follows:
+
+  - Google Fonts
+  - Material Design 3, by Google LLC, Apache License 2.0
+  - Material Symbols (Google Icons), by Google LLC, Apache License 2.0
+
+The served page does not redistribute those font files. The typeface is
+the reader's system UI font.
+
+People: kymrapro-del (design, prompt engineer, idea);
+moon1pact (lead developer, prompt engineer, core motor).
+
+Models: Claude Opus 5 and Claude Sonnet 5 (Anthropic);
+GPT-5.6 Sol (OpenAI); Grok 4.6 Extra High Fast (Cursor);
+GPT-5.6 Luna (Figma).
