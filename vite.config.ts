@@ -1,5 +1,7 @@
 import { loadEnv, type Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
+// @ts-expect-error — module de construction en JavaScript simple, partagé avec les épreuves.
+import { tokensDe } from './scripts/jeton.mjs'
 
 /**
  * Sans jeton, le greffon ne faisait rien — silencieusement. Une variable
@@ -11,11 +13,12 @@ import { defineConfig } from 'vitest/config'
  * Un jeton d'origin trial n'est pas un secret : il est imprimé tel quel dans
  * le HTML servi. Le taire n'apportait rien ; échouer fort apporte tout.
  */
-function originTrialMeta(token: string | undefined, production: boolean): Plugin {
+function originTrialMeta(brut: string | undefined, production: boolean): Plugin {
+  const tokens = tokensDe(brut)
   return {
     name: 'webmcp-origin-trial',
     buildStart() {
-      if (production && !token) {
+      if (production && tokens.length === 0) {
         this.error(
           'VITE_WEBMCP_ORIGIN_TRIAL_TOKEN est vide pour une construction de production.\n' +
             'Sans lui, WebMCP ne s’active que derrière chrome://flags, et rien ne le dira.\n' +
@@ -25,13 +28,15 @@ function originTrialMeta(token: string | undefined, production: boolean): Plugin
       }
     },
     transformIndexHtml(html) {
-      if (!token) return html
-      const sûr = token.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
-      const meta = `<meta http-equiv="origin-trial" content="${sûr}" />`
+      if (tokens.length === 0) return html
+      const balises = tokens
+        .map((t) => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'))
+        .map((t) => `<meta http-equiv="origin-trial" content="${t}" />`)
+        .join('\n    ')
       const charset = html.match(/<meta\s+charset=[^>]*>/i)
       return charset
-        ? html.replace(charset[0], () => `${charset[0]}\n    ${meta}`)
-        : html.replace(/<head>/i, () => `<head>\n    ${meta}`)
+        ? html.replace(charset[0], () => `${charset[0]}\n    ${balises}`)
+        : html.replace(/<head>/i, () => `<head>\n    ${balises}`)
     },
   }
 }
