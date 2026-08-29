@@ -40,7 +40,7 @@ function tasksChanged(): void {
   tasksRevisionCounter += 1
 }
 
-/** Le nombre de cahiers a changé, et les autres onglets doivent relire la liste. */
+/** The number of tasks changed, and the other tabs must re-read the list. */
 function tasksChangedEverywhere(): void {
   tasksChanged()
   announce(null, 0)
@@ -68,11 +68,10 @@ export function boundTaskId(): string | null {
 }
 
 export async function init(taskId?: string): Promise<void> {
-  // Ouvrir le canal ICI, et pas à la première annonce. Un onglet qui ne fait
-  // que lire n'annonce jamais rien : créé paresseusement, il restait sourd, et
-  // c'était précisément l'onglet à réveiller. Trouvé en navigateur, avec deux
-  // onglets. La suite ne l'a pas vu, parce que chacun de ses magasins avait
-  // écrit avant d'écouter.
+  // Open the channel HERE, and not on the first announcement. A tab that only
+  // reads never announces anything: created lazily, it stayed deaf, and it was
+  // exactly the tab to wake. Found in the browser, with two tabs. The suite did
+  // not see it, because every one of its stores had written before listening.
   bus()
 
   if (!initPromise || (taskId !== undefined && taskId !== snapshot.boundId)) {
@@ -191,21 +190,20 @@ export async function deleteCurrentTask(): Promise<void> {
 
   await enqueue(async () => {
     await deleteTask(current.id)
-    // Les identifiants scellés vivent hors de l'état de la tâche : sans cet
-    // appel, ils survivaient à la suppression, hors d'atteinte de l'écran mais
-    // bien présents sur le disque.
+    // Sealed credentials live outside the task state: without this call they
+    // survived the deletion, out of reach of the screen but very much present
+    // on disk.
     await deleteSecretsForTask(current.id).catch(() => undefined)
     forgetSeen(current.id)
     tasksChanged()
-    // Nommer le cahier supprimé, et pas seulement « la liste a changé » : sans
-    // cela l'autre onglet gardait un cahier disparu à l'écran, et sa prochaine
-    // écriture le ressuscitait, amputé de ses identifiants scellés, eux bien
-    // effacés.
+    // Name the deleted task, and not only "the list changed": without that the
+    // other tab kept a vanished task on screen, and its next write brought it
+    // back, stripped of its sealed credentials, which had been erased.
     announce(current.id, 0, true)
-    const suivant = await loadLastTask()
-    if (suivant) {
-      await setLastTaskId(suivant.id)
-      setSnapshot({ status: 'ready', task: suivant, error: null, boundId: suivant.id })
+    const following = await loadLastTask()
+    if (following) {
+      await setLastTaskId(following.id)
+      setSnapshot({ status: 'ready', task: following, error: null, boundId: following.id })
     } else {
       setSnapshot({ status: 'empty', task: null, error: null, boundId: null })
     }
@@ -217,9 +215,9 @@ export async function allTasks(): Promise<TaskState[]> {
 }
 
 /**
- * La même lecture, réduite à ce que le sélecteur affiche. Les cahiers entiers
- * deviennent collectables dès le retour : c'est la mémoire retenue qu'on
- * borne, pas le coût de la lecture.
+ * The same read, cut down to what the picker displays. Whole tasks become
+ * collectable as soon as it returns: it is the retained memory that is
+ * bounded, not the cost of the read.
  */
 export async function allTaskCards(): Promise<TaskCard[]> {
   return (await listTasks()).map(cardOf)
@@ -269,10 +267,10 @@ async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskSta
   return next
 }
 
-// Deux onglets sur la même tâche : mesuré, le second a écrit jusqu'à v31 pendant
-// que le premier affichait encore v29 et « Task closed ». `BroadcastChannel` ne
-// livre pas au contexte qui poste, donc pas d'écho à filtrer. La relecture passe
-// par la file d'écriture, sinon elle s'intercalerait dans une écriture en cours.
+// Two tabs on the same task: measured, the second wrote up to v31 while the
+// first still displayed v29 and "Task closed". `BroadcastChannel` does not
+// deliver to the context that posts, so there is no echo to filter. The re-read
+// goes through the write queue, otherwise it would slot into a write in flight.
 const CHANNEL = 'cahier-de-quart'
 
 type Announcement = { id: string | null; version: number; gone?: boolean }
@@ -285,18 +283,18 @@ function bus(): BroadcastChannel | null {
     channel = new BroadcastChannel(CHANNEL)
     channel.onmessage = (event: MessageEvent<Announcement>) => {
       const { id, version, gone } = event.data ?? { id: null, version: 0 }
-      // Surtout PAS `tasksChangedEverywhere` ici : réannoncer ce qu'on vient de
-      // recevoir ferait rebondir le message entre deux onglets, chacun
-      // répondant à l'autre, sans fin.
+      // Never `tasksChangedEverywhere` here: re-announcing what we have just
+      // received would bounce the message between two tabs, each answering the
+      // other, endlessly.
       tasksChanged()
 
       if (id !== null && id === snapshot.boundId) {
         if (gone) {
-          // Le cahier a été supprimé ailleurs. Le taire laissait cet onglet
-          // écrire dessus, et son écriture le ressuscitait.
+          // The task was deleted elsewhere. Keeping quiet let this tab write
+          // to it, and its write brought it back.
           setSnapshot({ status: 'missing', task: null, error: null, boundId: id })
         } else if (version > (snapshot.task?.version ?? 0)) {
-          planifierRelecture(id, version)
+          scheduleReread(id, version)
         }
       }
       for (const listener of listeners) listener()
@@ -309,29 +307,29 @@ function announce(id: string | null, version: number, gone = false): void {
   try {
     bus()?.postMessage({ id, version, gone })
   } catch {
-    // Un onglet qui se ferme peut fermer le canal sous nos pieds. Ne rien
-    // annoncer est un défaut d'affichage ailleurs, pas une écriture perdue.
+    // A tab that closes can close the channel under our feet. Announcing
+    // nothing is a display defect elsewhere, not a lost write.
   }
 }
 
-// Une rafale d'annonces ne doit pas produire une rafale de relectures : mesuré
-// sur un cahier de 20 000 étapes, 50 annonces coûtaient 1702 ms dont 1668 jetés
-// (la désérialisation de l'enregistrement, pas la normalisation) et retardaient
-// d'un facteur 51 les écritures locales, qui partagent la file. Une relecture par
-// cahier suffit : la version la plus haute annoncée décide s'il faut relire.
-const relecturesAttendues = new Map<string, number>()
+// A burst of announcements must not produce a burst of re-reads: measured on a
+// 20,000 step task, 50 announcements cost 1702 ms of which 1668 thrown away
+// (deserializing the record, not normalizing it) and delayed local writes, which
+// share the queue, by a factor of 51. One re-read per task is enough: the highest
+// version announced decides whether to re-read.
+const pendingRereads = new Map<string, number>()
 
-function planifierRelecture(id: string, version: number): void {
-  const déjàEnFile = relecturesAttendues.has(id)
-  relecturesAttendues.set(id, Math.max(relecturesAttendues.get(id) ?? 0, version))
-  if (déjàEnFile) return
+function scheduleReread(id: string, version: number): void {
+  const alreadyQueued = pendingRereads.has(id)
+  pendingRereads.set(id, Math.max(pendingRereads.get(id) ?? 0, version))
+  if (alreadyQueued) return
 
   void enqueue(async () => {
-    const visée = relecturesAttendues.get(id) ?? 0
-    relecturesAttendues.delete(id)
-    // Le cahier ouvert a pu changer entre l'annonce et son tour dans la file.
+    const target = pendingRereads.get(id) ?? 0
+    pendingRereads.delete(id)
+    // The open task can have changed between the announcement and its turn in the queue.
     if (id !== snapshot.boundId) return
-    if (visée <= (snapshot.task?.version ?? 0)) return
+    if (target <= (snapshot.task?.version ?? 0)) return
     await resyncFromDisk(id)
   })
 }
@@ -339,10 +337,10 @@ function planifierRelecture(id: string, version: number): void {
 async function resyncFromDisk(id: string): Promise<void> {
   try {
     const fresh = await loadTask(id)
-    // Revérifier la liaison APRÈS l'attente : la garde posée à la réception du
-    // message ne dit rien de ce qui s'est passé pendant la lecture, et écrire
-    // ici sans la refaire rebasculait l'écran (et `boundId`) sur le cahier
-    // précédent, juste après que l'utilisateur en a ouvert un autre.
+    // Recheck the binding AFTER the await: the guard set when the message
+    // arrived says nothing about what happened during the read, and writing
+    // here without redoing it flipped the screen (and `boundId`) back to the
+    // previous task, just after the user had opened another one.
     if (id !== snapshot.boundId) return
     if (fresh) setSnapshot({ status: 'ready', task: fresh, error: null, boundId: fresh.id })
     else setSnapshot({ status: 'missing', task: null, error: null, boundId: id })
@@ -379,45 +377,45 @@ export async function mutateAsAgent(
       throw new Error('NO ACTIVE TASK\nNo log is open on this device.')
     }
 
-    let rendu = ''
+    let rendered = ''
     try {
       if (write.signal?.aborted) throw new CancelledError(write.operation)
 
-      const déjàFaite = findMutation(ouvert, write.mutationId)
-      if (déjàFaite) {
-        if (déjàFaite.operation !== write.operation) {
+      const alreadyDone = findMutation(ouvert, write.mutationId)
+      if (alreadyDone) {
+        if (alreadyDone.operation !== write.operation) {
           throw new ValidationError(
             'mutation_id',
-            `was already used for ${déjàFaite.operation}; a mutation_id identifies one write and cannot be reused. ` +
+            `was already used for ${alreadyDone.operation}; a mutation_id identifies one write and cannot be reused. ` +
               'Use a fresh one.',
             { code: 'mutation-id-reused', retryable: false },
           )
         }
-        if (déjàFaite.fingerprint !== write.fingerprint) {
+        if (alreadyDone.fingerprint !== write.fingerprint) {
           throw new ValidationError(
             'mutation_id',
-            `was already used for a ${déjàFaite.operation} call with different arguments. ` +
+            `was already used for a ${alreadyDone.operation} call with different arguments. ` +
               'A mutation_id identifies one write. Nothing was written. ' +
               'Use a fresh mutation_id for this work, or resend the original arguments to get the original reply.',
             { code: 'mutation-id-collision', retryable: false },
           )
         }
-        return { text: déjàFaite.result, replayed: true, version: déjàFaite.version }
+        return { text: alreadyDone.result, replayed: true, version: alreadyDone.version }
       }
 
-      const appliqué = await applyLocked((state) => {
+      const applied = await applyLocked((state) => {
         const next = write.mutate(state)
-        rendu = write.render(next)
+        rendered = write.render(next)
         return recordMutation(next, {
           id: write.mutationId,
           operation: write.operation,
           version: next.version,
           fingerprint: write.fingerprint,
-          result: rendu,
+          result: rendered,
           at: next.updatedAt,
         })
       })
-      return { text: rendu, replayed: false, version: appliqué.version }
+      return { text: rendered, replayed: false, version: applied.version }
     } catch (error) {
       const current = snapshot.task
       if (current) {

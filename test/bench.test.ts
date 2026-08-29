@@ -27,9 +27,9 @@ let root: HTMLElement
 let unmount: () => void
 
 /**
- * Attendre un nombre fixe de tours suffisait à vide et échouait en suite
- * complète : la file d'écriture passe par IndexedDB, dont la latence dépend de
- * la charge. On attend l'effet, pas un délai.
+ * Waiting a fixed number of turns was enough on an empty run and failed in the
+ * full suite: the write queue goes through IndexedDB, whose latency depends on
+ * the load. We wait for the effect, not for a delay.
  */
 async function settled(turns = 4) {
   for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
@@ -74,8 +74,8 @@ afterEach(() => {
   history.replaceState(null, '', '/')
 })
 
-describe('première visite', () => {
-  it('explique le bénéfice avant le mécanisme, et sans jargon', async () => {
+describe('first visit', () => {
+  it('explains the benefit before the mechanism, and without jargon', async () => {
     await settled()
 
     expect(text()).toContain('Give your AI a memory that survives the conversation.')
@@ -86,7 +86,7 @@ describe('première visite', () => {
     }
   })
 
-  it('offre les deux portes d’entrée, la principale d’abord', async () => {
+  it('offers both ways in, the main one first', async () => {
     await settled()
     const primary = root.querySelector<HTMLButtonElement>('.btn--primary')
     expect(primary?.textContent?.trim()).toBe('Create a task')
@@ -94,19 +94,19 @@ describe('première visite', () => {
   })
 })
 
-describe('création d’une tâche', () => {
+describe('creating a task', () => {
   async function openForm() {
     await settled()
     button('Create a task').click()
     await settled()
   }
 
-  it('donne le focus au premier champ à l’ouverture du formulaire', async () => {
+  it('gives focus to the first field when the form opens', async () => {
     await openForm()
     expect(document.activeElement?.id).toBe('new-title')
   })
 
-  it('crée une vraie tâche et conserve titre, prochaine action et première règle', async () => {
+  it('creates a real task and keeps the title, the next action and the first rule', async () => {
     await openForm()
     type('new-title', 'Refactor the authentication module')
     type('new-next', 'Map the existing entry points')
@@ -125,7 +125,7 @@ describe('création d’une tâche', () => {
     expect(rules[0].standing).toBe('accepted')
   })
 
-  it('place le focus sur le titre après création, et l’y laisse', async () => {
+  it('puts focus on the title after creation, and leaves it there', async () => {
     await openForm()
     type('new-title', 'Add rate limiting to our HTTP API')
     type('new-next', 'Choose the mechanism')
@@ -136,7 +136,7 @@ describe('création d’une tâche', () => {
     expect(document.activeElement?.textContent).toBe('Add rate limiting to our HTTP API')
   })
 
-  it('lie la tâche à /t/:id', async () => {
+  it('links the task to /t/:id', async () => {
     await openForm()
     type('new-title', 'Ship the invoice export')
     type('new-next', 'List the current columns')
@@ -146,7 +146,7 @@ describe('création d’une tâche', () => {
     expect(location.pathname).toBe(`/t/${store.currentTask()!.id}`)
   })
 
-  it('refuse un titre vide en langage humain, sans rien écrire', async () => {
+  it('refuses an empty title in human words, without writing anything', async () => {
     await openForm()
     type('new-next', 'Map the existing entry points')
     root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
@@ -157,7 +157,7 @@ describe('création d’une tâche', () => {
     expect(document.activeElement?.id).toBe('new-title')
   })
 
-  it('refuse une prochaine action vide, en disant pourquoi elle compte', async () => {
+  it('refuses an empty next action, and says why it matters', async () => {
     await openForm()
     type('new-title', 'Something')
     root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
@@ -167,7 +167,7 @@ describe('création d’une tâche', () => {
     expect(store.currentTask()).toBeNull()
   })
 
-  it('conserve la saisie quand le formulaire est refusé', async () => {
+  it('keeps what was typed when the form is refused', async () => {
     await openForm()
     type('new-next', 'Map the existing entry points')
     root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
@@ -178,7 +178,7 @@ describe('création d’une tâche', () => {
     )
   })
 
-  it('guide vers l’agent juste après la création, sans expliquer le protocole', async () => {
+  it('points to the agent right after creation, without explaining the protocol', async () => {
     await openForm()
     type('new-title', 'Refactor the authentication module')
     type('new-next', 'Map the existing entry points')
@@ -196,8 +196,8 @@ describe('création d’une tâche', () => {
   })
 })
 
-describe('démonstration', () => {
-  it('« Try the demo » charge le cahier préparé', async () => {
+describe('demo', () => {
+  it('“Try the demo” loads the prepared notebook', async () => {
     await settled()
     button('Try the demo').click()
     await settled(8)
@@ -209,13 +209,13 @@ describe('démonstration', () => {
   })
 })
 
-describe('tableau de bord', () => {
+describe('dashboard', () => {
   beforeEach(async () => {
     await store.openPreparedTask(buildDemoTask())
     await settled()
   })
 
-  it('montre les quatre concepts essentiels, dans l’ordre', async () => {
+  it('shows the four essential ideas, in order', async () => {
     const titles = [...root.querySelectorAll('h2')].map((h) => h.textContent?.trim() ?? '')
     const wanted = ['Next', 'Completed work', 'Rules to follow', 'Don’t retry']
     for (const w of wanted) expect(titles, w).toContain(w)
@@ -224,19 +224,19 @@ describe('tableau de bord', () => {
     expect(positions).toEqual([...positions].sort((a, b) => a - b))
   })
 
-  it('rend la prochaine action dominante', async () => {
+  it('makes the next action dominant', async () => {
     const hero = root.querySelector('.hero')!
     expect(hero.textContent).toContain('Implement approach C')
   })
 
-  it('nomme les trois degrés de preuve en clair', async () => {
+  it('names the three degrees of proof in plain words', async () => {
     expect(text()).toContain('Verified by you')
     expect(text()).toContain('Evidence attached')
     expect(text()).toContain('Claimed without evidence')
     expect(text()).not.toContain('machine_verified')
   })
 
-  it('sépare les propositions d’agent des règles contraignantes', async () => {
+  it('separates agent proposals from binding rules', async () => {
     const pending = proposedRejections(store.currentTask()!)[0]
 
     const proposals = root.querySelector('.card--proposals')!
@@ -249,7 +249,7 @@ describe('tableau de bord', () => {
     expect(dontRetry.textContent).not.toContain(pending.approach)
   })
 
-  it('rend une proposition opposable d’un clic, et pas avant', async () => {
+  it('makes a proposal binding in one click, and not before', async () => {
     const pending = proposedRejections(store.currentTask()!)[0]
     expect(acceptedRejections(store.currentTask()!).map((r) => r.id)).not.toContain(pending.id)
 
@@ -263,7 +263,7 @@ describe('tableau de bord', () => {
     })
   })
 
-  it('écarte une proposition sans l’effacer', async () => {
+  it('declines a proposal without erasing it', async () => {
     const pending = proposedRejections(store.currentTask()!)[0]
     root.querySelector<HTMLButtonElement>(`[data-decline="${pending.id}"]`)!.click()
     await settled()
@@ -273,7 +273,7 @@ describe('tableau de bord', () => {
     expect(after.rejected.map((r) => r.id)).toContain(pending.id)
   })
 
-  it('affiche le contenu de la preuve AVANT le bouton qui la valide', async () => {
+  it('shows the evidence itself BEFORE the button that confirms it', async () => {
     const verify = root.querySelector<HTMLButtonElement>('[data-verify]')!
     const item = verify.closest('li')!
     const evidence = item.querySelector('pre')
@@ -283,7 +283,7 @@ describe('tableau de bord', () => {
     expect(evidence!.textContent).toBe(step.evidence!.content)
   })
 
-  it('valide une preuve, seul chemin vers « verified »', async () => {
+  it('confirms evidence, the only path to “verified”', async () => {
     const verify = root.querySelector<HTMLButtonElement>('[data-verify]')!
     const id = verify.dataset.verify!
     verify.click()
@@ -294,7 +294,7 @@ describe('tableau de bord', () => {
     expect(step.evidence!.verifiedAt).not.toBeNull()
   })
 
-  it('replie les détails techniques par défaut', async () => {
+  it('keeps the technical details collapsed by default', async () => {
     const details = root.querySelector<HTMLDetailsElement>('details.technical')!
     expect(details.open).toBe(false)
     expect(details.querySelector('summary')?.textContent?.trim()).toBe('Technical details')
@@ -306,10 +306,10 @@ describe('tableau de bord', () => {
     expect(body).toContain('resume_task')
   })
 
-  it('montre exactement ce que resume_task renvoie, pas une version voisine', async () => {
-    // Le panneau s'intitule « What resume_task returns ». S'il rendait l'état
-    // sans l'URL ni les identifiants, il montrerait autre chose que ce que
-    // l'agent reçoit, dans un produit dont toute la valeur est l'honnêteté.
+  it('shows exactly what resume_task returns, not a near version', async () => {
+    // The panel is titled “What resume_task returns”. If it rendered the state
+    // without the URL or the credentials, it would show something other than
+    // what the agent receives, in a product whose whole value is honesty.
     const resume = ALL_TOOLS.find((t) => t.name === 'resume_task')!
     const attendu = textOf(await resume.execute({}, { signal: new AbortController().signal }))
     await settled()
@@ -319,7 +319,7 @@ describe('tableau de bord', () => {
     expect(pre.textContent).toContain('URL')
   })
 
-  it('ajoute une règle humaine, immédiatement opposable', async () => {
+  it('adds a human rule, binding immediately', async () => {
     const before = activeConstraints(store.currentTask()!).length
     const version = store.currentTask()!.version
     type('new-constraint', 'Do not touch the router')
@@ -331,7 +331,7 @@ describe('tableau de bord', () => {
     expect(rules.at(-1)).toMatchObject({ source: 'human', standing: 'accepted', active: true })
   })
 
-  it('lève puis rétablit une règle, et la restitution suit', async () => {
+  it('lifts then restores a rule, and what the agent reads follows', async () => {
     const rule = activeConstraints(store.currentTask()!)[0].rule
 
     let before = store.currentTask()!.version
@@ -345,7 +345,7 @@ describe('tableau de bord', () => {
     expect(renderTaskState(store.currentTask()!)).toContain(rule)
   })
 
-  it('condamne une approche, marquée humaine', async () => {
+  it('condemns an approach, marked as human', async () => {
     const before = store.currentTask()!.version
     type('new-rejection', 'Client-side rotation')
     type('new-rejection-reason', 'exposes the token to the browser')
@@ -357,7 +357,7 @@ describe('tableau de bord', () => {
     expect(renderTaskState(store.currentTask()!)).toContain('Client-side rotation')
   })
 
-  it('refuse un motif vide, en langage humain', async () => {
+  it('refuses an empty reason, in human words', async () => {
     type('new-rejection', 'Some approach')
     root.querySelector<HTMLFormElement>('#form-rejection')!.requestSubmit()
     await settled()
@@ -368,13 +368,13 @@ describe('tableau de bord', () => {
   })
 })
 
-describe('supervision pendant qu’un agent travaille', () => {
+describe('supervision while an agent works', () => {
   beforeEach(async () => {
     await store.openPreparedTask(buildDemoTask())
     await settled()
   })
 
-  it('rend un refus pour état périmé immédiatement visible, en langage humain', async () => {
+  it('makes a refusal for a stale state visible at once, in human words', async () => {
     const stale = store.currentTask()!.version
 
     await store.mutate((s) =>
@@ -402,7 +402,7 @@ describe('supervision pendant qu’un agent travaille', () => {
     expect(notice!.textContent).not.toContain('based_on_version')
   })
 
-  it('conserve la saisie humaine quand l’agent écrit pendant la frappe', async () => {
+  it('keeps what the human is typing while the agent writes', async () => {
     type('new-constraint', 'Do not touch the rou')
     const field = root.querySelector<HTMLInputElement>('#new-constraint')!
     field.focus()
@@ -426,7 +426,7 @@ describe('supervision pendant qu’un agent travaille', () => {
   })
 })
 
-describe('tâche close', () => {
+describe('closed task', () => {
   beforeEach(async () => {
     await store.openPreparedTask(buildDemoTask())
     await store.mutate((s) =>
@@ -435,17 +435,17 @@ describe('tâche close', () => {
     await settled()
   })
 
-  it('annonce la clôture et son résumé', async () => {
+  it('announces the closing and its summary', async () => {
     expect(text()).toContain('Task closed')
     expect(text()).toContain('Approach C shipped.')
   })
 
-  it('retire les formulaires d’écriture humaine', async () => {
+  it('removes the human writing forms', async () => {
     expect(root.querySelector('#form-constraint')).toBeNull()
     expect(root.querySelector('#form-rejection')).toBeNull()
   })
 
-  it('laisse l’humain rouvrir ce que l’agent a clos', async () => {
+  it('lets the human reopen what the agent closed', async () => {
     const prompt = vi.spyOn(window, 'prompt').mockReturnValue('Rotation still needs measuring')
     button('Reopen this task').click()
     await settled()
@@ -458,8 +458,8 @@ describe('tâche close', () => {
   })
 })
 
-describe('détails techniques', () => {
-  it('montre les outils relus par getTools() et la politique de retrait', async () => {
+describe('technical details', () => {
+  it('shows the tools getTools() reads back and the withdrawal policy', async () => {
     const fake = installModelContext()
     __resetRegistration()
     await store.openPreparedTask(buildDemoTask())
@@ -481,7 +481,7 @@ describe('détails techniques', () => {
   })
 })
 
-describe('un message de succès ne s’installe pas', () => {
+describe('a success message does not settle in', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -508,7 +508,7 @@ describe('un message de succès ne s’installe pas', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('s’efface tout seul, au lieu de prétendre indéfiniment que l’on vient de copier', async () => {
+  it('clears itself, instead of claiming forever that something was just copied', async () => {
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: () => Promise.resolve() },
@@ -522,8 +522,8 @@ describe('un message de succès ne s’installe pas', () => {
     await vi.advanceTimersByTimeAsync(NOTICE_TTL + 1000)
     __renderNow()
 
-    // Un message qui reste affirme, une minute plus tard, qu'une action vient
-    // d'avoir lieu. Il faut le lire comme faux.
+    // A notice that stays claims, a minute later, that an action has just
+    // happened. It has to be read as false.
     expect(root.querySelector('.notice--ok')).toBeNull()
   })
 })

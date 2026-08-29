@@ -1,29 +1,29 @@
 /**
- * Chrome recommande 1,5 k caractères par sortie d'outil, sans limite dure : on remplit donc
- * jusqu'au budget et non jusqu'au compte, douze extraits de 240 caractères en faisant 6296.
- * Deux exemptions : `read_task_detail`, qui borné à 1,5 k ne rendait qu'une ou deux entrées
- * par page dès qu'une preuve était jointe, et `resume_task`, qui a son propre budget en
- * tokens, soit 1600 caractères, 1528 rendus en pratique.
+ * Chrome recommends 1.5 k characters per tool output, with no hard limit: so we fill up to the
+ * budget and not up to a count, twelve 240-character excerpts making 6296.
+ * Two exemptions: `read_task_detail`, which capped at 1.5 k returned only one or two entries
+ * per page as soon as evidence was attached, and `resume_task`, which has its own budget in
+ * tokens, that is 1600 characters, 1528 rendered in practice.
  * https://developer.chrome.com/docs/ai/webmcp/secure-tools
  */
 export const MAX_TOOL_OUTPUT = 1_500
 
 /**
- * De la place tenue d'avance pour l'en-tête et le pied, qui dépendent du
- * nombre d'entrées finalement retenues, donc du résultat de la boucle qui les
- * choisit. Réserver large lève la circularité sans compliquer le calcul.
+ * Room set aside up front for the header and the footer, which depend on the
+ * number of entries finally kept, so on the result of the loop that picks
+ * them. Reserving generously lifts the circularity without complicating the count.
  */
 export const OUTPUT_FRAME = 300
 
 /**
- * Ce qui reste pour les entrées elles-mêmes.
+ * What is left for the entries themselves.
  */
 export const OUTPUT_BODY = MAX_TOOL_OUTPUT - OUTPUT_FRAME
 
 /**
- * Remplit jusqu'au budget plutôt que jusqu'au compte, et rend TOUJOURS au moins
- * un élément : une entrée plus grosse que le budget rendrait sinon une page
- * vide, et la pagination n'avancerait jamais.
+ * Fills up to the budget rather than up to a count, and ALWAYS returns at least
+ * one item: an entry bigger than the budget would otherwise return an empty
+ * page, and pagination would never advance.
  */
 export function fitting<T>(items: readonly T[], cost: (item: T) => number): T[] {
   const kept: T[] = []

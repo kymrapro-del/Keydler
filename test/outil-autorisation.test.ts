@@ -29,12 +29,12 @@ afterEach(() => {
 })
 
 describe('request_approval', () => {
-  it('est une écriture, et déclarée comme telle', () => {
+  it('is a write, and is declared as one', () => {
     expect(WRITE_TOOLS).toContain(requestApprovalTool)
     expect(requestApprovalTool.annotations?.readOnlyHint).toBe(false)
   })
 
-  it('attend la décision, puis rend l’autorisation', async () => {
+  it('waits for the decision, then returns the approval', async () => {
     const pending = call(
       requestApprovalTool,
       writeArgs(currentTask(), {
@@ -51,7 +51,7 @@ describe('request_approval', () => {
     expect(textOf(result)).toContain('Run the migration')
   })
 
-  it('rend un refus comme une erreur, pour que l’agent ne passe pas outre', async () => {
+  it('returns a denial as an error, so the agent cannot walk past it', async () => {
     const pending = call(
       requestApprovalTool,
       writeArgs(currentTask(), { action: 'Drop the index', why: 'It is not reversible.' }),
@@ -65,7 +65,7 @@ describe('request_approval', () => {
     expect(textOf(result)).toContain('Do not do it')
   })
 
-  it('abandonne au bout du délai, sans jamais appeler cela une autorisation', async () => {
+  it('gives up when the timeout runs out, and never calls that an approval', async () => {
     __setApprovalTimeout(40)
     const result = await call(
       requestApprovalTool,
@@ -73,16 +73,16 @@ describe('request_approval', () => {
     )
 
     expect(result.isError).toBe(true)
-    const texte = textOf(result)
-    expect(texte).toContain('NO ANSWER')
-    expect(texte).not.toContain('ALLOWED')
-    // Le silence n'est pas un accord : c'est la phrase qui compte le plus ici.
-    expect(texte.toLowerCase()).toContain('is not approval')
-    // La demande reste ouverte : l'humain la trouvera en revenant.
+    const text = textOf(result)
+    expect(text).toContain('NO ANSWER')
+    expect(text).not.toContain('ALLOWED')
+    // Silence is not approval: that is the sentence that matters most here.
+    expect(text.toLowerCase()).toContain('is not approval')
+    // The request stays open: the human will find it on coming back.
     expect(pendingApprovals(currentTask())).toHaveLength(1)
   })
 
-  it('écrit la demande même si personne ne répond, pour qu’elle survive', async () => {
+  it('writes the request even when nobody answers, so that it survives', async () => {
     __setApprovalTimeout(40)
     const before = currentTask().version
     await call(
@@ -92,7 +92,7 @@ describe('request_approval', () => {
     expect(currentTask().version).toBe(before + 1)
   })
 
-  it('renonce dès que l’exécution est annulée, sans attendre le délai', async () => {
+  it('gives up as soon as the call is cancelled, without waiting for the timeout', async () => {
     __setApprovalTimeout(60_000)
     const controller = new AbortController()
     const pending = call(
@@ -109,7 +109,7 @@ describe('request_approval', () => {
     expect(textOf(result)).toMatch(/cancel/i)
   })
 
-  it('rejoue une reprise sans redemander, et rend la décision déjà prise', async () => {
+  it('replays a retry without asking again, and returns the decision already made', async () => {
     const args = writeArgs(currentTask(), {
       action: 'Run the migration',
       why: 'It rewrites 40k rows.',
@@ -124,22 +124,22 @@ describe('request_approval', () => {
     expect(currentTask().approvals).toHaveLength(1)
   })
 
-  it('ne rend JAMAIS la décision d’une demande antérieure au même libellé', async () => {
-    const même = {
+  it('NEVER returns the decision of an earlier request with the same wording', async () => {
+    const same = {
       action: 'Run the migration against the staging replica',
       why: 'It rewrites 40k rows.',
     }
 
-    // Première demande : autorisée.
-    const first = call(requestApprovalTool, writeArgs(currentTask(), même))
+    // First request: allowed.
+    const first = call(requestApprovalTool, writeArgs(currentTask(), same))
     await decide('allowed')
     expect(textOf(await first)).toContain('ALLOWED')
 
-    // Seconde demande, identique mot pour mot, mais NOUVELLE. Rendre le « allowed »
-    // d'hier autoriserait une action que personne n'a validée. C'est la pire
-    // défaillance possible pour cet outil.
+    // Second request, word for word identical, but NEW. Returning yesterday's
+    // “allowed” would authorize an action nobody signed off. It is the worst
+    // failure this tool can have.
     __setApprovalTimeout(60)
-    const second = await call(requestApprovalTool, writeArgs(currentTask(), même))
+    const second = await call(requestApprovalTool, writeArgs(currentTask(), same))
 
     expect(textOf(second)).toContain('NO ANSWER')
     expect(textOf(second)).not.toContain('ALLOWED by the human')
@@ -147,7 +147,7 @@ describe('request_approval', () => {
     expect(pendingApprovals(currentTask())).toHaveLength(1)
   })
 
-  it('refuse une demande sans motif', async () => {
+  it('refuses a request with no reason', async () => {
     const result = await call(
       requestApprovalTool,
       writeArgs(currentTask(), { action: 'Do the thing' }),

@@ -117,11 +117,11 @@ afterEach(() => {
   history.replaceState(null, '', '/')
 })
 
-// Mesuré avant ces bornes : 2000 règles portaient un aller-retour de rendu de 17 ms à
-// 501 ms, pour 1,2 Mo de HTML et 10 000 nœuds, et la page se redessine à chaque
-// frappe dans la recherche.
-describe('la page ne grandit pas avec les données', () => {
-  it('garde le même ordre de grandeur avec cent fois plus de tout', async () => {
+// Measured before these caps: 2000 rules took a render round trip from 17 ms to
+// 501 ms, for 1.2 MB of HTML and 10,000 nodes, and the page repaints on every
+// keystroke in the search field.
+describe('the page does not grow with the data', () => {
+  it('keeps the same order of magnitude with a hundred times more of everything', async () => {
     await open({
       constraints: rules(500),
       rejected: rejections(500),
@@ -131,15 +131,15 @@ describe('la page ne grandit pas avec les données', () => {
     })
 
     const nœuds = root.querySelectorAll('*').length
-    const taille = root.innerHTML.length
+    const size = root.innerHTML.length
 
     expect(nœuds).toBeLessThan(1200)
-    expect(taille).toBeLessThan(300_000)
+    expect(size).toBeLessThan(300_000)
   })
 
-  it('borne chaque liste séparément, pour qu’aucune ne passe entre les mailles', async () => {
-    // Une seule liste laissée libre suffirait à faire tomber la page ; le
-    // test les prend donc une par une, sans que les autres la masquent.
+  it('bounds each list separately, so that none slips through the net', async () => {
+    // A single unbounded list would be enough to bring the page down; the test
+    // therefore takes them one at a time, with no other list masking it.
     for (const [nom, champ] of [
       ['règles', { constraints: rules(400) }],
       ['approches écartées', { rejected: rejections(400) }],
@@ -153,8 +153,8 @@ describe('la page ne grandit pas avec les données', () => {
   })
 })
 
-describe('ce qui est caché est dit, et reste atteignable', () => {
-  it('annonce le nombre de règles et les déplie toutes', async () => {
+describe('what is hidden is said, and stays reachable', () => {
+  it('announces how many rules there are and unfolds them all', async () => {
     await open({ constraints: rules(40) })
 
     expect(card('rules-title').querySelectorAll('.rows li').length).toBe(12)
@@ -165,17 +165,17 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
     expect(cardText('rules-title')).toContain('Show fewer')
   })
 
-  it('avertit quand ce qui est hors de vue ENGAGE encore', async () => {
+  it('warns when what is out of sight STILL BINDS', async () => {
     await open({ constraints: rules(40) })
     expect(cardText('rules-title')).toContain('28 rules still in force are not shown')
 
     button('Show all 40 rules').click()
     __renderNow()
-    // Une fois tout à l'écran, plus rien n'est caché : l'avertissement s'en va.
+    // Once everything is on screen nothing is hidden: the warning goes away.
     expect(text()).not.toContain('still in force are not shown')
   })
 
-  it('ne crie pas au loup pour des règles simplement levées', async () => {
+  it('does not cry wolf over rules that were merely lifted', async () => {
     await open({
       constraints: [...rules(6), ...rules(40, false).map((c) => ({ ...c, id: `x${c.id}` }))],
     })
@@ -184,13 +184,13 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
     expect(cardText('rules-title')).not.toContain('still in force are not shown')
   })
 
-  it('n’offre pas de bouton quand tout tient déjà à l’écran', async () => {
+  it('offers no button when everything already fits on screen', async () => {
     await open({ constraints: rules(5) })
     expect(cardText('rules-title')).not.toContain('Show all')
     expect(cardText('rules-title')).not.toContain('Show fewer')
   })
 
-  it('déplie aussi les approches écartées, les questions et les autorisations', async () => {
+  it('unfolds the rejected approaches, the questions and the permission requests too', async () => {
     await open({
       rejected: rejections(30),
       questions: questions(30),
@@ -204,38 +204,38 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
 })
 
 /**
- * Le rendu est réveillé par le magasin, par les appels d'outil et par les
- * enregistrements ; beaucoup de ces réveils ne changent rien. Mesuré sur la
- * suite d'interface : 30 % des rendus produisaient un HTML identique.
+ * The render is woken by the store, by tool calls and by writes; many of those
+ * wakeups change nothing. Measured on the interface suite: 30% of the renders
+ * produced identical HTML.
  */
-describe('ne redessine pas ce qui n’a pas changé', () => {
-  it('garde les mêmes nœuds quand rien ne bouge', async () => {
+describe('does not repaint what has not changed', () => {
+  it('keeps the same nodes when nothing moves', async () => {
     await open({ constraints: rules(3) })
-    const avant = card('rules-title')
+    const beforeState = card('rules-title')
 
     __renderNow()
     __renderNow()
 
-    // Le même objet DOM, pas seulement le même texte : c'est la preuve que
-    // rien n'a été reconstruit.
-    expect(card('rules-title')).toBe(avant)
+    // The same DOM object, not just the same text: that is the proof that
+    // nothing was rebuilt.
+    expect(card('rules-title')).toBe(beforeState)
   })
 
-  it('redessine dès que l’état change vraiment', async () => {
+  it('repaints as soon as the state really changes', async () => {
     await open({ constraints: rules(3) })
-    const avant = card('rules-title')
+    const beforeState = card('rules-title')
 
     await store.mutate((s) => ({ ...s, version: s.version + 1, constraints: rules(4) }))
     __renderNow()
 
-    expect(card('rules-title')).not.toBe(avant)
+    expect(card('rules-title')).not.toBe(beforeState)
     expect(cardText('rules-title')).toContain('shard 3')
   })
 
-  it('peint une racine neuve, même si l’état est resté le même', async () => {
-    // Le piège de l'optimisation : se souvenir du HTML déjà peint sans
-    // remarquer que la racine, elle, a été remplacée, et laisser une page
-    // blanche.
+  it('paints a fresh root, even when the state stayed the same', async () => {
+    // The trap of the optimization: remembering the HTML already painted
+    // without noticing that the root itself was replaced, and leaving a blank
+    // page.
     await open({ constraints: rules(3) })
     const attendu = root.innerHTML
     expect(attendu).not.toBe('')
@@ -250,7 +250,7 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
     expect(cardText('rules-title')).toContain('shard 0')
   })
 
-  it('ne fait pas perdre le curseur dans un champ pendant un rendu à vide', async () => {
+  it('does not lose the cursor in a field during a render that changes nothing', async () => {
     await open({ constraints: rules(3) })
     const champ = root.querySelector<HTMLInputElement>('#new-constraint')!
     champ.value = 'Never deploy on a Friday'
@@ -261,15 +261,15 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
     root.querySelector<HTMLInputElement>('#new-constraint')!.setSelectionRange(6, 6)
     __renderNow()
 
-    const après = root.querySelector<HTMLInputElement>('#new-constraint')!
-    expect(document.activeElement).toBe(après)
-    expect(après.selectionStart).toBe(6)
+    const after = root.querySelector<HTMLInputElement>('#new-constraint')!
+    expect(document.activeElement).toBe(after)
+    expect(after.selectionStart).toBe(6)
   })
 })
 
-describe('le poste entier ne fait pas grandir la page non plus', () => {
-  async function poser(nombre: number): Promise<void> {
-    for (let i = 0; i < nombre; i++) {
+describe('the whole device does not grow the page either', () => {
+  async function poser(count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
       await store.openPreparedTask({
         ...buildCoreTask(),
         id: `t${i}`,
@@ -279,17 +279,17 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
       })
     }
     __renderNow()
-    // La liste des cahiers est relue de façon asynchrone après le rendu.
+    // The task list is re-read asynchronously after the render.
     await waitUntil(
-      () => (root.textContent ?? '').includes(`${nombre} tasks on this device`),
+      () => (root.textContent ?? '').includes(`${count} tasks on this device`),
       'la liste des cahiers',
     )
     __renderNow()
   }
 
-  it('borne le sélecteur de cahiers, qui balaie chaque cahier du poste', async () => {
-    // `needsYou` parcourt les étapes de CHAQUE cahier pour sa pastille : la
-    // page coûtait donc le poste entier, et pas seulement le cahier ouvert.
+  it('bounds the task switcher, which sweeps every task on the device', async () => {
+    // `needsYou` walks the steps of EVERY task for its badge: the page
+    // therefore cost the whole device, not just the open task.
     await poser(40)
 
     const switcher = root.querySelector<HTMLElement>('.switcher')!
@@ -299,12 +299,12 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
 })
 
 /**
- * Le sélecteur gardait les cahiers ENTIERS en mémoire : tout le poste, en
- * permanence, pour une liste déroulante repliée. Mesuré : 1,5 Mo en tas pour
- * un cahier de 1000 étapes, 29,6 Mo pour 20 000.
+ * The switcher kept WHOLE tasks in memory: the entire device, permanently, for
+ * a collapsed dropdown. Measured: 1.5 MB on the heap for a task of 1000 steps,
+ * 29.6 MB for 20,000.
  */
-describe('la liste des cahiers ne retient pas les cahiers', () => {
-  it('ne rend que ce que le sélecteur affiche', async () => {
+describe('the task list does not hold on to the tasks', () => {
+  it('returns only what the switcher shows', async () => {
     await store.openPreparedTask({
       ...buildCoreTask(),
       id: 'gros',
@@ -317,28 +317,28 @@ describe('la liste des cahiers ne retient pas les cahiers', () => {
     const carte = cards.find((c) => c.id === 'gros')!
 
     expect(carte.title).toBe('Gros cahier')
-    // Ce qui pèse n'est pas là. Un test de mémoire clignoterait ; celui-ci dit
-    // la même chose et ne clignote pas.
+    // What weighs is not there. A memory test would flake; this one says the
+    // same thing and does not flake.
     for (const lourd of ['steps', 'audit', 'mutations', 'decisions', 'rejected', 'constraints']) {
       expect(Object.keys(carte), lourd).not.toContain(lourd)
     }
-    // Et ce qui doit survivre à la réduction survit : la pastille est calculée
-    // avant que le cahier ne soit relâché.
+    // And what must survive the trimming survives: the badge is computed
+    // before the task is released.
     expect(carte.needs.some((n) => n.kind === 'question')).toBe(true)
   })
 })
 
-// Le panneau technique montre ce que `resume_task` rendrait : 5 ms sur un cahier de
-// 20 000 étapes, recalculé à chaque frappe, donc mémorisé. Une mémorisation qui rate
-// son invalidation montre un état périmé, pire que lent dans un produit dont c'est
-// le sujet.
-describe('l’aperçu de ce que lit l’agent reste à jour', () => {
+// The technical panel shows what `resume_task` would return: 5 ms on a task of
+// 20,000 steps, recomputed on every keystroke, hence memoized. A memo that misses
+// its invalidation shows stale state, worse than slow in a product whose subject
+// is exactly that.
+describe('the preview of what the agent reads stays current', () => {
   function apercu(): string {
     const pre = [...root.querySelectorAll('pre')].find((p) => p.textContent?.includes('TASK ID'))
     return pre?.textContent ?? ''
   }
 
-  it('suit la moindre écriture', async () => {
+  it('follows the slightest write', async () => {
     await open({ steps: steps(3) })
     expect(apercu()).toContain('3 steps logged')
 
@@ -358,7 +358,7 @@ describe('l’aperçu de ce que lit l’agent reste à jour', () => {
     expect(apercu()).toContain('Ran one more shard')
   })
 
-  it('suit un changement de cahier', async () => {
+  it('follows a change of task', async () => {
     await open({ id: 'un', title: 'Premier', steps: steps(1) })
     expect(apercu()).toContain('Premier')
 
@@ -369,11 +369,11 @@ describe('l’aperçu de ce que lit l’agent reste à jour', () => {
 })
 
 /**
- * L'export emporte les preuves telles quelles. Le README le disait ; l'écran,
- * non, et c'est l'écran qu'on lit avant de cliquer.
+ * The export carries the evidence as it is. The README said so; the screen did
+ * not, and the screen is what you read before clicking.
  */
-describe('l’export dit ce qu’il emporte', () => {
-  it('nomme les preuves, et ce qui ne peut pas partir', async () => {
+describe('the export says what it carries away', () => {
+  it('names the evidence, and what cannot leave', async () => {
     await open({ steps: steps(2) })
 
     const panneau = [...root.querySelectorAll('details')]

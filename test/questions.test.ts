@@ -12,8 +12,8 @@ beforeEach(() => {
   task = buildDemoTask()
 })
 
-describe('une question pour l’humain', () => {
-  it('est posée par l’agent, et reste ouverte tant que personne n’a répondu', () => {
+describe('a question for the human', () => {
+  it('is asked by the agent, and stays open until someone answers', () => {
     const next = askHuman(
       task,
       {
@@ -35,13 +35,13 @@ describe('une question pour l’humain', () => {
     expect(next.audit.at(-1)).toMatchObject({ operation: 'ask_human', outcome: 'applied' })
   })
 
-  it('exige un motif : une question sans son pourquoi ne se répond pas', () => {
+  it('requires a reason: a question without its why cannot be answered', () => {
     expect(() =>
       askHuman(task, { question: 'Should I?', why: '', basedOnVersion: null }, 'agent'),
     ).toThrow(ValidationError)
   })
 
-  it('se ferme par une réponse humaine, qui est conservée', () => {
+  it('closes on a human answer, which is kept', () => {
     const asked = askHuman(
       task,
       {
@@ -60,7 +60,7 @@ describe('une question pour l’humain', () => {
     expect(answered.audit.at(-1)).toMatchObject({ operation: 'answer_question', actor: 'human' })
   })
 
-  it('refuse de répondre deux fois plutôt que d’écraser la première réponse', () => {
+  it('refuses to answer twice rather than overwrite the first answer', () => {
     const asked = askHuman(
       task,
       { question: 'Which region?', why: 'It changes the endpoint.', basedOnVersion: null },
@@ -72,11 +72,11 @@ describe('une question pour l’humain', () => {
     expect(() => answerQuestion(once, id, 'us-east-1')).toThrow(ValidationError)
   })
 
-  it('refuse une réponse à une question qui n’existe pas', () => {
+  it('refuses an answer to a question that does not exist', () => {
     expect(() => answerQuestion(task, 'nope', 'anything')).toThrow(ValidationError)
   })
 
-  it('refuse une nouvelle question sur une tâche close', () => {
+  it('refuses a new question on a closed task', () => {
     const closed = { ...task, status: 'completed' as const }
     expect(() =>
       askHuman(closed, { question: 'a?', why: 'b', basedOnVersion: null }, 'agent'),
@@ -84,7 +84,7 @@ describe('une question pour l’humain', () => {
   })
 })
 
-describe('ce que l’agent suivant en voit', () => {
+describe('what the next agent sees of it', () => {
   function withQuestion(): TaskState {
     return askHuman(
       task,
@@ -97,18 +97,18 @@ describe('ce que l’agent suivant en voit', () => {
     )
   }
 
-  it('place une question ouverte au-dessus du travail ancien', () => {
+  it('puts an open question above the old work', () => {
     const rendered = renderTaskState(withQuestion())
 
     expect(rendered).toContain('WAITING ON THE HUMAN')
     expect(rendered).toContain('Which of the five telemetry baselines')
-    // Une conversation qui reprend doit voir tout de suite qu'elle est bloquée,
-    // avant de dépenser son budget à refaire le travail.
+    // A conversation picking up again has to see at once that it is blocked,
+    // before spending its budget redoing the work.
     expect(rendered.indexOf('WAITING ON THE HUMAN')).toBeLessThan(rendered.indexOf('RECENT WORK'))
     expect(estimateTokens(rendered)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
-  it('rend la réponse humaine, qui est la raison d’avoir posé la question', () => {
+  it('renders the human answer, which is the reason for asking', () => {
     const asked = withQuestion()
     const answered = answerQuestion(asked, openQuestions(asked)[0].id, 'Use the p95 baselines.')
     const rendered = renderTaskState(answered)
@@ -117,13 +117,13 @@ describe('ce que l’agent suivant en voit', () => {
     expect(rendered).toContain('ANSWERED BY THE HUMAN')
   })
 
-  it('n’invente pas de section quand rien n’a été demandé', () => {
+  it('invents no section when nothing was asked', () => {
     const rendered = renderTaskState(task)
     expect(rendered).not.toContain('WAITING ON THE HUMAN')
     expect(rendered).not.toContain('ANSWERED BY THE HUMAN')
   })
 
-  it('se relit en entier par read_task_detail', () => {
+  it('reads back in full through read_task_detail', () => {
     const asked = withQuestion()
     const rendered = renderDetail(asked, {
       section: 'questions',

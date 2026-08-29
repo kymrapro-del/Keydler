@@ -13,11 +13,11 @@ import { WrongPassphraseError } from '../src/persistence/vault'
 
 const PHRASE = 'la phrase que je t’ai dite au téléphone'
 
-// Un fragment d'URL est une capacité au porteur : vérifier une identité
-// demanderait un serveur, exiger la connaissance d'un secret non. Ce n'est PAS
-// la même chose, et ces épreuves disent laquelle des deux est tenue.
-describe('un lien qu’une phrase de passe protège', () => {
-  it('se rouvre avec la bonne phrase, et rend le cahier intact', async () => {
+// A URL fragment is a bearer capability: checking an identity would need a
+// server, demanding knowledge of a secret does not. That is NOT the same thing,
+// and these tests say which of the two is held.
+describe('a link a passphrase protects', () => {
+  it('reopens with the right passphrase, and returns the task intact', async () => {
     const task = buildDemoTask()
     const packed = await packSealedTask(task, PHRASE)
 
@@ -29,21 +29,21 @@ describe('un lien qu’une phrase de passe protège', () => {
     expect(relu.constraints.map((c) => c.rule)).toEqual(task.constraints.map((c) => c.rule))
   })
 
-  it('refuse une phrase fausse, et le dit comme une phrase fausse', async () => {
-    // Pas « ce lien est illisible » : quelqu'un qui vient de taper une phrase
-    // doit savoir que c'est la phrase qui est en cause, pas le lien.
+  it('refuses a wrong passphrase, and says so as a wrong passphrase', async () => {
+    // Not "this link is unreadable": someone who has just typed a passphrase
+    // has to know that the passphrase is at fault, not the link.
     const packed = await packSealedTask(buildDemoTask(), PHRASE)
     await expect(unsealTask(packed, 'pas la bonne phrase du tout')).rejects.toBeInstanceOf(
       WrongPassphraseError,
     )
   })
 
-  it('ne laisse rien de lisible dans le lien', async () => {
+  it('leaves nothing readable in the link', async () => {
     const task = buildDemoTask()
     const packed = await packSealedTask(task, PHRASE)
 
-    // Le titre, une règle et une étape : rien ne doit transparaître, ni en
-    // clair ni en base64 du clair.
+    // The title, a rule and a step: nothing must show through, neither in the
+    // clear nor as base64 of the clear.
     for (const secret of [task.title, task.constraints[0].rule, task.steps[0].action, task.id]) {
       expect(packed, secret).not.toContain(secret)
       expect(packed, `${secret} (base64)`).not.toContain(
@@ -52,54 +52,54 @@ describe('un lien qu’une phrase de passe protège', () => {
     }
   })
 
-  it('produit un lien différent à chaque fois, sur le même cahier', async () => {
-    // Sel et IV tirés au hasard : deux liens identiques révéleraient qu'ils
-    // portent le même cahier, à qui les verrait passer tous les deux.
+  it('produces a different link every time, on the same task', async () => {
+    // Salt and IV drawn at random: two identical links would reveal that they
+    // carry the same log, to anyone who saw both go by.
     const task = buildDemoTask()
-    const un = await packSealedTask(task, PHRASE)
+    const plain = await packSealedTask(task, PHRASE)
     const deux = await packSealedTask(task, PHRASE)
-    expect(un).not.toBe(deux)
+    expect(plain).not.toBe(deux)
   })
 
-  it('reste sous la borne de longueur, et le dit s’il la dépasse', async () => {
+  it('stays under the length bound, and says so when it goes over', async () => {
     const packed = await packSealedTask(buildDemoTask(), PHRASE)
     expect(packed.length).toBeLessThanOrEqual(MAX_LINK_LENGTH)
 
-    // Il faut du contenu qui ne se compresse PAS : 60 000 « x » tiennent dans
-    // quelques centaines d'octets une fois gzippés, et passeraient la borne.
+    // We need content that does NOT compress: 60,000 "x" fit in a few hundred
+    // bytes once gzipped, and would pass the bound.
     const bruit = Array.from(
       { length: 4000 },
       (_, i) => `${i}-${Math.abs(Math.sin(i) * 1e15).toString(36)}`,
     ).join(' ')
-    const énorme = { ...buildDemoTask(), title: bruit }
-    await expect(packSealedTask(énorme, PHRASE)).rejects.toThrow(/Export this task/)
+    const huge = { ...buildDemoTask(), title: bruit }
+    await expect(packSealedTask(huge, PHRASE)).rejects.toThrow(/Export this task/)
   })
 
-  it('refuse une phrase vide plutôt que de sceller avec rien', async () => {
+  it('refuses an empty passphrase rather than sealing with nothing', async () => {
     await expect(packSealedTask(buildDemoTask(), '   ')).rejects.toThrow()
   })
 })
 
-describe('les deux sortes de liens ne se confondent pas', () => {
-  it('reconnaît un lien ordinaire comme non protégé', async () => {
+describe('the two kinds of link are never confused', () => {
+  it('recognises an ordinary link as unprotected', async () => {
     const packed = await packTask(buildDemoTask())
     expect(isSealedLink(packed)).toBe(false)
     expect((await unpackTask(packed)).title).toBe(buildDemoTask().title)
   })
 
-  it('refuse de desceller un lien qui n’est pas scellé', async () => {
+  it('refuses to unseal a link that is not sealed', async () => {
     const packed = await packTask(buildDemoTask())
     await expect(unsealTask(packed, PHRASE)).rejects.toBeInstanceOf(UnreadableLinkError)
   })
 
-  it('refuse d’ouvrir un lien scellé par le chemin ordinaire', async () => {
-    // Sans quoi le destinataire verrait « lien illisible » là où il faut lui
-    // demander une phrase.
+  it('refuses to open a sealed link by the ordinary path', async () => {
+    // Without this the recipient would see "unreadable link" where they should
+    // be asked for a passphrase.
     const packed = await packSealedTask(buildDemoTask(), PHRASE)
     await expect(unpackTask(packed)).rejects.toBeInstanceOf(UnreadableLinkError)
   })
 
-  it('refuse un lien scellé tronqué ou bricolé', async () => {
+  it('refuses a sealed link that is truncated or tampered with', async () => {
     const packed = await packSealedTask(buildDemoTask(), PHRASE)
     await expect(unsealTask(packed.slice(0, packed.length - 40), PHRASE)).rejects.toThrow()
     await expect(unsealTask('s' + 'A'.repeat(200), PHRASE)).rejects.toBeInstanceOf(

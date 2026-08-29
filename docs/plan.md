@@ -1,296 +1,290 @@
-# Plan de développement : Cahier de quart
+# Development plan: watch log
 
-> Échéance : 3 septembre 2026, 13 h PDT (22 h Paris).
-> Cible de dépôt : 2 septembre au soir. Le 3 n'est qu'un filet.
-> Dépôt remis à zéro le 26 août.
-
----
-
-## 1. La répartition
-
-C'est le seul point à verrouiller avant d'écrire une ligne. Tant qu'il est
-flou, chaque tâche risque de tomber entre les deux.
-
-| Voie          | Qui   | Contenu                                                                                           |
-| ------------- | ----- | ------------------------------------------------------------------------------------------------- |
-| Design        | Kymra | Charte, couleurs, typographie, formes, apparence de chaque écran                                  |
-| Network       | Kymra | Hébergement, URL publique, dépôt public, description de soumission, dépôt de la candidature       |
-| Tout le reste | Moon  | Architecture, domaine, WebMCP, persistance, code de l'interface, tests, CI, documentation, mesure |
-
-Autrement dit : le _comportement_ de l'interface est dans la voie de Moon, son
-_apparence_ dans celle de Kymra. Un écran existe, s'affiche et réagit parce que
-Moon l'a codé ; il est beau parce que Kymra l'a habillé.
-
-La vidéo est une vidéo de présentation, produite à la fin. Elle explique ce
-qui a été construit et l'usage fait de WebMCP ; elle ne dépend donc pas d'un
-refus d'écriture capté en direct. Décidé le 26 août.
+> Deadline: September 3, 2026, 13:00 PDT (22:00 Paris).
+> Target for filing: the evening of September 2. The 3rd is only a safety net.
+> Repository reset to zero on August 26.
 
 ---
 
-## 2. Le contrat entre les deux voies
+## 1. The split
 
-Pour que Kymra puisse travailler sans jamais toucher à la logique, et Moon sans
-jamais attendre la charte :
+This is the only point to lock down before writing a line. As long as it stays
+vague, every task risks falling between the two.
 
-- **Aucune valeur visuelle en dur dans un composant.** Couleur, espacement,
-  typographie, rayon, ombre : tout passe par des variables CSS déclarées dans un
-  seul fichier de jetons.
-- **Moon livre ce fichier avec des valeurs neutres**, lisibles et accessibles,
-  mais sans prétention esthétique. C'est un point de départ, pas une
-  proposition de design.
-- **Kymra réécrit ce fichier**, et rien d'autre. Le reste du code ne bouge pas,
-  les tests continuent de passer.
-- **Le balisage est sémantique** (titres, listes, formulaires, régions) pour
-  que restyler ne demande jamais de restructurer.
+| Track           | Who   | Content                                                                                          |
+| --------------- | ----- | ------------------------------------------------------------------------------------------------ |
+| Design          | Kymra | Style guide, colors, typography, shapes, the look of every screen                                |
+| Network         | Kymra | Hosting, public URL, public repository, submission description, filing the entry                 |
+| Everything else | Moon  | Architecture, domain, WebMCP, persistence, interface code, tests, CI, documentation, measurement |
 
-Ce contrat est ce qui permet aux deux voies d'avancer en parallèle au lieu de
-se bloquer l'une l'autre.
+Put differently: the _behavior_ of the interface is in Moon's track, its
+_appearance_ in Kymra's. A screen exists, displays and reacts because Moon coded
+it; it is beautiful because Kymra dressed it.
+
+The video is a presentation video, produced at the end. It explains what was
+built and the use made of WebMCP; it therefore does not depend on catching a
+write refusal live. Decided on August 26.
 
 ---
 
-## 3. Périmètre technique proposé
+## 2. The contract between the two tracks
 
-> À confirmer avant le J2. Ce périmètre est celui qui rend la démonstration
-> possible ; le réduire davantage retire un pilier.
+So that Kymra can work without ever touching the logic, and Moon without ever
+waiting on the style guide:
 
-- **Six outils WebMCP** : `resume_task`, `log_step`, `add_constraint`,
+- **No visual value hard-coded in a component.** Color, spacing, typography,
+  radius, shadow: everything goes through CSS variables declared in a single
+  token file.
+- **Moon delivers that file with neutral values**, readable and accessible, but
+  with no aesthetic pretension. It is a starting point, not a design
+  proposal.
+- **Kymra rewrites that file**, and nothing else. The rest of the code does not
+  move, the tests keep passing.
+- **The markup is semantic** (headings, lists, forms, regions) so that
+  restyling never calls for restructuring.
+
+This contract is what lets the two tracks move forward in parallel instead of
+blocking each other.
+
+---
+
+## 3. Proposed technical scope
+
+> To confirm before D2. This scope is the one that makes the demonstration
+> possible; cutting it further removes a pillar.
+
+- **Six WebMCP tools**: `resume_task`, `log_step`, `add_constraint`,
   `reject_approach`, `add_decision`, `complete_task`.
-- **État versionné** : toute mutation appliquée incrémente la version.
-- **Refus d'écriture périmée** : toute écriture d'agent porte la version sur
-  laquelle il croit travailler ; une divergence est refusée, jamais fusionnée.
-- **Écriture humaine autoritaire** : sans version, jamais refusée. C'est elle
-  qui périme celle de l'agent. Toute la supervision tient dans cette asymétrie.
-- **Persistance locale** IndexedDB. Ni compte, ni serveur : cela supprime
-  l'authentification et rend la démonstration reproductible immédiatement.
-- **Degrés de preuve** distinguant travail prouvé et travail affirmé.
+- **Versioned state**: every applied mutation increments the version.
+- **Stale writes refused**: every agent write carries the version it believes it
+  is working on; a divergence is refused, never merged.
+- **The human write is authoritative**: no version, never refused. It is what
+  makes the agent's write stale. All of the supervision rests on that asymmetry.
+- **Local persistence** in IndexedDB. No account, no server: this removes
+  authentication and makes the demonstration reproducible immediately.
+- **Degrees of proof** distinguishing proven work from asserted work.
 
-### Correction technique par rapport au plan initial
+### Technical correction to the initial plan
 
-`navigator.modelContext` est déprécié depuis Chrome 150 : la spécification a
-déplacé le getter vers `Document` dans le brouillon du 27 mai 2026. Le code doit
-cibler `document.modelContext` avec repli sur l'ancienne forme, et cette
-instabilité doit rester enfermée dans un seul adaptateur.
+`navigator.modelContext` has been deprecated since Chrome 150: the specification
+moved the getter to `Document` in the May 27, 2026 draft. The code must target
+`document.modelContext` with a fallback to the old form, and that instability
+must stay sealed inside a single adapter.
 
-### Les quatre choses qui ne se coupent jamais
+### The four things that never get cut
 
-Le pointeur permanent et sa reprise · le versionnage avec refus d'écriture
-périmée · l'ajout humain d'une contrainte en direct · la distinction visuelle
-entre travail prouvé et affirmé.
+The permanent pointer and its resumption · versioning with stale writes refused
+· a human adding a constraint live · the visual distinction between proven and
+asserted work.
 
-Tout le reste est décor. Les deux dernières demandent une interface : leur
-_comportement_ est dans la voie de Moon, leur _apparence_ dans celle de Kymra.
-
----
-
-## 4. Calendrier
-
-Chaque journée porte un critère de sortie vérifiable. Une journée sans critère
-atteint se rattrape le soir même, pas le lendemain.
-
-### J1 : 26 août · VERROU
-
-Prouver la reprise, et rien d'autre. Aucune interface, aucun style, aucun
-modèle de données définitif.
-
-- Projet Vite + TypeScript nu.
-- Un seul outil `resume_task` renvoyant une chaîne fixe, enregistré au
-  chargement dans un module singleton, et jamais depuis un `useEffect`.
-- Détection de l'absence de `document.modelContext` avec message d'aide.
-
-Le critère se scinde en deux tests distincts, qu'il ne faut pas confondre.
-
-**Test A : l'enregistrement.** Chrome avec `chrome://flags/#enable-webmcp-testing`,
-puis DevTools → onglet Application → section WebMCP. Les outils
-enregistrés y apparaissent et s'invoquent à la main. Aucun agent nécessaire,
-aucun déploiement : `localhost` est un contexte sécurisé.
-
-**Test B : la découverte par un agent.** Un pont MCP
-(`@mcp-b/chrome-devtools-mcp`) expose les outils de la page à un client MCP :
-Claude Code ou Codex CLI, tous deux exécutables sous Linux. Conversation neuve,
-onglet ouvert, consigne « continue ».
-
-> **Critère de sortie.** Test A passé, et dans une conversation neuve sans
-> historique, l'agent va chercher les outils de la page et appelle `resume_task`.
-> Si le Test A échoue, le code est en cause. Si seul le Test B échoue, c'est la
-> description : la reprendre jusqu'à ce que ça marche.
-
-**Ce que le Test B n'est pas.** Via le pont, l'agent voit deux outils
-génériques (`list_webmcp_tools` et `call_webmcp_tool`) et non les outils de la
-page directement. C'est un chemin de découverte différent de celui du navigateur
-intégré de ChatGPT. Réel, mais différent : à ne pas présenter pour autre chose
-qu'il n'est.
-
-**Contrainte de poste.** ChatGPT desktop n'existe pas sous Linux. Ce n'est pas
-bloquant : les règles du concours demandent une URL accessible « via le
-navigateur intégré de ChatGPT ou Google Chrome avec WebMCP activé », et
-n'imposent aucun client IA pour la démonstration.
-
-### J2 : 27 août · Le noyau
-
-Modèle de domaine, magasin IndexedDB, six outils. Vérification par le panneau
-WebMCP des outils de développement, pas par une interface.
-
-- Types figés, incrément de version sur chaque mutation sans exception.
-- Refus d'écriture sur version divergente, message explicite renvoyant vers
-  `resume_task`.
-- Identifiant de tâche dans l'URL, état rechargé au montage.
-- Tests d'invariants et CI en place.
-
-> **Critère de sortie.** Les six outils invoqués à la main produisent un état
-> cohérent qui survit à un rechargement. Un appel volontairement périmé est
-> refusé.
-
-### J3 : 28 août · Le contrat de reprise
-
-La journée la plus sous-estimée : il ne s'agit plus de code mais de
-formulation.
-
-- Format de restitution calibré sous 400 tokens, contraintes et rejets jamais
-  tronqués.
-- Descriptions des six outils itérées contre un agent réel.
-- Scénario de bout en bout : lancer, couper, reprendre, vérifier.
-
-> **Critère de sortie.** Sur une tâche réelle, conversation fermée puis
-> rouverte : l'agent cite spontanément une contrainte et refuse une approche
-> rejetée. C'est le scénario de la vidéo, reproductible avant qu'on filme.
-
-### J4 : 29 août · Interface, comportement
-
-Rendre visible ce qui existe. Balisage sémantique, câblage au magasin, états
-vides, chargement et erreur. Valeurs visuelles neutres, toutes en variables.
-
-- Bandeau d'état, chronologie, panneaux, compteurs de preuve.
-- Mise à jour immédiate à chaque appel d'outil, sans rechargement.
-- **Livraison du fichier de jetons à Kymra**, avec la liste de ce qu'elle
-  contrôle.
-
-> **Critère de sortie.** Un observateur comprend l'état de la tâche sans
-> explication. Et Kymra peut commencer.
-
-### J5 : 30 août · Supervision humaine
-
-Le moment où le produit cesse d'afficher pour superviser.
-
-- Ajout d'une contrainte à la main, marquée `human`, qui incrémente la version.
-- Validation d'une preuve d'un clic.
-- Désactivation d'une contrainte, rejet manuel d'une approche.
-- Signal visible quand une écriture d'agent est refusée pour état périmé.
-
-> **Critère de sortie.** Séquence filmable : taper une contrainte pendant que
-> l'agent réfléchit, voir l'écriture suivante refusée, puis l'agent rappeler le
-> pointeur et respecter la nouvelle règle.
-
-### J6 : 31 août · La mesure
-
-Périmètre volontairement resserré : huit tâches, une seule métrique.
-
-- Chaque tâche a une contrainte explicite et une approche condamnée.
-- Condition témoin sans cahier, condition avec cahier, mêmes tâches, même
-  consigne d'ouverture.
-- Métrique unique et binaire : l'approche rejetée est-elle reproposée ?
-- Protocole et journaux versés au dépôt.
-
-> **Critère de sortie.** Une phrase chiffrée, vraie et reproductible. Si l'écart
-> est faible, le dire quand même : un résultat honnête et modeste vaut mieux
-> qu'un chiffre invérifiable. Quatre tâches au minimum, jamais zéro.
-
-### J7 : 1er septembre · Intégration et dossier
-
-- Reprise des jetons de Kymra, vérification que rien n'a cassé.
-- README : architecture, lancement local, comportement sans WebMCP, scénario de
-  démonstration, protocole de mesure.
-- Accessibilité clavier, contrastes, mise en page étroite.
-
-> **Critère de sortie.** Le dépôt est lisible par quelqu'un qui n'a jamais vu le
-> projet, et `npm run check` passe.
-
-### J8 : 2 septembre · MARGE
-
-Journée volontairement sous-chargée : elle absorbe les retards des sept
-précédentes.
-
-- Parcours complet sur une machine vierge, en navigation privée.
-- Vérification de la page sans WebMCP actif.
-- États vides soignés.
-
-> **Critère de sortie.** Tout ce qui relève de la voie technique est prêt et
-> vérifié. Le dépôt de la candidature revient à Kymra.
+Everything else is scenery. The last two call for an interface: their _behavior_
+is in Moon's track, their _appearance_ in Kymra's.
 
 ---
 
-## 5. Ce qu'il faut de Kymra, et quand
+## 4. Calendar
 
-Ces dates sont des butoirs, pas des souhaits. Chacune bloque une journée entière
-si elle glisse.
+Every day carries a verifiable exit criterion. A day whose criterion is not met
+is caught up that same evening, not the next day.
 
-| Quoi                      | Butoir        | Bloque                                |
-| ------------------------- | ------------- | ------------------------------------- |
-| URL HTTPS déployée        | 31 août       | La recevabilité, et le test des juges |
-| Dépôt basculé en public   | 1er septembre | La recevabilité de la soumission      |
-| Jetons de design          | **31 août**   | L'intégration du J7                   |
-| Vidéo                     | 1er septembre | La recevabilité                       |
-| Description de soumission | 2 septembre   | La recevabilité                       |
+### D1: August 26 · LOCK
 
-Le dépôt est privé à ce jour, alors que le concours exige un dépôt public.
-C'est le point le plus simple à régler et le plus coûteux à oublier.
+Prove resumption, and nothing else. No interface, no styling, no final data
+model.
+
+- Bare Vite + TypeScript project.
+- A single `resume_task` tool returning a fixed string, registered at load time
+  in a singleton module, and never from a `useEffect`.
+- Detection of a missing `document.modelContext` with a help message.
+
+The criterion splits into two distinct tests, which must not be confused.
+
+**Test A: registration.** Chrome with `chrome://flags/#enable-webmcp-testing`,
+then DevTools → Application tab → WebMCP section. Registered tools
+appear there and can be invoked by hand. No agent needed, no deployment:
+`localhost` is a secure context.
+
+**Test B: discovery by an agent.** An MCP bridge
+(`@mcp-b/chrome-devtools-mcp`) exposes the page's tools to an MCP client:
+Claude Code or Codex CLI, both runnable under Linux. Fresh conversation, tab
+open, the instruction “continue”.
+
+> **Exit criterion.** Test A passes, and in a fresh conversation with no
+> history, the agent goes looking for the page's tools and calls `resume_task`.
+> If Test A fails, the code is at fault. If only Test B fails, it is the
+> description: rework it until it works.
+
+**What Test B is not.** Through the bridge, the agent sees two generic tools
+(`list_webmcp_tools` and `call_webmcp_tool`) and not the page's tools directly.
+That is a different discovery path from the one in ChatGPT's built-in browser.
+Real, but different: not to be presented as anything other than what it is.
+
+**Workstation constraint.** ChatGPT desktop does not exist under Linux. This is
+not blocking: the contest rules ask for a URL reachable “via ChatGPT's built-in
+browser or Google Chrome with WebMCP enabled”, and impose no AI client for the
+demonstration.
+
+### D2: August 27 · The core
+
+Domain model, IndexedDB store, six tools. Verification through the WebMCP panel
+in the developer tools, not through an interface.
+
+- Types frozen, version increment on every mutation without exception.
+- Write refused on a divergent version, with an explicit message pointing back
+  to `resume_task`.
+- Task identifier in the URL, state reloaded on mount.
+- Invariant tests and CI in place.
+
+> **Exit criterion.** The six tools invoked by hand produce a coherent state
+> that survives a reload. A deliberately stale call is refused.
+
+### D3: August 28 · The resumption contract
+
+The most underestimated day: it is no longer about code but about wording.
+
+- Readout format calibrated under 400 tokens, constraints and rejections never
+  truncated.
+- Descriptions of the six tools iterated against a real agent.
+- End-to-end scenario: start, cut, resume, verify.
+
+> **Exit criterion.** On a real task, conversation closed then reopened: the
+> agent spontaneously cites a constraint and refuses a rejected approach. This
+> is the video's scenario, reproducible before we film.
+
+### D4: August 29 · Interface, behavior
+
+Make visible what already exists. Semantic markup, wiring to the store, empty
+states, loading and error. Neutral visual values, all in variables.
+
+- Status banner, timeline, panels, proof counters.
+- Immediate update on every tool call, without a reload.
+- **Delivery of the token file to Kymra**, with the list of what she controls.
+
+> **Exit criterion.** An observer understands the state of the task without
+> explanation. And Kymra can start.
+
+### D5: August 30 · Human supervision
+
+The moment the product stops displaying and starts supervising.
+
+- Adding a constraint by hand, marked `human`, which increments the version.
+- Approving a piece of evidence in one click.
+- Disabling a constraint, rejecting an approach manually.
+- A visible signal when an agent write is refused for stale state.
+
+> **Exit criterion.** A filmable sequence: type a constraint while the agent is
+> thinking, see the next write refused, then the agent call the pointer again
+> and respect the new rule.
+
+### D6: August 31 · The measurement
+
+Deliberately tightened scope: eight tasks, a single metric.
+
+- Every task has an explicit constraint and a condemned approach.
+- Control condition without the log, condition with the log, same tasks, same
+  opening instruction.
+- A single, binary metric: is the rejected approach proposed again?
+- Protocol and logs committed to the repository.
+
+> **Exit criterion.** One sentence with a number in it, true and reproducible.
+> If the gap is small, say so anyway: an honest and modest result is worth more
+> than an unverifiable number. Four tasks at a minimum, never zero.
+
+### D7: September 1 · Integration and dossier
+
+- Taking in Kymra's tokens, checking that nothing broke.
+- README: architecture, local startup, behavior without WebMCP, demonstration
+  scenario, measurement protocol.
+- Keyboard accessibility, contrast, narrow layout.
+
+> **Exit criterion.** The repository is readable by someone who has never seen
+> the project, and `npm run check` passes.
+
+### D8: September 2 · BUFFER
+
+A deliberately underloaded day: it absorbs the delays of the seven before it.
+
+- Full run-through on a clean machine, in private browsing.
+- Check of the page without WebMCP active.
+- Empty states polished.
+
+> **Exit criterion.** Everything that falls under the technical track is ready
+> and verified. Filing the entry falls to Kymra.
 
 ---
 
-## 6. Les coupes, dans l'ordre
+## 5. What is needed from Kymra, and when
 
-Décidées à froid maintenant pour ne pas les improviser le 1er septembre. On
-coupe d'abord ce qui ne se voit pas à l'écran, et jamais le mécanisme central.
+These dates are deadlines, not wishes. Each one blocks a whole day if it slips.
 
-1. **L'export du cahier** : utile en vrai, invisible en démonstration.
-2. **Le degré `machine_verified`** : trois degrés au lieu de quatre.
-3. **Les décisions et leur justification** : le triptyque contraintes / rejets /
-   étapes suffit ; `add_decision` peut disparaître.
-4. **La mesure ramenée à quatre tâches** : jamais supprimée entièrement.
-5. **Le multi-tâches** : un seul cahier actif, identifiant fixe.
+| What                          | Deadline      | Blocks                            |
+| ----------------------------- | ------------- | --------------------------------- |
+| Deployed HTTPS URL            | August 31     | Eligibility, and the judges' test |
+| Repository switched to public | September 1   | Eligibility of the submission     |
+| Design tokens                 | **August 31** | The D7 integration                |
+| Video                         | September 1   | Eligibility                       |
+| Submission description        | September 2   | Eligibility                       |
 
----
-
-## 7. Ce qui peut faire échouer le chantier
-
-### L'agent n'appelle pas le pointeur spontanément
-
-Le risque principal, et il se manifeste dès ce soir. La cause est presque
-toujours la description : trop descriptive, pas assez prescriptive. Faire porter
-la formulation sur les circonstances d'appel plutôt que sur la fonction.
-
-### La répartition laisse un trou
-
-Deux des quatre piliers demandent une interface. Si « design » est compris
-comme « toute l'interface », personne ne code leur comportement et le projet
-perd la moitié de sa démonstration. Le contrat de la section 2 existe pour
-éviter exactement ça.
-
-### La mesure ne montre pas d'écart
-
-Possible si les tâches sont trop courtes pour que l'agent dérive. Rallonger les
-tâches et durcir les contraintes, jamais maquiller le résultat. Un chiffre
-gonflé découvert par un juge élimine.
-
-### Le déploiement arrive trop tard
-
-Trois livrables sur quatre dépendent d'une URL en ligne. Si elle n'existe qu'au
-1er septembre, il ne reste aucune marge pour découvrir qu'elle ne marche pas.
-Le développement, lui, ne l'attend pas : tout se teste sur `localhost`.
-
-### On confond enregistrement et découverte
-
-Le panneau DevTools prouve que les outils existent, pas qu'un agent les appelle
-de lui-même. Valider le J1 sur le seul Test A donnerait une fausse assurance et
-ferait découvrir le vrai problème le 1er septembre.
+The repository is private as of today, while the contest requires a public
+repository. It is the simplest point to settle and the costliest to forget.
 
 ---
 
-## 8. Contrôle avant dépôt
+## 6. The cuts, in order
 
-- [ ] L'URL s'ouvre en HTTPS et fonctionne en navigation privée, sans compte
-- [ ] Une conversation neuve découvre les outils et reprend la tâche
-- [ ] Le dépôt est public, porte une licence MIT et un README exploitable
-- [ ] La vidéo dure moins de trois minutes, est publique, avec audio
-- [ ] La description explique quel usage de WebMCP est fait, et pourquoi il est nécessaire
-- [ ] Le protocole de mesure et ses journaux sont au dépôt, reproductibles
-- [ ] Aucun chiffre invérifiable nulle part, ni vidéo, ni description, ni README
+Decided coldly now so as not to improvise them on September 1. We cut first
+what does not show on screen, and never the central mechanism.
+
+1. **The log export**: useful in real life, invisible in a demonstration.
+2. **The `machine_verified` degree**: three degrees instead of four.
+3. **Decisions and their justification**: the triptych constraints / rejections
+   / steps is enough; `add_decision` can disappear.
+4. **The measurement brought back to four tasks**: never removed entirely.
+5. **Multi-task support**: a single active log, fixed identifier.
+
+---
+
+## 7. What can make the effort fail
+
+### The agent does not call the pointer on its own
+
+The main risk, and it shows up as soon as tonight. The cause is almost always
+the description: too descriptive, not prescriptive enough. Make the wording bear
+on the circumstances of the call rather than on the function.
+
+### The split leaves a hole
+
+Two of the four pillars call for an interface. If “design” is understood as “the
+whole interface”, nobody codes their behavior and the project loses half of its
+demonstration. The contract in section 2 exists to avoid exactly that.
+
+### The measurement shows no gap
+
+Possible if the tasks are too short for the agent to drift. Lengthen the tasks
+and harden the constraints, never dress up the result. An inflated number
+discovered by a judge disqualifies.
+
+### Deployment arrives too late
+
+Three deliverables out of four depend on a live URL. If it only exists on
+September 1, there is no margin left to discover that it does not work.
+Development, for its part, does not wait on it: everything is tested on
+`localhost`.
+
+### Registration and discovery get confused
+
+The DevTools panel proves that the tools exist, not that an agent calls them of
+its own accord. Validating D1 on Test A alone would give false assurance and
+would surface the real problem on September 1.
+
+---
+
+## 8. Check before filing
+
+- [ ] The URL opens over HTTPS and works in private browsing, with no account
+- [ ] A fresh conversation discovers the tools and resumes the task
+- [ ] The repository is public, carries an MIT license and a usable README
+- [ ] The video runs under three minutes, is public, with audio
+- [ ] The description explains what use is made of WebMCP, and why it is necessary
+- [ ] The measurement protocol and its logs are in the repository, reproducible
+- [ ] No unverifiable number anywhere, not the video, not the description, not the README

@@ -26,27 +26,27 @@ function entry(over: Partial<AuditEntry>): AuditEntry {
   }
 }
 
-describe('mise en mots du journal', () => {
-  it('dit qui a fait quoi, sans nom d’opération machine', () => {
+describe('the history put into words', () => {
+  it('says who did what, with no machine operation name', () => {
     const line = describeEntry(entry({ actor: 'human', operation: 'deactivate_constraint' }))
     expect(line.who).toBe('You')
     expect(line.what).toBe('lifted a rule')
     expect(line.what).not.toContain('deactivate_constraint')
   })
 
-  it('distingue une règle POSÉE par l’humain d’une règle PROPOSÉE par l’agent', () => {
+  it('tells a rule SET by the human from a rule PROPOSED by the agent', () => {
     expect(describeEntry(entry({ actor: 'human', operation: 'add_constraint' })).what).toBe(
       'added a rule',
     )
-    // C'est toute l'asymétrie du produit, et elle doit se lire dans l'historique.
+    // That is the whole asymmetry of the product, and it must be readable in the history.
     expect(describeEntry(entry({ actor: 'agent', operation: 'add_constraint' })).what).toBe(
       'proposed a rule',
     )
   })
 
-  it('met la tentative à l’infinitif, pas au passé', () => {
-    // « tried to recorded a step » : la table des verbes est au passé pour ce
-    // qui a eu lieu, et une tentative refusée n'a précisément pas eu lieu.
+  it('puts an attempt in the infinitive, not in the past', () => {
+    // "tried to recorded a step": the verb table is past tense for what did
+    // happen, and a refused attempt precisely did not happen.
     for (const operation of ['log_step', 'add_constraint', 'reject_approach', 'complete_task']) {
       const line = describeEntry(entry({ operation, outcome: 'refused', detail: 'stale write' }))
       expect(line.what, operation).toMatch(/^tried to [a-z]/)
@@ -57,7 +57,7 @@ describe('mise en mots du journal', () => {
     )
   })
 
-  it('explique un refus par sa cause, pas par son code', () => {
+  it('explains a refusal by its cause, not by its code', () => {
     const stale = describeEntry(
       entry({ outcome: 'refused', detail: 'stale write on v4, current v6' }),
     )
@@ -75,12 +75,12 @@ describe('mise en mots du journal', () => {
     ).toBe('the call was cancelled before it wrote')
   })
 
-  it('reporte le compteur de tentatives répétées', () => {
+  it('carries over the count of repeated attempts', () => {
     const line = describeEntry(entry({ outcome: 'refused', detail: 'stale write', repeated: 7 }))
     expect(line.repeated).toBe(7)
   })
 
-  it('nomme l’élagage comme un fait du système, pas de quelqu’un', () => {
+  it('names the trimming as a fact of the system, not of a person', () => {
     const line = describeEntry(
       entry({ operation: 'audit_trimmed', detail: '40 earlier entries dropped' }),
     )
@@ -88,13 +88,13 @@ describe('mise en mots du journal', () => {
     expect(line.refused).toBe(false)
   })
 
-  it('ne laisse jamais une opération inconnue sans phrase', () => {
+  it('never leaves an unknown operation without a sentence', () => {
     const line = describeEntry(entry({ operation: 'some_future_operation', actor: 'human' }))
     expect(line.what).toContain('some_future_operation')
     expect(line.what.length).toBeGreaterThan(5)
   })
 
-  it('rend le plus récent en premier', () => {
+  it('returns the most recent first', () => {
     const lines = describeHistory([
       entry({ id: 'a', at: 1 }),
       entry({ id: 'b', at: 2 }),
@@ -104,7 +104,7 @@ describe('mise en mots du journal', () => {
   })
 })
 
-describe('l’historique à l’écran', () => {
+describe('the history on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -134,11 +134,11 @@ describe('l’historique à l’écran', () => {
       c.querySelector('h2')?.textContent?.includes('History'),
     )!
 
-  it('montre le passé du cahier en langage humain', async () => {
+  it('shows the past of the log in human language', async () => {
     expect(section().textContent).toContain('recorded a step')
 
-    // L'extrait ne montre que les plus récentes ; la création est la plus
-    // ancienne du cahier de démonstration et n'y figure donc pas.
+    // The excerpt shows only the most recent ones; creation is the oldest of
+    // the demo task and so does not appear there.
     root.querySelector<HTMLButtonElement>('#toggle-history')!.click()
     await settled()
 
@@ -147,13 +147,13 @@ describe('l’historique à l’écran', () => {
     expect(text).toContain('added a rule')
     expect(text).toContain('approved evidence')
 
-    // Aucun nom d'opération machine ne doit atteindre l'écran.
+    // No machine operation name must reach the screen.
     for (const raw of ['log_step', 'add_constraint', 'verify_evidence', 'create_task']) {
       expect(text, raw).not.toContain(raw)
     }
   })
 
-  it('rend un refus visible dans l’historique, avec sa cause', async () => {
+  it('makes a refusal visible in the history, with its cause', async () => {
     const stale = store.currentTask()!.version
     await store.mutate((s) =>
       addConstraint(s, { rule: 'A human rule', basedOnVersion: null }, 'human'),
@@ -177,7 +177,7 @@ describe('l’historique à l’écran', () => {
     expect(refused.textContent).toContain('the task had changed since it was read')
   })
 
-  it('reflète une action humaine dès qu’elle a lieu', async () => {
+  it('reflects a human action as soon as it happens', async () => {
     const step = store.currentTask()!.steps.find((s) => s.evidence !== null)!
     await store.mutate((s) => verifyEvidence(s, step.id, step.evidence!.content))
     await settled()
@@ -189,7 +189,7 @@ describe('l’historique à l’écran', () => {
     expect(section().textContent).toContain('lifted a rule')
   })
 
-  it('n’affiche qu’un extrait, et se déplie sur demande', async () => {
+  it('shows only an excerpt, and unfolds on request', async () => {
     for (let i = 0; i < 20; i++) {
       await store.mutate((s) =>
         addConstraint(s, { rule: `Rule number ${i}`, basedOnVersion: null }, 'human'),
@@ -212,16 +212,15 @@ describe('l’historique à l’écran', () => {
 
 describe('installable', () => {
   const manifest = JSON.parse(manifestRaw)
-  // Les fichiers réellement présents, vus par le graphe de modules, pas une
-  // liste écrite à la main qui resterait vraie après la suppression d'un
-  // fichier.
+  // The files really present, seen through the module graph, not a hand
+  // written list that would stay true after a file has been deleted.
   const shipped = new Set(
     Object.keys(import.meta.glob('../public/icons/*', { eager: true, query: '?url' })).map((p) =>
       p.replace('../public', ''),
     ),
   )
 
-  it('porte ce que Chrome exige pour proposer l’installation', () => {
+  it('carries what Chrome requires to offer installation', () => {
     expect(manifest.name).toBeTruthy()
     expect(manifest.short_name).toBeTruthy()
     expect(manifest.start_url).toBe('/')
@@ -230,7 +229,7 @@ describe('installable', () => {
     expect(manifest.background_color).toMatch(/^#[0-9a-f]{6}$/i)
   })
 
-  it('fournit les tailles attendues, dont une icône masquable', () => {
+  it('provides the expected sizes, including a maskable icon', () => {
     const sizes = manifest.icons.map((i: { sizes: string }) => i.sizes)
     expect(sizes).toContain('192x192')
     expect(sizes).toContain('512x512')
@@ -240,16 +239,16 @@ describe('installable', () => {
     expect(maskable.sizes).toBe('512x512')
   })
 
-  it('pointe vers des fichiers qui existent réellement', () => {
+  it('points at files that really exist', () => {
     for (const icon of manifest.icons as { src: string; type: string }[]) {
       expect(icon.type).toBe('image/png')
-      // Une icône déclarée mais absente casse l'installation sans que rien ne
-      // le signale avant l'essai sur un vrai navigateur.
+      // An icon declared but missing breaks installation with nothing to
+      // report it before trying on a real browser.
       expect(shipped, icon.src).toContain(icon.src)
     }
   })
 
-  it('est référencé par la page, avec une couleur de thème par mode', () => {
+  it('is referenced by the page, with one theme colour per mode', () => {
     const html = indexRaw
     expect(html).toContain('rel="manifest"')
     expect(html).toContain('/manifest.webmanifest')
@@ -257,27 +256,27 @@ describe('installable', () => {
     expect(html).toContain('prefers-color-scheme: dark')
   })
 
-  it('ne sert le service worker qu’en production', () => {
+  it('serves the service worker only in production', () => {
     const main = mainRaw
-    // En développement, un cache s'interpose entre le rechargement à chaud et
-    // la page : on perd des heures à déboguer une version qui n'existe plus.
+    // In development, a cache comes between hot reload and the page: you lose
+    // hours debugging a version that no longer exists.
     expect(main).toContain('import.meta.env.PROD')
     expect(main).toMatch(/serviceWorker\s*\n?\s*\.register\(\s*'\/sw\.js'/)
   })
 
-  it('enregistre le service worker sans passer par le cache HTTP', () => {
-    // Mesuré en production : `_headers` demande `no-cache` sur `/sw.js` et
-    // Cloudflare sert quand même `max-age=14400`, et un visiteur qui revient
-    // gardait l'ancien worker, et l'ancienne application, jusqu'à quatre
-    // heures. `updateViaCache: 'none'` tient quel que soit l'hébergeur.
+  it('registers the service worker without going through the HTTP cache', () => {
+    // Measured in production: `_headers` asks for `no-cache` on `/sw.js` and
+    // Cloudflare serves `max-age=14400` anyway, and a returning visitor kept
+    // the old worker, and the old application, for up to four hours.
+    // `updateViaCache: 'none'` holds whatever the host.
     expect(mainRaw).toContain("updateViaCache: 'none'")
   })
 
-  it('sert la page par le réseau d’abord, le cache seulement en secours', () => {
+  it('serves the page from the network first, the cache only as a fallback', () => {
     const sw = swRaw
-    // Cache-first sur le document servirait une ancienne version après un
-    // déploiement. Les fichiers d'assets, eux, portent une empreinte dans leur
-    // nom : les mettre en cache sans condition est sans risque.
+    // Cache-first on the document would serve an old version after a deploy.
+    // The asset files carry a fingerprint in their name: caching those
+    // unconditionally carries no risk.
     expect(sw).toContain("request.mode === 'navigate'")
     expect(sw).toMatch(/fetch\(request\)[\s\S]*\.catch\(\(\) =>[\s\S]*caches\s*\n?\s*\.match/)
     expect(sw).toContain('caches.delete')

@@ -6,10 +6,10 @@ export type Trail = {
 }
 
 /**
- * Tout ce que le journal retient d'UN élément, par le `targetId` ajouté pour l'annulation.
- * L'incomplétude voyage avec les entrées et non dans une fonction séparée : le journal
- * étant borné, une histoire ancienne s'appauvrit, et se taire là-dessus reviendrait à
- * affirmer qu'il ne s'est rien passé.
+ * Everything the audit log keeps about ONE item, through the `targetId` added for undo.
+ * Incompleteness travels with the entries and not in a separate function: the log being
+ * bounded, an old history thins out, and staying silent about that would amount to
+ * claiming nothing happened.
  */
 export function historyOf(state: TaskState, targetId: string): Trail {
   const trimmed = state.audit.some((e) => e.operation === 'audit_trimmed')
@@ -17,9 +17,9 @@ export function historyOf(state: TaskState, targetId: string): Trail {
 
   return {
     entries: state.audit.filter((e) => e.targetId === targetId && e.outcome === 'applied'),
-    // On ne sait pas ce qui a été écarté pour CET élément. Le marqueur
-    // d'élagage compte des entrées, pas des cibles. D'où « peut être », et non
-    // un nombre que l'on n'a pas.
+    // We do not know what was dropped for THIS item. The trimming marker
+    // counts entries, not targets. Hence "may be", and not a number we do
+    // not have.
     mayBeIncomplete: trimmed,
   }
 }

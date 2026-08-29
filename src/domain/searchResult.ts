@@ -54,9 +54,9 @@ export function renderSearch(task: TaskState, query: string, limit: number): str
   const all = searchTask(task, query)
   if (all.length === 0) return nothingFound(query)
 
-  // Douze correspondances de 240 caractères chacune font 6 k : le compte ne
-  // borne rien tant que les extraits sont libres. On remplit donc jusqu'au
-  // budget, et l'en-tête dit déjà « N shown of M found ».
+  // Twelve matches of 240 characters each make 6k: the count bounds nothing
+  // as long as the snippets are free. So we fill up to the budget, and the
+  // header already says "N shown of M found".
   const shown = fitting(
     all.slice(0, Math.min(limit, MAX_MATCHES)),
     (m) => renderMatch(m).length + 1,

@@ -135,9 +135,9 @@ function resetDrafts(): void {
 
 let creating = false
 
-// La vue `/workspace` : jusqu'ici la liste des cahiers, l'export et l'import
-// vivaient dans des panneaux repliés à l'intérieur d'un cahier ouvert, donc
-// invisibles pour qui arrive de l'extérieur sans en avoir un.
+// The `/workspace` view: until now the log list, the export and the import
+// lived in folded panels inside an open log, so invisible to whoever arrives
+// from outside without one.
 let atWorkspace = false
 
 let credentials: SecretName[] = []
@@ -195,7 +195,7 @@ let awayFor: string | null = null
 let offered: TaskState | null = null
 let linkRead = false
 let linkPending = false
-// Un lien scellé attend une phrase avant même de pouvoir être décrit.
+// A sealed link waits on a passphrase before it can even be described.
 let sealedLink: string | null = null
 
 type Editing =
@@ -496,10 +496,10 @@ function remainder(total: number): string {
     : ''
 }
 
-// 2000 règles portaient un aller-retour de rendu de 17 ms à 501 ms, pour 1,2 Mo
-// de HTML et 10 000 nœuds, et la page se redessine à chaque frappe dans la
-// recherche. On borne donc l'affichage, jamais en silence : le nombre caché est
-// écrit, et un bouton ouvre la liste entière.
+// 2000 rules took a render round trip from 17 ms to 501 ms, for 1.2 MB of HTML
+// and 10,000 nodes, and the page redraws on every keystroke in the search. So
+// the display is bounded, never in silence: the hidden count is written out,
+// and a button opens the whole list.
 const expanded = new Set<string>()
 
 function capped<T>(id: string, items: readonly T[], limit = MAX_ROWS): T[] {
@@ -651,8 +651,8 @@ function renderCompletedWork(task: TaskState): string {
 
 function trailButton(task: TaskState, id: string, label: string): string {
   const trail = historyOf(task, id)
-  // Même sans entrée survivante, le bouton reste : cacher l'histoire d'un
-  // élément dont le journal a été élagué reviendrait à taire l'élagage.
+  // Even with no surviving entry the button stays: hiding the history of an
+  // item whose log was pruned would amount to hiding the pruning.
   if (trail.entries.length === 0 && !trail.mayBeIncomplete) return ''
   return `<button type="button" class="btn btn--quiet" data-trail="${escapeHtml(id)}"
             aria-expanded="${showingTrail === id}"
@@ -697,10 +697,10 @@ const LIST_PREVIEW = 12
 function renderRules(task: TaskState): string {
   const decided = task.constraints.filter((c) => c.standing !== 'proposed')
 
-  // L'ordre de pose est conservé : trier les règles en vigueur devant les
-  // règles levées faisait sauter la ligne que l'on venait de lever, sous le
-  // curseur. On borne dans l'ordre, et on DIT combien d'obligations tombent
-  // hors de la fenêtre : c'est la garantie qui comptait, pas l'ordre.
+  // The order they were added in is kept: sorting the rules in force ahead of
+  // the lifted ones made the row you had just lifted jump, under the cursor.
+  // The bound is applied in order, and it SAYS how many obligations fall
+  // outside the window: the guarantee was what counted, not the order.
   const shown = capped('rules', decided, LIST_PREVIEW)
   const hiddenBinding = decided
     .slice(shown.length)
@@ -743,9 +743,9 @@ function renderRules(task: TaskState): string {
          </p>`
       : ''
 
-  // Un compte ne suffit pas quand c'est une OBLIGATION qui est hors de vue :
-  // on le dit en toutes lettres plutôt que de laisser lire la liste comme
-  // entière.
+  // A count is not enough when what is out of sight is an OBLIGATION: it is
+  // said in full words rather than letting the list be read as though it were
+  // the whole of it.
   const warning =
     hiddenBinding > 0
       ? `<p class="muted">${hiddenBinding} ${plural(hiddenBinding, 'rule', 'rules')} still in
@@ -841,9 +841,9 @@ const FILTER_LABEL: Record<MatchKind, string> = {
 }
 
 function renderFilters(all: Match[]): string {
-  // Un seul passage pour compter, plutôt qu'un par catégorie : sur un mot
-  // fréquent dans un gros cahier, les résultats se comptent par milliers, et
-  // il y a huit catégories.
+  // One pass to count, rather than one per category: on a word that is
+  // frequent in a big log the results run into the thousands, and there are
+  // eight categories.
   const counts = new Map<MatchKind, number>()
   for (const m of all) counts.set(m.kind, (counts.get(m.kind) ?? 0) + 1)
   const present = [...counts.keys()]
@@ -906,13 +906,13 @@ function renderSearchResults(task: TaskState | null): string {
 function renderSwitcher(task: TaskState): string {
   const others = allTasks.filter((t) => t.id !== task.id && (showArchived || !t.archived))
   const hidden = allTasks.filter((t) => t.id !== task.id && t.archived).length
-  // Chaque ligne fait balayer les étapes de SON cahier par `needsYou` : le
-  // sélecteur coûte donc le poste entier, pas seulement le cahier ouvert.
+  // Every row has `needsYou` sweep the steps of ITS OWN log: the switcher
+  // therefore costs the whole device, not just the open log.
   const shown = capped('tasks', others, LIST_PREVIEW)
   const rows = shown
     .map((t) => {
-      // `needsYou` balaie toutes les étapes du cahier : l'appeler une fois
-      // pour tester et une fois pour afficher le faisait deux fois par ligne.
+      // `needsYou` sweeps every step of the log: calling it once to test and
+      // once to display did it twice per row.
       const badge = summariseNeeds(t.needs)
       return `<li class="row">
         <span class="chip chip--${t.archived ? 'agent' : t.status === 'completed' ? 'human' : 'evidence'}">${
@@ -1123,10 +1123,10 @@ function renderAway(task: TaskState): string {
   const since = awaySince
   if (since === null || since >= task.version) return ''
 
-  const depuis = task.audit.filter((e) => e.versionAfter > since)
-  if (depuis.length === 0) return ''
+  const sinceWhen = task.audit.filter((e) => e.versionAfter > since)
+  if (sinceWhen.length === 0) return ''
 
-  const shown = describeHistory(depuis.slice(-8))
+  const shown = describeHistory(sinceWhen.slice(-8))
   const rows = shown
     .map(
       (l) => `<li class="row">
@@ -1142,13 +1142,13 @@ function renderAway(task: TaskState): string {
   return `<section class="card card--away" aria-labelledby="away-title">
       <h2 id="away-title" class="card__title">While you were away</h2>
       <p class="muted">
-        ${depuis.length} ${plural(depuis.length, 'write', 'writes')} since you last had this
+        ${sinceWhen.length} ${plural(sinceWhen.length, 'write', 'writes')} since you last had this
         page open, at v${since}.
       </p>
       <ul class="rows">${rows}</ul>
       ${
-        depuis.length > shown.length
-          ? `<p class="muted">${depuis.length - shown.length} older still, in the history below.</p>`
+        sinceWhen.length > shown.length
+          ? `<p class="muted">${sinceWhen.length - shown.length} older still, in the history below.</p>`
           : ''
       }
       <div class="actions">
@@ -1235,11 +1235,11 @@ function renderWaiting(task: TaskState): string {
     </section>`
 }
 
-// Le texte de `resume_task` coûte 5 ms sur un cahier de 20 000 étapes, et il
-// était recalculé à chaque rendu, donc à chaque frappe dans la recherche, pour
-// un panneau replié la plupart du temps. Le cahier étant immuable et remplacé
-// en entier, comparer les identités suffit ; la minute entre dans la clé parce
-// que la restitution porte une ligne qui dépend de l'heure (« LAST WRITE … »).
+// The `resume_task` text costs 5 ms on a log of 20,000 steps, and it was
+// recomputed on every render, so on every keystroke in the search, for a panel
+// that is folded most of the time. The log being immutable and replaced whole,
+// comparing identities is enough; the minute goes into the key because the
+// rendering carries a line that depends on the time ("LAST WRITE …").
 let briefing: {
   task: TaskState
   credentials: readonly SecretName[]
@@ -1274,9 +1274,9 @@ function renderHandoff(task: TaskState): string {
     return undoButton ? `<p class="handoff">${undoButton}</p>` : ''
   }
 
-  // L'avertissement doit tomber AVANT le clic, pas après : une fois l'adresse
-  // dans le presse-papier, la décision est prise. Et il ne paraît que s'il est
-  // vrai : un avertissement affiché sans raison s'apprend à ne plus être lu.
+  // The warning has to land BEFORE the click, not after: once the address is
+  // in the clipboard the decision is made. And it only appears when it is
+  // true: a warning shown for no reason teaches people to stop reading it.
   const carried = attachedEvidenceCount(task)
   const carriedNote =
     carried > 0
@@ -1576,9 +1576,9 @@ function renderActivity(task: TaskState): string {
 const HISTORY_PREVIEW = 12
 
 function renderHistory(task: TaskState): string {
-  // Décrire les 200 entrées du journal pour en montrer douze, à chaque rendu.
-  // `describeHistory` renverse puis décrit une par une : on prend donc la
-  // QUEUE du journal, qui devient la tête une fois renversée.
+  // Describing the 200 entries of the log to show twelve of them, on every
+  // render. `describeHistory` reverses then describes one by one, so take the
+  // TAIL of the log, which becomes the head once reversed.
   const total = task.audit.length
   const shown = describeHistory(showAllHistory ? task.audit : task.audit.slice(-HISTORY_PREVIEW))
 
@@ -1739,15 +1739,15 @@ function renderDashboard(task: TaskState): string {
     ${renderTechnical(task)}`
 }
 
-// Ce que remplace un bouton « Sign in » ici : le navigateur EST le compte, mais
-// rien ne le disait. Le second appareil se sert par un fichier et non par un
-// lien, parce qu'un cahier réellement utilisé n'y tient pas : 60 pas font
-// 17 349 caractères scellés contre 16 000 pour une URL, et 85 657 en fichier.
+// What a "Sign in" button is replaced by here: the browser IS the account, but
+// nothing said so. The second device is served by a file and not by a link,
+// because a log in real use does not fit in one: 60 steps make 17,349 sealed
+// characters against 16,000 for a URL, and 85,657 as a file.
 function renderWorkspace(): string {
   const n = allTasks.length
-  // `TaskCard` ne porte ni le nombre de pas ni la version, à dessein : les y
-  // remettre ferait relire tous les cahiers du poste pour dessiner une liste.
-  // La prochaine action est de toute façon ce qui aide à reconnaître le sien.
+  // `TaskCard` carries neither the step count nor the version, by design:
+  // putting them back would re-read every log on the device to draw a list.
+  // The next action is what helps you recognise your own one anyway.
   const rows = allTasks
     .map(
       (t) => `<li class="row">
@@ -1841,8 +1841,8 @@ function renderBody(): string {
   }
 
   if (status === 'missing') {
-    // Quand un lien porte le cahier, dire « il n'existe pas ici » en même temps
-    // qu'on propose de le prendre est une contradiction à l'écran.
+    // When a link carries the log, saying "it does not exist here" at the same
+    // time as offering to take it is a contradiction on screen.
     const alarm =
       offered || linkPending
         ? ''
@@ -1854,9 +1854,9 @@ function renderBody(): string {
     return `${alarm}${renderLanding()}`
   }
 
-  // Le formulaire de création prend toute la place, même quand un cahier est
-  // déjà ouvert : sans cela, « New task » ne montrait rien depuis un tableau
-  // de bord, le formulaire ne vivant que dans l'écran d'accueil.
+  // The creation form takes the whole screen, even when a log is already
+  // open: without this, "New task" showed nothing from a dashboard, the form
+  // living only in the landing screen.
   if (creating) return renderLanding()
   if (atWorkspace) return renderWorkspace()
   return task ? renderDashboard(task) : renderLanding()
@@ -1921,7 +1921,7 @@ function bindCreation(): void {
     }
 
     humanError = null
-    // Lu AVANT la création : ouvrir la nouvelle tâche remplace la courante.
+    // Read BEFORE creating: opening the new task replaces the current one.
     const source = carryRules ? store.currentTask() : null
 
     void store
@@ -2334,7 +2334,7 @@ function bindSupervision(): void {
 
   const searchField = document.querySelector<HTMLInputElement>('#search')
   searchField?.addEventListener('input', () => {
-    // Un filtre gardé d'une recherche à l'autre fait croire à un résultat vide.
+    // A filter kept from one search to the next makes it look like nothing matched.
     searchFilter = 'all'
     scheduleRender()
   })
@@ -2383,9 +2383,9 @@ function bindSupervision(): void {
   }
 
   document.querySelector('#new-task')?.addEventListener('click', () => {
-    // Depuis `/workspace`, créer un cahier doit en SORTIR : le formulaire de
-    // création et l'espace de travail sont deux vues, et rester sur la seconde
-    // masquerait la première.
+    // From `/workspace`, creating a log has to LEAVE it: the creation form and
+    // the workspace are two views, and staying on the second would hide the
+    // first.
     atWorkspace = false
     creating = true
     clearNotice()
@@ -2450,8 +2450,8 @@ function bindSupervision(): void {
   document.querySelector('#persist')?.addEventListener('click', () => {
     void askForPersistence()
       .then((granted) => {
-        // Un clic sans effet visible se lit comme un bouton cassé. Chrome
-        // accorde la durabilité sur des critères d'usage, pas sur demande.
+        // A click with no visible effect reads as a broken button. Chrome
+        // grants durability on usage criteria, not on request.
         if (granted === true) {
           showNotice('The browser will keep this data unless you delete it yourself.')
         } else if (granted === false) {
@@ -2500,8 +2500,8 @@ function bindSupervision(): void {
     const task = store.currentTask()
     if (!task) return
     humanError = null
-    // Pour les agents sans WebMCP, l'immense majorité aujourd'hui. Le texte
-    // est celui de resume_task, pas une variante rédigée pour l'écran.
+    // For agents without WebMCP, the vast majority today. The text is the one
+    // from resume_task, not a variant written for the screen.
     const body = [
       'Read this before doing anything. It is the shared log for the task we are',
       'continuing; it holds the rules, the work already done, and what was ruled out.',
@@ -2591,9 +2591,9 @@ function bindSupervision(): void {
       },
       (error: unknown) => {
         linkPending = false
-        // « La phrase est fausse » et « ce lien est illisible » ne se disent
-        // pas pareil à quelqu'un qui vient de taper une phrase : l'un se
-        // corrige en réessayant, l'autre non.
+        // "The passphrase is wrong" and "this link is unreadable" are not
+        // said the same way to someone who has just typed a passphrase: one is
+        // fixed by trying again, the other is not.
         humanError =
           error instanceof WrongPassphraseError
             ? 'That passphrase does not open this link. Ask them to repeat it: the link itself is fine.'
@@ -2762,13 +2762,13 @@ function bindTechnical(): void {
 
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
 
-  // Un lien plutôt qu'un bouton : il change l'adresse, donc le clic-milieu,
-  // le Ctrl+clic et « ouvrir dans un nouvel onglet » doivent marcher, et un
-  // lecteur d'écran doit l'annoncer comme une destination. C'est aussi le seul
-  // <a href> de la page, donc le seul chemin d'exploration qu'un moteur voit.
+  // A link rather than a button: it changes the address, so middle-click,
+  // Ctrl+click and "open in a new tab" have to work, and a screen reader has
+  // to announce it as a destination. It is also the only <a href> on the page,
+  // so the only crawl path a search engine sees.
   document.querySelector('#go-workspace')?.addEventListener('click', (e) => {
-    // On ne détourne que le clic simple : les modificateurs et le bouton du
-    // milieu doivent garder le comportement natif du navigateur.
+    // Only the plain click is intercepted: modifiers and the middle button
+    // must keep the browser's native behaviour.
     const clic = e as MouseEvent
     if (clic.metaKey || clic.ctrlKey || clic.shiftKey || clic.altKey || clic.button !== 0) return
     e.preventDefault()
@@ -2777,8 +2777,8 @@ function bindTechnical(): void {
   })
 
   document.querySelector('#leave-workspace')?.addEventListener('click', () => {
-    // On revient d'où l'on vient : sur un cahier si un cahier est ouvert,
-    // sur l'accueil sinon. `reflectAddress` remet l'adresse en accord.
+    // Back where you came from: to a log if a log is open, to the landing
+    // page otherwise. `reflectAddress` brings the address back in step.
     atWorkspace = false
     renderNow()
   })
@@ -2865,16 +2865,16 @@ function render(): void {
 
   if (openTask && awayFor !== openTask.id) {
     awayFor = openTask.id
-    // La première ouverture d'un cahier n'est pas une absence : on note la
-    // version courante sans rien annoncer.
+    // The first opening of a log is not an absence: the current version is
+    // noted without announcing anything.
     const known = seenVersion(openTask.id)
     awaySince = known === null ? null : known
     if (known === null) markSeen(openTask.id, openTask.version)
   }
 
-  // On ne marque « vu » que si l'onglet est réellement à l'écran. Un onglet en
-  // arrière-plan pendant qu'un agent travaille est exactement l'absence que ce
-  // digest doit rapporter.
+  // Marked "seen" only if the tab is really on screen. A tab in the background
+  // while an agent is working is exactly the absence this digest has to
+  // report.
   if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
 
   if (!storageRead) {
@@ -2889,8 +2889,8 @@ function render(): void {
     linkRead = true
     const packed = readLinkFragment()
     if (packed && isSealedLink(packed)) {
-      // On ne tente rien : sans la phrase, il n'y a rien à lire, pas même le
-      // titre. C'est la propriété qu'on vend.
+      // Nothing is attempted: without the passphrase there is nothing to
+      // read, not even the title. That is the property being sold.
       sealedLink = packed
     } else if (packed) {
       linkPending = true
@@ -2913,10 +2913,10 @@ function render(): void {
   const waiting = openTask ? pendingApprovals(openTask).length + openQuestions(openTask).length : 0
   document.title = attentionTitle(document.title, waiting, looking())
 
-  // Sans la version du cahier ouvert : les lignes du sélecteur n'en dépendent
-  // pas, et l'y mettre faisait relire TOUS les cahiers du poste à chaque
-  // écriture : 61 ms et 15,9 Mo lus pour produire 9 ko de fiches, mesuré sur
-  // 20 cahiers de 2000 étapes.
+  // Without the open log's version: the switcher rows do not depend on it,
+  // and putting it in there re-read EVERY log on the device on every write:
+  // 61 ms and 15.9 MB read to produce 9 kB of cards, measured on 20 logs of
+  // 2000 steps.
   const listKey = openTask ? `${openTask.id}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
   if ((openTask?.id ?? null) !== credentialsFor) {
@@ -2932,9 +2932,9 @@ function render(): void {
 
   const headingFocused = active !== null && active === root.querySelector('.page-head h1')
 
-  // N'importe quel élément identifié, pas seulement les champs : une écriture
-  // d'agent redessine la page, et sans cela le focus retombait sur `body`
-  // depuis n'importe quel bouton : au clavier, on repart du début de la page.
+  // Any element with an id, not just the fields: an agent write redraws the
+  // page, and without this the focus fell back to `body` from any button: on a
+  // keyboard, you start again from the top of the page.
   const focusedId =
     !focused && active instanceof HTMLElement && active.id && root.contains(active)
       ? active.id
@@ -2942,9 +2942,9 @@ function render(): void {
 
   const html = `<main id="content">${renderBody()}</main>`
 
-  // 30 % des rendus produisaient un HTML identique au précédent et payaient
-  // quand même la reconstruction du DOM, le rattachement de tous les écouteurs
-  // et la valse du focus. La comparaison épargne aussi la sélection en cours.
+  // 30% of renders produced HTML identical to the previous one and still paid
+  // for the DOM rebuild, the reattachment of every listener and the focus
+  // shuffle. The comparison also spares the current selection.
   if (html === painted) {
     announce()
     reflectAddress()
@@ -2976,8 +2976,8 @@ function render(): void {
 let renderScheduled = false
 let pendingFrame: number | null = null
 
-// Ce qui est actuellement à l'écran. Remis à zéro au montage : sur une racine
-// neuve, croire qu'elle porte déjà ce HTML laisserait la page blanche.
+// What is currently on screen. Reset on mount: on a fresh root, believing it
+// already carries this HTML would leave the page blank.
 let painted: string | null = null
 
 function scheduleRender(): void {
@@ -3053,9 +3053,8 @@ function closeOnEscape(event: KeyboardEvent): void {
     return
   }
 
-  // La recherche masque le tableau de bord : un formulaire resté ouvert
-  // dessous est invisible. On ferme ce qui est à l'écran, pas ce qui est en
-  // mémoire.
+  // The search hides the dashboard: a form left open underneath it is
+  // invisible. We close what is on screen, not what is held in memory.
   if (searching()) {
     drafts['search'] = ''
     event.preventDefault()

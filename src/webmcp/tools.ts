@@ -115,8 +115,8 @@ async function requireTask(): Promise<TaskState> {
   const panne = store.storageFailure()
   if (panne) throw storageError(panne)
 
-  const manquante = store.missingTaskId()
-  if (manquante) throw new Error(renderMissingTask(manquante))
+  const missing = store.missingTaskId()
+  if (missing) throw new Error(renderMissingTask(missing))
 
   const task = store.currentTask()
   if (!task) {
@@ -154,11 +154,11 @@ function intentionDe(
   tool: ModelContextTool,
   input: Record<string, unknown>,
 ): Record<string, unknown> {
-  const propriétés = (tool.inputSchema as { properties?: Record<string, unknown> }).properties ?? {}
+  const properties = (tool.inputSchema as { properties?: Record<string, unknown> }).properties ?? {}
   const intention: Record<string, unknown> = {}
-  for (const clé of Object.keys(propriétés)) {
-    if (clé === 'based_on_version' || clé === 'mutation_id') continue
-    if (clé in input) intention[clé] = input[clé]
+  for (const key of Object.keys(properties)) {
+    if (key === 'based_on_version' || key === 'mutation_id') continue
+    if (key in input) intention[key] = input[key]
   }
   return intention
 }
@@ -222,10 +222,10 @@ export const resumeTaskTool: ModelContextTool = {
       const panne = store.storageFailure()
       if (panne) throw storageError(panne)
 
-      const manquante = store.missingTaskId()
-      if (manquante) {
+      const missing = store.missingTaskId()
+      if (missing) {
         recordCall('resume_task', true)
-        return failure(renderMissingTask(manquante))
+        return failure(renderMissingTask(missing))
       }
 
       const task = store.currentTask()
@@ -457,9 +457,9 @@ export const setNextActionTool: ModelContextTool = {
   annotations: { readOnlyHint: false },
   async execute(input, options) {
     return runWrite(setNextActionTool, input, options?.signal, (state, basedOnVersion) =>
-      // L'humain peut vider ce champ ; un agent ne le peut pas. Le schéma
-      // déclare minLength: 1, et effacer la prochaine action par mégarde
-      // priverait la conversation suivante de son point de départ.
+      // The human can empty this field; an agent cannot. The schema declares
+      // minLength: 1, and wiping the next action by accident would leave the
+      // next conversation without its starting point.
       setNext(state, { next: requireText('next', input.next, 400), basedOnVersion }, 'agent'),
     )
   },
@@ -476,9 +476,9 @@ export function __setApprovalTimeout(ms: number): void {
 type Decided = { decision: 'allowed' | 'denied'; action: string }
 
 /**
- * Attendre qu'un humain tranche. C'est le seul endroit du produit où un appel
- * d'outil bloque : sans page ouverte devant quelqu'un, cette attente n'aurait
- * aucun sens, et c'est précisément ce que WebMCP rend possible.
+ * Wait for a human to decide. This is the only place in the product where a
+ * tool call blocks: without a page open in front of someone this wait would
+ * make no sense, and that is exactly what WebMCP makes possible.
  */
 function waitForDecision(
   approvalId: string,
@@ -530,9 +530,9 @@ export const requestApprovalTool: ModelContextTool = {
     )
     if (written.isError) return written
 
-    // La PLUS RÉCENTE, jamais la première : deux demandes peuvent porter le même
-    // libellé, et rendre la décision d'hier autoriserait une action que personne
-    // n'a validée.
+    // The MOST RECENT one, never the first: two requests can carry the same
+    // wording, and returning yesterday's decision would allow an action nobody
+    // approved.
     const task = store.currentTask()
     const matching = (task?.approvals ?? []).filter(
       (a) => a.action === String(input.action) && a.why === String(input.why),
@@ -669,8 +669,8 @@ export const completeTaskTool: ModelContextTool = {
       )
     }
 
-    // Clore n'est pas régler. L'agent doit le dire dans sa passation plutôt
-    // que de laisser croire que tout a été traité.
+    // Closing is not settling. The agent has to say so in its hand-over rather
+    // than let it look like everything was dealt with.
     return text(
       [
         ...result.content.map((c) => c.text),

@@ -168,34 +168,34 @@ function appendAudit(audit: AuditEntry[], entry: AuditEntry): AuditEntry[] {
     last.basedOnVersion === entry.basedOnVersion &&
     last.versionBefore === entry.versionBefore
 
-  const suivant = identique
+  const following = identique
     ? [...audit.slice(0, -1), { ...last, repeated: (last.repeated ?? 1) + 1, at: entry.at }]
     : [...audit, entry]
 
-  if (suivant.length <= MAX_AUDIT_ENTRIES) return suivant
+  if (following.length <= MAX_AUDIT_ENTRIES) return following
 
-  const àÉlaguer = suivant.length - MAX_AUDIT_ENTRIES + 1
-  const élagués = suivant.slice(0, àÉlaguer)
-  const déjàÉlaguées = élagués.reduce(
+  const toTrim = following.length - MAX_AUDIT_ENTRIES + 1
+  const trimmed = following.slice(0, toTrim)
+  const alreadyTrimmed = trimmed.reduce(
     (n, e) =>
       n + (e.operation === 'audit_trimmed' ? Number(e.detail.match(/^(\d+)/)?.[1] ?? 0) : 0),
     0,
   )
-  const compte = élagués.filter((e) => e.operation !== 'audit_trimmed').length + déjàÉlaguées
+  const count = trimmed.filter((e) => e.operation !== 'audit_trimmed').length + alreadyTrimmed
 
   const marque: AuditEntry = {
     id: `${entry.id}-trim`,
     operation: 'audit_trimmed',
     actor: entry.actor,
-    versionBefore: élagués[0].versionBefore,
-    versionAfter: élagués[élagués.length - 1].versionAfter,
+    versionBefore: trimmed[0].versionBefore,
+    versionAfter: trimmed[trimmed.length - 1].versionAfter,
     basedOnVersion: null,
     outcome: 'applied',
-    detail: `${compte} earlier entries dropped to keep the log bounded`,
+    detail: `${count} earlier entries dropped to keep the log bounded`,
     at: entry.at,
   }
 
-  return [marque, ...suivant.slice(àÉlaguer)]
+  return [marque, ...following.slice(toTrim)]
 }
 
 export function recordMutation(state: TaskState, record: MutationRecord): TaskState {
@@ -675,8 +675,8 @@ export function editRejection(
 
   const approach = requireText('approach', input.approach)
   const reason = requireText('reason', input.reason)
-  // Pas de garde anti-répétition ici : reformuler un motif en gardant l'approche
-  // est le cas normal, et c'est bien l'entrée existante que l'on corrige.
+  // No repeat guard here: rewording a reason while keeping the approach is the
+  // normal case, and it is the existing entry that is being corrected.
   if (approach === rejection.approach && reason === rejection.reason) {
     throw new ValidationError('approach', 'is unchanged.', {
       code: 'not-proposed',
@@ -788,9 +788,9 @@ export function setGoal(state: TaskState, goal: unknown, ctx?: MutationContext):
       actor: 'human',
       basedOnVersion: null,
       detail: value ?? '(cleared)',
-      // Toujours consigné, même vide : « il n'y avait rien » et « rien n'a été
-      // consigné » ne doivent pas se confondre, sinon poser un but pour la
-      // première fois n'est plus annulable.
+      // Always recorded, even when empty: “there was nothing” and “nothing was
+      // recorded” must not be confused, or setting a goal for the first time
+      // stops being undoable.
       previous: state.goal ?? '',
       patch: { goal: value },
     },
@@ -822,9 +822,9 @@ export function setNext(
 }
 
 /**
- * Comparaison de CHAÎNES, pas de sens : deux formulations différentes du même
- * interdit passeront toutes les deux. Le message le dit, pour que personne ne
- * prenne ce garde-fou pour une compréhension.
+ * STRING comparison, not meaning: two different wordings of the same ban will both
+ * get through. The message says so, so that nobody takes this guard rail for
+ * understanding.
  */
 function wordsOf(value: string): string {
   return fold(value)
@@ -834,10 +834,10 @@ function wordsOf(value: string): string {
 }
 
 /**
- * La garde compare la nouveauté à TOUT ce qui est déjà posé ; la replier une fois par
- * comparaison la repliait autant de fois qu'il y a d'entrées. Mesuré, ajouter une règle
- * passait de 0,051 ms à 100 règles à 1,789 ms à 2000. Le balayage reste linéaire, c'est
- * la question posée.
+ * The guard compares the new entry to EVERYTHING already recorded; folding it once per
+ * comparison folded it as many times as there are entries. Measured, adding a rule went
+ * from 0.051 ms at 100 rules to 1.789 ms at 2000. The scan stays linear, which is the
+ * question being asked.
  */
 function repeats(existing: readonly string[], candidate: string): boolean {
   const words = wordsOf(candidate)
@@ -947,9 +947,9 @@ type Undoable = {
 }
 
 /**
- * On n'annule que ce dont l'effet est ENCORE VISIBLE dans l'état courant.
- * Sans cette condition, annuler deux fois rejouerait la même action à
- * l'envers, et une correction faite à la main entre-temps serait écrasée.
+ * Only what is STILL VISIBLE in the current state can be undone. Without that
+ * condition, undoing twice would replay the same action backwards, and a
+ * correction made by hand in the meantime would be overwritten.
  */
 function invert(state: TaskState, entry: AuditEntry): Undoable | null {
   const id = entry.targetId
@@ -1004,8 +1004,8 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
     }
 
     case 'set_goal': {
-      // `null` et `''` disent tous deux « rien » : les comparer tels quels
-      // ferait proposer d'annuler ce qui vient de l'être.
+      // `null` and `''` both say “nothing”: comparing them as they are would
+      // offer to undo what has just been undone.
       if (entry.previous === undefined || (state.goal ?? '') === entry.previous) return null
       const back = entry.previous
       return {
@@ -1014,9 +1014,9 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
       }
     }
 
-    // `set_next` est l'ancien nom de la même opération. Les cahiers écrits
-    // avant le renommage en portent des entrées : les refuser ici leur
-    // retirerait l'annulation d'un pas déjà consigné.
+    // `set_next` is the old name of the same operation. Logs written before the
+    // rename carry such entries: refusing them here would take away the undo of
+    // a step already recorded.
     case 'set_next':
     case 'set_next_action': {
       if (entry.previous === undefined || (state.next ?? '') === entry.previous) return null
@@ -1064,9 +1064,9 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
 }
 
 /**
- * On ne remonte que la fin du journal, et on s'arrête à la première écriture qui n'est pas
- * une décision annulable de l'humain : remonter par-dessus le travail d'un agent
- * révoquerait d'un clic une décision d'il y a une semaine.
+ * Only the tail of the log is walked back, stopping at the first write that is not an
+ * undoable human decision: walking back over an agent's work would revoke a week-old
+ * decision in one click.
  */
 const UNDOABLE_OPERATIONS = new Set([
   'deactivate_constraint',
@@ -1096,8 +1096,8 @@ function lastUndoable(state: TaskState): { entry: AuditEntry; undo: Undoable } |
     const undo = invert(state, entry)
     if (undo) return { entry, undo }
 
-    // Une décision déjà annulée, ou l'annulation elle-même, ne bloque pas la
-    // remontée. Tout le reste l'arrête.
+    // A decision already undone, or the undo itself, does not block the walk
+    // back. Everything else stops it.
     if (!UNDOABLE_OPERATIONS.has(entry.operation)) return null
   }
   return null
@@ -1317,9 +1317,9 @@ export function answeredQuestions(state: TaskState): OpenQuestion[] {
 }
 
 /**
- * Les règles en vigueur d'un autre cahier, reprises comme des règles humaines :
- * quelqu'un a choisi de les porter ici, elles engagent donc d'emblée. Rien
- * d'autre ne suit : ni le travail, ni les rejets, ni le journal.
+ * The rules in force on another log, taken over as human rules: someone chose to
+ * carry them here, so they bind from the outset. Nothing else follows: not the
+ * work, not the rejections, not the audit trail.
  */
 export function copyRulesInto(
   target: TaskState,
@@ -1386,10 +1386,10 @@ export function evidenceCounts(state: TaskState): EvidenceCounts {
 }
 
 /**
- * Ce qui part avec un export ou un lien partageable sans que personne ne le relise : une
- * sortie de commande collée entière peut porter un jeton, un nom de machine interne, un nom
- * de client. Les identifiants scellés, eux, vivent hors de `TaskState` et ne peuvent
- * structurellement pas voyager ; les preuves, si.
+ * What leaves with an export or a shareable link without anyone re-reading it: a command
+ * output pasted whole can carry a token, an internal machine name, a customer name. Sealed
+ * credentials, for their part, live outside `TaskState` and structurally cannot travel;
+ * evidence can.
  */
 export function attachedEvidenceCount(state: TaskState): number {
   return state.steps.filter((s) => s.evidence !== null).length

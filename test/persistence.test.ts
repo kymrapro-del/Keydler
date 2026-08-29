@@ -13,8 +13,8 @@ beforeEach(() => {
   store.__resetStore()
 })
 
-describe('persistance', () => {
-  it('restitue le même état et la même version après rechargement', async () => {
+describe('persistence', () => {
+  it('gives back the same state and the same version after a reload', async () => {
     const created = await store.createAndOpenTask('Tâche persistée', 'Continuer')
     await store.mutate((state) =>
       logStep(state, { action: 'a', result: 'b', basedOnVersion: state.version }, 'agent'),
@@ -30,7 +30,7 @@ describe('persistance', () => {
     expect(after.steps).toHaveLength(1)
   })
 
-  it('retrouve le dernier cahier ouvert sans identifiant', async () => {
+  it('finds the last task opened, with no id given', async () => {
     await store.createAndOpenTask('Premier', undefined)
     const second = await store.createAndOpenTask('Second', undefined)
 
@@ -41,10 +41,10 @@ describe('persistance', () => {
     expect((await loadLastTask())?.id).toBe(second.id)
   })
 
-  // Le repli (plus de dernier cahier connu) rapatriait TOUS les cahiers du
-  // poste pour n'en garder qu'un ; il descend maintenant l'index par date.
-  // Les dates sont posées à la main : deux cahiers créés dans la même
-  // milliseconde n'ont pas de « plus récent », et le produit n'en promet pas.
+  // The fallback (no last log known any more) used to pull back EVERY log on
+  // the machine only to keep one; it now walks down the index by date. The
+  // dates are set by hand: two logs created within the same millisecond have
+  // no “most recent”, and the product does not promise one.
   async function poser(id: string, updatedAt: number, schemaVersion = SCHEMA_VERSION) {
     await putTask({ ...buildCoreTask(), id, title: id, updatedAt } as never)
     const db = await getDb()
@@ -52,7 +52,7 @@ describe('persistance', () => {
     await db.put('tasks', { ...stored!, schemaVersion } as StoredTask)
   }
 
-  it('sans dernier cahier connu, prend le plus récent', async () => {
+  it('with no last task known, takes the most recent', async () => {
     await clearDatabase()
     await poser('ancien', 1_000)
     await poser('recent', 2_000)
@@ -60,19 +60,19 @@ describe('persistance', () => {
     expect((await loadLastTask())?.id).toBe('recent')
   })
 
-  it('descend au suivant quand le plus récent est illisible', async () => {
+  it('goes down to the next one when the most recent is unreadable', async () => {
     await clearDatabase()
     await poser('ancien', 1_000)
-    // Un cahier écrit par une version future : refusé à la lecture, comme il
-    // se doit, mais il ne doit pas emporter tout le poste avec lui.
+    // A log written by a future version: refused on read, as it should be, but
+    // it must not take the whole machine down with it.
     await poser('recent', 2_000, 999)
 
     expect((await loadLastTask())?.id).toBe('ancien')
   })
 
-  it('écarte un cahier illisible de la liste, sans emporter les autres', async () => {
-    // Trouvé en mutant : rien ne tenait ce filet. Un cahier venu d'une version
-    // future ne doit pas vider le sélecteur du poste.
+  it('drops an unreadable task from the list, without taking the others with it', async () => {
+    // Found by mutation: nothing held this net. A log from a future version
+    // must not empty the machine's picker.
     await clearDatabase()
     await poser('lisible', 1_000)
     await poser('futur', 2_000, 999)
@@ -81,7 +81,7 @@ describe('persistance', () => {
     expect(cartes.map((c) => c.id)).toEqual(['lisible'])
   })
 
-  it('persiste aussi les écritures refusées', async () => {
+  it('persists refused writes too', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     await store.mutate((state) =>
       addConstraint(state, { rule: 'R', basedOnVersion: null }, 'human'),

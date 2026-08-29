@@ -1,16 +1,16 @@
 /**
- * `www.keydler.com` est une AUTRE origine : tout y est cloisonné, et le jeton
- * d'origin trial y étant invalide, un juge lit « WebMCP is not available in this
- * browser ». Cloudflare Pages ne sait pas filtrer sur l'hôte dans `_redirects` ;
- * la règle se pose à la main dans son tableau de bord, et son oubli ne se voit pas.
+ * `www.keydler.com` is ANOTHER origin: everything there is partitioned, and the origin
+ * trial token being invalid on it, a judge reads "WebMCP is not available in this
+ * browser". Cloudflare Pages cannot filter on the host in `_redirects`; the rule is set
+ * by hand in its dashboard, and forgetting it does not show.
  */
 const CANONIQUE = 'keydler.com'
 
 export function redirectToCanonical(location: Location = window.location): boolean {
-  const hôte = location.hostname
-  if (hôte !== `www.${CANONIQUE}`) return false
+  const host = location.hostname
+  if (host !== `www.${CANONIQUE}`) return false
 
-  // Le fragment voyage avec : il porte parfois un cahier entier.
+  // The fragment travels along: it sometimes carries a whole log.
   location.replace(`https://${CANONIQUE}${location.pathname}${location.search}${location.hash}`)
   return true
 }

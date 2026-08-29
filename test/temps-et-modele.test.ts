@@ -11,33 +11,33 @@ const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 
-describe('dire le temps écoulé', () => {
+describe('telling elapsed time', () => {
   const now = 1_700_000_000_000
 
-  it('reste vague à la minute près, sans fausse précision', () => {
+  it('stays vague to the minute, without false precision', () => {
     expect(sinceThen(now - 5_000, now)).toBe('just now')
     expect(sinceThen(now - 90_000, now)).toBe('1 minute ago')
     expect(sinceThen(now - 40 * MINUTE, now)).toBe('40 minutes ago')
   })
 
-  it('passe aux heures, puis aux jours', () => {
+  it('moves up to hours, then to days', () => {
     expect(sinceThen(now - 2 * HOUR, now)).toBe('2 hours ago')
     expect(sinceThen(now - 25 * HOUR, now)).toBe('1 day ago')
     expect(sinceThen(now - 9 * DAY, now)).toBe('9 days ago')
   })
 
-  it('ne prétend rien pour une date à venir', () => {
+  it('claims nothing about a date in the future', () => {
     expect(sinceThen(now + HOUR, now)).toBe('just now')
   })
 
-  it('ne prétend rien pour un horodatage illisible', () => {
+  it('claims nothing about an unreadable timestamp', () => {
     expect(sinceThen(Number.NaN, now)).toBeNull()
     expect(sinceThen(0, now)).toBeNull()
   })
 })
 
-describe('ce que l’agent lit du temps', () => {
-  it('signale un cahier resté longtemps sans écriture', () => {
+describe('what the agent reads about time', () => {
+  it('flags a log left unwritten for a long time', () => {
     const vieux = { ...buildCoreTask(), updatedAt: Date.now() - 30 * DAY }
     const rendered = renderTaskState(vieux)
 
@@ -45,33 +45,33 @@ describe('ce que l’agent lit du temps', () => {
     expect(estimateTokens(rendered)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
-  it('se tait quand le cahier vient d’être touché', () => {
+  it('stays quiet when the log has just been touched', () => {
     const frais = { ...buildCoreTask(), updatedAt: Date.now() - MINUTE }
     expect(renderTaskState(frais)).not.toContain('LAST WRITE')
   })
 
-  it('se tait quand l’horodatage n’est pas lisible', () => {
-    const cassé = { ...buildCoreTask(), updatedAt: 0 }
-    expect(renderTaskState(cassé)).not.toContain('LAST WRITE')
+  it('stays quiet when the timestamp is unreadable', () => {
+    const broken = { ...buildCoreTask(), updatedAt: 0 }
+    expect(renderTaskState(broken)).not.toContain('LAST WRITE')
   })
 })
 
-describe('reprendre les règles d’un cahier', () => {
-  it('copie les règles en vigueur, et rien d’autre', () => {
+describe('carrying rules over from a log', () => {
+  it('copies the rules in force, and nothing else', () => {
     const source = buildCoreTask()
     const cible = copyRulesInto(createTask({ title: 'New task' }), source)
 
-    const attendues = activeConstraints(source).map((c) => c.rule)
-    expect(activeConstraints(cible).map((c) => c.rule)).toEqual(attendues)
+    const expected = activeConstraints(source).map((c) => c.rule)
+    expect(activeConstraints(cible).map((c) => c.rule)).toEqual(expected)
 
-    // Ni le travail, ni les rejets, ni le journal de l'autre.
+    // Not the work, not the rejections, not the other one's write log.
     expect(cible.steps).toHaveLength(0)
     expect(cible.rejected).toHaveLength(0)
     expect(cible.decisions).toHaveLength(0)
     expect(cible.questions).toHaveLength(0)
   })
 
-  it('les rend opposables d’emblée, et attribuées à l’humain', () => {
+  it('makes them binding at once, and attributed to the human', () => {
     const cible = copyRulesInto(createTask({ title: 'New task' }), buildCoreTask())
     for (const rule of cible.constraints) {
       expect(rule.standing, rule.rule).toBe('accepted')
@@ -80,33 +80,35 @@ describe('reprendre les règles d’un cahier', () => {
     }
   })
 
-  it('laisse une trace de leur provenance dans le journal', () => {
+  it('leaves a trace of where they came from in the audit log', () => {
     const source = buildCoreTask()
     const cible = copyRulesInto(createTask({ title: 'New task' }), source)
-    const entrée = cible.audit.at(-1)!
-    expect(entrée.operation).toBe('copy_rules')
-    expect(entrée.detail).toContain(source.title)
+    const entry = cible.audit.at(-1)!
+    expect(entry.operation).toBe('copy_rules')
+    expect(entry.detail).toContain(source.title)
   })
 
-  it('n’écrit rien quand il n’y a aucune règle à reprendre', () => {
+  it('writes nothing when there is no rule to carry over', () => {
     const vide = createTask({ title: 'No rules here' })
     const cible = createTask({ title: 'New task' })
     expect(copyRulesInto(cible, vide)).toBe(cible)
   })
 
-  it('ne recopie pas une règle levée', () => {
+  it('does not copy a lifted rule', () => {
     const source = buildCoreTask()
-    const levée = source.constraints[0]
-    const avecLevée = {
+    const lifted = source.constraints[0]
+    const withLift = {
       ...source,
-      constraints: source.constraints.map((c) => (c.id === levée.id ? { ...c, active: false } : c)),
+      constraints: source.constraints.map((c) =>
+        c.id === lifted.id ? { ...c, active: false } : c,
+      ),
     }
-    const cible = copyRulesInto(createTask({ title: 'New' }), avecLevée)
-    expect(cible.constraints.some((c) => c.rule === levée.rule)).toBe(false)
+    const cible = copyRulesInto(createTask({ title: 'New' }), withLift)
+    expect(cible.constraints.some((c) => c.rule === lifted.rule)).toBe(false)
   })
 })
 
-describe('depuis la page', () => {
+describe('from the page', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -137,7 +139,7 @@ describe('depuis la page', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('propose de reprendre les règles en créant une tâche', async () => {
+  it('offers to carry the rules over when creating a task', async () => {
     root.querySelector<HTMLButtonElement>('#new-task')!.click()
     __renderNow()
 
@@ -146,8 +148,8 @@ describe('depuis la page', () => {
     expect(root.querySelector('label[for="carry-rules"]')!.textContent).toMatch(/rule/i)
   })
 
-  it('crée la tâche avec les règles reprises quand la case est cochée', async () => {
-    const attendues = activeConstraints(store.currentTask()!).map((c) => c.rule)
+  it('creates the task with the rules carried over when the box is checked', async () => {
+    const expected = activeConstraints(store.currentTask()!).map((c) => c.rule)
 
     root.querySelector<HTMLButtonElement>('#new-task')!.click()
     __renderNow()
@@ -159,8 +161,8 @@ describe('depuis la page', () => {
     box.dispatchEvent(new Event('change', { bubbles: true }))
 
     root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
-    // La création et la reprise des règles sont deux écritures : attendre la
-    // seconde, pas la première.
+    // Creating and carrying the rules over are two writes: wait for the second,
+    // not the first.
     await waitUntil(
       () =>
         store.currentTask()?.title === 'Second task' && store.currentTask()!.constraints.length > 0,
@@ -169,11 +171,11 @@ describe('depuis la page', () => {
     )
     __renderNow()
 
-    expect(activeConstraints(store.currentTask()!).map((c) => c.rule)).toEqual(attendues)
+    expect(activeConstraints(store.currentTask()!).map((c) => c.rule)).toEqual(expected)
     expect(store.currentTask()!.steps).toHaveLength(0)
   })
 
-  it('n’en reprend aucune quand la case reste décochée', async () => {
+  it('carries none over when the box stays unchecked', async () => {
     root.querySelector<HTMLButtonElement>('#new-task')!.click()
     __renderNow()
 
@@ -186,7 +188,7 @@ describe('depuis la page', () => {
     expect(store.currentTask()!.constraints).toHaveLength(0)
   })
 
-  it('montre depuis quand le cahier n’a pas bougé', async () => {
+  it('shows how long the log has been untouched', async () => {
     await store.updateTask(store.currentTask()!.id, (s) => ({
       ...s,
       updatedAt: Date.now() - 3 * DAY,

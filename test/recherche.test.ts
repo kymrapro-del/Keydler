@@ -9,111 +9,111 @@ import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase } from './helpers'
 
-describe('recherche dans un cahier', () => {
+describe('search inside one task', () => {
   const task = buildDemoTask()
 
-  it('ne se déclenche pas sur une lettre isolée', () => {
+  it('does not fire on a single letter', () => {
     expect(searchTask(task, 'a')).toEqual([])
     expect(searchTasks([task], 'a')).toEqual([])
     expect(MIN_QUERY).toBe(2)
   })
 
-  it('ignore la casse et les accents', () => {
+  it('ignores case and accents', () => {
     expect(matches('Ne jamais modifier le schéma', 'SCHEMA')).toBe(true)
     expect(matches('Refactor', 'refac')).toBe(true)
     expect(matches('Refactor', 'zzz')).toBe(false)
   })
 
-  // `normalise` saute le repli sur une chaîne ASCII : le raccourci ne vaut que
-  // s'il rend la même réponse quand une seule des deux chaînes est accentuée.
-  it('replie les accents dans les deux sens, quel que soit le côté accentué', () => {
+  // `normalise` skips the folding on an ASCII string: the shortcut only holds
+  // if it gives the same answer when only one of the two strings is accented.
+  it('folds accents both ways, whichever side carries them', () => {
     expect(matches('déjà migré', 'deja')).toBe(true)
     expect(matches('deja migre', 'déjà')).toBe(true)
     expect(matches('DÉJÀ MIGRÉ', 'deja')).toBe(true)
     expect(matches('naïve façade', 'naive facade')).toBe(true)
     expect(matches('crème brûlée', 'creme')).toBe(true)
 
-    // Et il ne rapproche pas des mots que l'accent seul ne sépare pas.
+    // And it does not draw together words that the accent alone does not separate.
     expect(matches('déjà', 'deta')).toBe(false)
   })
 
-  it('replie un accent déjà décomposé, que NFD laisse tel quel', () => {
-    // « é » écrit e + U+0301 : la longueur ne change pas à la décomposition,
-    // donc rien ne signale qu'il reste un diacritique à retirer.
-    const décomposé = 'caf\u0065\u0301 ferme'
-    expect(décomposé.normalize('NFD')).toHaveLength(décomposé.length)
-    expect(matches(décomposé, 'cafe')).toBe(true)
+  it('folds an already decomposed accent that NFD leaves as it is', () => {
+    // "é" written e + U+0301: the length does not change on decomposition, so
+    // nothing signals that a diacritic is left to strip.
+    const split = 'caf\u0065\u0301 ferme'
+    expect(split.normalize('NFD')).toHaveLength(split.length)
+    expect(matches(split, 'cafe')).toBe(true)
   })
 
-  it('replie un caractère dont la MINUSCULE seule sort de l’ASCII', () => {
-    // « İ » est ASCII-adjacent à l'œil mais sa minuscule est i + point
-    // suscrit : tester la casse d'origine plutôt que la minuscule aurait
-    // choisi la mauvaise voie.
+  it('folds a character whose LOWERCASE alone leaves ASCII', () => {
+    // "İ" is ASCII-adjacent to the eye but its lowercase is i + combining dot
+    // above: testing the original case rather than the lowercase would have
+    // picked the wrong path.
     expect(matches('İstanbul', 'istanbul')).toBe(true)
   })
 
-  it('trouve une règle et dit qui l’a posée', () => {
+  it('finds a rule and says who set it', () => {
     const hits = searchTask(task, 'database schema')
     const rule = hits.find((h) => h.kind === 'rule')!
     expect(rule.text).toContain('Never modify the database schema')
     expect(rule.context).toBe('added by you')
   })
 
-  it('trouve un rejet par son MOTIF, pas seulement par son nom', () => {
-    // C'est le cas qui compte : on cherche « pourquoi », pas « quoi ».
+  it('finds a rejection by its REASON, not only by its name', () => {
+    // This is the case that matters: we look for "why", not "what".
     const hits = searchTask(task, 'concurrent logins')
     const rejection = hits.find((h) => h.kind === 'rejection')!
     expect(rejection.text).toBe('JWT approach B')
     expect(rejection.context).toContain('concurrent logins')
   })
 
-  it('trouve une étape par le contenu de sa preuve, et le signale', () => {
-    // « baseline p95 » ne figure QUE dans la sortie de commande jointe : ni
-    // dans l'action, ni dans le résultat. C'est le seul cas qui prouve que la
-    // preuve elle-même est fouillée.
+  it('finds a step by the content of its evidence, and says so', () => {
+    // "baseline p95" appears ONLY in the attached command output: not in the
+    // action, not in the result. It is the only case that proves the evidence
+    // itself is searched.
     const hits = searchTask(task, 'baseline p95')
     const hit = hits.find((h) => h.kind === 'evidence')!
     expect(hit.label).toContain('matched in its evidence')
     expect(hit.text).toContain('Benchmarked the session-bound refresh prototype')
   })
 
-  it('classe en « step » quand le texte visible suffit', () => {
+  it('classifies as `step` when the visible text is enough', () => {
     const hits = searchTask(task, '183 passed')
     expect(hits.find((h) => h.kind === 'step')).toBeTruthy()
   })
 
-  it('distingue une règle en vigueur d’une proposition et d’une règle levée', () => {
+  it('tells a standing rule from a proposal and from a lifted rule', () => {
     const proposal = searchTask(task, 'Rotating refresh tokens')
     expect(proposal.some((h) => h.label.startsWith('Rejection ('))).toBe(true)
   })
 
-  it('trouve une décision par sa justification', () => {
+  it('finds a decision by its rationale', () => {
     const hits = searchTask(task, 'rotation intact')
     expect(hits.find((h) => h.kind === 'decision')!.text).toContain('Approach C')
   })
 
-  it('ne rend rien pour ce qui n’existe pas', () => {
+  it('returns nothing for what does not exist', () => {
     expect(searchTask(task, 'kubernetes')).toEqual([])
   })
 })
 
-describe('recherche entre cahiers', () => {
+describe('search across tasks', () => {
   const a = { ...buildDemoTask(), id: 'a', title: 'Refactor the authentication module' }
   const b = { ...buildDemoTask(), id: 'b', title: 'Ship the invoice export', next: 'List columns' }
 
-  it('cherche dans le titre et dans la prochaine action', () => {
+  it('searches the title and the next action', () => {
     expect(searchTasks([a, b], 'invoice').map((t) => t.id)).toEqual(['b'])
     expect(searchTasks([a, b], 'List col').map((t) => t.where)).toEqual(['next'])
   })
 
-  it('reporte l’état, archivage compris', () => {
+  it('carries the state over, archiving included', () => {
     const archived = { ...b, archived: true }
     expect(searchTasks([a, archived], 'invoice')[0].archived).toBe(true)
   })
 })
 
-describe('archivage', () => {
-  it('range une tâche sans la supprimer, et sait la ramener', () => {
+describe('archiving', () => {
+  it('files a task away without deleting it, and can bring it back', () => {
     const task = createTask({ title: 'Old work' })
     const away = setArchived(task, true)
 
@@ -126,25 +126,25 @@ describe('archivage', () => {
     expect(back.audit.at(-1)!.operation).toBe('unarchive_task')
   })
 
-  it('refuse d’archiver deux fois', () => {
+  it('refuses to archive twice', () => {
     const task = createTask({ title: 'Old work' })
     expect(() => setArchived(task, false)).toThrow(ValidationError)
     expect(() => setArchived(setArchived(task, true), true)).toThrow(ValidationError)
   })
 
-  it('le dit à l’agent : une tâche rangée par l’humain n’est pas une tâche ordinaire', () => {
+  it('tells the agent: a task filed away by the human is not an ordinary task', () => {
     const task = setArchived(createTask({ title: 'Old work', next: 'x' }), true)
     expect(renderTaskState(task)).toContain('archived by the human')
     expect(renderTaskState(createTask({ title: 'Live', next: 'x' }))).not.toContain('archived')
   })
 
-  it('relit un enregistrement d’avant comme non archivé', () => {
+  it('reads an older record back as not archived', () => {
     const older = { ...createTask({ title: 'From v3' }), archived: undefined, schemaVersion: 3 }
     expect(normalizeTask(older as never)!.archived).toBe(false)
   })
 })
 
-describe('à l’écran', () => {
+describe('on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -166,9 +166,9 @@ describe('à l’écran', () => {
     const field = root.querySelector<HTMLInputElement>('#search')!
     field.value = value
     field.dispatchEvent(new Event('input', { bubbles: true }))
-    // Pas de rendu forcé : c'est la frappe elle-même qui doit redessiner. En
-    // le forçant, les cas passaient alors que rien ne se produisait dans un
-    // vrai navigateur.
+    // No forced render: it is the keystroke itself that must redraw. Forcing
+    // it, the cases passed while nothing at all was happening in a real
+    // browser.
     await waitFor(
       () => (root.querySelector('[aria-labelledby="search-title"]') !== null) === value.length >= 2,
       `résultats pour « ${value} »`,
@@ -184,8 +184,8 @@ describe('à l’écran', () => {
     document.body.innerHTML = '<div id="annonces"></div><div id="app"></div>'
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
-    // `buildDemoTask()` tire un identifiant neuf à chaque appel : il faut
-    // retenir CELUI qui a été ouvert, pas en fabriquer un second.
+    // `buildDemoTask()` draws a fresh id on every call: what has to be kept is
+    // THE one that was opened, not a second one built here.
     demoId = (await store.openPreparedTask(buildDemoTask())).id
     await settled()
   })
@@ -197,32 +197,32 @@ describe('à l’écran', () => {
 
   const text = () => root.textContent?.replace(/\s+/g, ' ') ?? ''
 
-  it('laisse le tableau de bord intact tant qu’on n’a rien tapé', () => {
+  it('leaves the dashboard alone until something is typed', () => {
     expect(root.querySelector('#search')).not.toBeNull()
     expect(text()).toContain('Completed work')
     expect(root.querySelector('[aria-labelledby="search-title"]')).toBeNull()
   })
 
-  it('remplace le tableau de bord par les résultats, et le rend', async () => {
+  it('replaces the dashboard with the results, and renders them', async () => {
     await search('concurrent logins')
 
     const results = root.querySelector('[aria-labelledby="search-title"]')!
     expect(results.textContent).toContain('JWT approach B')
     expect(results.querySelector('mark')!.textContent).toBe('concurrent logins')
 
-    // Pendant une recherche, les sections cèdent la place : on cherche des
-    // résultats, pas un tableau de bord qu'il faudrait faire défiler.
+    // During a search the sections give way: what is wanted is results, not a
+    // dashboard to scroll past.
     expect(root.querySelector('[aria-labelledby="work-title"]')).toBeNull()
     expect(root.querySelector('[aria-labelledby="rules-title"]')).toBeNull()
   })
 
-  it('garde l’en-tête et le champ, pour ne pas perdre le fil', async () => {
+  it('keeps the header and the field, so the thread is not lost', async () => {
     await search('schema')
     expect(root.querySelector('h1')!.textContent).toContain('Refactor the authentication module')
     expect(root.querySelector<HTMLInputElement>('#search')!.value).toBe('schema')
   })
 
-  it('revient au tableau de bord quand on efface', async () => {
+  it('returns to the dashboard when the field is cleared', async () => {
     await search('schema')
     expect(root.querySelector('[aria-labelledby="search-title"]')).not.toBeNull()
 
@@ -236,22 +236,22 @@ describe('à l’écran', () => {
     expect(text()).toContain('Completed work')
   })
 
-  it('dit franchement quand rien ne correspond', async () => {
+  it('says plainly when nothing matches', async () => {
     await search('kubernetes')
     const results = root.querySelector('[aria-labelledby="search-title"]')!
     expect(results.textContent).toContain('0 matches')
     expect(results.textContent).toContain('Nothing in this task.')
   })
 
-  it('n’injecte pas de HTML depuis la requête', async () => {
+  it('injects no HTML from the query', async () => {
     await search('<img src=x onerror=alert(1)>')
     expect(root.querySelector('img')).toBeNull()
     expect(root.innerHTML).toContain('&lt;img')
   })
 
-  it('trouve une autre tâche et l’ouvre depuis les résultats', async () => {
-    // Aucun rendu entre les deux : c'est le cas qui laissait la liste périmée,
-    // le cache étant indexé sur la tâche ouverte et non sur l'ensemble.
+  it('finds another task and opens it from the results', async () => {
+    // No render in between: this is the case that left the list stale, the cache
+    // being keyed on the open task and not on the whole set.
     const other = await store.createAndOpenTask('Ship the invoice export', 'List the columns')
     await store.openTask(demoId)
     await waitFor(() => store.currentTask()?.id === demoId, 'retour au cahier de démo')
@@ -267,7 +267,7 @@ describe('à l’écran', () => {
   })
 })
 
-describe('archivage à l’écran', () => {
+describe('archiving on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -299,7 +299,7 @@ describe('archivage à l’écran', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('retire une tâche archivée de la liste, sans la perdre', async () => {
+  it('takes an archived task out of the list without losing it', async () => {
     const old = await store.createAndOpenTask('Finished last month', 'nothing')
     await store.createAndOpenTask('Current work', 'Keep going')
     await waitFor(() => root.querySelector(`[data-archive="${old.id}"]`) !== null, 'liste')
@@ -307,12 +307,12 @@ describe('archivage à l’écran', () => {
     root.querySelector<HTMLButtonElement>(`[data-archive="${old.id}"]`)!.click()
     await waitFor(() => root.querySelector(`[data-open="${old.id}"]`) === null, 'archivage')
 
-    // Rangée, pas supprimée : elle est toujours sur l'appareil.
+    // Filed away, not deleted: it is still on the device.
     expect((await store.allTasks()).map((t) => t.id)).toContain(old.id)
     expect(root.textContent).toContain('Show 1 archived')
   })
 
-  it('les montre sur demande, et sait les ramener', async () => {
+  it('shows them on demand, and can bring them back', async () => {
     const old = await store.createAndOpenTask('Finished last month', 'nothing')
     await store.createAndOpenTask('Current work', 'Keep going')
     await waitFor(() => root.querySelector(`[data-archive="${old.id}"]`) !== null, 'liste')
@@ -333,7 +333,7 @@ describe('archivage à l’écran', () => {
     expect(back.archived).toBe(false)
   })
 
-  it('archive le cahier ouvert, et le dit à l’agent', async () => {
+  it('archives the open task, and tells the agent', async () => {
     await store.createAndOpenTask('Current work', 'Keep going')
     await waitFor(() => root.querySelector('#archive-current') !== null, 'bouton')
 

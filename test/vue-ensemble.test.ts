@@ -8,30 +8,30 @@ import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase, waitUntil } from './helpers'
 
-describe('résumer ce qui attend, en peu de mots', () => {
-  it('ne dit rien quand rien n’attend', () => {
+describe('summarising what is waiting, in few words', () => {
+  it('says nothing when nothing is waiting', () => {
     expect(summariseNeeds([])).toBeNull()
   })
 
-  it('nomme la seule chose à faire', () => {
+  it('names the one thing to do', () => {
     const task = askHuman(
       buildCoreTask(),
       { question: 'q?', why: 'w', basedOnVersion: null },
       'agent',
     )
-    const résumé = summariseNeeds(needsYou({ ...task, steps: [], constraints: [], rejected: [] }))
-    expect(résumé).toContain('1 question')
+    const summary = summariseNeeds(needsYou({ ...task, steps: [], constraints: [], rejected: [] }))
+    expect(summary).toContain('1 question')
   })
 
-  it('compte le reste plutôt que de tout énumérer', () => {
+  it('counts the rest rather than listing it all', () => {
     const task = buildCoreTask()
-    const résumé = summariseNeeds(needsYou(task))!
-    // Une liste complète dans une pastille de sélecteur ne se lit pas.
-    expect(résumé).toMatch(/\+\d+ more|and \d+ more/)
-    expect(résumé.length).toBeLessThan(60)
+    const summary = summariseNeeds(needsYou(task))!
+    // A full list inside a switcher badge does not get read.
+    expect(summary).toMatch(/\+\d+ more|and \d+ more/)
+    expect(summary.length).toBeLessThan(60)
   })
 
-  it('met en tête ce qui bloque un agent', () => {
+  it('puts what blocks an agent first', () => {
     const task = requestApproval(
       askHuman(buildCoreTask(), { question: 'q?', why: 'w', basedOnVersion: null }, 'agent'),
       { action: 'a', why: 'w', basedOnVersion: null },
@@ -41,38 +41,38 @@ describe('résumer ce qui attend, en peu de mots', () => {
   })
 })
 
-describe('un agent vient-il d’écrire ?', () => {
+describe('has an agent just written?', () => {
   beforeEach(resetCalls)
   afterEach(() => {
     vi.useRealTimers()
     resetCalls()
   })
 
-  it('ne prétend rien quand aucun outil n’a été appelé', () => {
+  it('claims nothing when no tool has been called', () => {
     expect(recentlyActive()).toBeNull()
   })
 
-  it('rapporte le dernier appel, et son ancienneté', () => {
+  it('reports the last call, and how old it is', () => {
     recordCall('log_step', false)
     const seen = recentlyActive()!
     expect(seen.tool).toBe('log_step')
     expect(seen.at).toBeTypeOf('number')
   })
 
-  it('se tait quand le dernier appel est vieux', () => {
+  it('stays quiet when the last call is old', () => {
     vi.useFakeTimers()
     recordCall('log_step', false)
     vi.advanceTimersByTime(20 * 60_000)
     expect(recentlyActive()).toBeNull()
   })
 
-  it('ne dit pas qu’un agent est connecté : seulement qu’il a appelé', () => {
+  it('does not say an agent is connected: only that it called', () => {
     recordCall('resume_task', false)
     expect(recentlyActive()!.tool).toBe('resume_task')
   })
 })
 
-describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
+describe('the switcher says what is waiting, task by task', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -92,12 +92,12 @@ describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
 
-    const bloquée = requestApproval(
+    const blocked = requestApproval(
       { ...buildCoreTask(), title: 'Migration work' },
       { action: 'Drop the table', why: 'irreversible', basedOnVersion: null },
       'agent',
     )
-    await store.openPreparedTask(bloquée)
+    await store.openPreparedTask(blocked)
     await store.createAndOpenTask('Quiet task', 'Nothing pending')
     await settled()
   })
@@ -108,31 +108,31 @@ describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('signale la tâche bloquée depuis celle qu’on regarde', async () => {
+  it('flags the blocked task from the one you are looking at', async () => {
     await waitUntil(() => !!switcher()?.textContent?.includes('Migration work'), 'la liste', 3000)
     __renderNow()
 
-    const ligne = [...switcher()!.querySelectorAll('li')].find((li) =>
+    const line = [...switcher()!.querySelectorAll('li')].find((li) =>
       li.textContent!.includes('Migration work'),
     )!
-    // Le titre ne contient pas le mot : c'est bien la pastille qui parle.
-    const badge = ligne.querySelector('.needs__badge')!
+    // The title does not contain the word: it really is the badge speaking.
+    const badge = line.querySelector('.needs__badge')!
     expect(badge).not.toBeNull()
     expect(badge.textContent).toMatch(/blocked/i)
   })
 
-  it('ne colle pas de pastille à une tâche qui n’attend rien', async () => {
+  it('puts no badge on a task that is waiting for nothing', async () => {
     await store.createAndOpenTask('Third task', 'x')
     await waitUntil(() => !!switcher()?.textContent?.includes('Quiet task'), 'la liste', 3000)
     __renderNow()
 
-    const ligne = [...switcher()!.querySelectorAll('li')].find((li) =>
+    const line = [...switcher()!.querySelectorAll('li')].find((li) =>
       li.textContent!.includes('Quiet task'),
     )!
-    expect(ligne.querySelector('.needs__badge')).toBeNull()
+    expect(line.querySelector('.needs__badge')).toBeNull()
   })
 
-  it('dit dans l’en-tête qu’un agent vient d’appeler un outil', async () => {
+  it('says in the header that an agent just called a tool', async () => {
     expect(root.querySelector('.agent-live')).toBeNull()
 
     recordCall('log_step', false)
@@ -141,7 +141,7 @@ describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
     const live = root.querySelector('.agent-live')!
     expect(live).not.toBeNull()
     expect(live.textContent).toContain('log_step')
-    // On rapporte un appel observé, pas une présence supposée.
+    // We report an observed call, not a presumed presence.
     expect(live.textContent!.toLowerCase()).not.toContain('connected')
   })
 })

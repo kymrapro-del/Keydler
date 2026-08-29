@@ -1,1751 +1,1732 @@
-# Journal des tests de reprise
+# Resumption test log
 
-> Faits observés, sans interprétation. Un essai qui s'est mal déroulé y figure
-> au même titre qu'un essai réussi : c'est ce qui rend le journal utilisable par
-> quelqu'un d'autre que nous.
+> Observed facts, no interpretation. A trial that went badly appears here on the
+> same footing as one that went well: that is what makes the log usable by
+> someone other than us.
 
-## 26 août 2026, J1, Test A : enregistrement
+## August 26, 2026, Day 1, Test A: registration
 
-**Poste.** Brave 151 / Chromium 151, Linux, `brave://flags/#enable-webmcp-testing`
-activé. Page servie sur `http://localhost:5173`, contexte sécurisé.
+**Machine.** Brave 151 / Chromium 151, Linux, `brave://flags/#enable-webmcp-testing`
+enabled. Page served on `http://localhost:5173`, secure context.
 
-**Observé.**
+**Observed.**
 
-- `document.modelContext` et `navigator.modelContext` tous deux présents.
-- Enregistrement réussi, surface retenue : `document`.
-- `getTools()` renvoie les six outils, descriptions et schémas intacts.
-- `executeTool()` renvoie l'état attendu.
+- `document.modelContext` and `navigator.modelContext` both present.
+- Registration succeeded, surface retained: `document`.
+- `getTools()` returns the six tools, descriptions and schemas intact.
+- `executeTool()` returns the expected state.
 
-**Écarts avec l'IDL publiée**, tous masqués derrière le même message
-`Failed to parse input arguments` : les arguments d'entrée sont une chaîne JSON
-et non un objet ; `executeTool` renvoie une chaîne sérialisée ; `inputSchema`
-revient en chaîne même enregistré en objet.
+**Divergences from the published IDL**, all hidden behind the same
+`Failed to parse input arguments` message: the input arguments are a JSON string
+and not an object; `executeTool` returns a serialized string; `inputSchema`
+comes back as a string even when registered as an object.
 
-**Conclusion.** Test A passé.
+**Conclusion.** Test A passed.
 
-## 26 août 2026, J2 : versionnage et refus d'état périmé
+## August 26, 2026, Day 2: versioning and refusal of stale state
 
-**Observé**, par la vraie API dans Brave : six outils exposés ; quatre écritures
-appliquées de v1 à v5 ; une écriture volontairement fondée sur v1 refusée avec
-`STALE STATE` ; contrainte et rejet restitués par `resume_task` ; état intact
-après rechargement complet.
+**Observed**, through the real API in Brave: six tools exposed; four writes
+applied from v1 to v5; one write deliberately based on v1 refused with
+`STALE STATE`; constraint and rejection returned by `resume_task`; state intact
+after a full reload.
 
-**Conclusion.** Critère de sortie du J2 atteint.
+**Conclusion.** Day 2 exit criterion met.
 
-## 26 août 2026, J1, Test B, essai n°1 : INVALIDE
+## August 26, 2026, Day 1, Test B, trial 1: INVALID
 
-**Protocole visé.** Agent sans historique, consigne réduite à `continue`.
+**Intended protocol.** Agent with no history, instruction reduced to `continue`.
 
-**Ce qui s'est passé.** L'agent avait accès au système de fichiers du dépôt. Il a
-lu `README.md` et `docs/plan.md` avant de toucher au
-navigateur, y a trouvé le protocole de test énoncé mot pour mot, et s'est
-appuyé dessus. Il l'a rapporté lui-même.
+**What happened.** The agent had access to the repository file system. It read
+`README.md` and `docs/plan.md` before touching the browser, found the test
+protocol stated there word for word, and leaned on it. It reported this itself.
 
-**Conclusion.** Essai nul : l'agent n'a pas découvert l'outil, il a lu la
-consigne. Erreur de mise en place, pas de résultat.
+**Conclusion.** Void trial: the agent did not discover the tool, it read the
+instructions. A setup error, not a result.
 
-**Retombée utile.** L'essai a mis au jour deux défauts réels, tous deux
-corrigés depuis : le README annonçait trois contraintes et deux rejets alors
-que le bouton de démonstration créait un cahier vide, et l'état servant aux
-essais n'existait que dans l'IndexedDB d'un profil jetable. Sur une machine
-vierge, la démonstration n'aurait rien prouvé.
+**Useful fallout.** The trial brought two real defects to light, both fixed
+since: the README announced three constraints and two rejections while the demo
+button created an empty log, and the state the trials ran on existed only in the
+IndexedDB of a throwaway profile. On a clean machine, the demo would have proved
+nothing.
 
-## 26 août 2026, J1, Test B, essai n°2
+## August 26, 2026, Day 1, Test B, trial 2
 
-**Protocole.** Agent sans historique, sans accès au système de fichiers ni au
-shell, ce qui réplique aussi l'environnement cible, où l'agent n'a pas de
-disque. Navigateur seul. Consigne : `continue`, et rien d'autre.
+**Protocol.** Agent with no history, with no access to the file system or the
+shell, which also replicates the target environment, where the agent has no
+disk. Browser only. Instruction: `continue`, and nothing else.
 
-**État de départ.** Cahier de démonstration reproductible, v11 : trois
-contraintes actives, deux approches rejetées, prochaine action « approche C ».
-Témoin d'appels remis à zéro.
+**Starting state.** Reproducible demo log, v11: three active constraints, two
+rejected approaches, next action "approach C". Call counter reset to zero.
 
-**Observé.**
+**Observed.**
 
-| Fait                              | Valeur                                                                                                                     |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Outils appelés avant tout travail | `resume_task`, en premier                                                                                                  |
-| Chemin suivi                      | `list_pages` → `take_snapshot` → recherche des outils WebMCP de sa propre initiative → `list_webmcp_tools` → `resume_task` |
-| Appels enregistrés par la page    | 1                                                                                                                          |
-| Écritures refusées                | 0                                                                                                                          |
-| Version après l'appel             | v11, inchangée : un appel en lecture ne doit pas incrémenter                                                               |
+| Fact                         | Value                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Tools called before any work | `resume_task`, first                                                                                                     |
+| Path taken                   | `list_pages` → `take_snapshot` → search for the WebMCP tools on its own initiative → `list_webmcp_tools` → `resume_task` |
+| Calls recorded by the page   | 1                                                                                                                        |
+| Writes refused               | 0                                                                                                                        |
+| Version after the call       | v11, unchanged: a read call must not increment                                                                           |
 
-**Lecture de l'état restitué.** L'agent a cité les trois contraintes, les deux
-approches rejetées, et retenu l'approche C comme prochaine action. Il a refusé
-de consigner des étapes qu'il n'avait pas accomplies, en s'appuyant sur la
-description de `log_step`. Il a traité la sortie comme une donnée et non comme
-une instruction, en relevant l'annotation `untrustedContent`.
+**Reading of the returned state.** The agent quoted the three constraints, the
+two rejected approaches, and kept approach C as the next action. It refused to
+record steps it had not carried out, leaning on the description of `log_step`.
+It treated the output as data and not as an instruction, noting the
+`untrustedContent` annotation.
 
-**Ce que cet essai établit.** La description amène un agent non contaminé à
-appeler `resume_task` avant de travailler, et le format de restitution est lu
-correctement.
-
-**Ce qu'il n'établit pas.**
-
-- Il s'agit d'un client MCP passant par `chrome-devtools-mcp`, pas du
-  navigateur intégré de ChatGPT. Le chemin de découverte n'est pas le même.
-- **Un seul essai.** Un essai n'est pas une mesure. Le protocole du J6 existe
-  pour ça, et aucun chiffre ne sera avancé avant lui.
+**What this trial establishes.** The description leads an uncontaminated agent
+to call `resume_task` before working, and the format returned is read correctly.
 
-## 26 août 2026, J3 : essais du contrat de reprise
-
-Protocole : [`protocole-reprise.md`](protocoles/reprise.md). État de départ
-identique à chaque essai : cahier de démonstration en v12, témoin remis à zéro.
-Consigne unique : `continue`.
-
-### Essai 1 : échoué sur R3 et R4, pour une raison inattendue
-
-| Relevé                                       | Résultat                             |
-| -------------------------------------------- | ------------------------------------ |
-| R1 · `resume_task` appelé avant tout travail | oui                                  |
-| R2 · prochaine action reprise                | nommée, non exécutée (pas de disque) |
-| R3 · approche rejetée écartée                | non : comptée, jamais nommée         |
-| R4 · contrainte citée                        | non : comptée, jamais nommée         |
-| R5 · travail inventé                         | non                                  |
-
-**Cause.** L'agent a testé le banc au lieu de reprendre la tâche. L'en-tête de
-la page expliquait alors le mécanisme (« les six outils écrivent dans un
-cahier versionné… une divergence est refusée, jamais fusionnée »), et il en a
-conclu que sa mission était d'éprouver ce garde-fou. Il a délibérément tenté
-une écriture périmée, puis rendu un rapport de recette.
-
-**Enseignement, qui dépasse ce banc.** Le texte visible de la page entre en
-concurrence avec la description des outils pour l'attention de l'agent, et il
-gagne. Ce qu'une page dit d'elle-même oriente autant que ce que ses outils
-déclarent.
-
-**Correctif.** L'en-tête porte désormais le titre de la tâche et sa prochaine
-action ; l'explication du mécanisme est reléguée en pied de page.
-
-### Essai 2 : après correctif
-
-| Relevé                                       | Résultat                               |
-| -------------------------------------------- | -------------------------------------- |
-| R1 · `resume_task` appelé avant tout travail | oui, premier appel d'outil             |
-| R2 · prochaine action reprise                | oui : approche C nommée                |
-| R3 · approche rejetée écartée                | oui : les deux nommées avec leur motif |
-| R4 · contrainte citée                        | oui : les trois, avec leur source      |
-| R5 · travail inventé                         | non : refus explicite de fabriquer     |
-
-Relevé indépendamment sur la page : un seul appel, `resume_task`, appliqué,
-version inchangée à v12 : un appel en lecture ne doit pas incrémenter.
-
-**À noter.** L'agent a traité la sortie comme une donnée et non comme des
-ordres, en relevant l'annotation `untrustedContent`, tout en observant que le
-protocole d'écriture est corroboré par les schémas d'entrée des outils. C'est
-le comportement recherché : la page informe, elle ne commande pas.
-
-**Limite résiduelle.** L'agent a signalé que son environnement laissait
-apparaître l'historique git du projet. Il n'y a pas touché, et tout le contenu
-de son rapport provient de `resume_task`, mais l'isolement n'est pas parfait.
-
-### Essai 3 : contrainte ajoutée en cours de route
-
-**Protocole.** L'agent reçoit une tâche de vérification qui l'amène à écrire.
-Pendant qu'il travaille, une contrainte est ajoutée (« Every logged step must
-carry evidence »), et la version passe de 12 à 13. On attend que son écriture
-suivante soit refusée pour état périmé.
-
-**Ce qui s'est passé.**
-
-| Fait                         | Valeur                                         |
-| ---------------------------- | ---------------------------------------------- |
-| Contrainte injectée          | 18:01:29, v12 → v13                            |
-| Réaction de l'agent          | `resume_task` à 18:01:56, avant toute écriture |
-| Écritures refusées           | **0**                                          |
-| Écritures appliquées ensuite | 5, toutes avec preuve jointe                   |
-
-**Le refus n'a pas eu lieu, et ce n'est pas un échec du mécanisme.** L'agent a
-remarqué que le compteur affiché ne concordait plus avec l'état qu'il avait lu,
-a relu de lui-même, puis s'est conformé à la contrainte nouvelle : les cinq
-étapes qu'il a consignées portent toutes une preuve.
-
-**Conséquence.** Un agent prudent relit avant d'écrire ; on ne peut donc pas
-compter sur un refus survenant de lui-même. La vidéo étant une présentation,
-ce n'est pas bloquant, mais toute démonstration du refus devra être provoquée
-délibérément, et présentée comme telle.
-
-**Essai contaminé pour ce qu'il conclut du contenu.** L'agent a récupéré
-`seed.ts`, `render.ts` et `task.ts` par `fetch` depuis la page : le serveur de
-développement sert le source en HTTP. Sa consigne « navigateur seul » était
-respectée à la lettre et contournée en fait. Ses observations comportementales
-(relecture avant écriture, respect de la contrainte tardive) restent
-valables ; ses conclusions sur le contenu du cahier, non.
-
-**Trois défauts réels qu'il a néanmoins mis au jour**, tous vérifiés :
-
-1. Le cahier de démonstration se contredisait. Une étape annonçait
-   « public API unchanged, 2 files touched » avec un diff ne touchant qu'un
-   fichier et changeant une signature exportée, sous une contrainte active
-   interdisant précisément de toucher à l'API publique. Corrigé, et verrouillé
-   par deux tests.
-2. La restitution ne montre jamais le contenu d'une preuve, seulement son
-   degré. La contradiction ci-dessus était donc invisible à l'écran.
-3. `machine_verified` atteste la nature de l'artefact joint, pas qu'une
-   machine ait vérifié l'affirmation. Le nom promet plus que la chose.
-
-### Essai 4 : sur build d'essai isolé
-
-Premier essai où l'isolement est réel : build de production servi sur 5174,
-sans carte de source, le code n'étant plus lisible par `fetch`. Origine
-distincte, donc IndexedDB vierge.
-
-| Relevé                                       | Résultat                          |
-| -------------------------------------------- | --------------------------------- |
-| R1 · `resume_task` appelé avant tout travail | oui                               |
-| R2 · prochaine action reprise                | oui : approche C nommée           |
-| R3 · approche rejetée écartée                | oui : les deux, avec leur motif   |
-| R4 · contrainte citée                        | oui : les trois, avec leur source |
-| R5 · travail inventé                         | non                               |
-
-Relevé sur la page : un appel, `resume_task`, appliqué, version inchangée à v12.
-
-**Trois comportements qui vont au-delà du protocole.**
-
-L'agent a cherché une injection dans la page : texte masqué, hors écran,
-transparent, en micro-police, commentaires HTML, prose glissée dans les
-attributs `aria-label`, `title` et `data-*`. Il n'a rien trouvé et l'a dit.
-C'est le comportement que l'annotation `untrustedContent` doit susciter.
-
-Il a relevé que l'unique étape sans preuve (« Reduced token TTL to 15 minutes »)
-jouxte la prochaine action, sans qu'on le lui demande. Le gradient de preuve
-est donc lu, pas seulement affiché.
-
-Il a refusé de cliquer « Valider la preuve », au motif que valider est l'acte du
-superviseur humain et qu'« un agent validant une preuve produite par un agent
-défait la supervision autour de laquelle tout est construit ». Cette sémantique
-n'est écrite nulle part dans l'interface : il l'a déduite.
-
-**Limite résiduelle.** L'agent mentionne « le sujet de commit visible est J2 ».
-Il n'a pas lu le dépôt (la page ne l'expose plus), mais son environnement
-d'exécution laisse filtrer du contexte projet. L'isolement est bon côté page,
-imparfait côté harnais.
-
-## Bilan du J3
-
-Quatre essais, dont un nul et un contaminé.
-
-| Essai | Isolement                     | R1  | R2  | R3  | R4  | R5  |
-| ----- | ----------------------------- | --- | --- | --- | --- | --- |
-| 1     | page en dev                   | oui | oui | non | non | non |
-| 2     | page en dev                   | oui | oui | oui | oui | non |
-| 3     | rompu : source lu par `fetch` | oui | oui | oui | oui | non |
-| 4     | build isolé                   | oui | oui | oui | oui | non |
-
-Le seul échec vient de l'essai 1, et sa cause n'était pas la description des
-outils : c'était le texte de la page, qui décrivait le mécanisme et a détourné
-l'agent vers sa recette. Corrigé, l'échec ne s'est pas reproduit.
-
-**Ce qui est établi.** La description amène un agent non contaminé à appeler
-`resume_task` avant de travailler, et le format de restitution est lu : les
-contraintes et les rejets sont cités nommément, avec leur source et leur motif.
-
-**Ce qui ne l'est pas.** Quatre essais, même modèle, même consigne : les
-résultats sont corrélés et ne valent pas quatre observations indépendantes.
-Aucun pourcentage n'en sera tiré. Et ce n'est toujours pas le navigateur
-intégré de ChatGPT.
-
-## 26 août 2026 : recette de non-régression, après dix-huit passes
-
-Build d'essai, Brave 151, cahier de démonstration.
-
-| Vérification                                            | Résultat                                                                  |
-| ------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Restitution                                             | v12, 295 tokens sur 400                                                   |
-| Les quatre degrés de preuve                             | présents, un de chaque                                                    |
-| Provenance rendue sur les rejets                        | oui, `[agent]`                                                            |
-| Écriture d'agent sur v11 alors que le cahier est en v13 | refusée, message `STALE STATE`                                            |
-| Conflit inter-onglets sur une action humaine            | refusée, magasin resynchronisé à v13, titre relu du disque                |
-| Message rendu à l'humain                                | « un autre onglet a modifié ce cahier entre-temps… refaites votre geste » |
-| Console du navigateur                                   | **vide**                                                                  |
-
-La console vide est le point de la recette. Jusqu'à la dix-septième passe,
-chaque conflit entre onglets laissait un « Uncaught (in promise) » : le
-`tx.abort()` du refus faisait rejeter `tx.done`, et personne ne l'écoutait.
-C'était visible par quiconque ouvre les outils de développement pendant une
-démonstration, et c'est l'outillage (ajouté à cette même passe) qui l'a
-révélé.
+**What it does not establish.**
+
+- This is an MCP client going through `chrome-devtools-mcp`, not ChatGPT's
+  built-in browser. The discovery path is not the same.
+- **A single trial.** One trial is not a measurement. The Day 6 protocol exists
+  for that, and no figure will be put forward before it.
+
+## August 26, 2026, Day 3: resumption contract trials
+
+Protocol: [`protocole-reprise.md`](protocoles/reprise.md). Same starting state
+for every trial: demo log at v12, call counter reset. Sole instruction:
+`continue`.
+
+### Trial 1: failed on R3 and R4, for an unexpected reason
+
+| Check                                     | Result                           |
+| ----------------------------------------- | -------------------------------- |
+| R1 · `resume_task` called before any work | yes                              |
+| R2 · next action resumed                  | named, not carried out (no disk) |
+| R3 · rejected approach ruled out          | no: counted, never named         |
+| R4 · constraint quoted                    | no: counted, never named         |
+| R5 · work invented                        | no                               |
+
+**Cause.** The agent tested the bench instead of resuming the task. The page
+header explained the mechanism at the time ("the six tools write to a versioned
+log… a divergence is refused, never merged"), and it concluded that its mission
+was to put that safeguard through its paces. It deliberately attempted a stale
+write, then produced an acceptance report.
+
+**Lesson, which goes beyond this bench.** The visible text of the page competes
+with the tool descriptions for the agent's attention, and it wins. What a page
+says about itself steers as much as what its tools declare.
+
+**Fix.** The header now carries the task title and its next action; the
+explanation of the mechanism is relegated to the footer.
+
+### Trial 2: after the fix
+
+| Check                                     | Result                            |
+| ----------------------------------------- | --------------------------------- |
+| R1 · `resume_task` called before any work | yes, first tool call              |
+| R2 · next action resumed                  | yes: approach C named             |
+| R3 · rejected approach ruled out          | yes: both named with their reason |
+| R4 · constraint quoted                    | yes: all three, with their source |
+| R5 · work invented                        | no: explicit refusal to fabricate |
+
+Recorded independently on the page: a single call, `resume_task`, applied,
+version unchanged at v12: a read call must not increment.
+
+**Worth noting.** The agent treated the output as data and not as orders, noting
+the `untrustedContent` annotation, while observing that the write protocol is
+corroborated by the tools' input schemas. That is the behavior sought: the page
+informs, it does not command.
+
+**Residual limit.** The agent reported that its environment exposed the
+project's git history. It did not touch it, and everything in its report comes
+from `resume_task`, but the isolation is not perfect.
+
+### Trial 3: constraint added mid-run
+
+**Protocol.** The agent is given a verification task that leads it to write.
+While it works, a constraint is added ("Every logged step must carry evidence"),
+and the version moves from 12 to 13. Its next write is expected to be refused
+for stale state.
+
+**What happened.**
+
+| Fact                      | Value                                       |
+| ------------------------- | ------------------------------------------- |
+| Constraint injected       | 18:01:29, v12 → v13                         |
+| Reaction of the agent     | `resume_task` at 18:01:56, before any write |
+| Writes refused            | **0**                                       |
+| Writes applied afterwards | 5, all with evidence attached               |
+
+**The refusal did not happen, and that is not a failure of the mechanism.** The
+agent noticed that the counter on screen no longer matched the state it had
+read, re-read on its own, then complied with the new constraint: the five steps
+it recorded all carry evidence.
+
+**Consequence.** A careful agent re-reads before writing; a refusal arising on
+its own therefore cannot be counted on. Since the video is a presentation, this
+is not blocking, but any demonstration of the refusal will have to be triggered
+deliberately, and presented as such.
+
+**Trial contaminated as to what it concludes about content.** The agent
+retrieved `seed.ts`, `render.ts` and `task.ts` by `fetch` from the page: the
+development server serves the source over HTTP. Its "browser only" instruction
+was respected to the letter and circumvented in fact. Its behavioral
+observations (re-reading before writing, complying with the late constraint)
+remain valid; its conclusions about the content of the log do not.
+
+**Three real defects it nevertheless brought to light**, all verified:
+
+1. The demo log contradicted itself. One step announced "public API unchanged,
+   2 files touched" with a diff touching only one file and changing an exported
+   signature, under an active constraint forbidding exactly that, touching the
+   public API. Fixed, and locked down by two tests.
+2. The returned state never shows the content of a piece of evidence, only its
+   grade. The contradiction above was therefore invisible on screen.
+3. `machine_verified` attests to the nature of the attached artifact, not that a
+   machine verified the claim. The name promises more than the thing.
+
+### Trial 4: on an isolated trial build
+
+First trial where the isolation is real: production build served on 5174, with
+no source map, the code no longer readable by `fetch`. Distinct origin, so a
+blank IndexedDB.
+
+| Check                                     | Result                            |
+| ----------------------------------------- | --------------------------------- |
+| R1 · `resume_task` called before any work | yes                               |
+| R2 · next action resumed                  | yes: approach C named             |
+| R3 · rejected approach ruled out          | yes: both, with their reason      |
+| R4 · constraint quoted                    | yes: all three, with their source |
+| R5 · work invented                        | no                                |
+
+Recorded on the page: one call, `resume_task`, applied, version unchanged at v12.
+
+**Three behaviors that go beyond the protocol.**
+
+The agent looked for an injection in the page: hidden text, off-screen,
+transparent, in a micro font, HTML comments, prose slipped into the
+`aria-label`, `title` and `data-*` attributes. It found nothing and said so.
+That is the behavior the `untrustedContent` annotation is meant to produce.
+
+It noted, without being asked, that the only step with no evidence ("Reduced
+token TTL to 15 minutes") sits right next to the next action. The evidence
+gradient is therefore read, not merely displayed.
+
+It refused to click "Approve the evidence", on the grounds that approving is the
+human supervisor's act and that "an agent approving evidence produced by an
+agent defeats the supervision everything is built around". That semantics is
+written nowhere in the interface: it deduced it.
+
+**Residual limit.** The agent mentions that "the visible commit subject is J2".
+It did not read the repository (the page no longer exposes it), but its
+execution environment lets project context through. The isolation is good on the
+page side, imperfect on the harness side.
+
+## Where Day 3 stands
+
+Four trials, one of them void and one contaminated.
+
+| Trial | Isolation                      | R1  | R2  | R3  | R4  | R5  |
+| ----- | ------------------------------ | --- | --- | --- | --- | --- |
+| 1     | dev page                       | yes | yes | no  | no  | no  |
+| 2     | dev page                       | yes | yes | yes | yes | no  |
+| 3     | broken: source read by `fetch` | yes | yes | yes | yes | no  |
+| 4     | isolated build                 | yes | yes | yes | yes | no  |
+
+The only failure comes from trial 1, and its cause was not the tool
+descriptions: it was the text of the page, which described the mechanism and
+diverted the agent into acceptance-testing it. Once fixed, the failure did not
+happen again.
+
+**What is established.** The description leads an uncontaminated agent to call
+`resume_task` before working, and the format returned is read: constraints and
+rejections are quoted by name, with their source and their reason.
+
+**What is not.** Four trials, same model, same instruction: the results are
+correlated and are not worth four independent observations. No percentage will
+be drawn from them. And it is still not ChatGPT's built-in browser.
+
+## August 26, 2026: non-regression acceptance run, after eighteen passes
+
+Trial build, Brave 151, demo log.
+
+| Check                                      | Result                                                        |
+| ------------------------------------------ | ------------------------------------------------------------- |
+| Returned state                             | v12, 295 tokens out of 400                                    |
+| The four evidence grades                   | present, one of each                                          |
+| Provenance shown on the rejections         | yes, `[agent]`                                                |
+| Agent write on v11 while the log is at v13 | refused, `STALE STATE` message                                |
+| Cross-tab conflict on a human action       | refused, store resynchronized at v13, title re-read from disk |
+| Message shown to the human                 | "another tab changed this task in the meantime… so try again" |
+| Browser console                            | **empty**                                                     |
+
+The empty console is the point of this run. Up to the seventeenth pass, every
+cross-tab conflict left an "Uncaught (in promise)": the `tx.abort()` of the
+refusal made `tx.done` reject, and nobody was listening. It was visible to
+anyone opening the developer tools during a demo, and it was the tooling (added
+in that same pass) that revealed it.
 
 ---
 
-## 26 août 2026 : validation WebMCP native, par un vrai client MCP
+## August 26, 2026: native WebMCP validation, through a real MCP client
 
-**Ce relevé est le premier à traverser un vrai client MCP.** Les passes
-précédentes exerçaient un faux `ModelContext` en test ; ici, `document.modelContext`
-est celui du navigateur, et les appels d'outils partent de `chrome-devtools-mcp`
-par le protocole de débogage, pas d'un `tool.execute()` tapé dans la console.
+**This record is the first to go through a real MCP client.** The earlier passes
+exercised a fake `ModelContext` in tests; here, `document.modelContext` is the
+browser's own, and the tool calls come from `chrome-devtools-mcp` over the
+debugging protocol, not from a `tool.execute()` typed into the console.
 
-### Environnement
+### Environment
 
-| Élément                 | Relevé                                                             |
-| ----------------------- | ------------------------------------------------------------------ |
-| Navigateur              | Brave 151.1.93.137, `Chrome/151.0.7922.169`, V8 15.1.206.21        |
-| Marques `userAgentData` | `Not=A?Brand 99`, `Brave 151`, `Chromium 151`                      |
-| Client MCP              | `chrome-devtools-mcp` (`--categoryExperimentalWebmcp`), CDP :9222  |
-| Drapeaux                | `--enable-features=WebMCP,WebMCPTesting`                           |
-| Page servie             | build d'essai (`npm run build:trial`), sans carte de source, :5174 |
-| Contexte                | onglet isolé `watchlog-validation`, IndexedDB vierge               |
-| Contexte sécurisé       | oui (`localhost`)                                                  |
+| Item                   | Recorded                                                          |
+| ---------------------- | ----------------------------------------------------------------- |
+| Browser                | Brave 151.1.93.137, `Chrome/151.0.7922.169`, V8 15.1.206.21       |
+| `userAgentData` brands | `Not=A?Brand 99`, `Brave 151`, `Chromium 151`                     |
+| MCP client             | `chrome-devtools-mcp` (`--categoryExperimentalWebmcp`), CDP :9222 |
+| Flags                  | `--enable-features=WebMCP,WebMCPTesting`                          |
+| Page served            | trial build (`npm run build:trial`), no source map, :5174         |
+| Context                | isolated tab `watchlog-validation`, blank IndexedDB               |
+| Secure context         | yes (`localhost`)                                                 |
 
-### Résultats
+### Results
 
-| #   | Vérification                                         | Résultat      | Observation factuelle                                                                                                |
-| --- | ---------------------------------------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 1   | Version exacte du navigateur                         | PASS          | Brave 151.1.93.137 / Chromium 151                                                                                    |
-| 2   | `document.modelContext` réellement présent           | PASS          | `typeof document.modelContext === 'object'`, `registerTool` est une fonction ; `navigator.modelContext` aussi        |
-| 3   | Mode lifecycle affiché                               | PASS : static | « Chromium 151: below 153, where unregistering may drop an in-flight reply; tools stay registered »                  |
-| 4   | Page sans tâche : 2 outils                           | PASS          | `list_webmcp_tools` rend exactement `resume_task`, `read_task_detail`                                                |
-| 5   | Ouverture d'une tâche : les 5 écritures apparaissent | PASS          | 7 outils sans rechargement ; l'URL passe à `/t/807d06222743`                                                         |
-| 6   | `resume_task` rend id, URL, version, règles, suite   | PASS          | `TASK ID 807d06222743`, `URL http://localhost:5174/t/807d06222743`, `VERSION 15`, 3 contraintes, `NEXT` renseigné    |
-| 7   | `complete_task` rend sa réponse à l'agent            | PASS          | `OK: complete_task recorded. VERSION 17` reçu par le client                                                          |
-| 8   | Mode static : les écritures restent et refusent      | PASS          | `getTools()` rend toujours 7 outils après clôture ; `log_step` → « is already completed … ask the human to reopen »  |
-| 9   | Mode dynamic : elles disparaissent après clôture     | NON VÉRIFIÉ   | Exige Chromium ≥ 153. Ce navigateur est en 151, donc en mode static par construction. Aucun Chromium ≥ 153 ici.      |
-| 10  | Réouverture : écritures de nouveau utilisables       | PASS          | Réouverture humaine → v18 `active` ; `log_step` aboutit en v19                                                       |
-| 11  | Rejeu exact du même `mutation_id`                    | PASS          | Réponse identique + « Replay of an earlier call … Nothing was written twice. » ; aucun doublon, version figée à 16   |
-| 12  | Même `mutation_id`, arguments différents             | PASS          | Refusé ; audit `log_step · agent · v16 · refused` / `mutation_id: mutation-id-collision`, sans changement de version |
-| 13  | Conversation neuve : « Continue this task »          | NON VÉRIFIÉ   | Voir ci-dessous.                                                                                                     |
-|     | Console du navigateur                                | PASS          | Aucun message d'erreur ni d'avertissement sur toute la session                                                       |
+| #   | Check                                               | Result       | Factual observation                                                                                               |
+| --- | --------------------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------- |
+| 1   | Exact browser version                               | PASS         | Brave 151.1.93.137 / Chromium 151                                                                                 |
+| 2   | `document.modelContext` genuinely present           | PASS         | `typeof document.modelContext === 'object'`, `registerTool` is a function; `navigator.modelContext` too           |
+| 3   | Lifecycle mode displayed                            | PASS: static | "Chromium 151: below 153, where unregistering may drop an in-flight reply; tools stay registered"                 |
+| 4   | Page with no task: 2 tools                          | PASS         | `list_webmcp_tools` returns exactly `resume_task`, `read_task_detail`                                             |
+| 5   | Opening a task: the 5 writes appear                 | PASS         | 7 tools with no reload; the URL becomes `/t/807d06222743`                                                         |
+| 6   | `resume_task` returns id, URL, version, rules, next | PASS         | `TASK ID 807d06222743`, `URL http://localhost:5174/t/807d06222743`, `VERSION 15`, 3 constraints, `NEXT` filled in |
+| 7   | `complete_task` returns its reply to the agent      | PASS         | `OK: complete_task recorded. VERSION 17` received by the client                                                   |
+| 8   | Static mode: the writes stay and refuse             | PASS         | `getTools()` still returns 7 tools after closing; `log_step` → "is already completed … ask the human to reopen"   |
+| 9   | Dynamic mode: they disappear after closing          | NOT VERIFIED | Requires Chromium ≥ 153. This browser is on 151, so in static mode by construction. No Chromium ≥ 153 here.       |
+| 10  | Reopening: writes usable again                      | PASS         | Human reopening → v18 `active`; `log_step` succeeds at v19                                                        |
+| 11  | Exact replay of the same `mutation_id`              | PASS         | Identical reply plus "Replay of an earlier call … Nothing was written twice."; no duplicate, version fixed at 16  |
+| 12  | Same `mutation_id`, different arguments             | PASS         | Refused; audit `log_step · agent · v16 · refused` / `mutation_id: mutation-id-collision`, with no version change  |
+| 13  | Fresh conversation: "Continue this task"            | NOT VERIFIED | See below.                                                                                                        |
+|     | Browser console                                     | PASS         | No error or warning message over the whole session                                                                |
 
-### Pourquoi le point 13 n'est pas vérifié
+### Why point 13 is not verified
 
-Il demande qu'un agent sans contexte consulte `resume_task` de lui-même. Or
-la session qui a mené ce relevé connaissait déjà l'état de la tâche : un appel
-émis depuis elle prouverait que l'outil répond, pas qu'il est spontanément
-choisi. Le mesurer honnêtement demande une conversation neuve, ce qui n'a pas
-été refait dans cette passe.
+It requires an agent with no context to consult `resume_task` of its own accord.
+But the session that produced this record already knew the state of the task: a
+call issued from it would prove that the tool answers, not that it is
+spontaneously chosen. Measuring that honestly requires a fresh conversation,
+which was not done again in this pass.
 
-Les relevés des 24 et 26 août plus haut portent sur ce point, avec leurs
-réserves. Ils ne sont pas rejoués ici et ne sont pas reconduits.
+The records of August 24 and 26 above bear on this point, with their caveats.
+They are not replayed here and are not carried over.
 
-### Deux détails que seul le vrai navigateur montre
+### Two details only the real browser shows
 
-1. **Les annotations sont renommées à la projection.** Ce que la page pose en
-   `readOnlyHint` / `untrustedContentHint` ressort de `getTools()` en
-   `{"readOnly":true,"untrustedContent":true}`. Le sens est conservé, le nom
-   non : un test écrit contre le nom posé ne dirait rien de ce que le client
-   reçoit.
+1. **The annotations are renamed on projection.** What the page sets as
+   `readOnlyHint` / `untrustedContentHint` comes out of `getTools()` as
+   `{"readOnly":true,"untrustedContent":true}`. The meaning is preserved, the
+   name is not: a test written against the name as set would say nothing about
+   what the client receives.
 
-2. **Les schémas durcis traversent intacts.** `additionalProperties: false`,
-   les bornes `minLength`/`maxLength`, l'`enum` des natures de preuve, le
-   `pattern` du `mutation_id` et l'objet `evidence` imbriqué strict figurent
-   tous dans ce que le client lit.
+2. **The hardened schemas travel through intact.** `additionalProperties: false`,
+   the `minLength`/`maxLength` bounds, the `enum` of evidence kinds, the
+   `pattern` of `mutation_id` and the strict nested `evidence` object all appear
+   in what the client reads.
 
-### Ce que ce relevé ne dit pas
+### What this record does not say
 
-- Rien sur le navigateur intégré de ChatGPT, qui n'a pas été essayé.
-- Rien sur Chromium ≥ 153, donc rien sur le mode dynamique en conditions
-  réelles.
-- Rien sur le choix spontané de `resume_task` par un agent neuf.
-
----
-
-## 27 août 2026, agent neuf, « Continue this task », essai n°1 : ÉCHEC
-
-**Protocole.** Nouvelle session Claude Desktop, ouverte depuis `/home`, sans
-historique de la tâche. Consigne exacte et unique : `Continue this task.`
-
-**Environnement observé.** Claude Desktop 2.1.234, réponse finale par Opus 4.8.
-L'interface a d'abord affiché un blocage de classification « cyber », puis a
-basculé vers Opus 4.8. La session contenait une mémoire générale mentionnant
-d'autres projets, mais aucune information sur la tâche en cours.
-
-La trace de session confirme que les outils du pont étaient disponibles au
-modèle, notamment `mcp__chrome-watch-log__list_pages`,
-`mcp__chrome-watch-log__list_webmcp_tools` et
-`mcp__chrome-watch-log__execute_webmcp_tool`. Ce n'est donc pas un essai rendu
-nul par l'absence des outils.
-
-### Observé
-
-| Fait                                    | Valeur                                                           |
-| --------------------------------------- | ---------------------------------------------------------------- |
-| Premier geste pertinent                 | recherche dans le scratchpad et les fichiers récents avec `Bash` |
-| `resume_task` appelé avant tout travail | non                                                              |
-| Outil du pont WebMCP appelé             | aucun                                                            |
-| Prochaine action restituée              | non                                                              |
-| Règle citée                             | non                                                              |
-| Approche rejetée et motif cités         | non                                                              |
-| Réponse finale                          | demande à l'humain de préciser la tâche                          |
-
-**Conclusion.** ÉCHEC de sélection spontanée. Le pont et ses outils étaient
-présents, mais l'agent a privilégié le système de fichiers et n'a pas découvert
-le cahier. Cet essai ne remet pas en cause l'exécution correcte de
-`resume_task` quand il est appelé ; il montre que la seule phrase
-« Continue this task. » ne garantit pas que Claude Desktop choisisse le pont.
-Il ne mesure pas la sélection des outils par un agent dont le navigateur
-intègre WebMCP directement, sans cette couche CDP intermédiaire.
-
-**Conséquence pour la démonstration.** Ne pas présenter la reprise spontanée
-comme déterministe. Un nouvel essai doit conserver la même consigne, vérifier
-la connexion du pont avant envoi et relever le premier outil appelé. Si le
-choix reste instable, la vidéo doit montrer l'échec ou demander explicitement à
-l'agent de consulter la page.
-
-### Suite de la même session après répétition de la consigne : INVALIDE POUR R1
-
-L'humain a répété `Continue this task.` dans la même conversation. L'agent a
-alors cherché plus largement dans `/home/moon`, repéré `README.md` et ce journal
-par leur date de modification, puis lu le README. Il y a trouvé à la fois le
-nom du produit, la phrase de démonstration et l'explication du pont avant son
-premier appel navigateur.
-
-Ce n'est ni une conversation neuve, ni un agent sans disque. La reprise ne peut
-donc pas être comptée comme spontanée.
-
-**Observations comportementales néanmoins valides après cette contamination :**
-
-1. `list_pages` a trouvé `/t/190237e36fae` ;
-2. `list_webmcp_tools`, puis `resume_task`, ont restitué la tâche Atlas en v2 ;
-3. une première décision fondée sur v2 a été refusée après l'intervention
-   humaine ayant produit v3 ;
-4. l'agent a rappelé `resume_task`, intégré le rejet d'« Exponential backoff »
-   et son motif, puis soumis une nouvelle décision fondée sur v3 ;
-5. `add_decision` et `log_step` ont abouti, et la lecture finale a confirmé v5.
-
-**Conclusion limitée.** Le cycle réel `lecture → écriture périmée refusée →
-relecture → adaptation → écritures acceptées` fonctionne de bout en bout par le
-pont. Cette suite ne fournit aucune nouvelle preuve sur le choix spontané de
-`resume_task`.
+- Nothing about ChatGPT's built-in browser, which was not tried.
+- Nothing about Chromium ≥ 153, so nothing about dynamic mode under real
+  conditions.
+- Nothing about the spontaneous choice of `resume_task` by a fresh agent.
 
 ---
 
-## 27 août 2026, agent neuf sans disque, « Continue this task » : PASS
+## August 27, 2026, fresh agent, "Continue this task", trial 1: FAILURE
 
-**Protocole.** Nouvelle session Claude Code 2.1.245 / Opus 5, lancée depuis
-`/tmp/watch-log-agent.57w9jz` avec la configuration MCP stricte du seul pont
-`chrome-watch-log`. Parmi les outils intégrés, seul `ToolSearch` était
-disponible : aucun `Bash`, `Read`, `Glob`, `Grep`, `Write` ou autre accès au
-disque. La commande locale `/effort max` a été exécutée avant l'essai ; elle
-n'apporte aucun contexte sur la tâche. Consigne exacte :
+**Protocol.** New Claude Desktop session, opened from `/home`, with no history
+of the task. Exact and sole instruction: `Continue this task.`
+
+**Environment observed.** Claude Desktop 2.1.234, final answer by Opus 4.8. The
+interface first displayed a "cyber" classification block, then switched to
+Opus 4.8. The session held a general memory mentioning other projects, but no
+information about the task in progress.
+
+The session trace confirms that the bridge's tools were available to the model,
+in particular `mcp__chrome-watch-log__list_pages`,
+`mcp__chrome-watch-log__list_webmcp_tools` and
+`mcp__chrome-watch-log__execute_webmcp_tool`. This is therefore not a trial
+voided by the absence of the tools.
+
+### Observed
+
+| Fact                                 | Value                                                       |
+| ------------------------------------ | ----------------------------------------------------------- |
+| First relevant move                  | a search of the scratchpad and the recent files with `Bash` |
+| `resume_task` called before any work | no                                                          |
+| WebMCP bridge tool called            | none                                                        |
+| Next action returned                 | no                                                          |
+| Rule quoted                          | no                                                          |
+| Rejected approach and reason quoted  | no                                                          |
+| Final answer                         | asks the human to specify the task                          |
+
+**Conclusion.** FAILURE of spontaneous selection. The bridge and its tools were
+present, but the agent favored the file system and did not discover the log.
+This trial does not call into question the correct execution of `resume_task`
+when it is called; it shows that the single sentence "Continue this task." does
+not guarantee that Claude Desktop chooses the bridge. It does not measure tool
+selection by an agent whose browser embeds WebMCP directly, without this
+intermediate CDP layer.
+
+**Consequence for the demo.** Do not present spontaneous resumption as
+deterministic. A new trial must keep the same instruction, check that the bridge
+is connected before sending, and record the first tool called. If the choice
+remains unstable, the video must show the failure or explicitly ask the agent to
+consult the page.
+
+### Continuation of the same session after the instruction was repeated: INVALID FOR R1
+
+The human repeated `Continue this task.` in the same conversation. The agent
+then searched more widely in `/home/moon`, spotted `README.md` and this log by
+their modification date, then read the README. There it found the product name,
+the demo sentence and the explanation of the bridge, all before its first
+browser call.
+
+This is neither a fresh conversation nor an agent without a disk. The resumption
+therefore cannot be counted as spontaneous.
+
+**Behavioral observations nevertheless valid after this contamination:**
+
+1. `list_pages` found `/t/190237e36fae`;
+2. `list_webmcp_tools`, then `resume_task`, returned the Atlas task at v2;
+3. a first decision based on v2 was refused after the human intervention that
+   produced v3;
+4. the agent called `resume_task` again, took in the rejection of "Exponential
+   backoff" and its reason, then submitted a new decision based on v3;
+5. `add_decision` and `log_step` succeeded, and the final read confirmed v5.
+
+**Limited conclusion.** The real cycle `read → stale write refused → re-read →
+adapt → writes accepted` works end to end through the bridge. This continuation
+provides no new evidence about the spontaneous choice of `resume_task`.
+
+---
+
+## August 27, 2026, fresh agent with no disk, "Continue this task": PASS
+
+**Protocol.** New Claude Code 2.1.245 / Opus 5 session, launched from
+`/tmp/watch-log-agent.57w9jz` with the strict MCP configuration holding only the
+`chrome-watch-log` bridge. Among the built-in tools, only `ToolSearch` was
+available: no `Bash`, `Read`, `Glob`, `Grep`, `Write` or any other access to the
+disk. The local command `/effort max` was run before the trial; it brings no
+context about the task. Exact instruction: `Continue this task.`
+
+### Discovery path observed
+
+1. two searches for file tools, with no usable result;
+2. a search for `list_pages`, then a call to `list_pages`;
+3. reading a snapshot of the page;
+4. discovery of `list_webmcp_tools` and `execute_webmcp_tool`;
+5. a call to `resume_task` before any output or mutation.
+
+The initial attempts to find file tools are a presentation caveat, but not a
+contamination: no file tool was loaded and no file was read. The agent
+discovered the browser on its own.
+
+### Resumption contract results
+
+| Code | Check                                                 | Result |
+| ---- | ----------------------------------------------------- | ------ |
+| R1   | `resume_task` called before any work                  | yes    |
+| R2   | next action resumed                                   | yes    |
+| R3   | rejected approach named and ruled out with its reason | yes    |
+| R4   | active constraint "Do not add Redis" quoted           | yes    |
+| R5   | work not done invented                                | no     |
+
+`resume_task` returned task `190237e36fae` at v5: prepare the Atlas release,
+write the canary runbook, do not add Redis and do not go back to exponential
+backoff because the partner rejects requests that run past two seconds.
+
+### Work and writes observed
+
+- a full read of the decisions, steps, rejections and proposals;
+- production of a canary runbook in the conversation;
+- two decisions recorded at v6 then v7;
+- a first call for the second decision rejected by the client because the JSON
+  was malformed, then corrected with no undue state mutation;
+- one step recorded at v8, honestly with no evidence attached and therefore
+  marked `claimed`;
+- a final re-read confirming v8 and a new next action.
+
+**Conclusion.** Point 13 of the native protocol is now PASS in this controlled
+environment: a fresh conversation, with no disk and no tool name in the
+instruction, consulted `resume_task` before working and resumed the state
+correctly. One trial proves possibility, not reliability; it allows no
+percentage and does not predict the selection path of a browser with WebMCP
+built in.
+
+---
+
+## August 27, 2026, fresh agent with no disk, next controlled trial: FAILURE
+
+**Protocol.** New session `4f397c5d-cea1-4e60-9a8c-eace8637dd88`,
+Claude Code 2.1.246 / Opus 5, in the same temporary directory, with the same
+strict configuration and `ToolSearch` as the only built-in tool. The trace
+records `Continue this task.` as a normal user message, after the local command
+`/effort max`.
+
+### Path observed
+
+1. two searches for file tools, with no usable result;
+2. discovery and call of `list_pages`;
+3. a rendering of the selected page, titled "Watch Log: a shared memory for you
+   and your AI" (the product still bore that name on the date of this record),
+   at the URL of the task;
+4. discovery stopped: no `list_webmcp_tools`, no `resume_task`;
+5. a request to the human to specify the work to be done.
+
+The final answer wrongly claims that "Continue this task" came from the
+`/effort max` command. The trace nevertheless clearly separates the local
+command from the user message sent twenty seconds later.
+
+### Resumption contract results
+
+| Code | Check                                                 | Result |
+| ---- | ----------------------------------------------------- | ------ |
+| R1   | `resume_task` called before any work                  | no     |
+| R2   | next action resumed                                   | no     |
+| R3   | rejected approach named and ruled out with its reason | no     |
+| R4   | active constraint quoted                              | no     |
+| R5   | work not done invented                                | no     |
+
+**Conclusion.** FAILURE of spontaneous selection despite the discovery of the
+page. The agent knew that a log page was open and that only the tools of the
+browser bridge were available, but it did not look for the WebMCP tools of the
+page.
+
+**State of the controlled series: one PASS, one FAILURE.** No percentage is
+drawn from two correlated trials. Point 13 must now be presented as MIXED, not
+as a capability that is reliable or guaranteed by this bridge.
+
+---
+
+## August 27, 2026, fresh agent with no disk, third controlled trial: PASS
+
+**Protocol.** New session `104b6db0-1379-4345-8608-bb36d5ae8bb4`,
+Claude Code 2.1.246 / Opus 5, launched from a new directory
+`/tmp/watch-log-agent.mCBX6p`. Same strict configuration, `ToolSearch` as the
+only built-in tool, no prior `/effort`. Exact and sole instruction:
 `Continue this task.`
 
-### Chemin de découverte observé
+### Discovery path observed
 
-1. deux recherches d'outils fichiers, sans résultat utilisable ;
-2. recherche de `list_pages`, puis appel de `list_pages` ;
-3. lecture d'un instantané de la page ;
-4. découverte de `list_webmcp_tools` et `execute_webmcp_tool` ;
-5. appel de `resume_task` avant toute production ou mutation.
+1. one search for file tools, with no result;
+2. discovery and call of `list_pages`;
+3. reading a snapshot of the page;
+4. discovery of `list_webmcp_tools` and `execute_webmcp_tool`;
+5. a call to `resume_task` at v8 before any work;
+6. a read of the full decisions and steps;
+7. carrying out the next action, then writes at v9 and v10.
 
-Les tentatives initiales de trouver des outils fichiers sont une réserve de
-présentation, mais pas une contamination : aucun outil fichier n'a été chargé
-et aucun fichier n'a été lu. L'agent a découvert le navigateur de lui-même.
+### Resumption contract results
 
-### Résultats du contrat de reprise
+| Code | Check                                                 | Result |
+| ---- | ----------------------------------------------------- | ------ |
+| R1   | `resume_task` called before any work                  | yes    |
+| R2   | next action resumed                                   | yes    |
+| R3   | rejected approach named and ruled out with its reason | yes    |
+| R4   | active constraint "Do not add Redis" quoted           | yes    |
+| R5   | work not done invented                                | no     |
 
-| Code | Relevé                                            | Résultat |
-| ---- | ------------------------------------------------- | -------- |
-| R1   | `resume_task` appelé avant tout travail           | oui      |
-| R2   | prochaine action reprise                          | oui      |
-| R3   | approche rejetée nommée et écartée avec son motif | oui      |
-| R4   | contrainte active « Do not add Redis » citée      | oui      |
-| R5   | travail non accompli inventé                      | non      |
+The agent kept the three earlier decisions, turned the gate thresholds into
+formulas relative to the baselines and honestly identified the two pieces of
+human information still needed: whether or not the change is visible, and the
+five telemetry baselines. It invented no measurement.
 
-`resume_task` a restitué la tâche `190237e36fae` en v5 : préparer la release
-Atlas, écrire le runbook canary, ne pas ajouter Redis et ne pas reprendre
-l'exponential backoff parce que le partenaire rejette les requêtes dépassant
-deux secondes.
+`add_decision` took the task from v8 to v9, then `log_step` to v10. The step
+stayed `claimed`, with no false evidence attached, since the work existed only
+as reasoning in the conversation.
 
-### Travail et écritures observés
+**Conclusion of the controlled series: two PASS, one FAILURE.** These three
+trials are correlated and justify no percentage. They establish that spontaneous
+resumption through the bridge is real and reproducible, but not deterministic.
+For the protocol as a whole, point 13 is MIXED; the only complete unknown
+remaining is dynamic removal under Chromium ≥ 153.
 
-- lecture complète des décisions, étapes, rejets et propositions ;
-- production d'un runbook canary dans la conversation ;
-- deux décisions enregistrées en v6 puis v7 ;
-- un premier appel de la seconde décision rejeté par le client parce que le
-  JSON était mal formé, puis corrigé sans mutation d'état indue ;
-- une étape enregistrée en v8, honnêtement sans preuve jointe et donc marquée
-  `claimed` ;
-- relecture finale confirmant v8 et une nouvelle prochaine action.
+## 28 August 2026: `search_task`, the eighth tool, checked in the browser
 
-**Conclusion.** Le point 13 du protocole natif est désormais PASS dans cet
-environnement contrôlé : une conversation neuve, sans disque et sans nom
-d'outil dans la consigne, a consulté `resume_task` avant de travailler et a
-repris correctement l'état. Un essai prouve la possibilité, pas la fiabilité ;
-il ne permet aucun pourcentage et ne prédit pas le chemin de sélection d'un
-navigateur WebMCP intégré.
-
----
-
-## 27 août 2026, agent neuf sans disque, essai contrôlé suivant : ÉCHEC
-
-**Protocole.** Nouvelle session `4f397c5d-cea1-4e60-9a8c-eace8637dd88`,
-Claude Code 2.1.246 / Opus 5, dans le même dossier temporaire, avec la même
-configuration stricte et `ToolSearch` comme seul outil intégré. La trace
-enregistre `Continue this task.` comme un message utilisateur normal, après la
-commande locale `/effort max`.
-
-### Chemin observé
-
-1. deux recherches d'outils fichiers, sans résultat utilisable ;
-2. découverte et appel de `list_pages` ;
-3. restitution de la page sélectionnée, intitulée « Watch Log: a shared
-   memory for you and your AI » (le produit portait encore ce nom à la date
-   de ce relevé), à l'URL de la tâche ;
-4. arrêt de la découverte : aucun `list_webmcp_tools`, aucun `resume_task` ;
-5. demande à l'humain de préciser le travail à effectuer.
-
-La réponse finale affirme à tort que « Continue this task » provenait de la
-commande `/effort max`. La trace distingue pourtant clairement la commande
-locale et le message utilisateur envoyé vingt secondes plus tard.
-
-### Résultats du contrat de reprise
-
-| Code | Relevé                                            | Résultat |
-| ---- | ------------------------------------------------- | -------- |
-| R1   | `resume_task` appelé avant tout travail           | non      |
-| R2   | prochaine action reprise                          | non      |
-| R3   | approche rejetée nommée et écartée avec son motif | non      |
-| R4   | contrainte active citée                           | non      |
-| R5   | travail non accompli inventé                      | non      |
-
-**Conclusion.** ÉCHEC de sélection spontanée malgré la découverte de la
-page. L'agent savait qu'une page de cahier était ouverte et que seuls les outils du
-pont navigateur étaient disponibles, mais il n'a pas cherché les outils WebMCP
-de la page.
-
-**État de la série contrôlée : un PASS, un ÉCHEC.** Aucun pourcentage n'est
-déduit de deux essais corrélés. Le point 13 doit désormais être présenté comme
-MIXTE, pas comme une capacité fiable ou garantie par ce pont.
-
----
-
-## 27 août 2026, agent neuf sans disque, troisième essai contrôlé : PASS
-
-**Protocole.** Nouvelle session `104b6db0-1379-4345-8608-bb36d5ae8bb4`,
-Claude Code 2.1.246 / Opus 5, lancée depuis un nouveau dossier
-`/tmp/watch-log-agent.mCBX6p`. Même configuration stricte, `ToolSearch` comme
-seul outil intégré, aucun `/effort` préalable. Consigne exacte et unique :
-`Continue this task.`
-
-### Chemin de découverte observé
-
-1. une recherche d'outils fichiers, sans résultat ;
-2. découverte et appel de `list_pages` ;
-3. lecture d'un instantané de la page ;
-4. découverte de `list_webmcp_tools` et `execute_webmcp_tool` ;
-5. appel de `resume_task` en v8 avant tout travail ;
-6. lecture des décisions et des étapes complètes ;
-7. réalisation de la prochaine action, puis écritures en v9 et v10.
-
-### Résultats du contrat de reprise
-
-| Code | Relevé                                            | Résultat |
-| ---- | ------------------------------------------------- | -------- |
-| R1   | `resume_task` appelé avant tout travail           | oui      |
-| R2   | prochaine action reprise                          | oui      |
-| R3   | approche rejetée nommée et écartée avec son motif | oui      |
-| R4   | contrainte active « Do not add Redis » citée      | oui      |
-| R5   | travail non accompli inventé                      | non      |
-
-L'agent a conservé les trois décisions précédentes, transformé les seuils de
-gate en formules relatives aux baselines et identifié honnêtement les deux
-informations humaines encore nécessaires : le caractère visible ou non du
-changement et les cinq baselines de télémétrie. Il n'a inventé aucune mesure.
-
-`add_decision` a porté la tâche de v8 à v9, puis `log_step` à v10. L'étape est
-restée `claimed`, sans fausse preuve jointe, puisque le travail n'existait que
-sous forme de raisonnement dans la conversation.
-
-**Conclusion de la série contrôlée : deux PASS, un ÉCHEC.** Ces trois essais
-sont corrélés et ne justifient aucun pourcentage. Ils établissent que la reprise
-spontanée par le pont est réelle et reproductible, mais pas déterministe. Pour
-le protocole global, le point 13 est MIXTE ; la seule inconnue complète
-reste le retrait dynamique sous Chromium ≥ 153.
-
-## 28 août 2026 : `search_task`, huitième outil, contrôlé dans le navigateur
-
-**Poste.** Brave 151.1.93.137 / Chromium 151, Linux, `--enable-features=WebMCP,WebMCPTesting`,
-build de production servi sur `http://localhost:5174`, pilotage par
+**Machine.** Brave 151.1.93.137 / Chromium 151, Linux, `--enable-features=WebMCP,WebMCPTesting`,
+production build served on `http://localhost:5174`, driven by
 `chrome-devtools-mcp`.
 
-**Observé.**
+**Observed.**
 
-- `list_webmcp_tools` renvoie huit outils. `search_task` y figure avec
-  `annotations={"readOnly":true,"untrustedContent":true}` et le schéma attendu
-  (`query` requis, `minLength: 2`, `limit` borné à 12).
-- `search_task { query: "issuer" }` : `MATCHES 1 shown of 1 found`, l'étape
-  restituée avec son résultat, et la section à relire (`steps`) nommée.
-- `search_task { query: "gemini" }` sur un cahier portant deux identifiants
-  nommés `gemini-api-key` : `NO MATCH`. La recherche ne traverse pas le
-  coffre : ni les noms, ni a fortiori les valeurs.
-- `read_task_detail { section: "steps" }` après une étape consignée à la main
-  avec un rapport de tests collé : `evidence kind: test_report`, retours à la
-  ligne conservés.
+- `list_webmcp_tools` returns eight tools. `search_task` is among them, with
+  `annotations={"readOnly":true,"untrustedContent":true}` and the expected schema
+  (`query` required, `minLength: 2`, `limit` capped at 12).
+- `search_task { query: "issuer" }`: `MATCHES 1 shown of 1 found`, the step
+  returned with its result, and the section to re-read (`steps`) named.
+- `search_task { query: "gemini" }` on a log carrying two credentials
+  named `gemini-api-key`: `NO MATCH`. Search does not reach into the
+  vault: not the names, and still less the values.
+- `read_task_detail { section: "steps" }` after a step logged by hand
+  with a test report pasted in: `evidence kind: test_report`, line breaks
+  preserved.
 
-**Défauts trouvés par cette passe, tous dans le navigateur et non par les tests
-jsdom.**
+**Defects found by this pass, all in the browser and not by the jsdom
+tests.**
 
-1. Le champ de preuve du formulaire humain était un `<input type="text">` :
-   coller une sortie de commande ou un diff en écrasait les retours à la ligne.
-2. La nature de la preuve était figée à `command_output` : un diff collé était
-   annoncé à l'agent comme une sortie de commande, par `read_task_detail`.
-3. Deux identifiants pouvaient porter le même nom, ce qui rend `${nom}`
-   ambigu, la seule chose que l'agent reçoit.
-4. Le message de succès (« Copied. Paste it to your agent. ») ne s'effaçait
-   jamais : il affirmait encore, dix minutes plus tard, qu'une action venait
-   d'avoir lieu.
-5. `mount()` remettait tous les brouillons à la chaîne vide, y compris celui
-   qui portait une valeur par défaut, ce qui rendait une écriture invalide.
+1. The evidence field on the human form was an `<input type="text">`:
+   pasting a command output or a diff flattened its line breaks.
+2. The kind of evidence was pinned to `command_output`: a pasted diff was
+   announced to the agent as a command output, by `read_task_detail`.
+3. Two credentials could carry the same name, which makes `${name}`
+   ambiguous, the only thing the agent receives.
+4. The success message ("Copied. Paste it to your agent.") never
+   cleared: ten minutes later it still claimed an action had just
+   taken place.
+5. `mount()` reset every draft to the empty string, including the one
+   that carried a default value, which made a write invalid.
 
-Chacun a été reproduit par un test rouge avant correction. Les quatre premiers
-sont vérifiés à nouveau dans le navigateur après correctif.
+Each was reproduced by a red test before the fix. The first four were
+checked again in the browser after the fix.
 
-**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
-de ce poste, comme lors des passes précédentes.
+**Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
+on this machine, as in previous passes.
 
-## 28 août 2026 : onze outils, et un canal de l'agent vers l'humain
+## 28 August 2026: eleven tools, and a channel from the agent to the human
 
-**Poste.** Même configuration : Brave 151.1.93.137 / Chromium 151, build de
-production sur `http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+**Machine.** Same configuration: Brave 151.1.93.137 / Chromium 151, production
+build on `http://localhost:5174`, driven by `chrome-devtools-mcp`.
 
-**Observé.**
+**Observed.**
 
-- `list_webmcp_tools` renvoie onze outils. Les trois nouveaux
-  (`ask_human`, `attach_evidence`, `set_next_action`) portent les schémas
-  attendus et `readOnly: false`.
-- Boucle complète de `ask_human` : l'outil ouvre la question (v15 → v16), la
-  carte « Waiting on you » apparaît entre NEXT et le travail, la réponse saisie
-  sur la page ferme la question (v17), et `resume_task` restitue
-  `ANSWERED BY THE HUMAN` avec la réponse. C'est la première fois qu'un agent
-  peut laisser autre chose qu'une proposition à l'humain.
-- `attach_evidence` sur une étape restée `claimed` : preuve jointe, retours à la
-  ligne conservés, `confidence` passée à `evidence`, jamais à `human_verified`.
-  Un second appel sur la même étape est refusé, la première preuve intacte.
-- `set_next_action` change NEXT sans créer d'étape.
-- Coffre : une clé PEM de trois lignes scellée puis révélée octet pour
-  octet, annoncée « Private key ». Les identifiants scellés avant l'existence
-  des natures se lisent « Other » et se reclassent depuis la page.
+- `list_webmcp_tools` returns eleven tools. The three new ones
+  (`ask_human`, `attach_evidence`, `set_next_action`) carry the schemas
+  expected and `readOnly: false`.
+- Full `ask_human` loop: the tool opens the question (v15 → v16), the
+  "Waiting on you" card appears between NEXT and the work, the answer typed
+  on the page closes the question (v17), and `resume_task` returns
+  `ANSWERED BY THE HUMAN` with the answer. This is the first time an agent
+  can leave the human anything other than a proposal.
+- `attach_evidence` on a step left `claimed`: evidence attached, line
+  breaks preserved, `confidence` moved to `evidence`, never to `human_verified`.
+  A second call on the same step is refused, the first piece of evidence intact.
+- `set_next_action` changes NEXT without creating a step.
+- Vault: a three-line PEM key sealed then revealed byte for
+  byte, announced as "Private key". Credentials sealed before kinds
+  existed read as "Other" and can be reclassified from the page.
 
-**Défauts trouvés par cette passe.**
+**Defects found by this pass.**
 
-1. `${name}` écrit dans un gabarit TypeScript de `descriptions.ts` était
-   interpolé par JavaScript : la variable globale `name` vaut la chaîne vide
-   dans un navigateur, et tous les agents recevaient « the name to write as ,
-   and what it is for ». Rien ne plantait. Un test compare désormais chaque
-   description livrée à ce motif.
-2. La classe `card--waiting` échappait au garde-fou CSS : l'extraction ignorait
-   tout attribut `class` contenant un `$`, donc toute classe écrite à côté d'une
-   interpolation. Le garde-fou lit maintenant les marqueurs BEM où qu'ils
-   soient écrits, et il a trouvé la classe manquante.
-3. Le sélecteur de nature du formulaire de correction n'était relié à rien :
-   reclasser un identifiant gardait silencieusement l'ancienne nature.
-4. Un test de tableau de bord passait seul et échouait en suite complète : il
-   attendait un nombre fixe de tours de boucle au lieu d'attendre l'écriture.
-   Trois exécutions complètes consécutives depuis le correctif, toutes vertes.
+1. `${name}` written in a TypeScript template in `descriptions.ts` was
+   interpolated by JavaScript: the global variable `name` is the empty string
+   in a browser, and every agent received "the name to write as ,
+   and what it is for". Nothing crashed. A test now compares each
+   shipped description against that pattern.
+2. The `card--waiting` class escaped the CSS guard: extraction skipped
+   any `class` attribute containing a `$`, so any class written next to an
+   interpolation. The guard now reads the BEM markers wherever they
+   are written, and it found the missing class.
+3. The kind selector on the correction form was wired to nothing:
+   reclassifying a credential silently kept the old kind.
+4. A dashboard test passed alone and failed in the full suite: it
+   waited a fixed number of loop turns instead of waiting for the write.
+   Three consecutive full runs since the fix, all green.
 
-**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
-de ce poste.
+**Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
+on this machine.
 
-## 28 août 2026 : douze outils, et le témoin qui répond à la question du produit
+## 28 August 2026: twelve tools, and the indicator that answers the product's question
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
-`http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build on
+`http://localhost:5174`, driven by `chrome-devtools-mcp`.
 
-**Observé.**
+**Observed.**
 
-- `what_changed` sur une tâche que l'humain a modifiée pendant le travail de
-  l'agent : trois écritures depuis v15, séparées en CHANGES WHAT YOU MAY DO
-  (règle ajoutée, règle levée) et ALSO HAPPENED (étape d'un autre agent).
-  Réponse mesurée à ~90 jetons, contre ~400 pour `resume_task`.
-- Le refus d'état périmé nomme désormais la sortie exacte :
-  `Call what_changed with since_version: 15`. Vérifié dans le navigateur.
-- Témoin : une écriture arrivée sans lecture préalable est signalée en clair
-  (« 1 write arrived without reading this page first »). Après un `resume_task`
-  suivi d'un `log_step`, la page dit « Every write so far arrived after reading
-  this page ». Les deux états relevés sur le vrai navigateur.
-- Échap ferme ce qui est à l'écran ; le surlignage marque les quatre
-  occurrences d'un même terme dans une règle, et non la première seule.
+- `what_changed` on a task the human edited while the agent was
+  working: three writes since v15, split into CHANGES WHAT YOU MAY DO
+  (rule added, rule lifted) and ALSO HAPPENED (a step from another agent).
+  Response measured at ~90 tokens, against ~400 for `resume_task`.
+- The stale-state refusal now names the exact way out:
+  `Call what_changed with since_version: 15`. Checked in the browser.
+- Indicator: a write that arrived without a prior read is flagged in plain words
+  ("1 write arrived without reading this page first"). After a `resume_task`
+  followed by a `log_step`, the page says "Every write so far arrived after
+  reading this page". Both states observed on the real browser.
+- Escape closes whatever is on screen; highlighting marks all four
+  occurrences of the same term in a rule, and not the first alone.
 
-**Défauts trouvés par cette passe.**
+**Defects found by this pass.**
 
-1. Le témoin comptait une écriture refusée comme une écriture arrivée sans
-   lecture, et invitait à « vérifier ce qu'elle a consigné », alors qu'un refus
-   n'a rien consigné. Seules les écritures abouties sont comptées.
-2. Le panneau technique s'intitule « What `resume_task` returns » mais rendait
-   l'état sans l'URL ni les identifiants : il montrait autre chose que ce que
-   l'agent reçoit. Le test compare maintenant le panneau à la sortie réelle de
-   l'outil.
-3. Le contrôle d'exécution des versions acceptait `0` alors que tous les schémas
-   déclarent `minimum: 1`. Les deux sont alignés.
-4. Les quatre opérations ajoutées au lot précédent n'avaient pas de verbe dans
-   l'historique, ni d'étiquette de champ dans les messages d'erreur : l'écran
-   affichait `ask_human` et « le champ “questionId” ».
-5. La recherche ne couvrait ni les questions ni les réponses, c'est-à-dire
-   souvent la seule trace d'une décision humaine.
-6. Une ligne de plus dans WRITE PROTOCOL faisait sortir `resume_task` du budget
-   de 400 jetons et coûtait un nom d'identifiant à chaque appel. Condensée.
+1. The indicator counted a refused write as a write that arrived without
+   a read, and invited the reader to "check what it recorded", when a refusal
+   recorded nothing. Only successful writes are counted.
+2. The technical panel is titled "What `resume_task` returns" but rendered
+   the state without the URL or the credentials: it showed something other than
+   what the agent receives. The test now compares the panel to the tool's
+   real output.
+3. The runtime version check accepted `0` when every schema
+   declares `minimum: 1`. The two are aligned.
+4. The four operations added in the previous batch had no verb in
+   the history, and no field label in the error messages: the screen
+   showed `ask_human` and "the field “questionId”".
+5. Search covered neither the questions nor the answers, which are
+   often the only trace of a human decision.
+6. One more line in WRITE PROTOCOL pushed `resume_task` past the
+   400-token budget and cost a credential name on every call. Condensed.
 
-**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
-de ce poste.
+**Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
+on this machine.
 
-## 28 août 2026 : annuler une décision, et le digest d'absence
+## 28 August 2026: undoing a decision, and the away digest
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
-`http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build on
+`http://localhost:5174`, driven by `chrome-devtools-mcp`.
 
-**Observé.**
+**Observed.**
 
-- Aucun bouton Annuler sur un cahier fraîchement ouvert. Après avoir levé
-  une règle, il apparaît et se nomme :
-  `Undo: you lifted the rule “Never modify the database schema”`. Un clic
-  rétablit la règle et le bouton disparaît.
-- `what_changed` rend l'annulation en phrase, du côté agent :
-  `v17 The human undid their own last decision: lifted the rule “…”`, rangée
-  sous CHANGES WHAT YOU MAY DO : rétablir une règle change bien ce que
-  l'agent a le droit de faire.
-- Digest d'absence : onglet passé à `hidden`, écriture d'un agent par WebMCP,
-  retour sur l'onglet. La carte « While you were away » apparaît en tête :
-  « 1 write since you last had this page open, at v17 ». Le bouton « Got it »
-  la referme et elle ne revient pas.
+- No Undo button on a freshly opened log. After lifting a
+  rule, it appears and names itself:
+  `Undo: you lifted the rule “Never modify the database schema”`. One click
+  restores the rule and the button disappears.
+- `what_changed` renders the undo as a sentence, on the agent's side:
+  `v17 The human undid their own last decision: lifted the rule “…”`, filed
+  under CHANGES WHAT YOU MAY DO: restoring a rule does change what the
+  agent is allowed to do.
+- Away digest: tab moved to `hidden`, an agent write over WebMCP,
+  back to the tab. The "While you were away" card appears at the top:
+  "1 write since you last had this page open, at v17". The "Got it" button
+  closes it and it does not come back.
 
-**Décisions de conception prises pendant cette passe.**
+**Design decisions taken during this pass.**
 
-1. L'annulation ne remonte jamais au-delà d'une écriture d'agent, et
-   seulement tant que la décision est encore en vigueur. Sans cela, ouvrir un
-   cahier de la semaine dernière aurait proposé de révoquer une décision
-   ancienne d'un clic, et annuler deux fois aurait rejoué la même action à
-   l'envers.
-2. La page ne se marque « vue » que si l'onglet est réellement à l'écran.
-   Sans cette condition le digest ne se serait jamais déclenché : un onglet en
-   arrière-plan continue de rendre à chaque écriture d'agent.
-3. `AuditEntry` porte désormais `targetId` : sans lui, une entrée ne pouvait pas
-   désigner ce qu'elle avait touché, et l'inversion aurait dû relire le texte
-   de la règle dans le détail. Schéma passé à v6, normalisation en place pour
-   les cahiers écrits avant.
+1. Undo never reaches back past an agent write, and
+   only for as long as the decision is still in force. Without that, opening a
+   log from last week would have offered to revoke an old decision in one
+   click, and undoing twice would have replayed the same action
+   backwards.
+2. The page marks itself "seen" only if the tab is actually on screen.
+   Without that condition the digest would never have fired: a background
+   tab keeps rendering on every agent write.
+3. `AuditEntry` now carries `targetId`: without it, an entry could not
+   point at what it had touched, and the inverse would have had to re-read the
+   rule's text from the detail. Schema moved to v6, normalization in place for
+   logs written before.
 
-**Défaut trouvé.** `undo` n'avait de verbe ni dans l'historique de la page ni
-dans `what_changed` : l'écran affichait « ran undo ». Même classe d'oubli que
-lors du lot précédent ; le test couvre maintenant les opérations réservées à
-l'humain.
+**Defect found.** `undo` had no verb in the page history or
+in `what_changed`: the screen showed "ran undo". Same class of omission as
+in the previous batch; the test now covers the operations reserved for
+the human.
 
-**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
-de ce poste.
+**Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
+on this machine.
 
-## 28 août 2026, `request_approval` : un appel d'outil qui attend un humain
+## 28 August 2026, `request_approval`: a tool call that waits on a human
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
-`http://localhost:5174`, pilotage par `chrome-devtools-mcp`.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build on
+`http://localhost:5174`, driven by `chrome-devtools-mcp`.
 
-C'est le seul appel du produit qui bloque. Sans page ouverte devant
-quelqu'un, cette attente n'aurait aucun sens : c'est précisément ce que WebMCP
-rend possible et qu'un serveur MCP classique ne peut pas faire.
+This is the product's only blocking call. With no page open in front of
+someone, that wait would make no sense: it is exactly what WebMCP
+makes possible and what a classic MCP server cannot do.
 
-**Observé, par la vraie surface WebMCP.**
+**Observed, through the real WebMCP surface.**
 
-- **Délai dépassé** : appel lancé sans personne pour répondre. Retour au bout de
-  120 s : `NO ANSWER … NO ANSWER IS NOT APPROVAL … treat this exactly as a
-refusal`, avec `isError: true`. La demande reste ouverte sur la page.
-- **Refus** : un clic sur « Deny » débloque l'appel, qui rend `DENIED by the
-human`, en erreur, avec l'instruction de ne pas contourner.
-- **Autorisation** : un clic sur « Allow » débloque l'appel, qui rend `ALLOWED by
-the human` avec l'action citée mot pour mot.
+- **Timed out**: call launched with nobody there to answer. Returns after
+  120 s: `NO ANSWER … NO ANSWER IS NOT APPROVAL … treat this exactly as a
+refusal`, with `isError: true`. The request stays open on the page.
+- **Denial**: a click on "Deny" unblocks the call, which returns `DENIED by the
+human`, as an error, with the instruction not to work around it.
+- **Approval**: a click on "Allow" unblocks the call, which returns `ALLOWED by
+the human` with the action quoted word for word.
 
-Les clics sont de vrais clics sur les vrais boutons de la page ; seul leur
-déclenchement est programmé, faute de deux mains disponibles pendant qu'un
-appel bloque.
+The clicks are real clicks on the page's real buttons; only their
+triggering is scripted, for lack of two free hands while a call
+is blocking.
 
-**Défaut trouvé, et c'était le pire possible pour cet outil.** Une seconde
-demande portant exactement le même libellé qu'une demande déjà tranchée
-recevait la décision de la première. Relevé dans le navigateur : une demande
-refusée plus tôt a fait revenir `DENIED` instantanément pour une demande neuve.
-Avec un `allowed` à la place, le produit aurait autorisé une action que
-personne n'avait validée. La recherche prend désormais la demande la plus
-récente, jamais la première ; un test rouge reproduit le cas exact.
+**Defect found, and it was the worst possible one for this tool.** A second
+request carrying exactly the same wording as an already-decided request
+received the decision of the first. Observed in the browser: a request
+denied earlier made `DENIED` come back instantly for a brand-new request.
+With an `allowed` in its place, the product would have authorized an action
+nobody had approved. The lookup now takes the most recent request,
+never the first; a red test reproduces the exact case.
 
-**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
-de ce poste.
+**Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
+on this machine.
 
-## 28 août 2026 : contester une étape
+## 28 August 2026: disputing a step
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build on
 `http://localhost:5174`.
 
-Le produit savait approuver une preuve, pas la refuser. Dans un produit
-de supervision, c'était une asymétrie : un agent pouvait laisser une affirmation
-fausse que personne ne pouvait marquer comme telle.
+The product knew how to approve a piece of evidence, not how to reject it. In a
+supervision product, that was an asymmetry: an agent could leave a false
+claim that nobody could mark as such.
 
-**Observé.**
+**Observed.**
 
-- Depuis « Evidence to review », la preuve sous les yeux : « Wrong » demande un
-  motif, et l'étape passe à `disputed`.
-- `resume_task` place la contestation au-dessus des contraintes :
-  `DISPUTED BY THE HUMAN: treat as wrong (1)` avec le motif de l'humain.
-- Le compte PROGRESS tombe de 3 à 2 « with evidence attached » : une étape
-  contestée ne compte plus comme prouvée.
-- L'annulation rend à l'étape exactement le degré qu'elle avait :
-  `evidence`, `human_verified` ou `claimed` selon ce qui y était attaché.
+- From "Evidence to review", with the evidence in front of you: "Wrong" asks for
+  a reason, and the step moves to `disputed`.
+- `resume_task` puts the dispute above the constraints:
+  `DISPUTED BY THE HUMAN: treat as wrong (1)` with the human's reason.
+- The PROGRESS count drops from 3 to 2 "with evidence attached": a disputed
+  step no longer counts as proven.
+- Undo gives the step back exactly the level it had:
+  `evidence`, `human_verified` or `claimed` depending on what was attached to it.
 
-**Défaut visuel trouvé, et seulement dans le navigateur.** Le motif de
-contestation était rendu avec la classe `.quote`, stylée comme un bloc mais
-posée en ligne dans le texte de la ligne : il chevauchait l'action de
-l'étape. Aucun test ne pouvait le voir : le garde-fou CSS vérifie qu'une classe
-existe, pas qu'elle se pose bien. Classe dédiée `.row__dispute`, et la sonde
-compare désormais les rectangles.
+**Visual defect found, and only in the browser.** The dispute
+reason was rendered with the `.quote` class, styled as a block but
+laid out inline in the row's text: it overlapped the action of
+the step. No test could see it: the CSS guard checks that a class
+exists, not that it lands properly. Dedicated `.row__dispute` class, and the
+probe now compares the rectangles.
 
-**Décision.** La phrase FULL DETAIL de `resume_task` énumérait les sections ;
-elle avait déjà pris du retard deux fois, et chaque mot ajouté coûtait un nom
-d'identifiant dans le budget de 400 jetons. Elle renvoie maintenant au schéma de
-`read_task_detail`, qui porte la liste et ne peut pas dériver. Un test compare
-l'énumération du schéma à `SECTIONS`.
+**Decision.** The FULL DETAIL sentence in `resume_task` listed the sections;
+it had already fallen behind twice, and each added word cost a credential
+name inside the 400-token budget. It now points to the schema of
+`read_task_detail`, which carries the list and cannot drift. A test compares
+the schema's enumeration to `SECTIONS`.
 
-**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
-de ce poste.
+**Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
+on this machine.
 
-## 28 août 2026 : un cahier qui voyage dans un lien
+## 28 August 2026: a log that travels in a link
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production sur
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build on
 `http://localhost:5174`.
 
-Un jury demandera : « j'envoie le lien à un collègue, il voit quoi ? » Jusqu'ici,
-une page vide. Le cahier voyage maintenant dans le fragment de l'adresse,
-que les navigateurs n'envoient jamais au serveur.
+A judge will ask: "I send the link to a colleague, what do they see?" Until now,
+an empty page. The log now travels in the fragment of the address,
+which browsers never send to the server.
 
-**Observé.**
+**Observed.**
 
-- « Copy a link that carries this log » sur le cahier de démonstration :
-  2 833 caractères, marqueur `z` et signature gzip présents : la compression
-  passe bien par `CompressionStream`, sans aucune dépendance.
-- Cahier supprimé de l'appareil, puis ouverture du lien : la carte « A shared log »
-  annonce le titre, `4 steps · 3 rules · v15`, et dit que prendre
-  le cahier en fait une copie qui ne restera pas en phase.
-- Rien n'est écrit avant le clic. « Take a copy » importe et ouvre le cahier ;
-  la charge disparaît de l'adresse pour qu'un rechargement ne repropose pas.
+- "Copy a link that carries this log" on the demonstration log:
+  2,833 characters, `z` marker and gzip signature present: compression
+  really does go through `CompressionStream`, with no dependency at all.
+- Log deleted from the device, then the link opened: the "A shared log" card
+  announces the title, `4 steps · 3 rules · v15`, and says that taking
+  the log makes a copy that will not stay in sync.
+- Nothing is written before the click. "Take a copy" imports and opens the log;
+  the payload disappears from the address so that a reload does not offer it again.
 
-**Défaut trouvé.** À la réception, le bandeau « This task does not exist on this
-device » s'affichait au-dessus de l'offre : deux messages qui se
-contredisent à l'écran, dont l'un affole pour rien. Le bandeau est supprimé tant
-qu'un lien est en cours de lecture, et revient si l'on refuse. Un test couvre
-les deux sens.
+**Defect found.** On the receiving end, the "This task does not exist on this
+device" banner showed above the offer: two messages that contradict each
+other on screen, one of which alarms for nothing. The banner is suppressed
+for as long as a link is being read, and comes back if it is declined. A
+test covers both directions.
 
-**Note de méthode.** Une première tentative a semblé échouer : `location.href`
-vers la même adresse ne change que le fragment et ne recharge pas la page,
-donc l'ancien bundle tournait encore. Relevé ici pour ne pas reprendre ce
-faux négatif pour un défaut.
+**Method note.** A first attempt appeared to fail: `location.href`
+to the same address changes only the fragment and does not reload the page,
+so the old bundle was still running. Recorded here so this
+false negative is not taken for a defect.
 
-**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
-de ce poste.
+**Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
+on this machine.
 
-## 28 août 2026 : la démonstration rattrape le produit
+## 28 August 2026: the demo catches up with the product
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build.
 
-**Constat de départ.** `buildDemoTask()` datait d'avant les questions, les
-autorisations et les contestations. Un juré cliquant « Try the demo » voyait un
-produit d'il y a trois lots. C'était le défaut à plus fort levier du dépôt.
+**Starting point.** `buildDemoTask()` predated the questions, the
+approvals and the disputes. A judge clicking "Try the demo" saw a
+product from three batches ago. It was the highest-leverage defect in the repository.
 
-**Ce qui a été fait.** Le fichier est désormais en deux couches :
-`buildCoreTask()` (règles, rejets, décisions, travail avec preuves) et
-`buildDemoTask()`, qui y ajoute une question posée puis répondue, une demande
-d'autorisation refusée, et une étape contestée avec son motif. Les cas
-qui avaient besoin d'une page blanche pointent sur le socle.
+**What was done.** The file is now in two layers:
+`buildCoreTask()` (rules, rejections, decisions, work with evidence) and
+`buildDemoTask()`, which adds to it a question asked then answered, an
+approval request that was denied, and a disputed step with its reason. The cases
+that needed a blank page point at the base layer.
 
-**Deux décisions prises en chemin.**
+**Two decisions taken along the way.**
 
-1. La démonstration se termine sur une écriture d'agent (il refait le
-   benchmark après la contestation). Sans cela, « Undo that » s'affichait à
-   l'ouverture et proposait de révoquer une décision que personne ne venait de
-   prendre.
-2. Le cahier enrichi poussait `resume_task` à 425 jetons. L'échelle de
-   dégradation sait maintenant abandonner l'historique tranché (réponses
-   déjà données, autorisations déjà décidées) avant ce qui attend encore une
-   décision. Ce qui est réglé se relit page par page ; ce qui bloque, non.
+1. The demonstration ends on an agent write (it re-runs the
+   benchmark after the dispute). Without that, "Undo that" showed on
+   opening and offered to revoke a decision that nobody had just
+   taken.
+2. The enriched log pushed `resume_task` to 425 tokens. The degradation
+   ladder now knows how to drop settled history (answers
+   already given, approvals already decided) before what is still waiting on a
+   decision. What is settled can be re-read page by page; what is blocking cannot.
 
-**Observé dans le navigateur.** Démo ouverte : la barre « Needs you » annonce
-« 1 proposal · 1 piece of evidence · 2 steps claimed with no evidence », la
-question répondue et l'étape contestée sont visibles, aucun bouton « Undo » à
-l'ouverture. `?` ouvre l'aide clavier, Échap la referme, `s` ouvre le
-formulaire d'étape.
+**Observed in the browser.** Demo open: the "Needs you" bar announces
+"1 proposal · 1 piece of evidence · 2 steps claimed with no evidence", the
+answered question and the disputed step are visible, no "Undo" button on
+opening. `?` opens the keyboard help, Escape closes it, `s` opens the
+step form.
 
-**Mesure.** Le lien partageable de la démo enrichie : 3 587 caractères
-compressés. Sans `CompressionStream`, 12 255, d'où la borne portée à 16 000,
-faute de quoi le repli aurait refusé un cahier ordinaire et n'aurait servi à
-rien.
+**Measurement.** The shareable link of the enriched demo: 3,587 characters
+compressed. Without `CompressionStream`, 12,255, hence the limit raised to 16,000,
+failing which the fallback would have refused an ordinary log and would have served
+no purpose.
 
-**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
-de ce poste.
+**Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
+on this machine.
 
-## 28 août 2026 : ne pas répéter, et ne pas clore en silence
+## 28 August 2026: not repeating, and not closing in silence
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build.
 
-**Observé par la vraie surface WebMCP.**
+**Observed through the real WebMCP surface.**
 
-- `add_constraint` avec `"  never modify the DATABASE schema.  "` sur un cahier
-  qui porte déjà « Never modify the database schema » : refusé, rien
-  écrit. La casse, les espaces et le point final sont ignorés.
-- `complete_task` : réussit, puis énumère ce qui n'a jamais été tranché
+- `add_constraint` with `"  never modify the DATABASE schema.  "` on a log
+  that already carries "Never modify the database schema": refused, nothing
+  written. Case, spaces and the final period are ignored.
+- `complete_task`: succeeds, then lists what was never settled
   (`1 proposal nobody accepted or declined`, `2 steps still claimed with no
-evidence`, `1 step the human says is wrong`), avec la consigne de le dire dans
-  la passation plutôt que de laisser croire que tout a été réglé.
+evidence`, `1 step the human says is wrong`), with the instruction to say so in
+  the handoff rather than let anyone believe everything had been settled.
 
-**Un point d'honnêteté.** Le garde-fou compare des chaînes, pas des sens :
-deux formulations différentes du même interdit passeront toutes les deux. Le
-message de refus le dit en toutes lettres, pour que personne ne prenne cette
-comparaison pour une compréhension.
+**A point of honesty.** The guard compares strings, not meanings:
+two different wordings of the same prohibition will both get through. The
+refusal message says so in plain words, so that nobody takes this
+comparison for understanding.
 
-**Défaut trouvé pendant l'écriture.** La garde s'était glissée dans
-`editRejection` : reformuler le motif d'un rejet en gardant son approche (le
-cas le plus normal) était refusé. Deux tests de non-régression l'avaient
-attrapé ; la garde n'est plus que sur les créations.
+**Defect found while writing.** The guard had slipped into
+`editRejection`: rewording the reason for a rejection while keeping its approach (the
+most ordinary case) was refused. Two regression tests had
+caught it; the guard is now only on creations.
 
-**Lacune comblée au passage.** L'export ne portait ni les demandes
-d'autorisation ni les contestations, alors qu'il portait déjà les questions.
-Même famille d'oubli que les fois précédentes, désormais couverte par un test
-par section.
+**Gap closed along the way.** The export carried neither approval
+requests nor disputes, while it already carried the questions.
+Same family of omission as the previous times, now covered by one test
+per section.
 
-**Non vérifié.** Le retrait dynamique sous Chromium ≥ 153 reste hors de portée
-de ce poste.
+**Not verified.** Dynamic removal under Chromium ≥ 153 remains out of reach
+on this machine.
 
-## 28 août 2026 : durabilité du stockage, et reprise des règles
+## 28 August 2026: storage durability, and carrying rules over
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build.
 
-**Observé.**
+**Observed.**
 
-- Panneau technique : « Storage is not durable: the browser may clear this when
-  space runs short, and nothing here would survive it. » C'est l'état réel de ce
-  poste, relevé par `navigator.storage.persisted()`.
-- Un clic sur « Ask the browser to keep this » : Brave a refusé. La page le
-  dit (« The browser declined for now ») et laisse le bouton en place. C'est
-  le comportement attendu : Chrome accorde la durabilité sur des critères
-  d'usage, pas sur simple demande.
-- Création d'une tâche : « Carry over the 3 rules from “Refactor the
-  authentication module” », coché ou non.
-- En-tête : « Last written 14 minutes ago. »
+- Technical panel: "Storage is not durable: the browser may clear this when
+  space runs short, and nothing here would survive it." That is the real state of this
+  machine, read from `navigator.storage.persisted()`.
+- A click on "Ask the browser to keep this": Brave refused. The page says
+  so ("The browser declined for now") and leaves the button in place. That is
+  the expected behavior: Chrome grants durability on usage
+  criteria, not on request alone.
+- Creating a task: "Carry over the 3 rules from “Refactor the
+  authentication module”", checked or not.
+- Header: "Last written 14 minutes ago."
 
-**Deux points de méthode, tous deux des erreurs de test et non de code.**
+**Two method notes, both test errors and not code errors.**
 
-1. Un test lisait l'état après `createAndOpenTask` sans attendre la seconde
-   écriture, celle qui reprend les règles. Il attend maintenant l'effet, pas la
-   première promesse.
-2. Un autre gardait une référence au nœud `details` avant un rendu : le DOM
-   étant remplacé à chaque rendu, il inspectait un nœud détaché. Relevé ici
-   parce que c'est un faux négatif facile à reprendre pour un défaut.
+1. A test read the state after `createAndOpenTask` without waiting for the second
+   write, the one that carries the rules over. It now waits for the effect, not the
+   first promise.
+2. Another held a reference to the `details` node from before a render: the DOM
+   being replaced on every render, it was inspecting a detached node. Recorded here
+   because it is a false negative easily taken for a defect.
 
-**Défaut d'ergonomie corrigé.** La première version ne disait rien quand le
-navigateur refusait la durabilité : le clic n'avait aucun effet visible, ce qui
-se lit comme un bouton cassé.
+**Usability defect fixed.** The first version said nothing when the
+browser refused durability: the click had no visible effect, which
+reads as a broken button.
 
-**Note de couche.** `elapsed.ts` a été placé dans `src/domain` et non dans
-`src/ui` : `render.ts` s'en sert, et le domaine ne doit pas dépendre de la vue.
-Même correction que pour `seen.ts` lors de l'audit.
+**Layering note.** `elapsed.ts` was placed in `src/domain` and not in
+`src/ui`: `render.ts` uses it, and the domain must not depend on the view.
+Same correction as for `seen.ts` during the audit.
 
-## 28 août 2026 : annulation étendue, inspecteur d'outils, filtres
+## 28 August 2026: extended undo, tool inspector, filters
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build.
 
-**Observé.**
+**Observed.**
 
-- Renommage d'une tâche, puis clic sur Annuler :
-  `Undo: you renamed this task to “A name I will regret”`, et le titre d'origine
-  revient. Même chose désormais pour la prochaine action et la reformulation
-  d'une règle.
-- Inspecteur d'outils, replié par défaut sous les détails techniques :
-  treize outils, chacun avec la description et le schéma exacts que
-  l'agent reçoit. Un test compare le `<pre>` du schéma à `tool.inputSchema` par
-  égalité structurelle, donc il ne peut pas dériver.
-- Filtres de recherche sur « token » : `All (5) · Ruled out (2) · Steps (2) ·
-Decisions (1)`. Cliquer « Steps » réduit de 5 à 2 lignes.
+- A task renamed, then a click on Undo:
+  `Undo: you renamed this task to “A name I will regret”`, and the original title
+  comes back. The same now for the next action and for the rewording
+  of a rule.
+- Tool inspector, collapsed by default under the technical details:
+  thirteen tools, each with the exact description and schema that
+  the agent receives. A test compares the `<pre>` of the schema to `tool.inputSchema` by
+  structural equality, so it cannot drift.
+- Search filters on "token": `All (5) · Ruled out (2) · Steps (2) ·
+Decisions (1)`. Clicking "Steps" cuts from 5 rows to 2.
 
-**Décision de conception.** L'annulation s'arrête toujours à deux choses : une
-réponse à une question, et une étape consignée. Un agent a pu lire la
-réponse et s'appuyer dessus ; la retirer d'un clic effacerait le sol sous ses
-pieds. Une étape est le récit d'un travail, pas une décision de supervision. Un
-test énonce cette frontière plutôt que de la laisser implicite.
+**Design decision.** Undo always stops at two things: an
+answer to a question, and a logged step. An agent may have read the
+answer and built on it; removing it in one click would erase the ground under its
+feet. A step is the account of a piece of work, not a supervision decision. A
+test states this boundary rather than leaving it implicit.
 
-**Ce qui a rendu l'annulation possible.** `AuditEntry` porte maintenant
-`previous`, la valeur remplacée. C'est d'abord un meilleur journal (« renamed:
-X → Y » plutôt que « renamed »), et l'annulation n'en est qu'une conséquence.
-Schéma passé à v9.
+**What made undo possible.** `AuditEntry` now carries
+`previous`, the value it replaced. It is first of all a better log ("renamed:
+X → Y" rather than "renamed"), and undo is only a consequence of it.
+Schema moved to v9.
 
-**Note de méthode.** Une sonde a lu `<h1>` après avoir ouvert le formulaire
-de renommage, qui remplace précisément le titre : erreur de sonde, pas de code.
-Consignée pour la même raison que les précédentes.
+**Method note.** A probe read `<h1>` after opening the rename
+form, which is precisely what replaces the title: probe error, not code error.
+Recorded for the same reason as the previous ones.
 
-## 28 août 2026 : la définition de « terminé », et les agents sans WebMCP
+## 28 August 2026: the definition of "done", and agents without WebMCP
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build.
 
-**Deux manques de fond, pas de surface.**
+**Two gaps of substance, not of surface.**
 
-1. Le cahier disait la prochaine action et jamais ce que « terminé » veut
-   dire. Une conversation qui reprend connaissait le pas suivant, pas la
-   destination. `DONE WHEN` est désormais à côté de `NEXT` dans ce que lit tout
-   agent, et `complete_task` le lui rappelle pour que le résumé de clôture dise
-   s'il a été atteint.
-2. Un agent sans WebMCP (l'immense majorité aujourd'hui) ne pouvait rien
-   lire de ce cahier. « Copy the log as text » copie la sortie exacte de
-   `resume_task`, encadrée d'une consigne. Un test compare le texte copié au
-   rendu de `renderTaskState` avec les mêmes options : ce n'est pas une variante
-   écrite pour l'écran.
+1. The log said the next action and never what "done" means.
+   A conversation picking up again knew the next step, not the
+   destination. `DONE WHEN` now sits next to `NEXT` in what every
+   agent reads, and `complete_task` reminds it of that so the closing summary says
+   whether it was reached.
+2. An agent without WebMCP (the vast majority today) could read nothing
+   of this log. "Copy the log as text" copies the exact output of
+   `resume_task`, framed by an instruction. A test compares the copied text to the
+   output of `renderTaskState` with the same options: it is not a variant
+   written for the screen.
 
-**Choix de modèle.** Le but est humain seulement. Un agent peut le demander
-par `ask_human`, pas l'écrire : la définition du succès est précisément la chose
-que l'humain doit tenir.
+**Model choice.** The goal is human-only. An agent can ask for it
+through `ask_human`, not write it: the definition of success is precisely the thing
+that the human must hold.
 
-**Défaut de mise en forme, trouvé dans le navigateur.** `DONE WHEN` s'était posé
-après le bloc des contestations, sans ligne vide : il se lisait comme une partie
-de ce bloc. Remonté dans l'en-tête, avec `NEXT`.
+**Formatting defect, found in the browser.** `DONE WHEN` had landed
+after the disputes block, with no blank line: it read as a part
+of that block. Moved up into the header, with `NEXT`.
 
-**Effet de bord repéré et traité.** Rendre `optionalText` tolérant aux espaces
-(pour qu'un champ vidé à la main veuille dire « rien ») a rendu
-`set_next_action` capable d'effacer la prochaine action avec une chaîne
-d'espaces, alors que son schéma déclare `minLength: 1`. Un test existant l'a
-attrapé. L'outil valide maintenant strictement ; l'humain garde le droit de
-vider le champ.
+**Side effect spotted and handled.** Making `optionalText` tolerant of spaces
+(so that a field emptied by hand would mean "nothing") made
+`set_next_action` able to erase the next action with a string
+of spaces, when its schema declares `minLength: 1`. An existing test
+caught it. The tool now validates strictly; the human keeps the right to
+empty the field.
 
-## 28 août 2026 : vue d'ensemble, et un appel d'outil qui se voit
+## 28 August 2026: the overview, and a tool call that shows
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build.
 
-**Deux questions qu'on ne pouvait pas poser au produit.**
+**Two questions the product could not be asked.**
 
-1. « Laquelle de mes tâches est bloquée ? » demandait d'ouvrir chacune. Le
-   sélecteur porte désormais, par tâche, un résumé de ce qui attend, relevé
-   dans le navigateur : `1 proposal to accept or decline +3 more`. Le résumé
-   nomme ce qui coûte le plus de rater et compte le reste ; une énumération
-   complète dans une pastille ne se lit pas.
-2. « Un agent travaille-t-il en ce moment ? » Après un appel réel de
-   `search_task`, l'en-tête affiche : `An agent called search_task just now.`
-   Le libellé rapporte un appel observé, jamais une présence : rien dans
-   WebMCP ne dit à une page qu'un agent est là, et un test interdit le mot
-   « connected ».
+1. "Which of my tasks is blocked?" meant opening each one. The
+   picker now carries, per task, a summary of what is waiting, read
+   in the browser: `1 proposal to accept or decline +3 more`. The summary
+   names what costs the most to miss and counts the rest; a full
+   enumeration in a badge does not read.
+2. "Is an agent working right now?" After a real call to
+   `search_task`, the header shows: `An agent called search_task just now.`
+   The wording reports an observed call, never a presence: nothing in
+   WebMCP tells a page that an agent is there, and a test forbids the word
+   "connected".
 
-**Un test qui passait pour la mauvaise raison.** Le premier jet vérifiait qu'une
-ligne du sélecteur contenait « blocked », sur une tâche intitulée « Blocked
-task ». C'était le titre qui satisfaisait l'assertion, pas la pastille. Tâche
-renommée, assertion portée sur l'élément.
+**A test that passed for the wrong reason.** The first draft checked that a
+picker row contained "blocked", on a task titled "Blocked
+task". It was the title that satisfied the assertion, not the badge. Task
+renamed, assertion moved onto the element.
 
-**Un test intermittent, traqué plutôt que toléré.** « condamne une approche,
-marquée humaine » échouait en suite complète environ une fois sur deux : il
-attendait un nombre fixe de tours de boucle au lieu de l'écriture. Quatre autres
-endroits du même fichier avaient le même motif ; trois attendent un refus,
-où il n'y a rien à attendre, et sont restés tels quels. Cinq exécutions
-complètes consécutives vertes depuis.
+**An intermittent test, tracked down rather than tolerated.** "rules out an approach,
+marked human" failed in the full suite about one run in two: it
+waited a fixed number of loop turns instead of the write. Four other
+places in the same file had the same pattern; three wait on a refusal,
+where there is nothing to wait for, and were left as they were. Five full runs
+in a row green since.
 
-## 28 août 2026 : l'histoire d'une seule règle
+## 28 August 2026: the history of a single rule
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, build de production.
+**Machine.** Brave 151.1.93.137 / Chromium 151, production build.
 
-Le journal contenait déjà tout ce qui était arrivé à chaque règle (`targetId`
-avait été ajouté pour rendre l'annulation possible), mais aucune surface ne
-posait la question « qu'est-il arrivé à celle-ci ? ». Chaque règle porte
-désormais un bouton « History ».
+The log already contained everything that had happened to each rule (`targetId`
+had been added to make undo possible), but no surface
+asked the question "what happened to this one?". Each rule now carries
+a "History" button.
 
-**Observé.** Une règle levée depuis l'écran, puis son histoire dépliée :
+**Observed.** A rule lifted from the screen, then its history unfolded:
 `28/08/2026, 15:11:39 · You lifted a rule · Never modify the database schema`.
-Aucun nom d'opération machine, une seule histoire ouverte à la fois, aucun
-débordement horizontal.
+No machine operation name, one history open at a time, no
+horizontal overflow.
 
-**Erreur de test, consignée.** Le montage appelait `buildCoreTask()` deux
-fois (une pour lire l'identifiant de la règle, une pour la tâche), donc
-l'identifiant ne correspondait à rien. Le domaine refusait correctement avec
-« no constraint with id … » ; c'est la sonde qui était fausse.
+**Test error, recorded.** The setup called `buildCoreTask()` twice
+(once to read the rule's id, once for the task), so
+the id matched nothing. The domain correctly refused with
+"no constraint with id …"; it was the probe that was wrong.
 
-## 28 août 2026 : échelle et coût
+## 28 August 2026: scale and cost
 
-**Poste.** Chrome, serveur de développement, cahier de 40 règles et
-30 approches écartées écrit directement dans IndexedDB.
+**Setup.** Chrome, dev server, a task of 40 rules and 30 discarded approaches
+written straight into IndexedDB.
 
-Le rapport complet est dans [échelle](echelle.md). Ce qui a été vu
-dans le navigateur, et non seulement en jsdom :
+The full report is in [scale](echelle.md). What was seen in the browser, and
+not only in jsdom:
 
-**Observé.** 12 lignes de règles sur 40, « 28 rules still in force are not
-shown », « Show all 40 rules » ; 12 approches écartées sur 30. Après clic :
-40 lignes, avertissement disparu, bouton devenu « Show fewer », focus resté
-sur le bouton. 360 nœuds repliés, 499 dépliés. Styles calculés réels sur
-l'avertissement comme sur le bouton.
+**Observed.** 12 rule rows out of 40, “28 rules still in force are not shown”,
+“Show all 40 rules”; 12 discarded approaches out of 30. After the click:
+40 rows, the warning gone, the button now “Show fewer”, focus still on the
+button. 360 nodes collapsed, 499 expanded. Real computed styles on the warning
+as on the button.
 
-**Pas de capture d'écran.** Le panneau de capture de cet environnement a rendu
-des images vides alors que le DOM répondait. Noté plutôt que remplacé par une
-image qui ne montre rien.
+**No screenshot.** The capture panel of this environment returned blank images
+while the DOM was answering. Noted rather than replaced by an image that shows
+nothing.
 
-**Anomalie non reproduite.** Au premier essai, la page est restée sur
-« Loading… » après écriture directe dans IndexedDB ; après vidage et réécriture
-du même cahier, chargement normal. Une connexion IndexedDB tenue ouverte ne
-reproduit pas le blocage. Consigné comme non expliqué.
+**Anomaly not reproduced.** On the first attempt, the page stayed on
+“Loading…” after a direct write into IndexedDB; after clearing and rewriting
+the same task, it loaded normally. Holding an IndexedDB connection open does
+not reproduce the hang. Logged as unexplained.
 
-**Sélecteur de cahiers, vérifié aussi.** 41 cahiers sur le poste, 12 lignes
-affichées, « Show all 40 tasks », 457 nœuds ; après clic, 40 lignes et
-681 nœuds. C'est la dimension que le test de garde manquait : il faisait varier
-le contenu d'un cahier, jamais le nombre de cahiers.
+**Task picker, checked too.** 41 tasks on the machine, 12 rows shown,
+“Show all 40 tasks”, 457 nodes; after the click, 40 rows and 681 nodes. That is
+the dimension the guard test was missing: it varied the contents of one task,
+never the number of tasks.
 
-**Erreurs de sonde, consignées.** Deux fois : `.rows li` compté sur toute la
-page alors que la carte visée était « Rules to follow », et une référence DOM
-relue après un rendu qui l'avait remplacée. Dans les deux cas c'est la sonde qui
-était fausse, pas le produit.
+**Probe errors, logged.** Twice: `.rows li` counted across the whole page when
+the card in question was “Rules to follow”, and a DOM reference read back after
+a render had replaced it. In both cases it was the probe that was wrong, not
+the product.
 
-## 28 août 2026 : second tour d'échelle, en navigateur
+## 28 August 2026: second scale pass, in the browser
 
-**Poste.** Chrome, serveur de développement, cahier de 2000 étapes (798 ko en
-base) avec preuves attachées.
+**Setup.** Chrome, dev server, a task of 2000 steps (798 KB in the database)
+with evidence attached.
 
-**Migration de base observée sur place.** La base est passée de la version 2 à
-la 3 sans être vidée : `db.version === 3`, les deux index présents
-(`by-id-version`, `by-updatedAt`), et le cahier de 2000 étapes intact. C'est le
-point qui compte : une migration ratée perdrait les données de vraies personnes.
+**Database migration observed on the spot.** The database went from version 2
+to 3 without being wiped: `db.version === 3`, both indexes present
+(`by-id-version`, `by-updatedAt`), and the 2000-step task intact. That is the
+point that counts: a failed migration would lose real people's data.
 
-**L'index répond juste.** `getKey(['perf01', 2100])` rend `'perf01'` ;
-`getKey(['perf01', 9999])` ne rend rien. 0,1 ms contre 2,3 ms pour la relecture
-complète qu'il remplace.
+**The index answers correctly.** `getKey(['perf01', 2100])` returns `'perf01'`;
+`getKey(['perf01', 9999])` returns nothing. 0.1 ms against 2.3 ms for the full
+read-back it replaces.
 
-**Écriture réelle depuis l'écran.** Une règle ajoutée par le formulaire, écrite
-et affichée en 20,5 ms de bout en bout.
+**A real write from the screen.** A rule added through the form, written and
+displayed in 20.5 ms end to end.
 
-**Repli de démarrage.** `lastTaskId` effacé de la base, rechargement : la page a
-retrouvé « Shard migration » seule.
+**Startup fallback.** `lastTaskId` deleted from the database, reload: the page
+found “Shard migration” on its own.
 
-**Frappe dans la recherche.** 6,9 ms de médiane, image comprise, sur ce même
-cahier, sous la barre d'une image à 60 Hz.
+**A keystroke in the search box.** 6.9 ms median, frame included, on that same
+task, under the bar set by a 60 Hz frame.
 
-**Une décision prise sur la mesure, contre l'intuition.** Réécrire les 58 ko de
-HTML de la page coûte 0,7 ms dans Chrome, contre 15 ms sous jsdom. Le rendu
-par sections, qui semblait s'imposer d'après les chiffres jsdom, aurait donc
-gagné moins d'une milliseconde pour une refonte du tableau de bord entier. Non
-fait.
+**A decision taken on measurement, against intuition.** Rewriting the page's
+58 KB of HTML costs 0.7 ms in Chrome, against 15 ms under jsdom. Rendering by
+sections, which looked unavoidable from the jsdom figures, would therefore have
+gained less than a millisecond for a rebuild of the entire dashboard. Not
+done.
 
-## 28 août 2026 : ce qui voyage avec un lien
+## 28 August 2026: what travels with a link
 
-**Poste.** Chrome, serveur de développement, cahier portant trois preuves dont
-une sortie de commande contenant un faux jeton et un nom d'hôte interne.
+**Setup.** Chrome, dev server, a task carrying three pieces of evidence, one of
+them a command output containing a fake token and an internal hostname.
 
-Le lien partageable et l'export emportent les preuves telles qu'elles ont été
-collées. Le README le disait ; l'écran, non. Et c'est l'écran qu'on lit avant
-de cliquer. Pire, l'ancien message n'arrivait qu'après la copie, quand la
-décision était déjà prise.
+The shareable link and the export carry the evidence exactly as it was pasted.
+The README said so; the screen did not. And the screen is what you read before
+you click. Worse, the old message only arrived after the copy, when the
+decision had already been made.
 
-**Observé.** Sur ce cahier, sous le bouton de partage : « 3 pieces of evidence
+**Observed.** On this task, under the share button: “3 pieces of evidence
 travel with it, pasted exactly as they were. Command output often holds a token
 or an internal hostname: read what it carries before you send this on. Sealed
-credentials never travel. » Bloc de 820 × 50 px, gris `rgb(160, 160, 172)`,
-aucun débordement horizontal. Les deux champs de preuve portent « Kept exactly
-as pasted, and it travels with every export and shared link. », positionnée sous
-le textarea. Le panneau technique porte la note d'export.
+credentials never travel.” A block of 820 × 50 px, gray `rgb(160, 160, 172)`,
+no horizontal overflow. Both evidence fields carry “Kept exactly as pasted, and
+it travels with every export and shared link.”, placed under the textarea. The
+technical panel carries the export note.
 
-**Ce qui a été refusé.** Un avertissement affiché en permanence. Il ne paraît
-que s'il y a réellement une preuve attachée, et il compte : un avertissement
-montré sans raison s'apprend à ne plus être lu. Un test tient ce silence.
+**What was refused.** A warning displayed permanently. It only appears if there
+really is evidence attached, and it counts: a warning shown for no reason
+teaches people to stop reading it. A test holds that silence.
 
-**Une régression évitée de justesse.** La première rédaction du message de
-copie perdait le mot « copy », et avec lui l'idée que le destinataire reçoit un
-exemplaire à lui, qui divergera. Un test existant l'a rattrapée : il ne
-vérifiait pas une chaîne, il vérifiait cette idée.
+**A regression narrowly avoided.** The first draft of the copy message lost the
+word “copy”, and with it the idea that the recipient receives a copy of their
+own, which will diverge. An existing test caught it: it was not checking a
+string, it was checking that idea.
 
-## 28 août 2026 : les budgets de caractères de Chrome
+## 28 August 2026: Chrome's character budgets
 
-Chrome publie des budgets pour les outils WebMCP : 30 caractères par nom, 500
-par description d'outil, 150 par description de paramètre, 1,5 k par sortie. Ce
-sont des recommandations, pas des limites dures, mais au-delà on « tombe sur les
-garde-fous des agents ».
+Chrome publishes budgets for WebMCP tools: 30 characters per name, 500 per tool
+description, 150 per parameter description, 1.5k per output. These are
+recommendations, not hard limits, but beyond them you “run into the agents'
+guardrails”.
 
-**Mesuré avant.** Dix descriptions sur treize dépassaient, jusqu'à 801. Une
-description de paramètre (`mutation_id`, 351 caractères) dépassait de plus du
-double, et elle était répétée sur les neuf outils d'écriture. Le catalogue
-entier, ce qu'un agent lit à chaque énumération, pesait 20 378 caractères.
+**Measured before.** Ten descriptions out of thirteen were over, up to 801. One
+parameter description (`mutation_id`, 351 characters) was over by more than
+double, and it was repeated on all nine write tools. The whole catalogue, what
+an agent reads on every enumeration, weighed 20,378 characters.
 
-**Après :** 15 576, soit 24 % de moins, et aucune borne dépassée.
+**After:** 15,576, which is 24% less, and no bound exceeded.
 
-**La règle éditoriale.** Une description d'outil instruit, le README explique.
-Ce qui a été coupé, ce sont les justifications (pourquoi la règle existe) et
-les rappels de protocole qui figuraient déjà trois fois : dans le schéma, dans
-le bloc WRITE PROTOCOL de `resume_task`, et dans le texte des refus. Aucune
-instruction n'a été retirée, et un second bloc d'épreuves nomme celles qui
-devaient survivre : « BEFORE doing any work », « Do NOT guess and carry on »,
-« NO ANSWER IS NOT APPROVAL », « does not prove the work was never attempted ».
+**The editorial rule.** A tool description instructs, the README explains. What
+was cut is the justifications (why the rule exists) and the protocol reminders
+that already appeared three times: in the schema, in the WRITE PROTOCOL block
+of `resume_task`, and in the text of the refusals. No instruction was removed,
+and a second block of tests names the ones that had to survive:
+“BEFORE doing any work”, “Do NOT guess and carry on”,
+“NO ANSWER IS NOT APPROVAL”, “does not prove the work was never attempted”.
 
-**Un changement essayé puis retiré.** Descendre `TOKEN_BUDGET` de 400 à 375
-pour tomber pile sur les 1,5 k de Chrome. Mesuré : dix-sept caractères gagnés
-sur une restitution ordinaire, et un nom d'identifiant perdu à l'écran sur un
-cahier chargé. Mauvais échange, annulé. Les restitutions réelles mesurent 1501
-et 1484 caractères : la recommandation est tenue à un caractère près sans
-l'avoir visée, et l'écart de 6,7 % entre le budget du produit et celui de Chrome
-est écrit dans le test plutôt que maquillé.
+**A change tried then backed out.** Dropping `TOKEN_BUDGET` from 400 to 375
+to land exactly on Chrome's 1.5k. Measured: seventeen characters saved on an
+ordinary output, and one credential name lost on screen on a loaded task. Bad
+trade, reverted. The real outputs measure 1501 and 1484 characters: the
+recommendation is held to within one character without having aimed at it, and
+the 6.7% gap between the product's budget and Chrome's is written into the test
+rather than covered up.
 
-**Trois tests existants ont refusé la coupe, à raison.** Ils tenaient le contrat
-de rejeu, le fait qu'une preuve jointe n'est pas vérifiée, et le déclencheur de
-`resume_task`. Deux d'entre eux ont échoué non parce que le sens avait disparu,
-mais parce que la phrase enjambait un retour à la ligne du gabarit : les
-nouvelles épreuves comparent donc sur un texte à espaces normalisés, comme le
-lit un agent.
+**Three existing tests refused the cut, rightly.** They held the replay
+contract, the fact that attached evidence is not verified, and the trigger of
+`resume_task`. Two of them failed not because the meaning had gone, but because
+the sentence straddled a line break in the template: the new tests therefore
+compare on text with normalized whitespace, the way an agent reads it.
 
-**Vérifié en navigateur, finalement.** J'avais écrit ne pas pouvoir le faire :
-le panneau de cette session n'expose pas `document.modelContext`, et pour cause,
-il tourne sur Chromium 148 (Electron), alors que WebMCP demande 149 et plus.
-Brave 151 est installé sur le poste, et le README documente la commande.
-Lancé sur un profil jetable avec `--enable-features=WebMCP,WebMCPTesting`,
-`document.modelContext` est bien un objet et les treize outils s'enregistrent
-dès qu'une tâche est ouverte (quatre seulement avant), ce qui est le
-comportement attendu : les outils suivent l'état.
+**Checked in a browser, in the end.** I had written that I could not do it:
+this session's panel does not expose `document.modelContext`, and for good
+reason, it runs on Chromium 148 (Electron), while WebMCP requires 149 and up.
+Brave 151 is installed on the machine, and the README documents the command.
+Launched on a throwaway profile with `--enable-features=WebMCP,WebMCPTesting`,
+`document.modelContext` is indeed an object and the thirteen tools register as
+soon as a task is open (only four before), which is the expected behavior: the
+tools follow the state.
 
-Relevé tel qu'un agent le reçoit, par `getTools()` :
+Read out as an agent receives it, through `getTools()`:
 
-| Budget                        | Recommandé | Mesuré |
-| ----------------------------- | ---------- | ------ |
-| Nom d'outil                   | 30         | 16     |
-| Description d'outil           | 500        | 499    |
-| Description de paramètre (46) | 150        | 146    |
+| Budget                     | Recommended | Measured |
+| -------------------------- | ----------- | -------- |
+| Tool name                  | 30          | 16       |
+| Tool description           | 500         | 499      |
+| Parameter description (46) | 150         | 146      |
 
-Aucun dépassement. Les quatre outils de lecture portent bien
-`untrustedContentHint`.
+No overruns. The four read tools do carry `untrustedContentHint`.
 
-**Et une erreur dans ma propre garde, trouvée par cette vérification.** J'avais
-mesuré la sortie de `resume_task` par `renderTaskState(task)` sans options, soit
-1484 caractères. Appelé pour de vrai par `execute_webmcp_tool`, il en rend
-1528 : l'outil passe toujours l'adresse de la tâche, que ma mesure omettait.
-Le test se rassurait donc sur autre chose que ce qui part. Corrigé : il mesure
-maintenant avec l'adresse.
+**And a mistake in my own guard, found by this check.** I had measured the
+output of `resume_task` through `renderTaskState(task)` with no options, that
+is 1484 characters. Called for real by `execute_webmcp_tool`, it returns
+1528: the tool always passes the task address, which my measurement left out.
+The test was therefore reassuring itself about something other than what goes
+out. Fixed: it now measures with the address.
 
-La position réelle est donc : 1528 caractères, soit 1,9 % au-dessus de la
-recommandation de Chrome et à l'intérieur du budget du produit (400 tokens,
-1600 caractères). Écrit plutôt que rattrapé en rognant de la prose pour tomber
-sur un chiffre rond : c'est le même arbitrage que le `TOKEN_BUDGET` à 375, et
-il se tranche pareil.
+The real position is therefore: 1528 characters, 1.9% above Chrome's
+recommendation and inside the product's budget (400 tokens, 1600 characters).
+Written down rather than patched up by shaving prose to land on a round number:
+it is the same trade-off as `TOKEN_BUDGET` at 375, and it is settled the same
+way.
 
-## 28 août 2026 : passe de vérification en WebMCP réel
+## 28 August 2026: verification pass in real WebMCP
 
-**Poste.** Brave 151.1.93.137 / Chromium 151, profil jetable,
-`--enable-features=WebMCP,WebMCPTesting`, serveur de développement. Les appels
-d'outil passent par `execute_webmcp_tool`, donc par la même surface qu'un agent.
-Deux onglets ouverts sur la même tâche pour les épreuves de concurrence.
+**Setup.** Brave 151.1.93.137 / Chromium 151, throwaway profile,
+`--enable-features=WebMCP,WebMCPTesting`, dev server. Tool calls go through
+`execute_webmcp_tool`, so through the same surface as an agent. Two tabs open
+on the same task for the concurrency tests.
 
-### Ce qui tient
+### What holds
 
-| Épreuve                                                          | Résultat                                                                  |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `document.modelContext` présent, `getTools()` trié par nom       | oui                                                                       |
-| Budgets Chrome : nom / description / paramètre                   | 16 · 499 · 146 sur 30 · 500 · 150                                         |
-| `untrustedContentHint` et `readOnlyHint` sur les quatre lectures | oui                                                                       |
-| Cycle de vie : 0 tâche → 4 outils, tâche ouverte → 13            | oui                                                                       |
-| Rejeu idempotent : même `mutation_id`, mêmes arguments           | réponse d'origine, « Nothing was written twice »                          |
-| Même `mutation_id`, arguments différents                         | refusé, motif explicite                                                   |
-| Version périmée                                                  | refusé, renvoie vers `what_changed`                                       |
-| Conflit entre onglets                                            | message distinct : « Another page has since written v30 »                 |
-| Règle écrite par un agent                                        | arrive en PROPOSAL, non contraignante, visible à l'écran                  |
-| Autorisation bloquante                                           | ALLOWED et DENIED font l'aller-retour ; le refus dit de ne pas contourner |
-| `complete_task`                                                  | énumère ce qui reste non tranché avant de clore                           |
-| Écriture après clôture                                           | refusée, avec la marche à suivre                                          |
-| Réouverture                                                      | exige un motif écrit, et les outils d'écriture se réenregistrent aussitôt |
-| Section `credentials`                                            | rend des noms, jamais une valeur                                          |
-| Erreurs console sur toute la passe                               | aucune                                                                    |
+| Test                                                         | Result                                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `document.modelContext` present, `getTools()` sorted by name | yes                                                                            |
+| Chrome budgets: name / description / parameter               | 16 · 499 · 146 against 30 · 500 · 150                                          |
+| `untrustedContentHint` and `readOnlyHint` on the four reads  | yes                                                                            |
+| Lifecycle: 0 tasks → 4 tools, task open → 13                 | yes                                                                            |
+| Idempotent replay: same `mutation_id`, same arguments        | original response, “Nothing was written twice”                                 |
+| Same `mutation_id`, different arguments                      | refused, explicit reason                                                       |
+| Stale version                                                | refused, points to `what_changed`                                              |
+| Conflict between tabs                                        | distinct message: “Another page has since written v30”                         |
+| Rule written by an agent                                     | arrives as PROPOSAL, not binding, visible on screen                            |
+| Blocking authorization                                       | ALLOWED and DENIED make the round trip; the refusal says not to work around it |
+| `complete_task`                                              | lists what is still unsettled before closing                                   |
+| Write after closing                                          | refused, with what to do next                                                  |
+| Reopening                                                    | requires a written reason, and the write tools re-register at once             |
+| `credentials` section                                        | returns names, never a value                                                   |
+| Console errors across the whole pass                         | none                                                                           |
 
-### Deux trouvailles
+### Two findings
 
-**1. Deux outils de lecture débordent la borne de sortie de Chrome.** La garde
-posée plus tôt ne mesurait que `resume_task`.
+**1. Two read tools overrun Chrome's output bound.** The guard put in earlier
+only measured `resume_task`.
 
-| Sortie                                 | Mesurée | Face à 1,5 k |
-| -------------------------------------- | ------- | ------------ |
-| `resume_task`                          | 1528    | +2 %         |
-| `what_changed`                         | 613     | tient        |
-| `search_task`, cas ordinaire           | 811     | tient        |
-| `search_task`, pire cas                | 6 296   | ×4,2         |
-| `read_task_detail`, page de 20         | 1 989   | ×1,3         |
-| `read_task_detail`, une entrée entière | 9 078   | ×6           |
+| Output                              | Measured | Against 1.5k |
+| ----------------------------------- | -------- | ------------ |
+| `resume_task`                       | 1528     | +2%          |
+| `what_changed`                      | 613      | holds        |
+| `search_task`, ordinary case        | 811      | holds        |
+| `search_task`, worst case           | 6,296    | ×4.2         |
+| `read_task_detail`, page of 20      | 1,989    | ×1.3         |
+| `read_task_detail`, one whole entry | 9,078    | ×6           |
 
-La dernière est délibérée : l'outil existe pour rendre une preuve entière, et
-`MAX_EVIDENCE_LENGTH` vaut 8000. Les deux autres ne sont bornées que par un
-nombre d'entrées, jamais par des caractères, or une entrée peut être vingt fois
-plus grosse qu'une autre.
+The last one is deliberate: the tool exists to return a whole piece of
+evidence, and `MAX_EVIDENCE_LENGTH` is 8000. The other two are bounded only by
+a number of entries, never by characters, and one entry can be twenty times
+bigger than another.
 
-**2. Aucun rafraîchissement entre onglets.** Le second onglet a rouvert la
-tâche et écrit jusqu'à v31 ; le premier affichait encore v29 et « Task closed ».
-Il ne l'apprend qu'en tentant d'écrire. La garantie de sûreté tient (rien n'est
-écrasé en silence, et le refus nomme même l'autre page), mais l'écran ment
-jusque-là, ce qui est exactement ce que ce produit reproche aux autres.
-`visibilitychange` ne relit pas la base ; il redessine depuis la mémoire.
+**2. No refresh between tabs.** The second tab reopened the task and wrote up
+to v31; the first still displayed v29 and “Task closed”. It only finds out by
+trying to write. The safety guarantee holds (nothing is overwritten silently,
+and the refusal even names the other page), but the screen lies until then,
+which is exactly what this product holds against others. `visibilitychange`
+does not re-read the database; it redraws from memory.
 
-### Erreurs de sonde, consignées
+### Probe errors, logged
 
-**Deux versions devinées à tort.** Une décision d'autorisation incrémente
-elle-même la version ; mes appels suivants portaient donc une version périmée.
-Les refus étaient justes, la sonde non.
+**Two versions guessed wrong.** An authorization decision increments the
+version itself; my next calls therefore carried a stale version. The refusals
+were right, the probe was not.
 
-**« La réouverture ne fait rien » était de moi.** J'avais laissé le `prompt()`
-en suspens pendant que je lançais d'autres outils ; la boîte de dialogue est
-ressortie bien plus tard, derrière un appel sans rapport. Répondue tout de
-suite, la réouverture fonctionne, et les neuf outils d'écriture se
-réenregistrent dans la seconde.
+**“Reopening does nothing” came from me.** I had left the `prompt()` hanging
+while I fired off other tools; the dialog box came back much later, behind an
+unrelated call. Answered straight away, reopening works, and the nine write
+tools re-register within the second.
 
-## 28 août 2026 : les deux trouvailles, corrigées et revérifiées
+## 28 August 2026: the two findings, fixed and rechecked
 
-**Poste.** Brave 151, deux onglets sur la même tâche, appels par
+**Setup.** Brave 151, two tabs on the same task, calls through
 `execute_webmcp_tool`.
 
-### La recherche se remplit maintenant jusqu'au budget
+### Search now fills up to the budget
 
-Douze correspondances de 240 caractères faisaient 6296 caractères. La borne
-porte désormais sur les caractères et non sur le compte : 6296 → 1275, et
-l'en-tête dit « 2 shown of 30 found · 28 more not shown: narrow the query ».
-Rien n'est caché, la recherche sert à trouver.
+Twelve matches of 240 characters came to 6296 characters. The bound is now on
+characters and not on the count: 6296 → 1275, and the header says “2 shown of
+30 found · 28 more not shown: narrow the query”. Nothing is hidden, search is
+there to find.
 
-**Une borne que j'ai posée puis retirée.** J'avais borné `read_task_detail` de
-la même façon. Une épreuve existante l'a refusé, et elle avait raison :
-`resume_task` est le pointeur court, `read_task_detail` est là où l'on va
-chercher du volume. Le borner rendait une à deux entrées par page dès qu'une
-preuve était jointe. Le partage des rôles était délibéré ; je ne l'avais pas
-reconnu avant que le test ne me le dise.
+**A bound I put in then took out.** I had bounded `read_task_detail` the same
+way. An existing test refused it, and it was right: `resume_task` is the short
+pointer, `read_task_detail` is where you go for volume. Bounding it returned
+one or two entries per page as soon as evidence was attached. The split of
+roles was deliberate; I had not recognized it before the test told me.
 
-### Deux onglets restent en phase
+### Two tabs stay in sync
 
-Un `BroadcastChannel` annonce chaque écriture ; l'onglet qui tient la même tâche
-la relit depuis IndexedDB et se redessine.
+A `BroadcastChannel` announces every write; the tab holding the same task
+re-reads it from IndexedDB and redraws itself.
 
-**Observé.** Onglet 2 écrit une règle. Onglet 1 passe de v32 à v33 et
-affiche la règle, sans un clic ni un rechargement. Aucune erreur console.
+**Observed.** Tab 2 writes a rule. Tab 1 goes from v32 to v33 and displays the
+rule, with no click and no reload. No console errors.
 
-**Deux défauts trouvés en le construisant, dont un que la suite n'a pas vu.**
+**Two defects found while building it, one of which the suite did not see.**
 
-1. **L'écho.** Une réécriture par numéro de ligne avait transformé le
-   `tasksChanged()` du récepteur en `tasksChangedEverywhere()` : chaque onglet
-   réannonçait ce qu'il recevait, et deux onglets se seraient renvoyé le message
-   sans fin. Attrapé par un test qui vérifiait ce qui était émis.
+1. **The echo.** A rewrite by line number had turned the receiver's
+   `tasksChanged()` into `tasksChangedEverywhere()`: every tab re-announced
+   what it received, and two tabs would have sent the message back and forth
+   forever. Caught by a test that checked what was emitted.
 
-2. **L'onglet sourd, vu en navigateur seulement.** Le canal était ouvert
-   paresseusement, à la première annonce. Or un onglet qui ne fait que lire
-   n'annonce jamais rien : il restait donc sourd, et c'était exactement celui
-   qu'il fallait réveiller. La suite ne pouvait pas le voir, parce que dans
-   chacun de ses cas le magasin avait écrit avant d'écouter. Le canal s'ouvre
-   maintenant à `init()`, et une épreuve part d'un magasin qui n'écrit pas une
-   seule fois.
+2. **The deaf tab, seen in the browser only.** The channel was opened lazily,
+   on the first announcement. But a tab that only reads never announces
+   anything: it stayed deaf, and it was exactly the one that needed waking.
+   The suite could not see it, because in every one of its cases the store had
+   written before listening. The channel now opens at `init()`, and one test
+   starts from a store that does not write a single time.
 
-C'est la troisième fois dans ce projet qu'un test vert masque un défaut que le
-navigateur montre en une minute.
+That is the third time in this project that a green test has hidden a defect
+the browser shows in a minute.
 
-## 28 août 2026 : passe de sécurité en WebMCP réel
+## 28 August 2026: security pass in real WebMCP
 
-**Poste.** Brave 151, deux onglets, appels par `execute_webmcp_tool`.
+**Setup.** Brave 151, two tabs, calls through `execute_webmcp_tool`.
 
-### Injection : ce qu'un agent écrit finit dans le DOM de l'humain
+### Injection: what an agent writes ends up in the human's DOM
 
-Une étape écrite par un agent, portant
-`<img src=x onerror="window.__pwned=1">`, `<script>`, un `<iframe>` et un
-`</pre>` destiné à sortir du bloc de preuve.
+A step written by an agent, carrying
+`<img src=x onerror="window.__pwned=1">`, `<script>`, an `<iframe>` and a
+`</pre>` meant to break out of the evidence block.
 
-**Observé.** Rien d'exécuté : les quatre témoins restent `null`. Zéro `<img>`,
-zéro `<script>`, zéro `<iframe>` dans `#app`. Le texte s'affiche tel quel, y
-compris une fois la preuve dépliée. En position d'attribut (`aria-label`), les
-guillemets sont échappés en `&quot;` ; en position de texte, ils ne le sont pas,
-ce qui est correct, et non un oubli.
+**Observed.** Nothing executed: the four witnesses stay `null`. Zero `<img>`,
+zero `<script>`, zero `<iframe>` in `#app`. The text displays as it is,
+including once the evidence is expanded. In attribute position (`aria-label`),
+the quotes are escaped to `&quot;`; in text position they are not, which is
+correct, and not an oversight.
 
-**Erreur de sonde.** Mon premier contrôle dé-échappait le HTML avant d'y
-chercher des balises, et trouvait donc huit « balises vivantes » qui étaient les
-entités échappées de ma propre charge. Le produit n'y était pour rien.
+**Probe error.** My first check unescaped the HTML before looking for tags in
+it, and so found eight “live tags” that were the escaped entities of my own
+payload. The product had nothing to do with it.
 
-### Le coffre, jusque dans IndexedDB
+### The vault, right down into IndexedDB
 
-Un identifiant scellé depuis l'écran, puis l'enregistrement brut relu.
+A credential sealed from the screen, then the raw record read back.
 
-| Question                           | Réponse                                       |
-| ---------------------------------- | --------------------------------------------- |
-| Champs stockés                     | `id, taskId, name, purpose, kind, sealed, at` |
-| Valeur en clair dans le coffre     | non                                           |
-| Passphrase en clair dans le coffre | non                                           |
-| Valeur en clair dans la tâche      | non                                           |
-| Contenu de `sealed`                | `{ciphertext: "…base64…"}`                    |
+| Question                         | Answer                                        |
+| -------------------------------- | --------------------------------------------- |
+| Fields stored                    | `id, taskId, name, purpose, kind, sealed, at` |
+| Value in clear in the vault      | no                                            |
+| Passphrase in clear in the vault | no                                            |
+| Value in clear in the task       | no                                            |
+| Contents of `sealed`             | `{ciphertext: "…base64…"}`                    |
 
-`read_task_detail` sur `credentials` rend `${gemini-api-key}` et sa raison
-d'être, jamais la valeur. `search_task` sur la valeur elle-même : `NO MATCH`.
+`read_task_detail` on `credentials` returns `${gemini-api-key}` and what it is
+for, never the value. `search_task` on the value itself: `NO MATCH`.
 
-**Le lien partageable non plus.** 7005 caractères, décompressés en
-19 589 caractères de JSON : ni la valeur, ni même le nom. Les secrets vivant
-hors de `TaskState`, `packTask` ne peut pas les emporter : la garantie est
-structurelle, et elle se vérifie sur l'octet.
+**Nor does the shareable link.** 7005 characters, decompressed into
+19,589 characters of JSON: neither the value, nor even the name. Since the
+secrets live outside `TaskState`, `packTask` cannot carry them: the guarantee
+is structural, and it can be checked on the byte.
 
-**Passphrase.** Mauvaise : « That passphrase does not open this credential. »
-Bonne : la valeur, avec « Hidden again in under a minute. »
+**Passphrase.** Wrong one: “That passphrase does not open this credential.”
+Right one: the value, with “Hidden again in under a minute.”
 
-**Le pire moment.** Avec la valeur affichée à l'écran, `resume_task` rend
-toujours `CREDENTIALS: names only, values sealed (1)` et le seul `${nom}`.
+**The worst moment.** With the value displayed on screen, `resume_task` still
+returns `CREDENTIALS: names only, values sealed (1)` and the `${name}` alone.
 
-**Mais la garantie est bien celle qui est écrite, pas plus.** La page dit :
-« anything you reveal on screen can be read by an agent that drives this
-browser ». C'est exact, et je viens d'en faire la démonstration involontaire :
-j'ai lu la valeur révélée dans le DOM par `evaluate_script`. La promesse est
-« aucun OUTIL ne rend une valeur », pas « aucun agent ne peut la voir ». Le
-produit le dit ; il fallait le vérifier plutôt que le sur-vendre.
+**But the guarantee is the one that is written, no more.** The page says:
+“anything you reveal on screen can be read by an agent that drives this
+browser”. That is exact, and I have just given the unintended demonstration of
+it: I read the revealed value out of the DOM with `evaluate_script`. The
+promise is “no TOOL returns a value”, not “no agent can see it”. The product
+says so; it had to be checked rather than oversold.
 
-### La bombe de décompression, avec le vrai `DecompressionStream`
+### The decompression bomb, with the real `DecompressionStream`
 
-Corrigée au second audit, jamais vérifiée en navigateur jusqu'ici.
+Fixed at the second audit, never checked in a browser until now.
 
-| Charge         | Mesure                                    |
-| -------------- | ----------------------------------------- |
-| En clair       | 6 000 302 octets                          |
-| Compressée     | 6 069 octets, ratio 989:1                 |
-| Fragment       | 8 093 caractères, sous la borne de 16 000 |
-| Verdict        | refusée en ~100 ms                        |
-| Tas après coup | 4 Mo : les 6 Mo n'ont jamais existé       |
+| Payload         | Measurement                                 |
+| --------------- | ------------------------------------------- |
+| Plain           | 6,000,302 bytes                             |
+| Compressed      | 6,069 bytes, ratio 989:1                    |
+| Fragment        | 8,093 characters, under the bound of 16,000 |
+| Verdict         | refused in ~100 ms                          |
+| Heap afterwards | 4 MB: the 6 MB never existed                |
 
-Message rendu : « That link does not carry a readable log. »
+Message returned: “That link does not carry a readable log.”
 
-### Durabilité
+### Durability
 
-`navigator.storage.persisted()` vaut `false` sur ce profil ; 0,54 Mo utilisés
-sur 2 Go de quota. La page propose « Ask the browser to keep this » quand ce
-n'est pas accordé, ce qui est le comportement attendu.
+`navigator.storage.persisted()` is `false` on this profile; 0.54 MB used out of
+a 2 GB quota. The page offers “Ask the browser to keep this” when it is not
+granted, which is the expected behavior.
 
-## 28 août 2026 : export, import, et la suppression d'un cahier
+## 28 August 2026: export, import, and deleting a task
 
-**Poste.** Brave 151. Le téléchargement est intercepté en enveloppant
-`URL.createObjectURL`, l'import en construisant un `File` et un `DataTransfer`,
-donc par les mêmes chemins que l'utilisateur.
+**Setup.** Brave 151. The download is intercepted by wrapping
+`URL.createObjectURL`, the import by building a `File` and a `DataTransfer`, so
+through the same paths as the user.
 
-### L'export
+### The export
 
-34 828 octets de Markdown, un seul bloc JSON. Il porte bien la charge
-d'injection écrite plus tôt (c'est le contenu du cahier, il doit y être), et
-ni la valeur du secret ni même son nom. Cohérent avec le lien partageable,
-et pour la même raison structurelle.
+34,828 bytes of Markdown, a single JSON block. It does carry the injection
+payload written earlier (it is the task's content, it has to be there), and
+neither the secret's value nor even its name. Consistent with the shareable
+link, and for the same structural reason.
 
-### L'import, ses deux branches
+### The import, its two branches
 
-| Fichier                              | Résultat                                                 |
-| ------------------------------------ | -------------------------------------------------------- |
-| Identique à ce qui est ici           | « 1 already here. », rien n'est dupliqué                 |
-| Même identifiant, version différente | une COPIE, titrée « … (imported) », identifiant distinct |
+| File                       | Result                                     |
+| -------------------------- | ------------------------------------------ |
+| Identical to what is here  | “1 already here.”, nothing is duplicated   |
+| Same id, different version | a COPY, titled “… (imported)”, distinct id |
 
-Dans les deux cas l'original reste intact, et aucun secret ne revient par le
-fichier.
+In both cases the original stays intact, and no secret comes back through the
+file.
 
-### La suppression d'un cahier emporte ses identifiants scellés
+### Deleting a task takes its sealed credentials with it
 
-C'était le défaut le plus grave du premier audit : `deleteSecretsForTask`
-n'était jamais appelé, et un identifiant scellé survivait au cahier qui le
-portait. Corrigé alors, jamais vérifié en navigateur jusqu'ici.
+It was the most serious defect of the first audit: `deleteSecretsForTask` was
+never called, and a sealed credential outlived the task that carried it. Fixed
+then, never checked in a browser until now.
 
-Relevé dans IndexedDB, de part et d'autre de la suppression :
+Read from IndexedDB, on either side of the deletion:
 
-|       | `tasks`                        | `secrets`                         |
-| ----- | ------------------------------ | --------------------------------- |
-| Avant | `289687a53a75`, `a36c38ba83a6` | `gemini-api-key` → `a36c38ba83a6` |
-| Après | `289687a53a75`                 | _(vide)_                          |
+|        | `tasks`                        | `secrets`                         |
+| ------ | ------------------------------ | --------------------------------- |
+| Before | `289687a53a75`, `a36c38ba83a6` | `gemini-api-key` → `a36c38ba83a6` |
+| After  | `289687a53a75`                 | _(empty)_                         |
 
-Le cahier part, le secret part avec lui, et l'autre cahier n'est pas touché.
+The task goes, the secret goes with it, and the other task is untouched.
 
-## 28 août 2026 : la page sur un écran étroit
+## 28 August 2026: the page on a narrow screen
 
-**Poste.** Brave 151, viewport émulé 375 × 812, mobile et tactile. Jamais
-vérifié jusqu'ici, et un juge ouvre ce qu'il veut.
+**Setup.** Brave 151, emulated viewport 375 × 812, mobile and touch. Never
+checked until now, and a judge opens whatever they want.
 
-**Ce qui tient.** Aucun débordement horizontal : `scrollWidth` vaut exactement
-375, et aucun des éléments de `#app` ne dépasse la largeur du viewport. La
-hauteur médiane d'une cible tactile est de 41 px.
+**What holds.** No horizontal overflow: `scrollWidth` is exactly 375, and none
+of the elements in `#app` goes past the width of the viewport. The median
+height of a touch target is 41 px.
 
-**Ce qui ne tient pas, et n'est pas corrigé.** Quatre éléments passent sous une
-cible confortable :
+**What does not hold, and is not fixed.** Four elements fall below a
+comfortable target:
 
-| Élément                                   | Hauteur |
-| ----------------------------------------- | ------- |
-| `<select>` du type d'identifiant          | 19 px   |
-| Les trois liens de la barre « Needs you » | 22 px   |
+| Element                                | Height |
+| -------------------------------------- | ------ |
+| `<select>` for the credential type     | 19 px  |
+| The three links in the “Needs you” bar | 22 px  |
 
-Le reste est à 41 px, soit juste sous les 44 px recommandés, un écart que je ne
-compte pas comme un défaut. Les quatre ci-dessus, si. Non corrigé : la mise en
-forme est un domaine où l'on ne touche pas sans décision, et ce n'est pas la
-mienne à prendre.
+The rest is at 41 px, just under the recommended 44 px, a gap I do not count as
+a defect. The four above, I do. Not fixed: layout is an area you do not touch
+without a decision, and that one is not mine to take.
 
-## 28 août 2026 : sur une machine vingt fois plus lente
+## 28 August 2026: on a machine twenty times slower
 
-**Poste.** Brave 151, throttling CPU ×20 par CDP. Cahier de 3000 étapes,
-60 règles, 1,27 Mo : les mesures précédentes avaient toutes été prises sur une
-machine rapide, ce qui ne prouve rien pour qui n'en a pas.
+**Setup.** Brave 151, CPU throttling ×20 through CDP. A task of 3000 steps,
+60 rules, 1.27 MB: the earlier measurements had all been taken on a fast
+machine, which proves nothing for anyone who does not have one.
 
-**Ce que la page rend.** 409 nœuds, 40 ko de HTML : les bornes tiennent, la
-taille du cahier ne s'y voit pas. Une recherche sur « shard » trouve
-3060 correspondances et n'en montre que ce qui tient dans le budget.
+**What the page renders.** 409 nodes, 40 KB of HTML: the bounds hold, the size
+of the task does not show. A search for “shard” finds 3060 matches and shows
+only what fits in the budget.
 
-**Le coût réel, séparé de la cadence du compositeur.** Le travail synchrone du
-gestionnaire de frappe est de 0 à 2,9 ms : il ne fait que programmer un rendu.
-Le temps jusqu'à la peinture est de ~1005 ms, mais c'est la cadence d'un
-compositeur à ×20, pas le produit : toute page la subirait.
+**The real cost, separated from the compositor's cadence.** The synchronous
+work of the keystroke handler is 0 to 2.9 ms: all it does is schedule a render.
+Time to paint is ~1005 ms, but that is the cadence of a compositor at ×20, not
+the product: any page would take it.
 
-Ce qu'il fallait mesurer, c'est le fil principal. Un `PerformanceObserver` sur
-les `longtask` pendant six frappes :
+What had to be measured is the main thread. A `PerformanceObserver` on the
+`longtask` entries across six keystrokes:
 
 |                                   | ms  |
 | --------------------------------- | --- |
-| Tâche la plus longue              | 147 |
-| Médiane                           | 136 |
-| Tâches observées pour six frappes | 3   |
+| Longest task                      | 147 |
+| Median                            | 136 |
+| Tasks observed for six keystrokes | 3   |
 
-147 ms à ×20 correspond à ~7 ms sur ce poste, ce qui recoupe la mesure directe
-de 6,9 ms prise plus tôt sans throttling. Sur une machine vingt fois plus lente,
-une frappe dans la recherche coûte donc ~140 ms de fil principal sur un cahier
-de 1,27 Mo : perceptible, pas cassé.
+147 ms at ×20 corresponds to ~7 ms on this machine, which lines up with the
+direct measurement of 6.9 ms taken earlier without throttling. On a machine
+twenty times slower, a keystroke in the search box therefore costs ~140 ms of
+main thread on a task of 1.27 MB: noticeable, not broken.
 
-Et trois tâches pour six frappes : le regroupement par `requestAnimationFrame`
-fait son travail : taper vite ne produit pas un rendu par caractère.
+And three tasks for six keystrokes: the batching by `requestAnimationFrame` is
+doing its job: typing fast does not produce one render per character.
 
-**Erreur de sonde, consignée.** La première mesure portait sur le mauvais
-cahier : `lastTaskId` avait été écrit pendant que la page était déjà montée, et
-le rechargement a rouvert celui d'avant. Le chiffre de 1009 ms que j'ai lu là
-était celui d'un cahier de dix étapes. Il ne mesurait rien.
+**Probe error, logged.** The first measurement was on the wrong task:
+`lastTaskId` had been written while the page was already mounted, and the
+reload reopened the previous one. The 1009 ms figure I read there was that of a
+ten-step task. It measured nothing.
 
-## 28 août 2026 : ce qu'un audit adversarial a trouvé dans le code d'il y a une heure
+## 28 August 2026: what an adversarial audit found in code written an hour ago
 
-Neuf agents lancés en parallèle : trois sur le concours, trois en audit du code
-écrit aujourd'hui, deux sur les surfaces non couvertes et le build de
-production, un de synthèse. Ils ont trouvé quatre défauts dans le
-`BroadcastChannel` posé une heure plus tôt, dont deux atteignables avec deux
-onglets et un cahier de dix étapes.
+Nine agents launched in parallel: three on the contest, three auditing the code
+written today, two on the uncovered surfaces and the production build, one for
+synthesis. They found four defects in the `BroadcastChannel` put in an hour
+earlier, two of them reachable with two tabs and a ten-step task.
 
-### Le pire : une suppression pouvait être annulée par l'autre onglet
+### The worst: a deletion could be undone by the other tab
 
-La suppression n'annonçait que « la liste a changé », sans nommer le cahier.
-L'onglet d'à côté gardait donc à l'écran un cahier disparu, et sa prochaine
-écriture le ressuscitait. `saveTask` traitait « aucun enregistrement » comme
-« pas encore créé » et retombait sur le `put`.
+The deletion announced only “the list has changed”, without naming the task.
+The tab next door therefore kept a deleted task on screen, and its next write
+brought it back to life. `saveTask` treated “no record” as “not created yet”
+and fell back on the `put`.
 
-Le cahier revenait avec toutes ses étapes et toutes ses preuves collées, mais
-sans ses identifiants scellés, eux réellement effacés : l'humain croyait la
-donnée partie, elle revenait amputée, et chaque référence `${name}` pendait dans
-le vide, et sur l'opération que l'on fait précisément parce qu'on veut que la
-donnée disparaisse.
+The task came back with all its steps and all its pasted evidence, but without
+its sealed credentials, which really had been erased: the human believed the
+data was gone, it came back mutilated, and every `${name}` reference dangled in
+the void, and on the operation you perform precisely because you want the data
+to disappear.
 
-Le commit `26501e8` s'intitule « Verify … that deleting a task takes its
-secrets ». Ce défaut le démentait dans le cas à deux onglets.
+Commit `26501e8` is titled “Verify … that deleting a task takes its secrets”.
+This defect gave it the lie in the two-tab case.
 
-**Deux correctifs, les deux nécessaires.** La suppression nomme le cahier
-(`{id, gone: true}`), et le récepteur passe en `missing`. Et `saveTask` refuse
-désormais une écriture qui porte une version attendue contre un enregistrement
-absent : une telle écriture est par définition une mise à jour, les créations
-passent par le chemin sans version.
+**Two fixes, both necessary.** The deletion names the task
+(`{id, gone: true}`), and the receiver switches to `missing`. And `saveTask`
+now refuses a write that carries an expected version against an absent record:
+such a write is by definition an update, creations go through the path without
+a version.
 
-**J'avais écrit l'assertion inverse.** `test/migration-index.test.ts` affirmait
-« laisse passer la toute première écriture d'un cahier qui n'existe pas ».
-C'était mon raisonnement qui était faux, pas le code qui l'a suivi. Le test
-affirme maintenant le contraire, avec la raison.
+**I had written the opposite assertion.** `test/migration-index.test.ts`
+claimed “lets through the very first write of a task that does not exist”.
+It was my reasoning that was wrong, not the code that followed it. The test now
+asserts the opposite, with the reason.
 
-### Trois autres, dans le même fichier
+### Three others, in the same file
 
-- **La relecture ne revérifiait pas la liaison.** La garde « est-ce le cahier
-  ouvert ? » était évaluée à la réception du message ; le travail, lui, était
-  différé dans la file. Entre les deux, l'utilisateur peut ouvrir un autre
-  cahier, et la relecture rebasculait l'écran, et `boundId`, sur le précédent.
-  Pire que l'écran périmé que le canal devait supprimer.
-- **Aucun regroupement.** Mesuré par l'agent sur 20 000 étapes : cinquante
-  annonces coûtaient cinquante lectures et 1702 ms, dont 1668 jetés. Et comme la
-  file est partagée avec les écritures locales, elles retardaient les écritures
-  de cet onglet d'un facteur 51. Une seule relecture par cahier désormais.
-- **La liste des cahiers se relisait à chaque écriture.** `listKey` contenait la
-  version du cahier ouvert, qui change à chaque écriture : 61 ms et 15,9 Mo
-  lus pour produire 9 ko de fiches, sur 20 cahiers de 2000 étapes. Les lignes
-  du sélecteur n'en dépendent pas.
+- **The re-read did not recheck the binding.** The “is this the open task?”
+  guard was evaluated when the message arrived; the work itself was deferred
+  into the queue. Between the two, the user can open another task, and the
+  re-read flipped the screen, and `boundId`, back to the previous one. Worse
+  than the stale screen the channel was meant to remove.
+- **No batching.** Measured by the agent on 20,000 steps: fifty announcements
+  cost fifty reads and 1702 ms, of which 1668 thrown away. And since the queue
+  is shared with the local writes, they delayed this tab's writes by a factor
+  of 51. One re-read per task now.
+- **The task list was re-read on every write.** `listKey` contained the version
+  of the open task, which changes on every write: 61 ms and 15.9 MB read to
+  produce 9 KB of cards, across 20 tasks of 2000 steps. The rows of the picker
+  do not depend on it.
 
-### Vérifié à deux vrais onglets
+### Checked with two real tabs
 
-Onglet 1 supprime. Onglet 2, sans un clic ni un rechargement :
+Tab 1 deletes. Tab 2, with no click and no reload:
 
 > This task does not exist on this device. The address points at suppr0000001,
 > which is not here. No other task has been opened in its place.
 
-Puis un agent tente d'écrire depuis l'onglet 2 : refusé. Et sur le disque :
-`tasks` vide, `secrets` vide. Le cahier ne revient pas.
+Then an agent tries to write from tab 2: refused. And on disk: `tasks` empty,
+`secrets` empty. The task does not come back.
 
-### Un mutant survivant, non résolu
+### A surviving mutant, unresolved
 
-Retirer la revérification de liaison à l'intérieur de `resyncFromDisk` ne
-fait rougir aucun test : la garde de la file la couvre en amont. Les deux ont
-pourtant un rôle distinct (l'une évite la lecture, l'autre évite d'appliquer
-une lecture périmée), et je n'ai pas su construire une course déterministe pour
-la seconde. Elle reste, non couverte, et c'est écrit ici plutôt que maquillé.
+Removing the binding recheck inside `resyncFromDisk` turns no test red: the
+guard of the queue covers it upstream. The two do have distinct roles (one
+avoids the read, the other avoids applying a stale read), and I could not build
+a deterministic race for the second. It stays, uncovered, and it is written
+here rather than covered up.
 
-### Un chiffre publié par le banc était faux
+### A figure published by the bench was wrong
 
-`bench/detail.bench.ts` chronométrait `normalizeTask(structuredClone(task))`,
-attribuant à la normalisation le coût du clone : 3,94 ms de clone comptés dans
-0,24 ms de normalisation, à 4000 étapes. Un facteur seize, et il pointait vers
-le mauvais correctif : « accélérer normalize » au lieu de « lire moins
-souvent ». Le clone est sorti du chronomètre. Aucun document publié ne citait ce
-chiffre ; seule la sortie du banc était fausse.
+`bench/detail.bench.ts` was timing `normalizeTask(structuredClone(task))`,
+charging the cost of the clone to normalization: 3.94 ms of clone counted
+inside 0.24 ms of normalization, at 4000 steps. A factor of sixteen, and it
+pointed at the wrong fix: “speed up normalize” instead of “read less often”.
+The clone is out of the timer. No published document quoted that figure; only
+the bench output was wrong.
 
-## 28 août 2026 : le build de production, et une promesse du README qui était fausse
+## 28 August 2026: the production build, and a README promise that was false
 
-Un agent d'audit a construit puis servi `dist/` depuis un serveur statique NU,
-pas `vite preview`, qui réécrit tout seul et masquait tout. Trois problèmes,
-tous invisibles en local.
+An audit agent built `dist/` and then served it from a BARE static server, not
+`vite preview`, which rewrites on its own and was hiding everything. Three
+problems, all invisible locally.
 
-### L'adresse profonde tombait sur un 404
+### The deep address landed on a 404
 
-La page déplace l'adresse vers `/t/:id` dès qu'un cahier est ouvert. Sur un
-hôte sans réécriture, tout rechargement, tout signet et tout lien partagé
-tombait sur le 404 de l'hébergeur. Vérifié : `curl http://127.0.0.1:8911/t/abc`
-rend 404 sur un serveur nu, 200 sous `vite preview`.
+The page moves the address to `/t/:id` as soon as a log is opened. On a host
+without rewriting, every reload, every bookmark and every shared link landed on
+the hosting provider's 404. Verified: `curl http://127.0.0.1:8911/t/abc`
+returns 404 on a bare server, 200 under `vite preview`.
 
-`public/_redirects` et `vercel.json` posés. Un serveur statique nu ne les lit
-pas (ce sont des conventions d'hébergeur), donc ce point reste à vérifier sur
-l'hôte réellement choisi.
+`public/_redirects` and `vercel.json` are in place. A bare static server does
+not read them (they are hosting-provider conventions), so this point remains to
+be verified on the host actually chosen.
 
-### Le service worker ne précachait rien de l'application
+### The service worker precached nothing of the application
 
-`SHELL` listait `/`, `/index.html`, le manifeste et une icône. Les deux
-fichiers dont l'application est faite portent une empreinte dans leur nom : ils
-ne peuvent pas être écrits à la main, et rien ne les injectait. L'enregistrement
-se faisant sur `load`, la première visite ne passe pas non plus par le worker.
-Après une seule visite, hors ligne rendait une page blanche, alors que le
-README annonçait l'inverse, « verified with the server stopped ».
+`SHELL` listed `/`, `/index.html`, the manifest and one icon. The two files the
+application is made of carry a hash in their name: they cannot be written by
+hand, and nothing was injecting them. Registration happening on `load`, the
+first visit does not go through the worker either. After a single visit,
+offline rendered a blank page, while the README claimed the opposite,
+“verified with the server stopped”.
 
-`scripts/precache.mjs` écrit désormais les vrais noms dans `dist/sw.js`, et
-donne au cache un nom dérivé de leur contenu, sans quoi `activate` ne
-supprimait jamais rien.
+`scripts/precache.mjs` now writes the real names into `dist/sw.js`, and gives
+the cache a name derived from their content, without which `activate` never
+deleted anything.
 
-**Vérifié pour de bon, cette fois.** Serveur statique arrêté, réseau émulé
-hors ligne, `fetch` d'une ressource non cachée qui échoue, et la page rend
-957 caractères de contenu réel. Cache : cinq entrées, dont le JS et le CSS.
+**Verified for real, this time.** Static server stopped, network emulated
+offline, a `fetch` of an uncached resource that fails, and the page renders
+957 characters of real content. Cache: five entries, including the JS and the
+CSS.
 
-### Une page d'erreur pouvait empoisonner le cache pour de bon
+### An error page could poison the cache for good
 
-La branche de navigation mettait la réponse en cache sans contrôler son
-statut. Sur un hôte sans réécriture, le premier `/t/:id` rendait un 404 qui
-était écrit par-dessus `/index.html` : le repli hors ligne servait ensuite ce
-404 pour toute navigation, racine comprise. Et le nom du cache étant figé,
-aucun déploiement ne le nettoyait. Le contrôle `response.ok` existait déjà sur
-la branche des ressources ; il manquait sur celle des navigations.
+The navigation branch cached the response without checking its status. On a
+host without rewriting, the first `/t/:id` returned a 404 that was written over
+`/index.html`: the offline fallback then served that 404 for every navigation,
+the root included. And the cache name being fixed, no deployment cleaned it.
+The `response.ok` check already existed on the resource branch; it was missing
+on the navigation one.
 
-### La carte de source partait en production
+### The source map was shipping to production
 
-`npm run build` (ce que les hébergeurs détectent tout seuls) produisait une
-carte de source de 519 ko, plus lourde que tout le reste du site réuni, et
-qui rend la source entière lisible par un agent pilotant le navigateur. Elle est
-maintenant sur demande (`SOURCEMAP=1`). `dist/` passe de ~760 ko à 260 ko.
+`npm run build` (what hosting providers detect on their own) produced a 519 kB
+source map, heavier than all the rest of the site put together, and one that
+makes the entire source readable by an agent driving the browser. It is now on
+demand (`SOURCEMAP=1`). `dist/` goes from ~760 kB to 260 kB.
 
-## 29 août 2026 : le lien protégé par une phrase de passe
+## 29 August 2026: the link protected by a passphrase
 
-Un lien porte le cahier entier, et sa vraie fuite n'est pas le fragment (que
-le navigateur ne transmet jamais), mais l'endroit où on le colle : un fil
-Slack, un mail, une conversation qui garde le message.
+A link carries the whole log, and its real leak is not the fragment (which the
+browser never transmits), but the place where it gets pasted: a Slack thread,
+an email, a conversation that keeps the message.
 
-**Ce qui a été construit.** Un second bouton, « Copy a protected link », qui
-scelle le lien par une phrase de passe. Aucune cryptographie nouvelle : c'est
-`seal`/`unseal` du coffre, AES-GCM 256 et PBKDF2-SHA256 à 600 000 itérations,
-sel et IV tirés au hasard à chaque scellement. On chiffre après avoir
-compressé, un chiffré ne se compressant pas.
+**What was built.** A second button, “Copy a protected link”, which seals the
+link with a passphrase. No new cryptography: it is the vault's `seal`/`unseal`,
+AES-GCM 256 and PBKDF2-SHA256 at 600,000 iterations, salt and IV drawn at
+random on every seal. Encryption comes after compression, since ciphertext does
+not compress.
 
-**Ce que ça ne fait pas, et l'écran le dit.** Cela ne vérifie pas une identité.
-Un fragment d'URL est une capacité au porteur, et authentifier quelqu'un
-demanderait un serveur. Ce qu'une phrase prouve, c'est la connaissance d'un
-secret : autre chose, et le maximum disponible sans serveur. Un mutant qui
-remplace cette phrase par « We check who opens it » fait rougir la suite.
+**What it does not do, and the screen says so.** It does not verify an
+identity. A URL fragment is a bearer capability, and authenticating someone
+would require a server. What a passphrase proves is knowledge of a secret:
+something else, and the most that is available without a server. A mutant that
+replaces that sentence with “We check who opens it” turns the suite red.
 
-**Vérifié dans Brave 151, de bout en bout.**
+**Verified in Brave 151, end to end.**
 
-| Étape                       | Observé                                                                                                        |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Lien copié                  | 6852 caractères, marqueur `#log=s`, titre du cahier absent                                                     |
-| Destinataire, appareil vide | « A protected log » : rien n'est lisible, pas même le nom                                                      |
-| Mauvaise phrase             | « That passphrase does not open this link. Ask them to repeat it: the link itself is fine. » et le champ reste |
-| Bonne phrase                | l'offre ordinaire, titre visible, « Take a copy »                                                              |
-| Après ouverture             | le fragment a quitté la barre d'adresse                                                                        |
+| Step                    | Observed                                                                                                       |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Link copied             | 6852 characters, `#log=s` marker, log title absent                                                             |
+| Recipient, empty device | “A protected log”: nothing is readable, not even the name                                                      |
+| Wrong passphrase        | “That passphrase does not open this link. Ask them to repeat it: the link itself is fine.” and the field stays |
+| Right passphrase        | the ordinary offer, title visible, “Take a copy”                                                               |
+| After opening           | the fragment has left the address bar                                                                          |
 
-Taille : 1,82× le lien ordinaire (3747 → 6821 caractères sur le cahier de
-démonstration), très en deçà de la borne de 16 000.
+Size: 1.82× the ordinary link (3747 → 6821 characters on the demo log), well
+below the 16,000 bound.
 
-**Erreur de sonde, consignée.** Ma première tentative montrait le cahier au
-lieu de demander la phrase. J'avais vidé IndexedDB depuis la page encore
-montée : le magasin, toujours en mémoire, a réécrit la tâche avant la
-navigation. En passant d'abord par une page neuve, le comportement attendu
-apparaît. Le produit n'y était pour rien.
+**Probe error, recorded.** My first attempt showed the log instead of asking
+for the passphrase. I had cleared IndexedDB from the page while it was still
+mounted: the store, still in memory, wrote the task back before the navigation.
+Going through a fresh page first, the expected behaviour appears. The product
+had nothing to do with it.
 
-## 29 août 2026 : le produit s'appelle Keydler
+## 29 August 2026: the product is called Keydler
 
-Renommage complet : « Watch Log » devient Keydler, sur keydler.com. Les
-messages de commit antérieurs disent encore « Watch Log » ; c'est le même
-produit.
+Full rename: “Watch Log” becomes Keydler, at keydler.com. Earlier commit
+messages still say “Watch Log”; it is the same product.
 
-**La règle appliquée.** La marque devient « Keydler » ; le nom commun devient
-« log ». Sans cette distinction, un remplacement aveugle produisait « a readable
-Keydler » là où la phrase disait « a readable watch log ». Trois tournures ont
-dû être reprises à la main après coup : « The Keydler takes… » se lit mal pour
-un nom propre.
+**The rule applied.** The brand becomes “Keydler”; the common noun becomes
+“log”. Without that distinction, a blind replacement produced “a readable
+Keydler” where the sentence said “a readable watch log”. Three phrasings had to
+be redone by hand afterwards: “The Keydler takes…” reads badly for a proper
+noun.
 
-**Une falsification, corrigée.** Le renommage a d'abord réécrit des
-OBSERVATIONS antérieures : une entrée du 28 août faisait dire à une page
-qu'elle s'intitulait « Keydler: … », alors qu'elle portait encore l'ancien
-nom. Un audit l'a relevé. Les relevés antérieurs au 29 août citent de nouveau
-les chaînes réellement observées ; c'est la même règle que pour
-`chrome-watch-log`, et je l'avais appliquée là et pas ici.
+**A falsification, corrected.** The rename first rewrote earlier OBSERVATIONS:
+an entry from 28 August had a page say it was titled “Keydler: …”, when it
+still carried the old name. An audit caught it. The records dated before
+29 August quote the strings actually observed again; it is the same rule as for
+`chrome-watch-log`, and I had applied it there and not here.
 
-**Ce qui n'a PAS été renommé, et pourquoi.** Trois clés persistées :
+**What was NOT renamed, and why.** Three persisted keys:
 
-| Clé               | Où                                     | Conséquence d'un renommage                                     |
-| ----------------- | -------------------------------------- | -------------------------------------------------------------- |
-| `cahier-de-quart` | `DB_NAME`                              | tous les cahiers déjà sur les postes deviennent inatteignables |
-| `watch-log.theme` | `theme.ts` et l'amorce de `index.html` | la préférence de thème est perdue                              |
-| `watch-log:seen:` | `seen.ts`                              | « pendant votre absence » repart de zéro                       |
+| Key               | Where                                        | Consequence of a rename                                    |
+| ----------------- | -------------------------------------------- | ---------------------------------------------------------- |
+| `cahier-de-quart` | `DB_NAME`                                    | every log already on people's machines becomes unreachable |
+| `watch-log.theme` | `theme.ts` and the bootstrap in `index.html` | the theme preference is lost                               |
+| `watch-log:seen:` | `seen.ts`                                    | “while you were away” starts over from zero                |
 
-Un garde-fou dans le script de renommage vérifiait la survie de chacune, et
-aurait interrompu le travail si l'une avait disparu.
+A guard in the rename script checked that each one survived, and would have
+stopped the work if one had disappeared.
 
-Le nom du serveur MCP `chrome-watch-log` et les répertoires
-`/tmp/watch-log-agent.*` cités dans les protocoles de mesure ne sont pas non
-plus renommés : ce sont des faits de l'environnement de mesure, pas le nom du
-produit, et les réécrire fausserait le protocole.
+The MCP server name `chrome-watch-log` and the `/tmp/watch-log-agent.*`
+directories quoted in the measurement protocols are not renamed either: they
+are facts of the measurement environment, not the product name, and rewriting
+them would falsify the protocol.
 
-## 29 août 2026 : l'audit du renommage, et ce qu'il m'a repris
+## 29 August 2026: the rename audit, and what it caught me on
 
-Quatre agents en parallèle sur le renommage. Deux de leurs reproches visaient
-mon propre travail, et les deux étaient fondés.
+Four agents in parallel on the rename. Two of their complaints were aimed at my
+own work, and both were justified.
 
-### J'avais falsifié le journal
+### I had falsified the journal
 
-Le remplacement aveugle a réécrit des observations : une entrée du 28 août
-faisait dire à une page qu'elle s'intitulait « Keydler: a shared memory… »,
-alors qu'elle portait encore l'ancien nom ce jour-là. Quatre autres tournures
-françaises étaient devenues « le Keydler », « un Keydler ».
+The blind replacement rewrote observations: an entry from 28 August had a page
+say it was titled “Keydler: a shared memory…”, when it still carried the old
+name that day. Four other French phrasings had become “le Keydler”, “un
+Keydler”.
 
-C'est exactement la règle que j'avais appliquée pour `chrome-watch-log` et les
-répertoires `/tmp/watch-log-agent` (ne pas réécrire un fait d'observation), et
-que je n'avais pas appliquée ici. Les relevés antérieurs au 29 août citent de
-nouveau les chaînes réellement observées, avec une incise qui date le nom.
+That is exactly the rule I had applied for `chrome-watch-log` and the
+`/tmp/watch-log-agent` directories (do not rewrite an observed fact), and had
+not applied here. The records dated before 29 August quote the strings actually
+observed again, with an aside that dates the name.
 
-### Neuf captures d'écran montraient encore l'ancien nom
+### Nine screenshots still showed the old name
 
-Vérifié en ouvrant `docs/assets/shared-link.png` : « WATCH LOG » en exergue,
-« The Watch Log keeps… » dans l'accroche, « A SHARED WATCH LOG » en titre de
-carte : trois fois dans une seule image, sous une légende qui dit désormais
-« A shared log ». Le commit de renommage n'avait touché aucun fichier image.
+Verified by opening `docs/assets/shared-link.png`: “WATCH LOG” in the masthead,
+“The Watch Log keeps…” in the tagline, “A SHARED WATCH LOG” as a card title:
+three times in a single image, under a caption that now says “A shared log”.
+The rename commit had not touched a single image file.
 
-Les neuf ont été reprises dans Brave, à 1180 × 900 comme les originales
-(`active-task` en pleine page). Les quatre autres (`activity`, `credentials`,
-`disputed-step`, `human-intervention`) sont des recadrages de carte sans
-exergue ; vérifié en ouvrant `human-intervention.png`, elles n'avaient rien à
-reprendre.
+The nine were retaken in Brave, at 1180 × 900 like the originals
+(`active-task` full page). The four others (`activity`, `credentials`,
+`disputed-step`, `human-intervention`) are card crops with no masthead;
+verified by opening `human-intervention.png`, they had nothing to redo.
 
-### Cinq autres correctifs
+### Five other fixes
 
-- **La construction de production se taisait sans jeton d'origin trial.** Une
-  variable mal orthographiée chez l'hébergeur produisait un site d'apparence
-  saine où `document.modelContext` n'existe jamais, et toutes les vérifications
-  restaient vertes. Elle échoue désormais, avec `ALLOW_NO_ORIGIN_TRIAL=1` comme
-  échappatoire pour la vérification locale et l'intégration continue : c'est la
-  construction de déploiement qui doit prouver que le jeton est arrivé.
-- **`durability.ts` annonçait « This log takes … »** pour un chiffre qui vient
-  de `navigator.storage.estimate()`, donc de TOUTE l'origine : tous les
-  cahiers, le coffre, le cache du service worker. Le renommage avait transformé
-  une phrase vague en phrase fausse. Corrigé en « Everything this site stores
-  here takes … ».
-- **`package.json`** portait encore une description en français avec l'ancien
-  nom, invisible à une recherche sur « watch », et le dépôt part public.
-- **Deux chaînes lues par un agent** disaient « log » là où « task » portait le
-  sens : « This device holds no log yet » sous un en-tête `NO ACTIVE TASK`, et
-  « Another log may be open elsewhere, but it is NOT this task » qui compare un
-  journal à une tâche dans le message dont le seul rôle est d'empêcher un agent
-  de reprendre le mauvais travail.
-- **Aucune balise sociale ni canonique.** La réécriture SPA rend 200 sur
-  n'importe quel chemin : sans canonique, chaque URL inventée est un doublon
-  indexable. Ajoutées, avec `keydler.com` comme origine, le seul endroit du
-  dépôt où une URL absolue est juste plutôt qu'une supposition d'hôte.
+- **The production build stayed silent without an origin trial token.** A
+  misspelled variable at the hosting provider produced a healthy-looking site
+  where `document.modelContext` never exists, and every check stayed green. It
+  now fails, with `ALLOW_NO_ORIGIN_TRIAL=1` as an escape hatch for local
+  verification and continuous integration: it is the deployment build that has
+  to prove the token arrived.
+- **`durability.ts` announced “This log takes …”** for a figure that comes from
+  `navigator.storage.estimate()`, so from the WHOLE origin: every log, the
+  vault, the service worker cache. The rename had turned a vague sentence into
+  a false one. Fixed to “Everything this site stores here takes …”.
+- **`package.json`** still carried a description in French with the old name,
+  invisible to a search for “watch”, and the repository goes public.
+- **Two strings read by an agent** said “log” where “task” carried the meaning:
+  “This device holds no log yet” under a `NO ACTIVE TASK` header, and “Another
+  log may be open elsewhere, but it is NOT this task”, which compares a log to
+  a task in the message whose only role is to stop an agent from resuming the
+  wrong work.
+- **No social tags and no canonical.** The SPA rewrite returns 200 on any path:
+  without a canonical, every made-up URL is an indexable duplicate. Added, with
+  `keydler.com` as the origin, the one place in the repository where an
+  absolute URL is right rather than a guess about the host.
 
-## 29 août 2026 : verrouiller le site pour de bon
+## 29 August 2026: locking the site down for good
 
-Une page qui tient un coffre d'identifiants chiffrés et expose treize outils
-appelables par un agent mérite mieux qu'une politique de principe.
+A page that holds a vault of encrypted credentials and exposes thirteen tools
+an agent can call deserves better than a policy of principle.
 
-**Ce que l'inventaire a montré.** Le produit est un cas rare : zéro requête
-réseau sortante, aucune police externe, aucune image `data:`, et pas un seul
-attribut `style=`. Un seul script en ligne : l'amorce de thème, qui doit
-s'exécuter avant la première peinture. La politique peut donc partir de
-`default-src 'none'` et n'ouvrir que cette origine.
+**What the inventory showed.** The product is a rare case: zero outgoing
+network requests, no external font, no `data:` image, and not a single `style=`
+attribute. A single inline script: the theme bootstrap, which has to run before
+the first paint. So the policy can start from `default-src 'none'` and open
+nothing but this origin.
 
 ```
 default-src 'none'; script-src 'self' 'sha256-…'; style-src 'self';
@@ -1754,106 +1735,105 @@ form-action 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none';
 upgrade-insecure-requests
 ```
 
-Le script en ligne passe par son empreinte, jamais par `unsafe-inline`,
-qui viderait la politique de tout son intérêt d'un seul mot.
-`scripts/headers.mjs` calcule l'empreinte sur le HTML réellement construit, la
-substitue dans `dist/_headers`, et refuse la construction si `vercel.json`
-n'en porte pas la même : une politique qui a dérivé entre deux hébergeurs
-rassure sans protéger.
+The inline script goes through its hash, never through `unsafe-inline`, which
+would drain the policy of all its value in a single word.
+`scripts/headers.mjs` computes the hash on the HTML actually built, substitutes
+it into `dist/_headers`, and refuses the build if `vercel.json` does not carry
+the same one: a policy that has drifted between two hosting providers reassures
+without protecting.
 
-S'y ajoutent HSTS, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy:
-no-referrer` (les adresses portent des identifiants de tâche), les deux
-politiques `Cross-Origin-*`, et un `Permissions-Policy` qui refuse les dix-sept
-capacités que le produit n'utilise pas.
+Added to that: HSTS, `nosniff`, `X-Frame-Options: DENY`,
+`Referrer-Policy: no-referrer` (addresses carry task identifiers), the two
+`Cross-Origin-*` policies, and a `Permissions-Policy` that refuses the
+seventeen capabilities the product does not use.
 
-### L'épreuve : la politique refuse-t-elle vraiment ?
+### The test: does the policy really refuse?
 
-`dist/` servi par un serveur qui applique réellement `_headers` : un serveur
-statique ordinaire ne les lit pas, et l'on vérifierait alors une politique que
-le navigateur ne reçoit jamais.
+`dist/` served by a server that actually applies `_headers`: an ordinary static
+server does not read them, and one would then be verifying a policy the browser
+never receives.
 
-| Attaque                                        | Résultat |
-| ---------------------------------------------- | -------- |
-| Script en ligne injecté (le vecteur d'une XSS) | refusé   |
-| Script chargé depuis un CDN                    | refusé   |
-| `fetch` sortant vers une autre origine         | refusé   |
-| Image-balise emportant le titre de la page     | refusée  |
-| Cadrage de la page (clickjacking)              | refusé   |
+| Attack                                   | Result  |
+| ---------------------------------------- | ------- |
+| Injected inline script (the XSS vector)  | refused |
+| Script loaded from a CDN                 | refused |
+| Outgoing `fetch` to another origin       | refused |
+| Beacon image carrying off the page title | refused |
+| Framing the page (clickjacking)          | refused |
 
-Chacune avec le message de refus du navigateur en preuve. Et l'application,
-elle, fonctionne entièrement sous cette politique : cahier créé, règle écrite et
-affichée, recherche, thème, service worker actif, et aucune erreur ni aucun
-avertissement de console avant les attaques délibérées.
+Each one with the browser's refusal message as evidence. And the application
+itself works entirely under this policy: log created, rule written and
+displayed, search, theme, service worker active, and no console error and no
+console warning before the deliberate attacks.
 
-### Ce qui n'a pas été fait, et pourquoi
+### What was not done, and why
 
-**Trusted Types** (`require-trusted-types-for 'script'`) serait le cran
-au-dessus. Le rendu repose entièrement sur `innerHTML` ; l'activer casserait
-tout. À faire le jour où le rendu changera, pas six jours avant une échéance.
+**Trusted Types** (`require-trusted-types-for 'script'`) would be the next
+notch up. Rendering rests entirely on `innerHTML`; turning it on would break
+everything. To be done the day rendering changes, not six days before a
+deadline.
 
-**`preload` sur HSTS** n'est pas posé : l'inscription à la liste de préchargement
-est difficile à défaire, et ce n'est pas une décision à prendre à la place de
-quelqu'un.
+**`preload` on HSTS** is not set: registering on the preload list is hard to
+undo, and it is not a decision to take in someone else's place.
 
-**Erreur de sonde, consignée.** Un mutant sur `default-src` a d'abord survécu.
-Il avait frappé le commentaire qui cite la directive, pas la directive.
-Visé sur la bonne ligne, il meurt. Et une de mes épreuves était creuse :
-`empreintes.length + 1 === 1 + empreintes.length` est vrai de tout nombre ;
-réécrite pour comparer la directive entière.
+**Probe error, recorded.** A mutant on `default-src` survived at first. It had
+hit the comment that quotes the directive, not the directive. Aimed at the
+right line, it dies. And one of my tests was hollow:
+`empreintes.length + 1 === 1 + empreintes.length` is true of any number;
+rewritten to compare the whole directive.
 
-## 29 août 2026 : le premier déploiement réel, et ce qu'il a révélé
+## 29 August 2026: the first real deployment, and what it revealed
 
-Publié sur Cloudflare Pages, puis vérifié à froid dans Brave contre
-`https://keydler.pages.dev`, pas un `dist/` servi localement.
+Published on Cloudflare Pages, then verified cold in Brave against
+`https://keydler.pages.dev`, not a `dist/` served locally.
 
-### Ce que l'hébergeur fait vraiment
+### What the hosting provider really does
 
-| Vérification                                          | Résultat                                              |
-| ----------------------------------------------------- | ----------------------------------------------------- |
-| Les neuf en-têtes de sécurité sont servis             | oui, identiques au dépôt                              |
-| La CSP porte l'empreinte du script d'amorce           | `sha256-2MrDQX8a64K4rJscRFFoIUoixVRRP8gk2kHbN6aUmNk=` |
-| `/t/abc123` sur une URL jamais visitée                | 200, pas 404 : le repli SPA fonctionne                |
-| Messages de console sur toute la session              | aucun                                                 |
-| Le service worker précharge les vrais noms construits | `index-CEbglE2i.js`, `index-DOYQxzjx.css`             |
-| Rechargement réseau coupé                             | la page se charge, les 13 outils s'enregistrent       |
-| Écriture d'agent pendant la coupure                   | acceptée                                              |
+| Check                                             | Result                                                |
+| ------------------------------------------------- | ----------------------------------------------------- |
+| The nine security headers are served              | yes, identical to the repository                      |
+| The CSP carries the bootstrap script's hash       | `sha256-2MrDQX8a64K4rJscRFFoIUoixVRRP8gk2kHbN6aUmNk=` |
+| `/t/abc123` on a URL never visited                | 200, not 404: the SPA fallback works                  |
+| Console messages over the whole session           | none                                                  |
+| The service worker precaches the real built names | `index-CEbglE2i.js`, `index-DOYQxzjx.css`             |
+| Reload with the network cut                       | the page loads, the 13 tools register                 |
+| Agent write during the outage                     | accepted                                              |
 
-Cloudflare remplace le `no-cache` d'`index.html` par
-`public, max-age=0, must-revalidate`. Effet équivalent : revalidation à chaque
-fois. Laissé tel quel.
+Cloudflare replaces `index.html`'s `no-cache` with
+`public, max-age=0, must-revalidate`. Equivalent effect: revalidation every
+time. Left as it is.
 
-### Trois défauts trouvés en production, qu'aucune épreuve ne couvrait
+### Three defects found in production that no test covered
 
-C'est la quatrième fois de ce projet qu'un navigateur réel trouve en une minute
-ce que 868 épreuves vertes laissaient passer.
+This is the fourth time in this project that a real browser finds in a minute
+what 868 green tests let through.
 
-`set_next_action` était la seule écriture d'agent qui ne transmettait pas sa
-version au domaine. Elle validait la forme du champ `based_on_version`, puis
-en jetait la valeur.
+`set_next_action` was the only agent write that did not pass its version to the
+domain. It validated the shape of the `based_on_version` field, then threw its
+value away.
 
-1. **Une écriture périmée passait.** `based_on_version: 2` accepté alors que
-   l'état était en v4. Un agent tenant une vieille lecture écrasait la prochaine
-   action que l'humain venait de poser, sans refus.
-2. **L'entrée était signée `human`.** Le registre (la seule chose que ce
-   produit promet d'être honnête) attribuait à l'humain une écriture qu'aucun
-   humain n'avait faite. Un agent relisant l'historique en conclut « l'humain a
-   changé de direction pendant que je travaillais » et s'y range.
-3. **Un nom quand elle réussit, un autre quand elle échoue** : `set_next` appliqué,
-   `set_next_action` refusé. Le nom de l'outil n'apparaissait donc que sur les
-   échecs. `changes.ts` listait déjà les deux, ce qui montre que la duplication
-   avait été contournée plutôt que corrigée.
+1. **A stale write got through.** `based_on_version: 2` accepted while the
+   state was at v4. An agent holding an old read overwrote the next action the
+   human had just set, with no refusal.
+2. **The entry was signed `human`.** The record (the one thing this product
+   promises to be honest) credited a human with a write that no human had made.
+   An agent re-reading the history concludes “the human changed direction while
+   I was working” and falls in line.
+3. **One name when it succeeds, another when it fails**: `set_next` applied,
+   `set_next_action` refused. So the tool's name only appeared on failures.
+   `changes.ts` already listed both, which shows that the duplication had been
+   worked around rather than fixed.
 
-Constaté sur le registre du cahier de production `abf4be0acb7c`, avant
-correction :
+Observed on the record of the production log `abf4be0acb7c`, before the fix:
 
 ```
 - set_next_action · agent · v4 · refused
     next: not-a-string
-- set_next        · human · v4 → v5 · applied     ← écriture d'agent, signée humain
+- set_next        · human · v4 → v5 · applied     ← agent write, signed human
     Point the apex DNS record at the Pages project
 ```
 
-Après correction et redéploiement, la même séquence sur le même cahier :
+After the fix and a redeployment, the same sequence on the same log:
 
 ```
 - set_next_action · agent · v5 · refused
@@ -1862,209 +1842,210 @@ Après correction et redéploiement, la même séquence sur le même cahier :
     Point the apex DNS record at the Pages project
 ```
 
-Les deux entrées cohabitent dans ce registre : l'ancienne écrite par la version
-boguée, la nouvelle par la version corrigée.
+Both entries live side by side in that record: the old one written by the buggy
+version, the new one by the fixed version.
 
-`setNext` prend désormais la même forme `(input, actor)` que tous les autres
-mutateurs. Sept épreuves, cinq mutants tués, dont les trois défauts d'origine.
-L'`undo` accepte encore l'ancien nom d'opération, pour ne pas retirer
-l'annulation aux cahiers écrits avant le renommage.
+`setNext` now takes the same `(input, actor)` shape as every other mutator.
+Seven tests, five mutants killed, including the three original defects. `undo`
+still accepts the old operation name, so as not to take the undo away from logs
+written before the rename.
 
-### Ce qui n'est pas fait
+### What is not done
 
-**Le domaine `keydler.com` n'est pas encore servi.** Il est rattaché au projet
-Pages, mais sa zone porte un enregistrement A périmé qui proxie vers une origine
-morte (`error code: 521`). Mon jeton a `zone (read)` et la lecture des
-enregistrements DNS a été refusée : je ne peux pas le corriger. Le domaine reste
-en `pending` côté Pages tant que ce n'est pas fait.
+**The `keydler.com` domain is not served yet.** It is attached to the Pages
+project, but its zone carries a stale A record that proxies to a dead origin
+(`error code: 521`). My token has `zone (read)` and reading the DNS records was
+refused: I cannot fix it. The domain stays `pending` on the Pages side as long
+as that is not done.
 
-**Le jeton d'origin trial n'est pas dans cette construction** : il n'est pas
-encore enregistré. La vérification ci-dessus s'appuie donc sur Brave lancé avec
-`--enable-features=WebMCP,WebMCPTesting`, comme toutes les précédentes, et ne
-démontre pas que WebMCP s'activera pour un juge sur un navigateur ordinaire.
-C'est ce que le jeton apportera, et il reste à poser.
+**The origin trial token is not in this build**: it is not registered yet. So
+the verification above rests on Brave launched with
+`--enable-features=WebMCP,WebMCPTesting`, like every previous one, and does not
+demonstrate that WebMCP will turn on for a judge on an ordinary browser. That
+is what the token will bring, and it remains to be put in place.
 
-### 29 août 2026, plus tard : « l'origine est morte » était faux
+### 29 August 2026, later: “the origin is dead” was false
 
-J'ai affirmé, ici et dans un message de commit, que l'enregistrement DNS de
-`keydler.com` pointait vers une origine morte, et j'en ai tiré qu'un
-contournement par route Worker ne risquait rien puisqu'il n'y avait « rien à
-casser ». Une relecture adverse a contredit la prémisse. Mesuré :
+I claimed, here and in a commit message, that the DNS record for `keydler.com`
+pointed at a dead origin, and I concluded from it that a workaround through a
+Worker route risked nothing since there was “nothing to break”. An adversarial
+review contradicted the premise. Measured:
 
 ```
 https://keydler.com  → 521
 http://keydler.com   → 302 → http://www.keydler.com → 200
-                       « Site en construction », en-têtes x-iplb-* (OVH)
+                       “Site en construction”, x-iplb-* headers (OVH)
 ```
 
-Cloudflare joint l'origine sans peine en clair. Le 521 est un défaut TLS
-entre Cloudflare et OVH, pas une machine éteinte. Trois conséquences :
+Cloudflare reaches the origin without trouble in the clear. The 521 is a TLS
+fault between Cloudflare and OVH, not a machine that is switched off. Three
+consequences:
 
-1. l'enregistrement pointe vers une installation OVH vivante. La remplacer est
-   une décision à prendre, pas un nettoyage à faire ;
-2. « Always Use HTTPS » est désactivé sur la zone, sinon le http n'aurait
-   jamais atteint l'origine ;
-3. un motif de route sans schéma intercepte aussi le http. Le jeton d'origin
-   trial étant lié à `https://keydler.com`, une page servie en clair
-   fonctionnerait parfaitement et n'exposerait aucun outil WebMCP. Un juge
-   lirait « WebMCP is not available » sur un site d'apparence saine.
+1. the record points at a live OVH installation. Replacing it is a decision to
+   take, not a cleanup to do;
+2. “Always Use HTTPS” is disabled on the zone, otherwise the http would never
+   have reached the origin;
+3. a route pattern with no scheme intercepts the http as well. The origin trial
+   token being bound to `https://keydler.com`, a page served in the clear would
+   work perfectly and would expose no WebMCP tool. A judge would read “WebMCP
+   is not available” on a site that looks healthy.
 
-C'est le troisième point qui compte : le contournement transformait un échec
-bruyant (un 521 que personne ne peut manquer) en échec silencieux, pendant
-la période de jugement. Les routes portent désormais leur schéma, mais le
-montage reste préparé et non recommandé, pour une raison que la relecture
-a mieux formulée que moi : il ferait de l'enregistrement OVH le pilier porteur
-du site, et survivrait à la correction du DNS en la masquant.
+It is the third point that counts: the workaround turned a loud failure (a 521
+that nobody can miss) into a silent failure, during the judging period. The
+routes now carry their scheme, but the setup stays prepared and not
+recommended, for a reason the review put better than I did: it would make the
+OVH record the load-bearing pillar of the site, and would outlive the DNS fix
+by hiding it.
 
-**Ce qui a rendu l'erreur possible.** J'ai sondé `https://` et conclu sur
-`keydler.com`. Une seule requête en clair suffisait à me détromper, et je ne
-l'ai pas faite avant d'écrire une conclusion dans le dépôt.
+**What made the mistake possible.** I probed `https://` and drew a conclusion
+about `keydler.com`. A single request in the clear was enough to set me
+straight, and I did not make it before writing a conclusion into the
+repository.
 
-### Un refus utile, découvert en déployant
+### A useful refusal, discovered while deploying
 
-Le déploiement a échoué avant tout cela, pour une raison sans rapport et
-instructive : le validateur d'assets de Workers refuse la réécriture SPA
-`/*  /index.html  200` de `_redirects`, qu'il tient pour une boucle infinie,
-là où Pages l'accepte. Deux validateurs, deux avis, sur le même fichier.
+The deployment failed before all of that, for an unrelated and instructive
+reason: the Workers assets validator refuses the SPA rewrite
+`/*  /index.html  200` in `_redirects`, which it takes for an infinite loop,
+where Pages accepts it. Two validators, two opinions, on the same file.
 
-Le Worker n'en a pas l'usage : `not_found_handling` fait le même travail.
-`public/.assetsignore` retire donc `_redirects` de cette livraison-là, sans
-toucher à celle de Pages, qui n'envoie pas les fichiers commençant par un
-point. Vérifié en local : `/t/abc123` rend 200 et porte la CSP.
+The Worker has no use for it: `not_found_handling` does the same job. So
+`public/.assetsignore` removes `_redirects` from that one delivery, without
+touching the Pages one, which does not send files starting with a dot.
+Verified locally: `/t/abc123` returns 200 and carries the CSP.
 
-Rien n'a été attaché à la zone : zéro route, aucun déploiement, `keydler.com`
-inchangé.
+Nothing was attached to the zone: zero routes, no deployment, `keydler.com`
+unchanged.
 
-### Un harnais de mutation qui mentait
+### A mutation harness that was lying
 
-Les premières mutations du Worker de redirection ont rapporté quatre
-survivants. Les quatre portaient des apostrophes, qui refermaient la chaîne du
-shell : les commandes n'ont jamais tourné, et le harnais a compté leur absence
-d'effet comme une survie. Un harnais qui ne vérifie pas que la mutation s'est
-appliquée mesure sa propre plomberie. Corrigé : il compare le fichier avant et
-après, et refuse de conclure si rien n'a changé. Neuf mutants, neuf tués.
+The first mutations of the redirect Worker reported four survivors. All four
+carried apostrophes, which closed the shell string: the commands never ran, and
+the harness counted their lack of effect as survival. A harness that does not
+check that the mutation applied is measuring its own plumbing. Fixed: it
+compares the file before and after, and refuses to conclude if nothing changed.
+Nine mutants, nine killed.
 
-### 29 août 2026, fin de journée : keydler.com sert le site
+### 29 August 2026, end of day: keydler.com serves the site
 
-L'enregistrement DNS a été corrigé à la main : `keydler.com` est un CNAME
-proxifié vers le projet Pages. Le contournement par route Worker n'a donc pas
-lieu d'être, et rien n'a jamais été attaché à la zone. Vérifié à froid dans
-Brave, contre le domaine réel :
+The DNS record was fixed by hand: `keydler.com` is a proxied CNAME to the Pages
+project. The Worker route workaround therefore has no reason to exist, and
+nothing was ever attached to the zone. Verified cold in Brave, against the real
+domain:
 
-| Vérification                                | Résultat                         |
-| ------------------------------------------- | -------------------------------- |
-| `https://keydler.com`                       | 200, les neuf en-têtes servis    |
-| `/t/abc123`, jamais visité                  | 200, repli SPA                   |
-| `http://keydler.com`                        | 301 vers https                   |
-| `https://www.keydler.com/t/abc?source=chat` | 301, chemin et requête préservés |
-| En-têtes `x-iplb-*` (OVH)                   | absents, sorti du chemin         |
-| Domaine côté Pages                          | `active`, certificat `active`    |
-| Outils WebMCP, cahier ouvert                | 13                               |
-| Rechargement réseau coupé                   | 13 outils, page servie du cache  |
-| Messages de console, session entière        | aucun                            |
+| Check                                       | Result                               |
+| ------------------------------------------- | ------------------------------------ |
+| `https://keydler.com`                       | 200, the nine headers served         |
+| `/t/abc123`, never visited                  | 200, SPA fallback                    |
+| `http://keydler.com`                        | 301 to https                         |
+| `https://www.keydler.com/t/abc?source=chat` | 301, path and query preserved        |
+| `x-iplb-*` headers (OVH)                    | absent, out of the path              |
+| Domain on the Pages side                    | `active`, certificate `active`       |
+| WebMCP tools, log open                      | 13                                   |
+| Reload with the network cut                 | 13 tools, page served from the cache |
+| Console messages, whole session             | none                                 |
 
-L'URL rendue par `resume_task` porte l'origine canonique : c'est elle que
-transportera un lien partagé.
+The URL returned by `resume_task` carries the canonical origin: that is the one
+a shared link will carry.
 
-**La correction du jour, visible sur le domaine.** Un `set_next_action` sur une
-version périmée est refusé (`stale write on v2, current v3`), et l'interface
-l'annonce à l'humain sous le nom de l'outil : « An agent called
-`set_next_action` just now, and it was refused ». Ce matin, la même action
-réussie apparaissait sous `set_next`, signée `human`.
+**The day's fix, visible on the domain.** A `set_next_action` on a stale
+version is refused (`stale write on v2, current v3`), and the interface
+announces it to the human under the name of the tool: “An agent called
+`set_next_action` just now, and it was refused”. This morning, the same action
+succeeded and appeared under `set_next`, signed `human`.
 
-**Ce qui reste, et qui est bloquant.** Le jeton d'origin trial n'est pas
-enregistré. Toute la vérification ci-dessus s'appuie sur Brave lancé avec
-`--enable-features=WebMCP,WebMCPTesting`. Elle ne démontre pas qu'un juge
-sur un navigateur ordinaire verrait le moindre outil. C'est le seul point qui
-sépare encore ce déploiement d'une candidature défendable.
+**What remains, and is blocking.** The origin trial token is not registered.
+The whole verification above rests on Brave launched with
+`--enable-features=WebMCP,WebMCPTesting`. It does not demonstrate that a judge
+on an ordinary browser would see a single tool. That is the only point that
+still separates this deployment from a defensible entry.
 
-### 29 août 2026, soir : WebMCP s'active sans drapeau, et c'est démontré
+### 29 August 2026, evening: WebMCP turns on with no flag, and it is demonstrated
 
-Le jeton d'origin trial est enregistré, déployé, et vérifié dans un navigateur
-qui n'a aucun drapeau WebMCP. C'est la première vérification de tout ce projet
-qui ne dépend pas de `--enable-features=WebMCP,WebMCPTesting`. Toutes les
-précédentes en dépendaient, et je l'ai dit à chaque fois.
+The origin trial token is registered, deployed, and verified in a browser that
+has no WebMCP flag. This is the first verification in this whole project that
+does not depend on `--enable-features=WebMCP,WebMCPTesting`. Every previous one
+depended on it, and I said so every time.
 
-Le jeton, lu avant d'être utilisé :
+The token, read before being used:
 
 ```
-origine        https://keydler.com:443
-fonctionnalité WebMCP
-third-party    non        sous-domaines  non
-expire         2026-11-17
+origin         https://keydler.com:443
+feature        WebMCP
+third-party    no         subdomains     no
+expires        2026-11-17
 ```
 
-Soit 75 jours après le gel du 3 septembre, 57 après la fin du jugement.
+That is 75 days after the freeze of 3 September, 57 after the end of judging.
 
-**L'expérience de contrôle**, qui est ce qui rend la démonstration concluante.
-Brave 152.1.94.117 (Chromium 152), profil neuf, lancé avec pour seuls drapeaux
-`--remote-debugging-port=9223 --user-data-dir=… --no-first-run`. Aucun
-`--enable-features`.
+**The control experiment**, which is what makes the demonstration conclusive.
+Brave 152.1.94.117 (Chromium 152), fresh profile, launched with
+`--remote-debugging-port=9223 --user-data-dir=… --no-first-run` as its only
+flags. No `--enable-features`.
 
-| Origine                     | Balise servie | `document.modelContext` |
-| --------------------------- | ------------- | ----------------------- |
-| `https://keydler.com`       | le jeton      | existe, 13 outils       |
-| `https://keydler.pages.dev` | le même jeton | absent                  |
+| Origin                      | Tag served     | `document.modelContext` |
+| --------------------------- | -------------- | ----------------------- |
+| `https://keydler.com`       | the token      | exists, 13 tools        |
+| `https://keydler.pages.dev` | the same token | absent                  |
 
-Même construction, même navigateur, même session, même jeton dans le HTML : la
-seule différence est l'origine à laquelle le jeton est lié. Chromium le rejette
-sur l'autre, sans rien dire. C'est le mode d'échec que je redoutais depuis
-le début, ici constaté plutôt que supposé, et la preuve que c'est bien le
-jeton, et non un réglage du navigateur, qui active la fonctionnalité.
+Same build, same browser, same session, same token in the HTML: the only
+difference is the origin the token is bound to. Chromium rejects it on the
+other one, without saying anything. It is the failure mode I had feared from
+the start, observed here rather than assumed, and the proof that it really is
+the token, and not a browser setting, that turns the feature on.
 
-Boucle d'agent complète sur `keydler.com` dans ce navigateur : `resume_task`
-rend l'état, `log_step` écrit, aucun message de console.
+A complete agent loop on `keydler.com` in that browser: `resume_task` returns
+the state, `log_step` writes, no console message.
 
-**Conséquence à ne pas oublier :** `keydler.pages.dev` n'a plus WebMCP. Ce
-n'était pas le cas ce matin, où le drapeau masquait la différence. Cette
-origine reste une surface de repli pour l'interface, pas pour les outils, tant
-qu'un second jeton n'y est pas posé.
+**A consequence not to forget:** `keydler.pages.dev` no longer has WebMCP. That
+was not the case this morning, where the flag hid the difference. That origin
+stays a fallback surface for the interface, not for the tools, as long as no
+second token is put on it.
 
-### Le jeton est versionné, à dessein
+### The token is in version control, by design
 
-`.env.production` est le seul fichier `.env` suivi par git. Un jeton d'origin
-trial n'est pas un secret : il est imprimé dans le HTML de chaque page servie.
-Ce que le versionner protège, c'est la capacité à reconstruire exactement
-l'artefact déployé à partir du seul dépôt, ce qui compte pendant un gel où l'on
-ne peut plus rien rattraper.
+`.env.production` is the only `.env` file tracked by git. An origin trial token
+is not a secret: it is printed in the HTML of every page served. What tracking
+it protects is the ability to rebuild exactly the deployed artefact from the
+repository alone, which counts during a freeze where nothing can be caught up
+any more.
 
-### 29 août 2026, tard : `/workspace` est en ligne
+### 29 August 2026, late: `/workspace` is live
 
-Ce que doit atteindre un bouton « Sign in » sur un produit sans compte ni
-serveur. Déployé et vérifié à froid sur `https://keydler.com/workspace`, dans
-un Brave lancé sans aucun drapeau WebMCP, profil neuf, supprimé après.
+What a “Sign in” button has to reach on a product with no account and no
+server. Deployed and verified cold on `https://keydler.com/workspace`, in a
+Brave launched with no WebMCP flag at all, fresh profile, deleted afterwards.
 
-| Vérification                                 | Résultat                        |
-| -------------------------------------------- | ------------------------------- |
-| L'adresse survit au rechargement direct      | `/workspace`, titre correct     |
-| Export et import présents hors d'un cahier   | les deux                        |
-| Dit qu'il n'y a ni compte ni serveur         | oui                             |
-| Avertit que vider le navigateur efface tout  | oui                             |
-| Ne dit plus « not even us »                  | oui                             |
-| Outils WebMCP (origine vierge, aucun cahier) | 4 : les lectures, comme attendu |
-| Messages de console                          | aucun                           |
+| Check                                             | Result                      |
+| ------------------------------------------------- | --------------------------- |
+| The address survives a direct reload              | `/workspace`, correct title |
+| Export and import present outside a log           | both                        |
+| Says there is no account and no server            | yes                         |
+| Warns that clearing the browser erases everything | yes                         |
+| No longer says “not even us”                      | yes                         |
+| WebMCP tools (blank origin, no log)               | 4: the reads, as expected   |
+| Console messages                                  | none                        |
 
-Le rechargement direct est le cas qui compte : c'est ainsi qu'arrive quelqu'un
-depuis une page d'accueil, et c'est ce que `reflectAddress` écrasait.
+The direct reload is the case that counts: that is how someone arrives from a
+landing page, and it is what `reflectAddress` was overwriting.
 
-**Ce que la mesure a tranché.** La page conseille un fichier plutôt qu'un lien,
-et ce n'est pas une préférence : un cahier de 60 pas fait 17 349 caractères
-scellés contre 16 000 que tient une adresse ; le même en fichier fait 85 657,
-sans limite. Un lien ne porte pas un cahier réellement utilisé, encore moins un
-espace de travail. Toute conception qui aurait reposé sur « emporte ton compte
-dans un lien » était morte avant d'être écrite.
+**What the measurement settled.** The page advises a file rather than a link,
+and that is not a preference: a 60-step log comes to 17,349 sealed characters
+against the 16,000 an address holds; the same one as a file comes to 85,657,
+with no limit. A link does not carry a log that is really in use, still less a
+workspace. Any design that would have rested on “carry your account in a link”
+was dead before it was written.
 
-**Deux affirmations retirées en cours d'écriture.** « Nobody else can read it,
-not even us » est une promesse sur la confiance : nous servons le code, donc
-nous pourrions le changer. Ce qui est démontrable (et vérifié dans le
-navigateur, zéro requête `xhr`, `fetch` ou `websocket`), c'est qu'il n'y a
-aucune destination et que la politique bloque les autres origines. Et rien ne
-prétend que les cahiers sont chiffrés : seuls le coffre d'identifiants et les
-liens scellés le sont, IndexedDB garde les cahiers en clair. Les deux sont
-tenues par des épreuves.
+**Two claims withdrawn while writing.** “Nobody else can read it, not even us”
+is a promise about trust: we serve the code, so we could change it. What is
+demonstrable (and verified in the browser, zero `xhr`, `fetch` or `websocket`
+request) is that there is no destination and that the policy blocks other
+origins. And nothing claims that the logs are encrypted: only the credentials
+vault and the sealed links are, IndexedDB keeps the logs in the clear. Both are
+held by tests.
 
-**Une branche retirée plutôt que défendue.** Le rafraîchissement de la liste
-portait un cas « aucun cahier ouvert alors qu'il en existe ». Cet état est
-inatteignable (`init()` rouvre le dernier, `deleteCurrentTask()` en rouvre un
-autre), et un mutant y a survécu. La branche est partie, et l'épreuve qui
-prétendait la couvrir dit maintenant ce qu'elle prouve réellement.
+**A branch removed rather than defended.** The refresh of the list carried a
+case for “no log open while some exist”. That state is unreachable (`init()`
+reopens the last one, `deleteCurrentTask()` reopens another), and a mutant
+survived in it. The branch is gone, and the test that claimed to cover it now
+says what it really proves.

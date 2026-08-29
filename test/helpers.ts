@@ -93,7 +93,7 @@ export class FakeModelContext extends EventTarget {
   reprendre(): void {
     const attendus = this.enAttente
     this.enAttente = []
-    for (const libérer of attendus) libérer()
+    for (const release of attendus) release()
   }
 
   registerTool = vi.fn(

@@ -1,185 +1,178 @@
-# Second audit du 28 août 2026
+# Second audit of 28 August 2026
 
-Le [premier audit](../audits/premier.md) portait sur le produit tel qu'il était
-alors. Une dizaine de lots de fonctionnalités ont suivi sans jamais être
-éprouvés adversairement. Celui-ci ne vise qu'eux.
+The [first audit](../audits/premier.md) covered the product as it stood then.
+About ten batches of features have followed since, without ever being tested
+adversarially. This one targets only those.
 
-**Périmètre.** `request_approval` et son attente bloquante, les contestations,
-le lien partageable, la barre « Needs you », la garde anti-répétition, la
-durabilité du stockage, la reprise des règles, l'extension de l'annulation, le
-but (`DONE WHEN`), la copie en texte, les pastilles du sélecteur, le bandeau
-d'appel d'agent, et l'histoire d'un élément.
+**Scope.** `request_approval` and its blocking wait, disputes, the shareable
+link, the "Needs you" bar, the anti-repeat guard, storage durability, rule
+resumption, the extension of undo, the goal (`DONE WHEN`), copy as text, the
+picker badges, the agent-call banner, and the history of an item.
 
-**État au début :** 755 tests. À la fin : 776, dont 21 nouveaux couvrant ce
-qui a été trouvé.
-
----
-
-## Défauts trouvés et corrigés
-
-### 1. Un lien pouvait faire exploser le navigateur de celui qui l'ouvre
-
-**Gravité : élevée.** `packTask` bornait la longueur du lien produit. Rien
-ne bornait ce qui était reçu. Or le lien est ouvert par la victime : borner
-la sortie de son propre navigateur ne protège de personne.
-
-Deux charges construites pendant l'audit, toutes deux sous la borne de
-16 000 caractères :
-
-| Charge                               | Avant                       | Après            |
-| ------------------------------------ | --------------------------- | ---------------- |
-| Un titre de 6 Mo, compressé par gzip | acceptée, 6 Mo reconstruits | refusée          |
-| 60 000 étapes                        | acceptée en 6,2 secondes    | refusée en 86 ms |
-
-Le ratio de compression de gzip atteint environ 1000:1 : quelques kilo-octets
-d'adresse suffisent à en produire plusieurs mégaoctets.
-
-**Correctif.** La décompression est bornée à 2 Mo et s'arrête dès le
-dépassement, pas après. Le fragment entrant est en outre refusé au-delà de la
-borne que l'on sait produire : on n'accepte que ce que l'on émet.
-
-### 2. Un cahier reçu pouvait porter un journal sans fin
-
-**Gravité : moyenne.** À l'écriture, le journal est borné à
-`MAX_AUDIT_ENTRIES`. À la lecture d'un cahier venu d'ailleurs (lien ou import
-de fichier), aucune borne ne s'appliquait. La normalisation applique désormais
-la même, et garde les entrées les plus récentes, comme à l'écriture.
-
-### 3. La première pose d'un but ou d'une prochaine action n'était pas annulable
-
-**Gravité : moyenne.** L'entrée d'audit ne portait `previous` que si l'ancienne
-valeur n'était pas vide. « Il n'y avait rien » devenait donc indistinguable de
-« rien n'a été consigné », et l'annulation refusait d'agir.
-
-Trouvé en enchaînant trois annulations : la troisième échouait.
-
-**Correctif.** La valeur remplacée est toujours consignée, la chaîne vide
-disant « il n'y avait rien ». Et la comparaison normalise `null` et `''`, sans
-quoi la deuxième annulation reproposait ce qu'elle venait de défaire.
-
-### 4. L'histoire d'un élément s'appauvrissait en silence
-
-**Gravité : moyenne.** Le journal est borné à `MAX_AUDIT_ENTRIES`. Passé cette
-limite, l'histoire d'une règle ancienne perdait ses entrées sans le dire,
-et une histoire vide se lit « il ne s'est rien passé », ce qui est faux. Le
-comble, dans un produit qui reproche exactement cela aux résumés de
-conversation, et alors que `what_changed` annonce son propre élagage depuis le
-début.
-
-Ce point figurait d'abord en « connu, non corrigé ». Il a été traité ensuite.
-
-**Correctif.** `historyOf` ne rend plus une liste mais
-`{ entries, mayBeIncomplete }` : l'incomplétude voyage avec les entrées,
-et non dans une fonction voisine que l'appelant pourrait oublier d'appeler.
-C'était précisément le mode de défaillance à écarter. Le bouton History
-reste offert même sans entrée survivante, sans quoi cacher le bouton
-reviendrait à taire l'élagage.
-
-L'avertissement dit « peut ne pas être toute l'histoire » et non un nombre : le
-marqueur d'élagage compte des entrées, pas des cibles, et l'on ne sait donc pas
-ce qui a été écarté pour cet élément.
-
-### 5. Du code défensif que rien ne pouvait atteindre
-
-**Gravité : faible (dette).** Après le correctif n°1, la borne posée sur le
-repli non compressé était devenue inatteignable : la borne d'entrée la domine
-strictement. Un test de mutation l'a montrée survivante, c'est-à-dire morte.
-Retirée, avec un commentaire disant pourquoi la borne d'entrée suffit là.
+**State at the start:** 755 tests. At the end: 776, of which 21 are new ones
+covering what was found.
 
 ---
 
-## Deux tests qui passaient pour la mauvaise raison
+## Defects found and fixed
 
-Ils sont rapportés ici parce qu'un test qui passe sans rien démontrer est pire
-qu'un test absent : il inspire une confiance qu'il ne mérite pas.
+### 1. A link could blow up the browser of whoever opens it
 
-1. **La pastille du sélecteur.** Le test vérifiait qu'une ligne contenait
-   « blocked », sur une tâche intitulée « Blocked task ». C'était le titre
-   qui satisfaisait l'assertion. Tâche renommée, assertion portée sur
-   l'élément.
-2. **Les deux bornes du lien.** Chacune masquait l'autre : la charge trop
-   longue échouait de toute façon au décodage, et la charge non compressée
-   démesurée était arrêtée par la borne d'entrée. Les deux tests passaient sans
-   rien prouver. Isolés : un cahier parfaitement valide, simplement trop
-   long, que seule la borne d'entrée refuse.
+**Severity: high.** `packTask` bounded the length of the link produced. Nothing
+bounded what was received. But the link is opened by the victim: bounding the
+output of your own browser protects nobody.
 
-Dans les deux cas, c'est le test de mutation qui a révélé le problème : la
-garde cassée, la suite restait verte.
+Two payloads built during the audit, both under the bound of 16,000 characters:
 
----
+| Payload                            | Before                       | After            |
+| ---------------------------------- | ---------------------------- | ---------------- |
+| A 6 MB title, compressed with gzip | accepted, 6 MB reconstructed | refused          |
+| 60,000 steps                       | accepted in 6.2 seconds      | refused in 86 ms |
 
-## Ce qui a été éprouvé et tient
+The gzip compression ratio reaches roughly 1000:1: a few kilobytes of address
+are enough to produce several megabytes of it.
 
-### Une attente d'autorisation pendant que tout bouge
+**Fix.** Decompression is bounded at 2 MB and stops as soon as the bound is
+exceeded, not after. The incoming fragment is refused on top of that beyond the
+bound we know how to produce: we accept only what we emit.
 
-| Épreuve                                  | Résultat                      |
-| ---------------------------------------- | ----------------------------- |
-| La tâche est supprimée pendant l'attente | `NO ANSWER`, jamais `ALLOWED` |
-| On change de cahier pendant l'attente    | `NO ANSWER`                   |
-| L'exécution est annulée                  | rendue en moins d'une seconde |
+### 2. A received log could carry an endless audit log
 
-### Chaînes d'annulation
+**Severity: medium.** On write, the audit log is bounded at
+`MAX_AUDIT_ENTRIES`. On reading a log that came from elsewhere (a link or a file
+import), no bound applied. Normalisation now applies the same one, and keeps the
+most recent entries, as on write.
 
-Trois corrections d'affilée (renommage, but, prochaine action) annulées une
-par une dans l'ordre inverse, chacune rendant exactement sa valeur. La chaîne
-s'arrête net devant une écriture d'agent, et ne propose plus rien une fois tout
-rendu.
+### 3. The first setting of a goal or a next action was not undoable
 
-### Bornes des surfaces récentes
+**Severity: medium.** The audit entry carried `previous` only if the old value
+was not empty. "There was nothing" therefore became indistinguishable from
+"nothing was recorded", and undo refused to act.
 
-- Le résumé du sélecteur reste sous 70 caractères avec 200 propositions en
-  attente.
-- Le but survit à une clôture et reste modifiable ensuite : l'humain reste
-  maître d'une tâche close.
-- Le filtre de recherche ne se transmet pas d'un cahier à l'autre.
-- L'histoire d'un élément ne mélange pas deux règles, et suit celle qui a été
-  proposée puis acceptée.
+Found by chaining three undos: the third one failed.
 
-### Tests de mutation : onze garanties récentes
+**Fix.** The replaced value is always recorded, the empty string saying "there
+was nothing". And the comparison normalises `null` and `''`, without which the
+second undo would re-propose what it had just undone.
 
-| Garantie cassée                       | Suite |
-| ------------------------------------- | ----- |
-| Bombe de décompression acceptée       | rouge |
-| Fragment entrant sans borne           | rouge |
-| Journal reçu sans borne               | rouge |
-| Vide non normalisé à l'annulation     | rouge |
-| Première pose de but non annulable    | rouge |
-| Résumé qui énumère tout               | rouge |
-| Appel ancien présenté comme récent    | rouge |
-| Histoire d'un élément mélangeant tout | rouge |
-| Élagage tu à l'appelant               | rouge |
-| Bouton caché quand tout est élagué    | rouge |
-| Avertissement retiré de l'écran       | rouge |
+### 4. The history of an item thinned out in silence
 
-Deux d'entre elles (les deux bornes du lien) n'ont été tuées qu'après
-correction des tests décrits plus haut.
+**Severity: medium.** The audit log is bounded at `MAX_AUDIT_ENTRIES`. Past that
+limit, the history of an old rule lost its entries without saying so, and an
+empty history reads as "nothing happened", which is false. The height of it, in
+a product that reproaches conversation summaries with exactly that, and while
+`what_changed` has been announcing its own trimming from the start.
 
----
+This point first appeared under "known, not fixed". It was treated afterwards.
 
-## Connu, non corrigé
+**Fix.** `historyOf` no longer returns a list but
+`{ entries, mayBeIncomplete }`: the incompleteness travels with the entries, and
+not in a neighbouring function that the caller could forget to call. That was
+precisely the failure mode to rule out. The History button stays on offer even
+with no surviving entry, since hiding the button would amount to keeping the
+trimming quiet.
 
-### La barre « Needs you » reste active sur un cahier archivé
+The warning says "may not be the whole history" and not a number: the trimming
+marker counts entries, not targets, so we do not know what was dropped for this
+item.
 
-Signalé au premier audit, toujours vrai : archiver n'est pas clore.
+### 5. Defensive code that nothing could reach
 
-### Bornes de mémoire au-delà du lien
-
-`normalizeTask` borne le journal et les mutations, pas les étapes, les
-décisions ni les rejets. Un cahier reçu portant 40 000 étapes tiendrait sous
-2 Mo et serait accepté. Aucune surface ne s'effondre (toutes tranchent ce
-qu'elles affichent), mais rien ne le borne non plus.
+**Severity: low (debt).** After fix no. 1, the bound placed on the uncompressed
+fallback had become unreachable: the input bound strictly dominates it. A
+mutation test showed it surviving, which is to say dead. Removed, with a comment
+saying why the input bound is enough there.
 
 ---
 
-## Ce que ce second audit ne couvre pas
+## Two tests that were passing for the wrong reason
 
-- **Aucune vérification en navigateur.** Le navigateur de contrôle n'a pas pu
-  être relancé dans cet environnement, et je préfère l'écrire plutôt que de
-  laisser croire à une vérification qui n'a pas eu lieu. Les tests exercent
-  cependant les vraies `CompressionStream` et `DecompressionStream` de la
-  plateforme, et non des doublures. Les relevés navigateur des passes
-  précédentes, eux, tiennent toujours.
-- **Aucune revue du chiffrement**, ni du service worker, ni du manifeste : ils
-  n'ont pas changé depuis le premier audit.
-- **Aucune mesure de performance**, hormis les deux durées citées pour la bombe
-  de décompression, mesurées par la suite de tests et non sur un poste réel.
+They are reported here because a test that passes without demonstrating anything
+is worse than a missing test: it inspires a confidence it does not deserve.
+
+1. **The picker badge.** The test checked that a row contained "blocked", on a
+   task titled "Blocked task". It was the title that satisfied the assertion.
+   Task renamed, assertion moved onto the element.
+2. **The two bounds of the link.** Each masked the other: the over-long payload
+   failed at decoding anyway, and the oversized uncompressed payload was stopped
+   by the input bound. Both tests passed without proving anything. Isolated: a
+   perfectly valid log, simply too long, that only the input bound refuses.
+
+In both cases, it is the mutation test that revealed the problem: with the guard
+broken, the suite stayed green.
+
+---
+
+## What was exercised and holds
+
+### An approval wait while everything moves
+
+| Trial                               | Result                       |
+| ----------------------------------- | ---------------------------- |
+| The task is deleted during the wait | `NO ANSWER`, never `ALLOWED` |
+| The log is switched during the wait | `NO ANSWER`                  |
+| The run is cancelled                | returned in under a second   |
+
+### Undo chains
+
+Three corrections in a row (rename, goal, next action) undone one by one in
+reverse order, each restoring exactly its value. The chain stops dead in front
+of an agent write, and offers nothing more once everything has been restored.
+
+### Bounds of the recent surfaces
+
+- The picker summary stays under 70 characters with 200 pending proposals.
+- The goal survives a close and stays editable afterwards: the human remains in
+  charge of a closed task.
+- The search filter does not carry over from one log to another.
+- The history of an item does not mix two rules, and follows the one that was
+  proposed and then accepted.
+
+### Mutation tests: eleven recent guarantees
+
+| Guarantee broken                         | Suite |
+| ---------------------------------------- | ----- |
+| Decompression bomb accepted              | red   |
+| Incoming fragment with no bound          | red   |
+| Received audit log with no bound         | red   |
+| Empty not normalised at undo             | red   |
+| First setting of a goal not undoable     | red   |
+| Summary that enumerates everything       | red   |
+| Old call presented as recent             | red   |
+| History of an item mixing everything     | red   |
+| Trimming kept from the caller            | red   |
+| Button hidden when everything is trimmed | red   |
+| Warning removed from the screen          | red   |
+
+Two of them (the two bounds of the link) were only killed once the tests
+described above had been corrected.
+
+---
+
+## Known, not fixed
+
+### The "Needs you" bar stays active on an archived log
+
+Reported in the first audit, still true: archiving is not closing.
+
+### Memory bounds beyond the link
+
+`normalizeTask` bounds the audit log and the mutations, not the steps, the
+decisions or the rejections. A received log carrying 40,000 steps would fit
+under 2 MB and would be accepted. No surface collapses (they all slice what they
+display), but nothing bounds it either.
+
+---
+
+## What this second audit does not cover
+
+- **No browser verification.** The control browser could not be restarted in
+  this environment, and I prefer to write that down rather than let anyone
+  believe in a verification that did not take place. The tests do exercise the
+  platform's real `CompressionStream` and `DecompressionStream`, and not
+  doubles. The browser readings from the earlier passes, for their part, still
+  hold.
+- **No review of the encryption**, nor of the service worker, nor of the
+  manifest: they have not changed since the first audit.
+- **No performance measurement**, apart from the two durations quoted for the
+  decompression bomb, measured by the test suite and not on a real machine.

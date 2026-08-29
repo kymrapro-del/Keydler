@@ -1,207 +1,201 @@
-# Audit du 28 août 2026
+# Audit of 28 August 2026
 
-Recherche approfondie de défauts, menée sur la totalité du dépôt. Ce document
-dit ce qui a été cherché, ce qui a été trouvé, ce qui a été corrigé, et ce qui
-reste connu et non traité. Les points laissés ouverts y figurent au même titre
-que les correctifs : un audit qui ne liste que ses succès n'est pas utilisable.
+A deep defect hunt, run over the whole repository. This document says what was
+looked for, what was found, what was fixed, and what remains known and
+untreated. The points left open appear here on the same footing as the fixes: an
+audit that lists only its successes is not usable.
 
-**État au moment de l'audit :** 663 tests, 95,8 % de couverture, contrôle
-complet vert. À la fin : 667 tests, 4 nouveaux couvrant les défauts trouvés.
-
----
-
-## Méthode
-
-Quatre passes, dans cet ordre.
-
-1. **Revue statique par zone** : domaine, magasin, persistance, outils WebMCP,
-   interface, export, coffre.
-2. **Sondes de cas limites** : cahier vide, textes aux longueurs maximales,
-   caractères hostiles, bornes de pagination, versions absurdes.
-3. **Sondes en navigateur réel** : Brave 151 / Chromium 151, build de
-   production, pilotage `chrome-devtools-mcp`, y compris multi-onglets.
-4. **Tests de mutation** : le code est volontairement cassé sur treize
-   garanties, et l'on vérifie que la suite rougit. Un test qui reste vert sur du
-   code faux ne prouve rien.
+**State at the time of the audit:** 663 tests, 95.8% coverage, full check green.
+At the end: 667 tests, 4 new ones covering the defects found.
 
 ---
 
-## Défauts trouvés et corrigés
+## Method
 
-### 1. Les identifiants scellés survivaient à la suppression de la tâche
+Four passes, in this order.
 
-**Gravité : élevée.** `deleteSecretsForTask` existait dans le coffre et
-n'était appelée nulle part. Supprimer une tâche retirait la tâche du magasin
-`tasks` et laissait ses secrets scellés dans `secrets`, hors d'atteinte de
-l'écran (aucune tâche pour les lister), mais bien présents sur le disque.
-
-L'humain qui supprime une tâche croit avoir tout supprimé. Dans un produit dont
-le coffre est un argument de tête, c'est un défaut de confidentialité, pas une
-négligence de ménage.
-
-**Correctif.** `deleteCurrentTask` supprime les scellés du cahier, et seulement
-les siens. Deux tests : l'un vérifie qu'il ne reste rien dans `secrets` pour
-l'identifiant supprimé, l'autre qu'un autre cahier n'est pas touché.
-
-### 2. Les repères de lecture s'accumulaient sans fin
-
-**Gravité : faible.** Chaque cahier ouvert écrit une clé
-`watch-log:seen:<id>` dans `localStorage`. Elle n'était jamais effacée, ni à la
-suppression de la tâche, ni jamais. Relevé dans le navigateur : trois clés
-subsistaient pour des cahiers qui n'existaient plus.
-
-**Correctif.** `deleteCurrentTask` oublie le repère du cahier supprimé, et
-seulement le sien.
-
-### 3. Une dépendance à contresens des couches
-
-**Gravité : faible (dette).** Le correctif n°2 faisait importer `src/ui/seen`
-depuis `src/store/taskStore` : le magasin dépendait de l'interface. `seen.ts`
-relève du stockage navigateur, pas de la vue. Déplacé en
-`src/persistence/seen.ts`.
-
-### 4. Un champ de fichier sans nom accessible
-
-**Gravité : très faible.** `#import-file` porte l'attribut `hidden`, donc il ne
-figure pas dans l'arbre d'accessibilité et aucun lecteur d'écran ne le
-rencontre : le signalement de la sonde était un faux positif. Un `aria-label` a
-tout de même été ajouté : il ne coûte rien et clôt la question pour le prochain
-audit.
+1. **Static review by area**: domain, store, persistence, WebMCP tools, UI,
+   export, vault.
+2. **Edge-case probes**: empty log, texts at maximum lengths, hostile
+   characters, pagination bounds, absurd versions.
+3. **Real-browser probes**: Brave 151 / Chromium 151, production build, driven
+   with `chrome-devtools-mcp`, including multiple tabs.
+4. **Mutation tests**: the code is deliberately broken on thirteen guarantees,
+   and the suite is checked for going red. A test that stays green on wrong code
+   proves nothing.
 
 ---
 
-## Ce qui a été vérifié et tient
+## Defects found and fixed
 
-### Concurrence et idempotence
+### 1. Sealed credentials outlived the deletion of the task
 
-| Épreuve                                                        | Résultat                                                    |
-| -------------------------------------------------------------- | ----------------------------------------------------------- |
-| Dix écritures d'agent lancées en parallèle sur la même version | 1 appliquée, 9 refusées, version +1, une seule étape écrite |
-| Même `mutation_id` appelé trois fois en parallèle              | 1 écriture, 2 rejeux, aucune erreur                         |
-| `mutation_id` réutilisé avec d'autres arguments                | refusé, rien écrit                                          |
-| Écriture humaine intercalée entre lecture et écriture d'agent  | `STALE STATE`, rien écrit                                   |
-| Signal déjà rompu à l'appel                                    | rien écrit, refus consigné au journal                       |
-| Annulation pendant une attente d'autorisation de 60 s          | rendu en moins d'une seconde, aucun minuteur pendu          |
+**Severity: high.** `deleteSecretsForTask` existed in the vault and was called
+nowhere. Deleting a task removed the task from the `tasks` store and left its
+sealed secrets in `secrets`, out of reach of the screen (no task to list them
+under), but very much present on disk.
 
-### Multi-onglets, dans le vrai navigateur
+The human who deletes a task believes everything has been deleted. In a product
+whose vault is a headline argument, that is a confidentiality defect, not sloppy
+housekeeping.
 
-Deux pages ouvertes sur le même cahier. Une règle ajoutée dans l'onglet 2
-apparaît automatiquement dans l'onglet 1 (v3, règle visible). Une écriture
-d'agent fondée sur v2 depuis l'onglet 1 est refusée avec le message juste,
-« Another page has since written v3 », et le refus s'affiche en langage humain
-dans la carte Activity.
+**Fix.** `deleteCurrentTask` deletes the log's sealed values, and only its own.
+Two tests: one checks that nothing is left in `secrets` for the deleted id, the
+other that another log is untouched.
 
-### Migration de schéma
+### 2. Read markers accumulated without end
 
-Un cahier écrit en `schemaVersion: 4` (avant l'existence des questions, des
-autorisations et des contestations) se lit sans exception, reçoit les tableaux
-manquants vides, et traverse toutes les surfaces : restitution, export,
-`needsYou`, `undoable`, recherche, et chacune des neuf sections de
-`read_task_detail`.
+**Severity: low.** Every log opened writes a `watch-log:seen:<id>` key in
+`localStorage`. It was never cleared, not on task deletion, not ever. Observed
+in the browser: three keys remained for logs that no longer existed.
 
-### Caractères hostiles et cas dégénérés
+**Fix.** `deleteCurrentTask` forgets the marker of the deleted log, and only its
+own.
 
-- `<img src=x onerror=alert(1)>` saisi comme titre de tâche : affiché
-  littéralement, aucun élément injecté, console vide, rien dans le titre de
-  l'onglet.
-- Recherche avec `(b)`, `[c]`, `*e*`, `+f+`, `?g?`, `|h|`, `\` : aucune
-  exception, résultats corrects, car la recherche ne construit pas
-  d'expression régulière à partir de la requête.
-- Japonais, émoji hors du plan de base, marque de sens d'écriture : aller-retour
-  dans un lien partagé octet pour octet.
-- Cahier entièrement vide : traverse toutes les surfaces sans tomber.
-- Textes aux longueurs maximales partout : `resume_task` tient sous 400 jetons.
-- `offset` au-delà de la fin d'une section : dit « past the end » plutôt que de
-  rendre une page vide qui ressemblerait à une section vide.
+### 3. A dependency running against the layers
 
-### Saisie humaine pendant qu'un agent écrit
+**Severity: low (debt).** Fix no. 2 made `src/store/taskStore` import
+`src/ui/seen`: the store depended on the UI. `seen.ts` belongs to browser
+storage, not to the view. Moved to `src/persistence/seen.ts`.
 
-Formulaire d'étape ouvert, texte saisi, écriture d'agent par WebMCP entre-temps,
-puis soumission : la saisie survit au rendu, l'étape s'enregistre, le
-formulaire se referme.
+### 4. A file input with no accessible name
 
-### Tests de mutation : treize garanties, treize tuées
-
-Chaque ligne ci-dessous a été cassée dans le code source, la suite exécutée, et
-le code restauré. Aucun mutant n'a survécu.
-
-| Garantie cassée                                               | Suite |
-| ------------------------------------------------------------- | ----- |
-| Refus d'état périmé désactivé                                 | rouge |
-| Preuve d'agent marquée « vérifiée »                           | rouge |
-| Toute étape marquée « vérifiée »                              | rouge |
-| Doublon de nom d'identifiant autorisé                         | rouge |
-| Autorisation : première demande rendue au lieu de la dernière | rouge |
-| Nature d'identifiant toujours « other »                       | rouge |
-| Lien sans borne de taille                                     | rouge |
-| Annulation traversant le travail d'un agent                   | rouge |
-| `needsYou` sur une tâche close                                | rouge |
-| `what_changed` cachant son élagage                            | rouge |
-| Silence présenté comme un accord                              | rouge |
-| Témoin ne comptant pas une écriture aveugle                   | rouge |
-| Budget de jetons ignoré                                       | rouge |
-
-### Hygiène
-
-- Aucun `TODO`, `FIXME` ni `HACK` dans les sources.
-- Aucun `any`, explicite ou par assertion.
-- Un seul `console.warn`, sur une mise à jour de stockage bloquée par un autre
-  onglet. Délibéré.
-- `npm audit` : 0 vulnérabilité. Aucune dépendance de production.
-- Bundle : 160 Ko de JavaScript, 12 Ko de CSS.
-- Accessibilité : tous les champs visibles étiquetés, aucun saut de niveau de
-  titre, aucun bouton sans nom accessible, aucun débordement horizontal.
+**Severity: very low.** `#import-file` carries the `hidden` attribute, so it
+does not appear in the accessibility tree and no screen reader meets it: the
+probe's report was a false positive. An `aria-label` was added all the same: it
+costs nothing and closes the question for the next audit.
 
 ---
 
-## Connu, non corrigé
+## What was checked and holds
 
-Ces points sont des choix ou des limites assumées. Ils ne sont pas des oublis.
+### Concurrency and idempotence
 
-### `needsYou` reste actif sur un cahier archivé
+| Trial                                                     | Result                                                  |
+| --------------------------------------------------------- | ------------------------------------------------------- |
+| Ten agent writes fired in parallel on the same version    | 1 applied, 9 refused, version +1, a single step written |
+| Same `mutation_id` called three times in parallel         | 1 write, 2 replays, no error                            |
+| `mutation_id` reused with different arguments             | refused, nothing written                                |
+| Human write interleaved between an agent's read and write | `STALE STATE`, nothing written                          |
+| Signal already broken at call time                        | nothing written, refusal recorded in the audit log      |
+| Cancellation during a 60 s approval wait                  | returned in under a second, no timer left hanging       |
 
-Archiver n'est pas clore. Un cahier archivé garde son statut `active`, donc la
-barre « Needs you » continue d'y annoncer ce qui n'est pas tranché. C'est
-défendable (ouvrir un cahier archivé et voir ce qui restait est utile), mais
-c'est un choix, pas une évidence. À revoir si l'archivage devient un usage
-courant.
+### Multiple tabs, in a real browser
 
-### Trois `catch {}` silencieux
+Two pages open on the same log. A rule added in tab 2 appears automatically in
+tab 1 (v3, rule visible). An agent write based on v2 from tab 1 is refused with
+the right message, "Another page has since written v3", and the refusal is
+displayed in human language in the Activity card.
 
-Dans `register.ts`, `taskStore.ts` et `bench.ts`. Chacun entoure une opération
-dont l'échec ne doit pas interrompre le fil : relecture après conflit,
-`getTools()` d'inspection, nettoyage de rendu. Ils sont volontaires, et le lint
-les autorise explicitement. Ils restent des endroits où une panne réelle
-passerait inaperçue.
+### Schema migration
 
-### Couverture des chemins d'erreur de stockage
+A log written at `schemaVersion: 4` (before questions, approvals and disputes
+existed) reads without an exception, receives the missing arrays as empty ones,
+and goes through every surface: rendering, export, `needsYou`, `undoable`,
+search, and each of the nine sections of `read_task_detail`.
 
-`db.ts` est à 73 %, `validate.ts` à 81 % : ce qui manque est presque
-exclusivement des branches d'échec du navigateur : base bloquée par un autre
-onglet, stockage refusé. Elles sont coûteuses à simuler et sans conséquence sur
-la logique. Signalées plutôt que poursuivies.
+### Hostile characters and degenerate cases
 
-### Le minuteur de révélation d'un identifiant n'est pas annulé au changement de cahier
+- `<img src=x onerror=alert(1)>` entered as a task title: displayed literally,
+  no element injected, console empty, nothing in the tab title.
+- Search with `(b)`, `[c]`, `*e*`, `+f+`, `?g?`, `|h|`, `\`: no exception,
+  correct results, because search does not build a regular expression from the
+  query.
+- Japanese, emoji outside the basic plane, a writing-direction mark:
+  round-tripped through a shared link byte for byte.
+- A completely empty log: goes through every surface without falling over.
+- Texts at maximum lengths everywhere: `resume_task` stays under 400 tokens.
+- `offset` beyond the end of a section: says "past the end" rather than
+  returning an empty page that would look like an empty section.
 
-Changer de cahier met `revealed` à `null` directement au lieu de passer par
-`hideRevealed()`, donc le minuteur de 45 secondes court encore et déclenchera un
-rendu inutile. Sans conséquence (la valeur est déjà retirée, et le démontage
-nettoie), mais c'est une incohérence.
+### Human typing while an agent writes
 
-### Le retrait dynamique des outils sous Chromium ≥ 153
+Step form open, text typed, an agent write through WebMCP in the meantime, then
+submission: the typing survives the render, the step is recorded, the form
+closes.
 
-Toujours non vérifié, comme dans toutes les passes précédentes : ce poste
-tourne sous Chromium 151. La politique en vigueur est statique et refuse
-proprement ; c'est ce que les tests démontrent, et rien de plus n'est affirmé.
+### Mutation tests: thirteen guarantees, thirteen killed
+
+Each line below was broken in the source, the suite was run, and the code was
+restored. No mutant survived.
+
+| Guarantee broken                                     | Suite |
+| ---------------------------------------------------- | ----- |
+| Stale-state refusal disabled                         | red   |
+| Agent evidence marked "verified"                     | red   |
+| Every step marked "verified"                         | red   |
+| Duplicate credential name allowed                    | red   |
+| Approval: first request returned instead of the last | red   |
+| Credential kind always "other"                       | red   |
+| Link with no size bound                              | red   |
+| Undo crossing an agent's work                        | red   |
+| `needsYou` on a closed task                          | red   |
+| `what_changed` hiding its trimming                   | red   |
+| Silence presented as agreement                       | red   |
+| Witness not counting a blind write                   | red   |
+| Token budget ignored                                 | red   |
+
+### Hygiene
+
+- No `TODO`, `FIXME` or `HACK` in the sources.
+- No `any`, explicit or by assertion.
+- A single `console.warn`, on a storage upgrade blocked by another tab.
+  Deliberate.
+- `npm audit`: 0 vulnerabilities. No production dependency.
+- Bundle: 160 KB of JavaScript, 12 KB of CSS.
+- Accessibility: every visible field labelled, no heading level skipped, no
+  button without an accessible name, no horizontal overflow.
 
 ---
 
-## Ce que cet audit ne couvre pas
+## Known, not fixed
 
-- **Aucune mesure de performance.** Aucun chiffre de latence n'est avancé nulle
-  part dans le dépôt, et cet audit n'en produit pas.
-- **Aucun test sur un autre navigateur que Brave/Chromium 151.** Firefox et
-  Safari n'exposent pas WebMCP ; le reste de la page n'y a pas été éprouvé.
-- **Aucune revue cryptographique du coffre par un tiers.** Le README dit déjà
-  que ce n'est pas un gestionnaire de secrets audité, et cet audit ne change
-  rien à cette phrase.
+These points are choices or limits accepted as such. They are not oversights.
+
+### `needsYou` stays active on an archived log
+
+Archiving is not closing. An archived log keeps its `active` status, so the
+"Needs you" bar goes on announcing there what has not been settled. That is
+defensible (opening an archived log and seeing what was left is useful), but it
+is a choice, not an obvious one. To be revisited if archiving becomes common
+usage.
+
+### Three silent `catch {}`
+
+In `register.ts`, `taskStore.ts` and `bench.ts`. Each one wraps an operation
+whose failure must not interrupt the thread: a re-read after a conflict, an
+inspection `getTools()`, a render cleanup. They are deliberate, and the lint
+allows them explicitly. They remain places where a real failure would go
+unnoticed.
+
+### Coverage of the storage error paths
+
+`db.ts` is at 73%, `validate.ts` at 81%: what is missing is almost exclusively
+browser failure branches: database blocked by another tab, storage refused. They
+are expensive to simulate and without consequence on the logic. Reported rather
+than pursued.
+
+### The reveal timer of a credential is not cancelled when the log changes
+
+Switching logs sets `revealed` to `null` directly instead of going through
+`hideRevealed()`, so the 45-second timer is still running and will trigger a
+useless render. Without consequence (the value is already removed, and teardown
+cleans up), but it is an inconsistency.
+
+### Dynamic tool removal under Chromium ≥ 153
+
+Still unverified, as in every earlier pass: this machine runs Chromium 151. The
+policy in force is static and refuses cleanly; that is what the tests
+demonstrate, and nothing more is claimed.
+
+---
+
+## What this audit does not cover
+
+- **No performance measurement.** No latency figure is put forward anywhere in
+  the repository, and this audit produces none.
+- **No test on a browser other than Brave/Chromium 151.** Firefox and Safari do
+  not expose WebMCP; the rest of the page has not been exercised there.
+- **No third-party cryptographic review of the vault.** The README already says
+  that this is not an audited secret manager, and this audit changes nothing
+  about that sentence.

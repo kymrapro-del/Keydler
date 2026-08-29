@@ -14,13 +14,13 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
-// Le pendant humain de `resume_task` : ce que personne n'a encore tranché, dans l'ordre où
-// cela coûte de ne pas le voir. Une autorisation bloque un agent en ce moment même, une
-// étape affirmée sans preuve attendra.
+// The human counterpart of `resume_task`: what nobody has settled yet, in the order in
+// which not seeing it costs. An approval blocks an agent right now, a step claimed
+// without evidence can wait.
 
 /**
- * Une pastille de sélecteur ne se lit pas si elle énumère tout : on nomme ce
- * qui coûte le plus de rater, et on compte le reste.
+ * A picker badge cannot be read if it lists everything: name what costs the
+ * most to miss, and count the rest.
  */
 export function summariseNeeds(needs: readonly Need[]): string | null {
   if (needs.length === 0) return null

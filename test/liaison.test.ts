@@ -9,8 +9,8 @@ beforeEach(async () => {
   await clearDatabase()
 })
 
-describe('l’adresse', () => {
-  it('lit un identifiant sur /t/:id, et rien d’autre', () => {
+describe('the URL', () => {
+  it('reads an id from /t/:id, and nothing else', () => {
     expect(taskIdFromPath('/t/abc123')).toBe('abc123')
     expect(taskIdFromPath('/t/abc123/quoi')).toBe('abc123')
     expect(taskIdFromPath('/')).toBeNull()
@@ -18,60 +18,60 @@ describe('l’adresse', () => {
     expect(taskIdFromPath('/t/')).toBeNull()
   })
 
-  it('rejette ce qui n’est pas un identifiant : un chemin est une entrée non fiable', () => {
+  it('rejects what is not an id: a path is untrusted input', () => {
     expect(taskIdFromPath('/t/../../etc')).toBeNull()
     expect(taskIdFromPath('/t/<script>')).toBeNull()
     expect(taskIdFromPath('/t/' + 'x'.repeat(65))).toBeNull()
   })
 
-  it('fait l’aller-retour', () => {
+  it('makes the round trip', () => {
     expect(taskIdFromPath(taskPath('abc123def456'))).toBe('abc123def456')
   })
 })
 
-describe('reprise liée', () => {
-  it('rend la tâche nommée par l’adresse, pas la dernière touchée', async () => {
-    const première = await store.createAndOpenTask('Première tâche', 'A')
+describe('bound resume', () => {
+  it('gives back the task the URL names, not the last one touched', async () => {
+    const first = await store.createAndOpenTask('Première tâche', 'A')
     const seconde = await store.createAndOpenTask('Seconde tâche', 'B')
-    expect(seconde.id).not.toBe(première.id)
+    expect(seconde.id).not.toBe(first.id)
 
     store.__resetStore()
-    await store.init(première.id)
+    await store.init(first.id)
 
-    const rendu = textOf(await call(resumeTaskTool))
-    expect(rendu).toContain('Première tâche')
-    expect(rendu).not.toContain('Seconde tâche')
-    expect(rendu).toContain(`TASK ID     ${première.id}`)
+    const rendered = textOf(await call(resumeTaskTool))
+    expect(rendered).toContain('Première tâche')
+    expect(rendered).not.toContain('Seconde tâche')
+    expect(rendered).toContain(`TASK ID     ${first.id}`)
   })
 
-  it('nomme la tâche dans toute réponse, pour qu’une substitution se voie', async () => {
+  it('names the task in every answer, so a substitution shows', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
-    const rendu = textOf(await call(resumeTaskTool))
-    expect(rendu).toContain(`TASK ID     ${task.id}`)
+    const rendered = textOf(await call(resumeTaskTool))
+    expect(rendered).toContain(`TASK ID     ${task.id}`)
     expect(resumeTaskTool.description).toContain('TASK ID')
   })
 
-  it('refuse plutôt que de substituer, quand le cahier lié a disparu', async () => {
-    const première = await store.createAndOpenTask('Première tâche', 'A')
+  it('refuses rather than substituting when the bound notebook is gone', async () => {
+    const first = await store.createAndOpenTask('Première tâche', 'A')
     await store.createAndOpenTask('Seconde tâche', 'B')
 
     store.__resetStore()
-    await store.init(première.id)
+    await store.init(first.id)
     await store.deleteCurrentTask()
 
     store.__resetStore()
-    await store.init(première.id)
+    await store.init(first.id)
 
     const result = await call(resumeTaskTool)
     expect(result.isError).toBe(true)
-    const rendu = textOf(result)
-    expect(rendu).toContain('TASK NOT FOUND')
-    expect(rendu).toContain(première.id)
-    expect(rendu).toContain('has not')
-    expect(rendu).not.toContain('Seconde tâche')
+    const rendered = textOf(result)
+    expect(rendered).toContain('TASK NOT FOUND')
+    expect(rendered).toContain(first.id)
+    expect(rendered).toContain('has not')
+    expect(rendered).not.toContain('Seconde tâche')
   })
 
-  it('refuse aussi toute écriture sur un cahier lié disparu', async () => {
+  it('refuses every write on a vanished bound notebook too', async () => {
     const { ALL_TOOLS } = await import('../src/webmcp/tools')
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
@@ -89,7 +89,7 @@ describe('reprise liée', () => {
     expect(textOf(result)).toContain('TASK NOT FOUND')
   })
 
-  it('se lie au dernier cahier ouvert quand l’adresse ne dit rien', async () => {
+  it('binds to the last opened notebook when the URL says nothing', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     store.__resetStore()
     await store.init()
@@ -98,15 +98,15 @@ describe('reprise liée', () => {
     expect(textOf(await call(resumeTaskTool))).toContain(`TASK ID     ${task.id}`)
   })
 
-  it('distingue « aucun cahier » de « ce cahier-là a disparu »', async () => {
+  it('tells “no notebook” apart from “that notebook is gone”', async () => {
     store.__resetStore()
     await store.init()
     expect(textOf(await call(resumeTaskTool))).toContain('NO ACTIVE TASK')
 
     store.__resetStore()
     await store.init('jamais-existé')
-    const rendu = textOf(await call(resumeTaskTool))
-    expect(rendu).toContain('TASK NOT FOUND')
-    expect(rendu).not.toContain('NO ACTIVE TASK')
+    const rendered = textOf(await call(resumeTaskTool))
+    expect(rendered).toContain('TASK NOT FOUND')
+    expect(rendered).not.toContain('NO ACTIVE TASK')
   })
 })

@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { redirectToCanonical } from '../src/canonical'
 
-// Deux origines pour un seul produit, c'est deux bases de données, deux caches
-// et un jeton d'origin trial qui ne vaut que pour l'une. La règle se pose chez
-// l'hébergeur, où une règle oubliée ne se voit pas : voici le garde-fou du dépôt.
+// Two origins for one product means two databases, two caches and an origin
+// trial token that only holds for one of them. The rule is set at the host,
+// where a forgotten rule cannot be seen: here is the repository's guard rail.
 function faussseLocation(href: string) {
   const u = new URL(href)
   return {
@@ -15,29 +15,29 @@ function faussseLocation(href: string) {
   } as unknown as Location & { replace: ReturnType<typeof vi.fn> }
 }
 
-describe('l’origine canonique', () => {
-  it('renvoie www vers l’apex', () => {
+describe('the canonical origin', () => {
+  it('sends www to the apex', () => {
     const l = faussseLocation('https://www.keydler.com/')
     expect(redirectToCanonical(l)).toBe(true)
     expect(l.replace).toHaveBeenCalledWith('https://keydler.com/')
   })
 
-  it('emporte le chemin, la requête ET le fragment', () => {
-    // Le fragment porte parfois un cahier entier : le perdre en route
-    // transformerait un lien partagé en page vide.
+  it('carries the path, the query AND the fragment', () => {
+    // The fragment sometimes carries a whole log: losing it on the way would
+    // turn a shared link into an empty page.
     const l = faussseLocation('https://www.keydler.com/t/abc123?x=1#log=zAAAA')
     redirectToCanonical(l)
     expect(l.replace).toHaveBeenCalledWith('https://keydler.com/t/abc123?x=1#log=zAAAA')
   })
 
-  it('ne touche pas à l’apex lui-même', () => {
+  it('leaves the apex itself alone', () => {
     const l = faussseLocation('https://keydler.com/t/abc123')
     expect(redirectToCanonical(l)).toBe(false)
     expect(l.replace).not.toHaveBeenCalled()
   })
 
-  it('ne touche pas au développement local', () => {
-    // Sinon `npm run dev` renverrait vers la production à chaque chargement.
+  it('leaves local development alone', () => {
+    // Otherwise `npm run dev` would redirect to production on every load.
     for (const href of ['http://localhost:5173/', 'http://127.0.0.1:8921/t/x']) {
       const l = faussseLocation(href)
       expect(redirectToCanonical(l), href).toBe(false)
@@ -45,9 +45,9 @@ describe('l’origine canonique', () => {
     }
   })
 
-  it('ne se laisse pas prendre par un hôte qui ressemble', () => {
-    // `keydler.com.exemple.net` ou `wwwkeydler.com` ne sont pas nous, et une
-    // redirection y serait au mieux inutile, au pire un renvoi obligeant.
+  it('is not fooled by a lookalike host', () => {
+    // `keydler.com.exemple.net` and `wwwkeydler.com` are not us, and a
+    // redirect there would be useless at best, a forced hop at worst.
     for (const href of [
       'https://keydler.com.exemple.net/',
       'https://wwwkeydler.com/',

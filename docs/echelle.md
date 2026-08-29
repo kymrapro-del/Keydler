@@ -1,55 +1,54 @@
-# Échelle et coût, 28 août 2026
+# Scale and cost, August 28, 2026
 
-Les deux audits précédents cherchaient des défauts de correction. Celui-ci
-cherche des défauts de coût : ce qui grandit sans borne, ce qui se refait
-inutilement, ce qui cesse d'être utilisable quand le cahier se remplit.
+The two previous audits were looking for correctness defects. This one looks
+for cost defects: what grows without bound, what gets redone for nothing, what
+stops being usable once the task fills up.
 
-Tout ce qui suit est mesuré. Le banc est dans le dépôt :
+Everything that follows is measured. The bench is in the repository:
 
 ```bash
 npm run bench
 ```
 
-**Ce que vaut cette mesure.** Le banc tourne sous jsdom et fake-indexeddb,
-comme la suite de tests. Les durées de rendu y sont donc pessimistes :
-l'analyseur HTML de jsdom est bien plus lent que celui d'un navigateur, et il
-ne fait ni style ni mise en page. Se transportent tels quels : les tailles de
-HTML, les nombres de nœuds, les comptes de tokens, et les durées des fonctions
-pures. Elles tournent sur le même V8 ici et dans Chrome.
+**What this measurement is worth.** The bench runs under jsdom and
+fake-indexeddb, like the test suite. Render times there are therefore
+pessimistic: jsdom's HTML parser is far slower than a browser's, and it does
+neither styling nor layout. What carries over as is: HTML sizes, node counts,
+token counts, and the durations of pure functions. They run on the same V8 here
+and in Chrome.
 
-La colonne « avant » n'est pas un souvenir : elle vient du même banc relancé
-sur `src` restauré à `28cf6cc`, le commit qui précède ces correctifs.
+The "before" column is not a memory: it comes from the same bench re-run on
+`src` restored to `28cf6cc`, the commit that precedes these fixes.
 
 ---
 
-## 1. `resume_task` dépassait son propre budget d'un facteur 94
+## 1. `resume_task` was blowing its own budget by a factor of 94
 
-**Gravité : élevée.** C'est la promesse centrale du produit : une restitution
-bornée, qui tient dans le contexte d'un agent. `TOKEN_BUDGET` vaut 400.
+**Severity: high.** This is the product's central promise: a bounded recap that
+fits in an agent's context. `TOKEN_BUDGET` is 400.
 
-| Règles actives | Avant         | Après |
-| -------------- | ------------- | ----- |
-| 0              | 390           | 390   |
-| 10             | 487           | 487   |
-| 100            | 2 174         | 553   |
-| 1 000          | 19 050        | 554   |
-| 2 000          | 37 800 tokens | 554   |
+| Active rules | Before        | After |
+| ------------ | ------------- | ----- |
+| 0            | 390           | 390   |
+| 10           | 487           | 487   |
+| 100          | 2,174         | 553   |
+| 1,000        | 19,050        | 554   |
+| 2,000        | 37,800 tokens | 554   |
 
-Les approches écartées faisaient pire : 45 247 tokens à 2000.
+Discarded approaches did worse: 45,247 tokens at 2000.
 
-L'échelle de dégradation ne pouvait rien y faire. Elle coupait les étapes, les
-décisions, les propositions, les réponses, les autorisations, les
-contestations, mais jamais les obligations, par choix délibéré : une règle
-engage, on ne la retire pas.
+The degradation ladder could do nothing about it. It cut steps, decisions,
+proposals, answers, authorizations, disputes, but never obligations, by
+deliberate choice: a rule binds, you do not take it away.
 
-**Pourquoi ce choix était le mauvais.** Une restitution de 37 800 tokens n'est
-pas lue : elle est tronquée par la fenêtre de contexte du modèle, en silence et
-hors de notre portée. Le choix n'était donc pas « tout garder ou couper », mais
-« couper ici en le disant, ou laisser couper ailleurs sans que personne le
-sache ». Le produit entier plaide pour la première option.
+**Why that choice was the wrong one.** A 37,800-token recap does not get read:
+it is truncated by the model's context window, silently and out of our reach.
+The choice was therefore not "keep everything or cut", but "cut here and say so,
+or let it be cut elsewhere without anyone knowing". The whole product argues for
+the first option.
 
-**Correctif.** Les règles et les approches écartées cèdent en dernier,
-jamais sous un plancher de douze, et jamais en silence :
+**Fix.** Rules and discarded approaches give way last, never below a floor of
+twelve, and never silently:
 
 ```
 CONSTRAINTS: binding (2000)
@@ -59,388 +58,379 @@ CONSTRAINTS: binding (2000)
   Read them with read_task_detail on constraints before you act.
 ```
 
-La coupe se fait par le début, et non par la fin : une fenêtre glissante
-ferait disparaître une règle qu'un agent avait déjà lue, sans que rien n'ait
-changé pour elle.
+The cut is made from the start, not from the end: a sliding window would make a
+rule an agent had already read disappear, without anything having changed about
+it.
 
-À dix règles, 487 tokens : le plancher passe avant le budget, et c'est assumé.
-Le budget est une cible, pas une garantie, et il l'était déjà avant.
+At ten rules, 487 tokens: the floor comes before the budget, and that is
+deliberate. The budget is a target, not a guarantee, and it already was before.
 
 ---
 
-## 2. Quatre listes du tableau de bord ne s'arrêtaient jamais
+## 2. Four dashboard lists never stopped
 
-**Gravité : élevée.** Les étapes étaient bornées depuis longtemps
-(`MAX_ROWS = 8`). Les règles, les approches écartées, les questions et les
-autorisations ne l'étaient pas. Or la page se redessine entièrement à
-chaque frappe dans la recherche.
+**Severity: high.** Steps had been bounded for a long time (`MAX_ROWS = 8`).
+Rules, discarded approaches, questions and authorizations were not. And the page
+redraws entirely on every keystroke in the search box.
 
-À 2000 entrées, un aller-retour de rendu :
+At 2000 entries, one render round trip:
 
-| Liste           | HTML avant | Nœuds avant | Durée avant | HTML après | Nœuds après | Durée après |
-| --------------- | ---------- | ----------- | ----------- | ---------- | ----------- | ----------- |
-| Règles          | 1,45 Mo    | 10 354      | 559 ms      | 55 ko      | 416         | 25 ms       |
-| Écartées        | 1,15 Mo    | 12 347      | 560 ms      | 54 ko      | 420         | 31 ms       |
-| Questions       | 1,04 Mo    | 14 376      | 581 ms      | 54 ko      | 433         | 1,3 ms      |
-| Autorisations   | 1,30 Mo    | 16 377      | 732 ms      | 55 ko      | 442         | 1,7 ms      |
-| Étapes (témoin) | 59 ko      | 448         | 19 ms       | 59 ko      | 448         | 4,1 ms      |
+| List            | HTML before | Nodes before | Time before | HTML after | Nodes after | Time after |
+| --------------- | ----------- | ------------ | ----------- | ---------- | ----------- | ---------- |
+| Rules           | 1.45 MB     | 10,354       | 559 ms      | 55 kB      | 416         | 25 ms      |
+| Discarded       | 1.15 MB     | 12,347       | 560 ms      | 54 kB      | 420         | 31 ms      |
+| Questions       | 1.04 MB     | 14,376       | 581 ms      | 54 kB      | 433         | 1.3 ms     |
+| Authorizations  | 1.30 MB     | 16,377       | 732 ms      | 55 kB      | 442         | 1.7 ms     |
+| Steps (control) | 59 kB       | 448          | 19 ms       | 59 kB      | 448         | 4.1 ms     |
 
-Les nœuds sont désormais plats : 416 contre 404 à dix règles.
+Node counts are flat now: 416 against 404 at ten rules.
 
-**Correctif.** Un seul rendu borné, partagé par les quatre listes, avec un
-bouton qui ouvre la liste entière. Et, pour les règles, une phrase quand ce qui
-est hors de vue engage encore :
+**Fix.** A single bounded renderer, shared by the four lists, with a button that
+opens the whole list. And, for rules, a sentence when what is out of view still
+binds:
 
 > 28 rules still in force are not shown. Open the full list before you rely on
 > this one.
 
-**Deux autres, trouvées en relisant la même faute.** Le sélecteur de cahiers
-affichait une ligne par cahier du poste, et chaque ligne fait balayer les
-étapes de son cahier par `needsYou` pour sa pastille, si bien que la page
-coûtait le poste entier et pas seulement le cahier ouvert. La liste des
-identifiants scellés n'était pas bornée non plus. Les deux passent par le même
-rendu borné. Le test de garde a été élargi à cette dimension : il faisait varier
-le contenu d'un cahier, pas le nombre de cahiers, et n'aurait rien vu.
+**Two more, found by rereading the same mistake.** The task picker displayed one
+row per task on the machine, and each row has `needsYou` sweep the steps of its
+task for its badge, so the page cost the whole machine and not only the open
+task. The list of sealed identifiers was not bounded either. Both go through the
+same bounded renderer. The guard test was widened along that dimension: it
+varied the contents of one task, not the number of tasks, and would have seen
+nothing.
 
-**Un ordre qu'on a essayé puis retiré.** Faire passer les règles en vigueur
-devant les règles levées garantissait qu'une troncature ne cache jamais une
-obligation. Mais lever une règle la faisait alors sauter au bas de la liste,
-sous le curseur de celui qui venait de cliquer. L'ordre de pose est conservé,
-et c'est le compte des obligations hors cadre qui porte la garantie.
-
----
-
-## 3. La recherche repliait les accents 60 000 fois par frappe
-
-`searchTask` relit tout le cahier à chaque caractère tapé. Le repli (`toLower`,
-`normalize('NFD')`, `\p{Diacritic}`) s'appliquait à chaque champ et à la
-requête, à chaque comparaison.
-
-| Sur 20 000 étapes    | Avant    | Après   |
-| -------------------- | -------- | ------- |
-| Mot absent du cahier | 21,50 ms | 5,05 ms |
-| Mot très fréquent    | 21,40 ms | 9,37 ms |
-
-Deux changements : la requête est repliée une fois, et une chaîne ASCII
-(une sortie de commande, un diff, une URL, une empreinte) saute le repli, qui
-n'aurait rien à y faire.
-
-**Ce que ça coûte.** Sur un texte entièrement accentué, le test ASCII échoue à
-chaque fois et l'on paie 13 % de plus. C'est le sens de l'échange, et il penche
-du bon côté pour ce que ce produit contient.
-
-Le mot fréquent reste plus cher que le mot absent : il construit des milliers
-d'objets `Match`. On ne s'arrête pas au douzième volontairement : l'en-tête
-annonce `12 shown of 4211 found`, et ce total est une information utile
-(« resserrez la requête »), pas un détail d'implémentation.
+**An ordering we tried and then pulled.** Putting rules in force ahead of lifted
+rules guaranteed that a truncation never hides an obligation. But lifting a rule
+then made it jump to the bottom of the list, under the cursor of the person who
+had just clicked. Insertion order is kept, and it is the count of out-of-frame
+obligations that carries the guarantee.
 
 ---
 
-## 4. La garde anti-répétition repliait tout, à chaque comparaison
+## 3. Search folded accents 60,000 times per keystroke
 
-Ajouter une règle demande « est-ce déjà posé, au mot près ? », donc un balayage
-de tout ce qui est posé. Chaque comparaison repliait les deux côtés.
+`searchTask` rereads the whole task on every character typed. The folding
+(`toLower`, `normalize('NFD')`, `\p{Diacritic}`) was applied to every field and
+to the query, on every comparison.
 
-| Règles déjà posées | Avant    | Après    |
-| ------------------ | -------- | -------- |
-| 500                | 0,238 ms | 0,080 ms |
-| 1 000              | 0,704 ms | 0,224 ms |
-| 2 000              | 1,636 ms | 0,541 ms |
+| Over 20,000 steps         | Before   | After   |
+| ------------------------- | -------- | ------- |
+| Word absent from the task | 21.50 ms | 5.05 ms |
+| Very frequent word        | 21.40 ms | 9.37 ms |
 
-Le balayage reste linéaire (c'est la question posée), mais la nouveauté n'est
-repliée qu'une fois, et le repli profite de la voie rapide ASCII.
+Two changes: the query is folded once, and an ASCII string (a command output, a
+diff, a URL, a hash) skips the folding, which would have nothing to do there.
 
-La recherche et la garde partagent désormais une seule définition de « le
-même mot, à la casse et aux accents près ». Deux endroits qui répondaient
-différemment à cette question finissaient par se contredire devant
-l'utilisateur.
+**What it costs.** On fully accented text, the ASCII test fails every time and
+we pay 13% more. That is the direction of the trade, and it leans the right way
+for what this product holds.
 
----
-
-## 5. Trois rendus sur dix ne changeaient rien à l'écran
-
-Le rendu est réveillé par le magasin, par les appels d'outil et par les
-enregistrements d'outils. Beaucoup de ces réveils ne changent rien.
-
-Compté sur la suite d'interface : 30 rendus sur 100 produisaient un HTML
-identique au précédent, et payaient quand même la reconstruction du DOM, le
-rattachement de tous les écouteurs et la restitution du focus.
-
-La page compare désormais le HTML produit à celui qui est affiché. Le piège
-était de se souvenir du HTML sans remarquer que la racine, elle, avait été
-remplacée : un test tient ce cas, parce que la conséquence est une page blanche.
+The frequent word stays more expensive than the absent one: it builds thousands
+of `Match` objects. We deliberately do not stop at the twelfth: the header
+announces `12 shown of 4211 found`, and that total is useful information
+("narrow the query"), not an implementation detail.
 
 ---
 
-## 6. Le contrôle de concurrence relisait tout le cahier pour un entier
+## 4. The duplicate guard folded everything, on every comparison
 
-**Gravité : moyenne, mais c'est le cœur.** Deux pages ouvertes ne doivent pas
-pouvoir s'écraser : avant d'écrire, on vérifie que le cahier est bien à la
-version sur laquelle on s'est basé. La vérification portait sur un entier, et
-l'obtenait en rapatriant le cahier entier.
+Adding a rule asks "is this already set, word for word?", so a sweep of
+everything already set. Each comparison folded both sides.
 
-Mesuré dans Chrome, sur un cahier de 798 ko :
+| Rules already set | Before   | After    |
+| ----------------- | -------- | -------- |
+| 500               | 0.238 ms | 0.080 ms |
+| 1,000             | 0.704 ms | 0.224 ms |
+| 2,000             | 1.636 ms | 0.541 ms |
 
-| Opération                                  | Durée  |
-| ------------------------------------------ | ------ |
-| Relire l'enregistrement complet (l'ancien) | 2,0 ms |
-| Interroger une clé d'index                 | 0,1 ms |
+The sweep stays linear (that is the question being asked), but the new item is
+folded only once, and the folding benefits from the ASCII fast path.
 
-C'était plus de la moitié du coût d'une écriture. Sous jsdom, `saveTask` à
-4000 étapes : 8,31 ms avec contrôle, 3,99 ms sans.
-
-**Correctif.** Un index composé sur `['id', 'version']` répond « ce cahier
-est-il à CETTE version ? » sans rapatrier son contenu. Il est tenu par
-IndexedDB à partir des champs du cahier lui-même : contrairement à un compteur
-recopié ailleurs, rien ne peut dériver de ce qu'il garde. Le chemin du
-conflit relit l'enregistrement (il faut bien dire sur quelle version se
-rebaser), et lui seul paie.
-
-`saveTask` à 4000 étapes : 8,31 ms → 3,95 ms, soit ce que coûte une
-écriture sans aucun contrôle.
-
-`DB_VERSION` passe de 2 à 3. Un test ouvre la base à l'ancienne version
-avant que quoi que ce soit d'autre n'y touche, y écrit un cahier, puis vérifie
-que la migration construit l'index par-dessus : c'est la migration qui ferait
-perdre les données de vraies personnes. Vérifié dans Chrome également : un
-cahier de 798 ko a survécu à la montée, et les deux index sont là.
+Search and the guard now share a single definition of "the same word, up to case
+and accents". Two places that answered that question differently ended up
+contradicting each other in front of the user.
 
 ---
 
-## 7. Le sélecteur gardait tout le poste en mémoire
+## 5. Three renders in ten changed nothing on screen
 
-Pour dessiner une liste déroulante repliée, la page gardait chaque cahier du
-poste en entier, en permanence.
+Rendering is woken by the store, by tool calls, and by tool registrations. Many
+of those wake-ups change nothing.
 
-| 20 cahiers × 2000 étapes | Retenu  |
-| ------------------------ | ------- |
-| Cahiers entiers (avant)  | 15,9 Mo |
-| Fiches (après)           | 6,3 ko  |
+Counted over the interface suite: 30 renders out of 100 produced HTML identical
+to the previous one, and still paid for rebuilding the DOM, reattaching every
+listener, and restoring focus.
 
-La fiche porte ce que le sélecteur affiche, plus la pastille « needs you »
-calculée avant que le cahier ne soit relâché. Elle est calculée à partir du
-cahier normalisé, jamais de l'enregistrement brut : une seconde lecture
-défensive, plus rapide mais distincte, finirait par répondre autre chose que la
-première.
-
-Le coût de lecture ne bouge pas : c'est la mémoire retenue qui est
-bornée. La mesure est la taille sérialisée de ce qui reste accroché, un
-mandataire déterministe, là où le tas d'un worker est trop bruyant pour
-trancher.
+The page now compares the HTML it produces to the one on display. The trap was
+remembering the HTML without noticing that the root itself had been replaced: a
+test holds that case, because the consequence is a blank page.
 
 ---
 
-## 8. Le démarrage rapatriait tous les cahiers quand il n'en cherchait qu'un
+## 6. Concurrency control reread the whole task for one integer
 
-Sans `lastTaskId` (après un import, ou sur une base neuve), le démarrage lisait
-tous les cahiers du poste pour n'en garder qu'un. L'index par date
-d'écriture est déjà trié : on n'a besoin que de ses clés, et l'on ne descend au
-suivant que si le plus récent est illisible, exactement comme avant.
+**Severity: medium, but this is the core.** Two open pages must not be able to
+overwrite each other: before writing, we check that the task is indeed at the
+version we based ourselves on. The check was about one integer, and obtained it
+by pulling back the whole task.
 
-| 30 cahiers × 500 étapes     | Avant   | Après  |
-| --------------------------- | ------- | ------ |
-| Démarrage sans `lastTaskId` | 22,0 ms | 0,8 ms |
+Measured in Chrome, on a 798 kB task:
 
-Le démarrage ne dépend plus du nombre de cahiers sur le poste.
+| Operation                                | Time   |
+| ---------------------------------------- | ------ |
+| Reread the complete record (the old way) | 2.0 ms |
+| Query one index key                      | 0.1 ms |
+
+That was more than half the cost of a write. Under jsdom, `saveTask` at 4000
+steps: 8.31 ms with the check, 3.99 ms without.
+
+**Fix.** A compound index on `['id', 'version']` answers "is this task at THIS
+version?" without pulling back its contents. It is maintained by IndexedDB from
+the task's own fields: unlike a counter copied somewhere else, nothing can drift
+from what it holds. The conflict path rereads the record (we do have to say
+which version to rebase on), and it alone pays.
+
+`saveTask` at 4000 steps: 8.31 ms → 3.95 ms, which is what a write with no check
+at all costs.
+
+`DB_VERSION` goes from 2 to 3. A test opens the database at the old version
+before anything else touches it, writes a task into it, then checks that the
+migration builds the index on top: it is the migration that would lose real
+people's data. Verified in Chrome as well: a 798 kB task survived the upgrade,
+and both indexes are there.
 
 ---
 
-## 9. Ce que lit l'agent était recalculé à chaque frappe
+## 7. The picker kept the whole machine in memory
 
-Le panneau technique montre exactement ce que `resume_task` rendrait. Ce texte
-coûte environ 5 ms sur un cahier de 20 000 étapes, et il était reconstruit à
-chaque rendu, donc à chaque caractère tapé dans la recherche, pour un panneau
-replié la plupart du temps.
+To draw a collapsed dropdown, the page kept every task on the machine whole, at
+all times.
 
-Le cahier est immuable et remplacé en entier à chaque écriture : comparer les
-identités suffit. La minute entre dans la clé parce que la restitution porte une
-ligne qui dépend de l'heure (« LAST WRITE … ») ; sans elle, l'aperçu finirait
-par mentir sur l'âge du cahier.
+| 20 tasks × 2000 steps | Retained |
+| --------------------- | -------- |
+| Whole tasks (before)  | 15.9 MB  |
+| Summaries (after)     | 6.3 kB   |
 
-Rendu interactif sur 20 000 étapes (le cahier ne bouge pas, l'écran si) :
-27,7 ms → 25,6 ms. Modeste, et c'est le chiffre réel, pas les 5 ms qu'on
-pouvait espérer.
+The summary carries what the picker displays, plus the "needs you" badge
+computed before the task is released. It is computed from the normalized task,
+never from the raw record: a second defensive reader, faster but distinct, would
+end up answering something other than the first.
 
-Sur un cahier chargé en règles, c'est tout autre chose, et je ne l'avais pas
-vu en écrivant le paragraphe ci-dessus. La restitution passe alors par l'échelle
-de dégradation, qui la reconstruit une demi-douzaine de fois pour tenir dans le
-budget, et cela recommençait à chaque rendu de la page :
+Read cost does not move: it is the retained memory that is bounded. The
+measurement is the serialized size of what stays attached, a deterministic
+proxy, where a worker's heap is too noisy to settle anything.
 
-| Rendu au repos, 2000 entrées | Avant   | Après  |
+---
+
+## 8. Startup pulled back every task when it was looking for only one
+
+Without `lastTaskId` (after an import, or on a fresh database), startup read
+every task on the machine to keep only one. The write-date index is already
+sorted: we only need its keys, and we only go down to the next one if the most
+recent is unreadable, exactly as before.
+
+| 30 tasks × 500 steps         | Before  | After  |
 | ---------------------------- | ------- | ------ |
-| Règles                       | 26,3 ms | 0,9 ms |
-| Approches écartées           | 30,9 ms | 0,7 ms |
+| Startup without `lastTaskId` | 22.0 ms | 0.8 ms |
 
-Le correctif de la section 1 avait donc déplacé le coût plutôt que de le
-supprimer : la restitution était bornée, mais on la payait à chaque battement de
-la page. Les deux ensemble tiennent.
-
-Dans la même veine : l'historique décrivait ses 200 entrées pour en montrer
-douze.
+Startup no longer depends on the number of tasks on the machine.
 
 ---
 
-## Mesuré, et laissé tel quel
+## 9. What the agent reads was recomputed on every keystroke
 
-### L'écriture réécrit le document entier
+The technical panel shows exactly what `resume_task` would return. That text
+costs about 5 ms on a 20,000-step task, and it was rebuilt on every render, so
+on every character typed into the search box, for a panel that is collapsed most
+of the time.
 
-Chaque mutation sérialise et réécrit tout le cahier. Le coût suit donc sa
-taille :
+The task is immutable and replaced whole on every write: comparing identities is
+enough. The minute goes into the key because the recap carries a line that
+depends on the time ("LAST WRITE …"); without it, the preview would end up lying
+about the age of the task.
 
-| Cahier au départ                 | Par écriture | Débit       |
-| -------------------------------- | ------------ | ----------- |
-| Vide                             | 0,10 ms      | ~10 000 / s |
-| 2000 étapes dont 667 avec preuve | 13 ms        | ~80 / s     |
+Interactive render over 20,000 steps (the task does not move, the screen does):
+27.7 ms → 25.6 ms. Modest, and that is the real figure, not the 5 ms one could
+have hoped for.
 
-Inchangé par ce travail. Le correctif structurel (découper le document en
-plusieurs enregistrements) demanderait une montée de schéma et une migration,
-pour un scénario où quatre-vingts écritures par seconde restent très au-delà de
-ce qu'un agent produit. Le coût marginal d'une étape, lui, est plat : 0,008 ms
-à mille étapes comme à quatre mille.
+On a task loaded with rules, it is another matter entirely, and I had not seen
+it when writing the paragraph above. The recap then goes through the degradation
+ladder, which rebuilds it half a dozen times to fit inside the budget, and that
+started over on every render of the page:
 
-### Le sélecteur relit tous les cahiers en entier
+| Idle render, 2000 entries | Before  | After  |
+| ------------------------- | ------- | ------ |
+| Rules                     | 26.3 ms | 0.9 ms |
+| Discarded approaches      | 30.9 ms | 0.7 ms |
 
-`listTasks` normalise chaque cahier du poste pour afficher une liste déroulante
-repliée : 20 cahiers de 5000 étapes coûtent 153 ms. Rester à un seul chemin de
-normalisation vaut mieux qu'un second, plus rapide et qui dériverait ; et
-20 cahiers de 200 étapes (la taille réelle) coûtent 5 ms.
+The section 1 fix had therefore moved the cost rather than removed it: the recap
+was bounded, but we paid for it on every beat of the page. The two together
+hold.
 
-### Le rendu par sections
-
-L'idée : ne remplacer que les cartes qui ont changé, au lieu de reconstruire la
-page. Mesuré dans Chrome avant de s'y lancer : réécrire les 58 ko de HTML
-d'une page complète coûte 0,7 ms. jsdom donnait 15 ms pour le même travail,
-vingt fois trop.
-
-Le gain plafonnait donc sous la milliseconde, contre une refonte des 2900 lignes
-du tableau de bord et le passage obligé par la délégation d'événements. Non
-fait. Un rendu qui change vraiment coûte 5,8 ms dans Chrome sur un cahier de
-798 ko, et une frappe dans la recherche 6,9 ms, sous la barre d'une image.
-
-C'est la mesure qui a tranché, et elle a tranché contre.
-
-### Le paquet
-
-173 ko bruts, 51 ko gzip pour le JavaScript, 3 ko pour le CSS, zéro
-dépendance de production hors `idb`. Découper en morceaux chargés à la demande
-gagnerait quelques kilo-octets et ajouterait des modes de panne à un produit qui
-doit fonctionner hors ligne. Non fait, délibérément.
+In the same vein: history described its 200 entries in order to show twelve.
 
 ---
 
-## Ce que ces correctifs coûtent
+## Measured, and left as is
 
-Une optimisation qui ne coûte rien n'a en général rien changé.
+### A write rewrites the whole document
 
-| Poste                                       | Avant      | Après               |
-| ------------------------------------------- | ---------- | ------------------- |
-| `renderTaskState`, 20 000 étapes            | 3,73 ms    | 4,24 ms             |
-| Recherche sur un texte entièrement accentué | sans objet | +13 %               |
-| Une entrée d'index de plus par écriture     | sans objet | tenue par IndexedDB |
+Every mutation serializes and rewrites the whole task. The cost therefore
+follows its size:
 
-Le premier vient de l'échelle de dégradation, qui compte un barreau de plus :
-un rendu complet supplémentaire quand le budget est dépassé. Un cahier ordinaire
-n'y arrive jamais.
+| Starting task                         | Per write | Throughput  |
+| ------------------------------------- | --------- | ----------- |
+| Empty                                 | 0.10 ms   | ~10,000 / s |
+| 2000 steps, 667 of them with evidence | 13 ms     | ~80 / s     |
 
----
+Unchanged by this work. The structural fix (splitting the document across
+several records) would require a schema bump and a migration, for a scenario
+where eighty writes per second stay far beyond what an agent produces. The
+marginal cost of one step, for its part, is flat: 0.008 ms at a thousand steps
+as at four thousand.
 
-## Tests de mutation
+### The picker rereads every task in full
 
-Quarante garanties cassées une par une ; la suite doit rougir à chaque fois.
+`listTasks` normalizes every task on the machine to display a collapsed
+dropdown: 20 tasks of 5000 steps cost 153 ms. Staying with a single
+normalization path is worth more than a second one, faster and bound to drift;
+and 20 tasks of 200 steps (the real size) cost 5 ms.
 
-| Garantie cassée                                          | Suite |
-| -------------------------------------------------------- | ----- |
-| Les règles ne sont plus bornées dans la restitution      | rouge |
-| L'avertissement « toujours engageant » disparaît         | rouge |
-| Les rejets ne sont plus bornés                           | rouge |
-| Le compte des rejets cachés est tu                       | rouge |
-| Le plancher d'obligations tombe à zéro                   | rouge |
-| La coupe se fait par la fin plutôt que par le début      | rouge |
-| `capped` ignore la limite                                | rouge |
-| Le bouton « Show all » disparaît                         | rouge |
-| L'avertissement sur les obligations cachées disparaît    | rouge |
-| Le compte d'obligations cachées inclut les règles levées | rouge |
-| Les étapes ne sont plus bornées                          | rouge |
-| Les questions ne sont plus bornées                       | rouge |
-| Le sélecteur de cahiers redevient sans borne             | rouge |
-| Le bouton du sélecteur disparaît                         | rouge |
-| Le saut de rendu est retiré                              | rouge |
-| On saute le rendu même quand le HTML change              | rouge |
-| Le HTML peint n'est pas oublié au montage                | rouge |
-| Le repli des accents est sauté toujours                  | rouge |
-| La garde ne replie plus rien                             | rouge |
-| La garde ne compare plus la nouveauté                    | rouge |
-| La voie rapide ASCII avale tout                          | rouge |
-| La requête n'est plus repliée                            | rouge |
-| L'élagage du journal est tu à l'appelant                 | rouge |
-| Le bouton d'histoire est caché quand tout est élagué     | rouge |
-| Le contrôle de version ne refuse plus rien               | rouge |
-| Un cahier absent est pris pour un conflit                | rouge |
-| L'index est interrogé sur la mauvaise version            | rouge |
-| L'index n'est pas créé à la migration                    | rouge |
-| La version de base n'est pas montée                      | rouge |
-| La fiche garde le cahier entier                          | rouge |
-| La pastille est calculée trop tard, donc vide            | rouge |
-| La mémorisation ignore le cahier                         | rouge |
-| La mémorisation ignore les identifiants                  | rouge |
-| L'historique décrit encore tout pour montrer douze       | rouge |
-| Le repli de démarrage remonte l'index à l'envers         | rouge |
-| Le repli de démarrage abandonne au premier illisible     | rouge |
-| Le compteur des filtres de recherche compte faux         | rouge |
-| L'ordre des natures de résultat vient d'ailleurs         | rouge |
-| « All » ne compte plus tout                              | rouge |
-| `listTasks` n'écarte plus un cahier illisible            | rouge |
+### Section-by-section rendering
 
-Trois d'entre elles ont survécu au premier essai, et c'est exactement ce
-qu'on leur demande : les comptes portés par les filtres de recherche, leur
-ordre, et le filet qui écarte un cahier illisible de la liste n'étaient tenus
-par rien. Quatre épreuves de plus, écrites après coup.
+The idea: replace only the cards that changed, instead of rebuilding the page.
+Measured in Chrome before starting: rewriting the 58 kB of HTML of a complete
+page costs 0.7 ms. jsdom gave 15 ms for the same work, twenty times too much.
 
-Une quatrième « survivante » était une erreur de sonde : mon script mutait le
-mauvais `catch` du même fichier. Consignée, pour qu'elle ne passe pas plus tard
-pour un défaut.
+The gain was therefore capped below the millisecond, against a rewrite of the
+dashboard's 2900 lines and a mandatory move to event delegation. Not done. A
+render that really changes costs 5.8 ms in Chrome on a 798 kB task, and a
+keystroke in the search box 6.9 ms, under the bar of one frame.
+
+It is the measurement that settled it, and it settled against.
+
+### The bundle
+
+173 kB raw, 51 kB gzipped for the JavaScript, 3 kB for the CSS, zero production
+dependency other than `idb`. Splitting it into chunks loaded on demand would win
+a few kilobytes and would add failure modes to a product that has to work
+offline. Not done, deliberately.
 
 ---
 
-## Vérification en navigateur
+## What these fixes cost
 
-Chrome, `npm run dev`, un cahier de 40 règles et 30 approches écartées écrit
-directement dans IndexedDB puis rechargé.
+An optimization that costs nothing has generally changed nothing.
 
-**Observé.** 12 lignes de règles sur 40, la phrase « 28 rules still in force are
-not shown », le bouton « Show all 40 rules » ; 12 lignes d'approches écartées
-sur 30 avec son propre bouton ; 360 nœuds dans `#app`. Après clic : 40 lignes,
-l'avertissement disparu, le bouton devenu « Show fewer », le focus resté sur
-le bouton, 499 nœuds. L'avertissement et le bouton ont des styles calculés
-réels (`rgb(230, 230, 234)`, 15 px, un rectangle de 152 × 41 px) et ne sont
-donc ni invisibles ni sans mise en forme.
+| Item                            | Before         | After                   |
+| ------------------------------- | -------------- | ----------------------- |
+| `renderTaskState`, 20,000 steps | 3.73 ms        | 4.24 ms                 |
+| Search over fully accented text | not applicable | +13%                    |
+| One more index entry per write  | not applicable | maintained by IndexedDB |
 
-**Pas de capture d'écran.** Le panneau de capture de cet environnement a rendu
-des images vides alors que le DOM, lui, répondait correctement. Je le note
-plutôt que de présenter une image qui ne montre rien.
-
-**Second tour, après l'index et la fiche.** La base est passée de la version 2
-à la 3 sur place : un cahier de 798 ko a survécu à la montée, les deux index
-sont présents, et l'index composé rend bien `perf01` pour la bonne version et
-rien pour une mauvaise. Une règle ajoutée depuis l'écran a été écrite en 20,5 ms
-de bout en bout. `lastTaskId` effacé, la page a retrouvé son cahier seule. Une
-frappe dans la recherche, image comprise : 6,9 ms sur ce même cahier.
-
-**Une anomalie non reproduite.** Au premier essai, la page est restée sur
-« Loading… » après l'écriture directe dans IndexedDB. Après vidage de la base et
-réécriture du même cahier, elle s'est chargée normalement, et une connexion
-IndexedDB tenue ouverte en parallèle ne reproduit pas le blocage. Aucun
-mécanisme établi ; consigné comme non expliqué plutôt que classé sans suite.
+The first comes from the degradation ladder, which counts one more rung: one
+extra full render when the budget is exceeded. An ordinary task never gets
+there.
 
 ---
 
-## Ce que ce travail ne couvre pas
+## Mutation tests
 
-- **Aucune mesure sur un vrai navigateur.** Les durées viennent de jsdom, où le
-  rendu est plus lent et le style absent. Les tailles, les nœuds et les tokens,
-  eux, ne dépendent pas du moteur.
-- **Aucune mesure sur mobile**, ni sur un poste lent.
-- **Aucune mesure de mémoire**. Le cahier est tenu en entier en mémoire ; rien
-  n'a été mesuré de ce côté.
-- **Aucune borne sur ce qu'un cahier reçu peut porter** au-delà de la
-  décompression, plafonnée à 2 Mo. Point déjà signalé au second audit.
+Forty guarantees broken one by one; the suite must go red every time.
+
+| Guarantee broken                                          | Suite |
+| --------------------------------------------------------- | ----- |
+| Rules are no longer bounded in the recap                  | red   |
+| The "still binding" warning disappears                    | red   |
+| Rejections are no longer bounded                          | red   |
+| The count of hidden rejections is silenced                | red   |
+| The obligation floor drops to zero                        | red   |
+| The cut is made from the end rather than the start        | red   |
+| `capped` ignores the limit                                | red   |
+| The "Show all" button disappears                          | red   |
+| The warning about hidden obligations disappears           | red   |
+| The hidden-obligation count includes lifted rules         | red   |
+| Steps are no longer bounded                               | red   |
+| Questions are no longer bounded                           | red   |
+| The task picker becomes unbounded again                   | red   |
+| The picker's button disappears                            | red   |
+| The render skip is removed                                | red   |
+| The render is skipped even when the HTML changes          | red   |
+| The painted HTML is not forgotten on mount                | red   |
+| Accent folding is always skipped                          | red   |
+| The guard folds nothing any more                          | red   |
+| The guard no longer compares the new item                 | red   |
+| The ASCII fast path swallows everything                   | red   |
+| The query is no longer folded                             | red   |
+| Log pruning is hidden from the caller                     | red   |
+| The history button is hidden when everything is pruned    | red   |
+| The version check refuses nothing any more                | red   |
+| A missing task is taken for a conflict                    | red   |
+| The index is queried on the wrong version                 | red   |
+| The index is not created at migration                     | red   |
+| The database version is not bumped                        | red   |
+| The summary keeps the whole task                          | red   |
+| The badge is computed too late, so empty                  | red   |
+| Memoization ignores the task                              | red   |
+| Memoization ignores the identifiers                       | red   |
+| History still describes everything to show twelve         | red   |
+| The startup fallback walks the index backwards            | red   |
+| The startup fallback gives up at the first unreadable one | red   |
+| The search filter counter counts wrong                    | red   |
+| The ordering of result kinds comes from elsewhere         | red   |
+| "All" no longer counts everything                         | red   |
+| `listTasks` no longer discards an unreadable task         | red   |
+
+Three of them survived the first attempt, and that is exactly what they are
+asked to do: the counts carried by the search filters, their order, and the net
+that keeps an unreadable task out of the list were held by nothing. Four more
+tests, written afterwards.
+
+A fourth "survivor" was a probe error: my script was mutating the wrong `catch`
+in the same file. Recorded, so that it does not later pass for a defect.
+
+---
+
+## Browser verification
+
+Chrome, `npm run dev`, a task of 40 rules and 30 discarded approaches written
+directly into IndexedDB then reloaded.
+
+**Observed.** 12 rule rows out of 40, the sentence "28 rules still in force are
+not shown", the button "Show all 40 rules"; 12 discarded-approach rows out of 30
+with its own button; 360 nodes in `#app`. After the click: 40 rows, the warning
+gone, the button turned into "Show fewer", focus still on the button, 499 nodes.
+The warning and the button have real computed styles (`rgb(230, 230, 234)`,
+15 px, a 152 × 41 px rectangle) and are therefore neither invisible nor
+unstyled.
+
+**No screenshot.** This environment's capture panel returned empty images while
+the DOM itself was answering correctly. I note it rather than present an image
+that shows nothing.
+
+**Second pass, after the index and the summary.** The database went from version
+2 to 3 in place: a 798 kB task survived the upgrade, both indexes are present,
+and the compound index does return `perf01` for the right version and nothing
+for a wrong one. A rule added from the screen was written in 20.5 ms end to end.
+With `lastTaskId` cleared, the page found its task again on its own. One
+keystroke in the search box, frame included: 6.9 ms on that same task.
+
+**An anomaly not reproduced.** On the first attempt, the page stayed on
+"Loading…" after the direct write into IndexedDB. After clearing the database
+and rewriting the same task, it loaded normally, and an IndexedDB connection
+held open in parallel does not reproduce the hang. No mechanism established;
+recorded as unexplained rather than closed without action.
+
+---
+
+## What this work does not cover
+
+- **No measurement on a real browser.** The timings come from jsdom, where
+  rendering is slower and styling absent. Sizes, nodes and tokens, for their
+  part, do not depend on the engine.
+- **No measurement on mobile**, nor on a slow machine.
+- **No memory measurement**. The task is held whole in memory; nothing has been
+  measured on that side.
+- **No bound on what a received task can carry** beyond decompression, capped at
+  2 MB. A point already flagged in the second audit.

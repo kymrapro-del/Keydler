@@ -24,8 +24,8 @@ beforeEach(async () => {
   await clearDatabase()
 })
 
-describe('conflit entre pages', () => {
-  it('refuse d’écraser une version écrite par une autre page', async () => {
+describe('conflict between pages', () => {
+  it('refuses to overwrite a version written by another page', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
 
     await autreOnglet(task.id, (s) =>
@@ -40,7 +40,7 @@ describe('conflit entre pages', () => {
     expect(disque?.constraints.map((c) => c.rule)).toEqual(['posée ailleurs'])
   })
 
-  it('se resynchronise pour que l’écran cesse de mentir', async () => {
+  it('resynchronises so that the screen stops lying', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     expect(store.currentTask()?.version).toBe(1)
 
@@ -56,7 +56,7 @@ describe('conflit entre pages', () => {
     expect(store.currentTask()?.constraints.map((c) => c.rule)).toEqual(['posée ailleurs'])
   })
 
-  it('dit à l’agent de rappeler resume_task', async () => {
+  it('tells the agent to call resume_task again', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     await autreOnglet(task.id, (s) =>
       addConstraint(s, { rule: 'posée ailleurs', basedOnVersion: null }, 'human'),
@@ -69,14 +69,14 @@ describe('conflit entre pages', () => {
     )
 
     expect(result.isError).toBe(true)
-    const texte = result.content[0].text
-    expect(texte).toContain('STALE STATE')
-    expect(texte).toContain('what_changed')
-    expect(texte).toContain('resume_task')
-    expect(texte.startsWith('STALE STATE')).toBe(true)
+    const text = result.content[0].text
+    expect(text).toContain('STALE STATE')
+    expect(text).toContain('what_changed')
+    expect(text).toContain('resume_task')
+    expect(text.startsWith('STALE STATE')).toBe(true)
   })
 
-  it('réussit une fois la version rafraîchie', async () => {
+  it('succeeds once the version is refreshed', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     await autreOnglet(task.id, (s) =>
       addConstraint(s, { rule: 'posée ailleurs', basedOnVersion: null }, 'human'),
@@ -85,13 +85,13 @@ describe('conflit entre pages', () => {
     await store.mutate((s) => s).catch(() => undefined)
     const v = store.currentTask()!.version
 
-    const après = await store.mutateAsAgent(
+    const after = await store.mutateAsAgent(
       storeWrite('log_step', v, { n: v }, (s) =>
         logStep(s, { action: 'a', result: 'b', basedOnVersion: v }, 'agent'),
       ),
     )
-    expect(après.version).toBe(v + 1)
-    expect(après.replayed).toBe(false)
+    expect(after.version).toBe(v + 1)
+    expect(after.replayed).toBe(false)
     expect(store.currentTask()!.steps).toHaveLength(1)
   })
 })

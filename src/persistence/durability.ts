@@ -21,14 +21,14 @@ export async function readStorage(): Promise<StorageState> {
     const estimate = await api.estimate?.()
     return { persisted, usage: estimate?.usage ?? null, quota: estimate?.quota ?? null }
   } catch {
-    // La durabilité est connue, la place ne l'est pas : on rend ce que l'on sait.
+    // Durability is known, the space is not: we return what we know.
     return { persisted, usage: null, quota: null }
   }
 }
 
 /**
- * `null` veut dire que le navigateur ne répond pas à cette question. Ni oui,
- * ni non : on ne peut rien en conclure, et l'écran doit le dire ainsi.
+ * `null` means the browser does not answer this question. Neither yes nor no:
+ * nothing can be concluded from it, and the screen has to say it that way.
  */
 export async function askForPersistence(): Promise<boolean | null> {
   const api = navigator.storage

@@ -22,13 +22,13 @@ afterEach(() => {
 })
 
 describe('ask_human', () => {
-  it('est une écriture, et compte parmi les outils de la page', () => {
+  it('is a write, and counts among the tools on the page', () => {
     expect(WRITE_TOOLS).toContain(askHumanTool)
     expect(askHumanTool.annotations?.readOnlyHint).toBe(false)
     expect(ALL_TOOLS.filter((t) => t.name === 'ask_human')).toHaveLength(1)
   })
 
-  it('ouvre une question que la conversation suivante verra', async () => {
+  it('opens a question the next conversation will see', async () => {
     const task = currentTask()
     const result = await call(
       askHumanTool,
@@ -43,14 +43,14 @@ describe('ask_human', () => {
     expect(openQuestions(currentTask())).toHaveLength(1)
   })
 
-  it('refuse une question sans son motif : personne ne saurait quoi répondre', async () => {
+  it('refuses a question without its reason: nobody would know what to answer', async () => {
     const task = currentTask()
     const result = await call(askHumanTool, writeArgs(task, { question: 'Should I?' }))
     expect(result.isError).toBe(true)
     expect(textOf(result)).toContain('why')
   })
 
-  it('rejoue une reprise sans poser la question deux fois', async () => {
+  it('replays a retry without asking the question twice', async () => {
     const task = currentTask()
     const args = writeArgs(task, { question: 'Which region?', why: 'It changes the endpoint.' })
 
@@ -62,7 +62,7 @@ describe('ask_human', () => {
     expect(openQuestions(currentTask())).toHaveLength(1)
   })
 
-  it('dit à l’agent qu’une question ouverte l’attend, sans la lui faire deviner', async () => {
+  it('tells the agent an open question is waiting, without making it guess', async () => {
     const task = currentTask()
     await call(
       askHumanTool,
@@ -89,7 +89,7 @@ describe('attach_evidence', () => {
     return currentTask().steps.at(-1)!.id
   }
 
-  it('attache une preuve à une étape restée simple affirmation', async () => {
+  it('attaches evidence to a step that was only a claim', async () => {
     const stepId = await claimedStep()
     expect(currentTask().steps.at(-1)!.confidence).toBe('claimed')
 
@@ -105,11 +105,11 @@ describe('attach_evidence', () => {
     const step = currentTask().steps.find((s) => s.id === stepId)!
     expect(step.confidence).toBe('evidence')
     expect(step.evidence!.content).toContain('\n')
-    // Une preuve fournie par l'agent n'est pas une preuve vérifiée.
+    // Evidence supplied by the agent is not verified evidence.
     expect(step.evidence!.verifiedAt).toBeNull()
   })
 
-  it('refuse d’écraser une preuve déjà attachée', async () => {
+  it('refuses to overwrite evidence already attached', async () => {
     const stepId = await claimedStep()
     await call(
       attachEvidenceTool,
@@ -131,7 +131,7 @@ describe('attach_evidence', () => {
     expect(currentTask().steps.find((s) => s.id === stepId)!.evidence!.content).toBe('first')
   })
 
-  it('refuse une étape qui n’existe pas, sans rien écrire', async () => {
+  it('refuses a step that does not exist, without writing anything', async () => {
     const before = currentTask().version
     const result = await call(
       attachEvidenceTool,
@@ -145,7 +145,7 @@ describe('attach_evidence', () => {
     expect(currentTask().version).toBe(before)
   })
 
-  it('ne touche pas à une étape que l’humain a validée', async () => {
+  it('does not touch a step the human has verified', async () => {
     await store.mutate((s) =>
       logStep(
         s,
@@ -174,7 +174,7 @@ describe('attach_evidence', () => {
 })
 
 describe('set_next_action', () => {
-  it('change la prochaine action sans inventer une étape', async () => {
+  it('changes the next action without inventing a step', async () => {
     const before = currentTask().steps.length
     const result = await call(
       setNextActionTool,
@@ -183,11 +183,11 @@ describe('set_next_action', () => {
 
     expect(result.isError).toBeFalsy()
     expect(currentTask().next).toBe('Benchmark approach C against the p95 baseline')
-    // C'est tout l'intérêt : consigner une intention n'est pas consigner un fait.
+    // That is the whole point: recording an intention is not recording a fact.
     expect(currentTask().steps).toHaveLength(before)
   })
 
-  it('refuse une prochaine action vide', async () => {
+  it('refuses an empty next action', async () => {
     const result = await call(setNextActionTool, writeArgs(currentTask(), { next: '   ' }))
     expect(result.isError).toBe(true)
   })

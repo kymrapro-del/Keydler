@@ -17,12 +17,12 @@ beforeEach(async () => {
   await clearDatabase()
 })
 
-describe('écritures concurrentes', () => {
-  it('n’en applique qu’une et refuse l’autre, au lieu de la perdre', async () => {
+describe('concurrent writes', () => {
+  it('applies only one and refuses the other, instead of losing it', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const v = task.version
 
-    const résultats = await Promise.allSettled([
+    const results = await Promise.allSettled([
       store.mutateAsAgent(
         storeWrite('log_step', v, { n: v }, (s) =>
           logStep(s, { action: 'A', result: 'a', basedOnVersion: v }, 'agent'),
@@ -35,23 +35,23 @@ describe('écritures concurrentes', () => {
       ),
     ])
 
-    const appliquées = résultats.filter((r) => r.status === 'fulfilled')
-    const refusées = résultats.filter((r) => r.status === 'rejected')
+    const applied = results.filter((r) => r.status === 'fulfilled')
+    const refused = results.filter((r) => r.status === 'rejected')
 
-    expect(appliquées).toHaveLength(1)
-    expect(refusées).toHaveLength(1)
-    expect((refusées[0] as PromiseRejectedResult).reason).toBeInstanceOf(StaleStateError)
+    expect(applied).toHaveLength(1)
+    expect(refused).toHaveLength(1)
+    expect((refused[0] as PromiseRejectedResult).reason).toBeInstanceOf(StaleStateError)
 
     const final = store.currentTask()!
     expect(final.version).toBe(v + 1)
     expect(final.steps).toHaveLength(1)
   })
 
-  it('ne perd aucune écriture sous forte concurrence', async () => {
+  it('loses no write under heavy concurrency', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     const v = task.version
 
-    const résultats = await Promise.allSettled(
+    const results = await Promise.allSettled(
       Array.from({ length: 8 }, (_, i) =>
         store.mutateAsAgent(
           storeWrite('log_step', v, { n: v }, (s) =>
@@ -61,19 +61,19 @@ describe('écritures concurrentes', () => {
       ),
     )
 
-    const appliquées = résultats.filter((r) => r.status === 'fulfilled')
-    expect(appliquées).toHaveLength(1)
+    const applied = results.filter((r) => r.status === 'fulfilled')
+    expect(applied).toHaveLength(1)
 
     const final = store.currentTask()!
     expect(final.version).toBe(v + 1)
     expect(final.steps).toHaveLength(1)
 
-    const refus = final.audit.filter((e) => e.outcome === 'refused')
-    expect(refus).toHaveLength(1)
-    expect(refus[0].repeated).toBe(7)
+    const refusal = final.audit.filter((e) => e.outcome === 'refused')
+    expect(refusal).toHaveLength(1)
+    expect(refusal[0].repeated).toBe(7)
   })
 
-  it('applique une chaîne d’écritures qui respectent la version rendue', async () => {
+  it('applies a chain of writes that respect the version returned', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     let v = task.version
 
@@ -98,7 +98,7 @@ describe('écritures concurrentes', () => {
     ])
   })
 
-  it('sérialise aussi les écritures humaines, qui ne sont jamais refusées', async () => {
+  it('serializes human writes too, which are never refused', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
 
     await Promise.all(
@@ -114,7 +114,7 @@ describe('écritures concurrentes', () => {
     expect(final.version).toBe(task.version + 6)
   })
 
-  it('persiste l’état exact qui est affiché, sans écriture en retard', async () => {
+  it('persists the exact state that is displayed, with no write left behind', async () => {
     const task = await store.createAndOpenTask('Tâche', undefined)
     const v = task.version
 
@@ -127,11 +127,11 @@ describe('écritures concurrentes', () => {
       store.mutate((s) => addConstraint(s, { rule: 'humaine', basedOnVersion: null }, 'human')),
     ])
 
-    const enMémoire = store.currentTask()!
+    const inMemory = store.currentTask()!
     const surDisque = await loadTask(task.id)
-    expect(surDisque?.version).toBe(enMémoire.version)
-    expect(surDisque?.steps.length).toBe(enMémoire.steps.length)
-    expect(surDisque?.constraints.length).toBe(enMémoire.constraints.length)
-    expect(surDisque?.audit.length).toBe(enMémoire.audit.length)
+    expect(surDisque?.version).toBe(inMemory.version)
+    expect(surDisque?.steps.length).toBe(inMemory.steps.length)
+    expect(surDisque?.constraints.length).toBe(inMemory.constraints.length)
+    expect(surDisque?.audit.length).toBe(inMemory.audit.length)
   })
 })

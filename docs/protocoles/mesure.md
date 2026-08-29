@@ -1,81 +1,79 @@
-# Protocole de mesure (J6)
+# Measurement protocol (Day 6)
 
-> Le chiffre annoncé doit être reproductible par un tiers à partir de ce seul
-> document. Les résultats sont ajoutés après exécution, jamais avant.
+> The number announced must be reproducible by a third party from this document
+> alone. The results are added after the run, never before.
 
-## Ce qu'on mesure
+## What is measured
 
-Une seule métrique, binaire : après une perte de contexte, l'approche
-explicitement rejetée est-elle reproposée ?
+A single metric, binary: after a loss of context, is the explicitly ruled-out
+approach proposed again?
 
-Un indicateur solide vaut mieux que trois bâclés. Ce choix écarte
-délibérément toute mesure de qualité subjective, non reproductible.
+One solid indicator is worth more than three botched ones. This choice
+deliberately sets aside any subjective, non-reproducible measure of quality.
 
-## Les deux conditions
+## The two conditions
 
-| Condition   | Ce dont l'agent dispose                                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Témoin      | L'énoncé de la tâche, et rien d'autre. Ni contrainte, ni rejet : c'est l'état où la conversation précédente a été perdue et où rien n'a survécu. |
-| Avec cahier | Le cahier, chargé avec la tâche, sa contrainte active et son approche condamnée motivée. Consigne d'ouverture : `continue`.                      |
+| Condition    | What the agent has                                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Control      | The statement of the task, and nothing else. No rule, no rejection: this is the state where the previous conversation was lost and nothing survived it. |
+| With the log | The log, loaded with the task, its active rule and its ruled-out approach with its reason. Opening instruction: `continue`.                             |
 
-La comparaison porte donc sur ce que le cahier fait survivre, pas sur la
-formulation de la consigne.
+The comparison therefore bears on what the log makes survive, not on the
+wording of the instruction.
 
-## Ordre d'exécution
+## Order of execution
 
-Le témoin d'abord. Si l'approche condamnée n'est pas réellement le réflexe
-par défaut du modèle, le témoin ne produira aucune reproposition et la mesure
-ne mesurera rien. Autant le découvrir avant de dépenser la seconde condition.
+The control first. If the ruled-out approach is not really the model's default
+reflex, the control will produce no re-proposal and the measurement will measure
+nothing. Better to find that out before spending the second condition.
 
-Un témoin proche de zéro n'est pas un résultat : c'est un défaut de conception
-des tâches. Il faut alors durcir les tâches, pas maquiller le chiffre.
+A control close to zero is not a result: it is a fault in the design of the
+tasks. The tasks then have to be hardened, not the number dressed up.
 
-## Isolement
+## Isolation
 
-La condition avec cahier passe par le build d'essai (`npm run trial`, port
-5174), sans carte de source : sur le serveur de développement, un agent lit
-tout le code par `fetch` et l'isolement est illusoire. Voir
+The with-log condition goes through the trial build (`npm run trial`, port
+5174), without source maps: on the development server, an agent reads all the
+code through `fetch` and the isolation is an illusion. See
 [`protocole-reprise.md`](../protocoles/reprise.md).
 
-## Récolte des journaux
+## Collecting the logs
 
-Le bouton « Supprimer ce cahier » repart d'une base vide entre deux essais,
-sans passer par les outils de développement. Il demande confirmation en nommant
-ce qui disparaît.
+The “Delete this task” button starts again from an empty base between two runs,
+without going through the developer tools. It asks for confirmation, naming
+what disappears.
 
-Exporter avant de supprimer. Le bouton « Exporter ce cahier » produit un
-fichier portant la restitution compacte, le contenu intégral des preuves
-(que la restitution ne montre jamais), le journal des écritures avec les refus,
-et l'état complet en JSON. « Exporter tous les cahiers » récolte l'appareil
-entier en un fichier.
+Export before deleting. The “Export this task” button produces a file carrying
+the compact briefing, the full content of the evidence (which the briefing never
+shows), the write log with its refusals, and the full state as JSON. “Export all
+tasks” collects the whole device into one file.
 
-Cette étape a été ajoutée après coup, et à un prix : les cahiers des tâches 1 à
-7 de la campagne du 26 août ont été détruits par la réinitialisation entre
-essais, avant qu'un export existe. Seules les conclusions rapportées par les
-agents subsistent, dans [`mesures/resultats.md`](../mesures/resultats.md). Une
-campagne ultérieure devra verser ses exports au dépôt.
+This step was added after the fact, and at a price: the logs for tasks 1 to 7 of
+the 26 August campaign were destroyed by the reset between runs, before an
+export existed. Only the conclusions reported by the agents survive, in
+[`mesures/resultats.md`](../mesures/resultats.md). A later campaign will have to
+commit its exports to the repository.
 
-## Ce qu'on relève
+## What we record
 
-Est comptée comme reproposition toute réponse qui retient le mécanisme
-condamné comme solution principale. Le mentionner pour l'écarter n'en est pas
-une, et l'écart doit être relevé tel quel, motif compris.
+Any answer that keeps the ruled-out mechanism as its main solution counts as a
+re-proposal. Mentioning it in order to set it aside is not one, and the setting
+aside must be recorded as it stands, reason included.
 
-## Règles d'honnêteté
+## Rules of honesty
 
-- Un écart faible est rapporté tel quel. Un résultat modeste et vrai vaut mieux
-  qu'un chiffre invérifiable.
-- Les essais partagent le modèle et la consigne : leurs résultats sont
-  corrélés. On rapporte des comptes bruts (« N sur 8 »), jamais des
-  pourcentages ni des intervalles de confiance, qui supposeraient une
-  indépendance qui n'existe pas.
-- Aucun chiffre ne figure dans la vidéo, la description ou le README s'il n'est
-  pas reproductible depuis ce document.
+- A small gap is reported as it stands. A modest and true result is worth more
+  than an unverifiable number.
+- The runs share the model and the instruction: their results are correlated. We
+  report raw counts (“N out of 8”), never percentages nor confidence intervals,
+  which would assume an independence that does not exist.
+- No number appears in the video, the description or the README unless it is
+  reproducible from this document.
 
-## Résultats
+## Results
 
-Sans cahier, l'approche condamnée est reproposée dans 8 cas sur 8. Avec
-cahier, dans 0 cas sur 8.
+Without the log, the ruled-out approach is proposed again in 8 cases out of 8.
+With the log, in 0 cases out of 8.
 
-Relevés, transcriptions et réserves dans
+Readings, transcripts and reservations in
 [`mesures/resultats.md`](../mesures/resultats.md).

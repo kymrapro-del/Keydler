@@ -12,47 +12,47 @@ import { packTask } from '../src/export/link'
 
 const task = buildDemoTask()
 
-describe('le cahier de démonstration montre ce que le produit sait faire', () => {
-  it('porte une question posée par un agent, et la réponse humaine', () => {
-    // Sans cela, « Try the demo » montre un produit d'il y a trois lots.
+describe('the demo log shows what the product can do', () => {
+  it('carries a question asked by an agent, and the human answer', () => {
+    // Without this, "Try the demo" shows a product three batches old.
     expect(answeredQuestions(task).length).toBeGreaterThan(0)
     expect(answeredQuestions(task)[0].answer).toBeTruthy()
     expect(answeredQuestions(task)[0].why).toBeTruthy()
   })
 
-  it('porte une demande d’autorisation tranchée par l’humain', () => {
+  it('carries an approval request settled by the human', () => {
     expect(decidedApprovals(task).length).toBeGreaterThan(0)
     expect(decidedApprovals(task).some((a) => a.decision === 'denied')).toBe(true)
   })
 
-  it('porte une étape contestée, avec le motif', () => {
+  it('carries a disputed step, with the reason', () => {
     expect(disputedSteps(task)).toHaveLength(1)
     expect(disputedSteps(task)[0].dispute!.reason).toBeTruthy()
   })
 
-  it('laisse quelque chose à faire à l’humain qui arrive', () => {
-    // Une démo entièrement tranchée ne montre aucun des gestes de supervision.
+  it('leaves something to do for the human who arrives', () => {
+    // A demo already fully decided shows none of the supervision gestures.
     const proposals = task.constraints.filter((c) => c.standing === 'proposed').length
     const rejections = task.rejected.filter((r) => r.standing === 'proposed').length
     expect(proposals + rejections).toBeGreaterThan(0)
     expect(task.steps.some((s) => s.confidence === 'claimed')).toBe(true)
   })
 
-  it('ne laisse ni question ni autorisation en attente au démarrage', () => {
-    // Une démo qui s'ouvre sur un agent bloqué laisserait croire à une panne.
+  it('leaves no question and no approval pending at startup', () => {
+    // A demo that opens on a blocked agent would look like a breakdown.
     expect(openQuestions(task)).toHaveLength(0)
     expect(pendingApprovals(task)).toHaveLength(0)
   })
 
-  it('tient toujours dans le budget de restitution', () => {
+  it('always fits the briefing budget', () => {
     expect(estimateTokens(renderTaskState(task))).toBeLessThanOrEqual(TOKEN_BUDGET)
   })
 
-  it('tient toujours dans un lien partageable', async () => {
+  it('always fits in a shareable link', async () => {
     expect((await packTask(task)).length).toBeLessThan(6000)
   })
 
-  it('reste reproductible : deux appels donnent le même cahier', () => {
+  it('stays reproducible: two calls give the same log', () => {
     const a = buildDemoTask()
     const b = buildDemoTask()
     expect(a.version).toBe(b.version)

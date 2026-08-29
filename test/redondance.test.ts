@@ -21,15 +21,15 @@ beforeEach(() => {
   task = buildCoreTask()
 })
 
-describe('ne pas répéter ce qui est déjà écrit', () => {
-  it('refuse une règle mot pour mot identique à une règle en vigueur', () => {
+describe('not repeating what is already written', () => {
+  it('refuses a rule word for word identical to a rule in force', () => {
     const rule = activeConstraints(task)[0].rule
     expect(() => addConstraint(task, { rule, basedOnVersion: null }, 'agent')).toThrow(
       ValidationError,
     )
   })
 
-  it('ignore la casse, les espaces et la ponctuation finale', () => {
+  it('ignores case, spacing and trailing punctuation', () => {
     const rule = activeConstraints(task)[0].rule
     for (const variante of [
       rule.toUpperCase(),
@@ -44,7 +44,7 @@ describe('ne pas répéter ce qui est déjà écrit', () => {
     }
   })
 
-  it('dit que la règle existe déjà, et qu’elle engage déjà', () => {
+  it('says the rule already exists, and already binds', () => {
     const rule = activeConstraints(task)[0].rule
     const error = (() => {
       try {
@@ -55,11 +55,11 @@ describe('ne pas répéter ce qui est déjà écrit', () => {
     })()!
 
     expect(error.message).toContain('already')
-    // On compare des chaînes, pas des sens : il faut le dire.
+    // Strings are compared, not meanings: that has to be said.
     expect(error.message.toLowerCase()).toContain('word for word')
   })
 
-  it('laisse passer une règle voisine mais différente', () => {
+  it('lets a neighbouring but different rule through', () => {
     const next = addConstraint(
       task,
       { rule: 'Never modify the database schema without a migration', basedOnVersion: null },
@@ -68,7 +68,7 @@ describe('ne pas répéter ce qui est déjà écrit', () => {
     expect(next.constraints.length).toBe(task.constraints.length + 1)
   })
 
-  it('n’empêche pas de reposer une règle qui avait été levée', () => {
+  it('does not stop a lifted rule from being set again', () => {
     const rule = activeConstraints(task)[0]
     const lifted = {
       ...task,
@@ -79,14 +79,14 @@ describe('ne pas répéter ce qui est déjà écrit', () => {
     ).not.toThrow()
   })
 
-  it('refuse aussi un rejet déjà consigné', () => {
+  it('refuses a rejection already on record too', () => {
     const approach = task.rejected[0].approach
     expect(() =>
       rejectApproach(task, { approach, reason: 'another reason', basedOnVersion: null }, 'agent'),
     ).toThrow(ValidationError)
   })
 
-  it('refuse une question déjà ouverte, mot pour mot', () => {
+  it('refuses a question already open, word for word', () => {
     const asked = askHuman(
       task,
       { question: 'Which region?', why: 'endpoint', basedOnVersion: null },
@@ -97,7 +97,7 @@ describe('ne pas répéter ce qui est déjà écrit', () => {
     ).toThrow(ValidationError)
   })
 
-  it('refuse une demande d’autorisation déjà en attente', () => {
+  it('refuses a permission request already pending', () => {
     const asked = requestApproval(
       task,
       { action: 'Drop the table', why: 'irreversible', basedOnVersion: null },
@@ -112,7 +112,7 @@ describe('ne pas répéter ce qui est déjà écrit', () => {
     ).toThrow(ValidationError)
   })
 
-  it('dit à l’agent, par l’outil, que rien n’a été écrit', async () => {
+  it('tells the agent, through the tool, that nothing was written', async () => {
     store.__resetStore()
     await clearDatabase()
     await store.init()
@@ -135,8 +135,8 @@ describe('ne pas répéter ce qui est déjà écrit', () => {
   })
 })
 
-describe('clore une tâche dit ce qui restait en suspens', () => {
-  it('énumère ce qui n’a jamais été tranché', () => {
+describe('closing a task says what was left hanging', () => {
+  it('lists what was never settled', () => {
     let next = askHuman(
       task,
       { question: 'Which region?', why: 'endpoint', basedOnVersion: null },
@@ -149,7 +149,7 @@ describe('clore une tâche dit ce qui restait en suspens', () => {
     expect(next.audit.at(-1)!.detail).toContain('Done enough.')
   })
 
-  it('le dit à l’agent qui referme, plutôt que de le laisser croire tout réglé', async () => {
+  it('says it to the agent doing the closing, rather than letting it believe everything is settled', async () => {
     store.__resetStore()
     await clearDatabase()
     await store.init()
@@ -167,14 +167,14 @@ describe('clore une tâche dit ce qui restait en suspens', () => {
     )
 
     expect(result.isError).toBeFalsy()
-    const texte = textOf(result)
-    expect(texte).toContain('LEFT UNRESOLVED')
-    expect(texte).toContain('1 question')
-    expect(texte.toLowerCase()).toContain('proposal')
+    const text = textOf(result)
+    expect(text).toContain('LEFT UNRESOLVED')
+    expect(text).toContain('1 question')
+    expect(text.toLowerCase()).toContain('proposal')
     store.__resetStore()
   })
 
-  it('ne dit rien de tel quand tout est tranché', async () => {
+  it('says nothing of the sort when everything is settled', async () => {
     store.__resetStore()
     await clearDatabase()
     await store.init()
@@ -191,8 +191,8 @@ describe('clore une tâche dit ce qui restait en suspens', () => {
   })
 })
 
-describe('l’export porte aussi ce qui a été demandé et contesté', () => {
-  it('rend les demandes d’autorisation et leur issue', () => {
+describe('the export carries what was asked and what was disputed too', () => {
+  it('renders the permission requests and their outcome', () => {
     const asked = requestApproval(
       task,
       { action: 'Drop the legacy table', why: 'not reversible', basedOnVersion: null },
@@ -205,11 +205,11 @@ describe('l’export porte aussi ce qui a été demandé et contesté', () => {
     expect(out).toContain('not reversible')
   })
 
-  it('n’ajoute pas de section vide quand rien n’a été demandé', () => {
+  it('adds no empty section when nothing was asked', () => {
     expect(buildTaskExport(task)).not.toContain('## Permission asked')
   })
 
-  it('marque une étape contestée dans les preuves jointes', () => {
+  it('marks a disputed step in the attached evidence', () => {
     const step = task.steps.find((s) => s.confidence === 'evidence')!
     const contested: TaskState = {
       ...task,

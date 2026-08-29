@@ -6,7 +6,7 @@ import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase, waitUntil } from './helpers'
 
-describe('la recherche à l’écran', () => {
+describe('search on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -39,7 +39,7 @@ describe('la recherche à l’écran', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('compte les résultats de chaque section, pas seulement le total', async () => {
+  it('counts the results of each section, not just the total', async () => {
     type('token')
     await settled()
 
@@ -47,13 +47,13 @@ describe('la recherche à l’écran', () => {
     expect(here).toBeGreaterThan(0)
 
     const headings = [...results()!.querySelectorAll('h3')].map((h) => h.textContent ?? '')
-    // Un sous-titre sans compte oblige à compter les lignes soi-même pour
-    // savoir si la réponse est ici ou ailleurs.
+    // A subheading without a count forces you to count the rows yourself to
+    // know whether the answer is here or elsewhere.
     expect(headings[0]).toContain(String(here))
     expect(headings[1]).toMatch(/\d/)
   })
 
-  it('emmène au champ de recherche sur « / », sans écrire la barre oblique', async () => {
+  it('jumps to the search field on "/", without typing the slash', async () => {
     const field = root.querySelector<HTMLInputElement>('#search')!
     field.blur()
 
@@ -64,7 +64,7 @@ describe('la recherche à l’écran', () => {
     expect(event.defaultPrevented).toBe(true)
   })
 
-  it('ne détourne pas « / » pendant que l’on écrit ailleurs', async () => {
+  it('does not hijack "/" while you are typing elsewhere', async () => {
     root.querySelector<HTMLButtonElement>('#log-step')!.click()
     await settled()
 
@@ -77,7 +77,7 @@ describe('la recherche à l’écran', () => {
     expect(event.defaultPrevented).toBe(false)
   })
 
-  it('vide la recherche sur Échap et rend le focus au champ', async () => {
+  it('clears the search on Escape and gives the focus back to the field', async () => {
     type('token')
     await settled()
     expect(results()).not.toBeNull()
@@ -90,7 +90,7 @@ describe('la recherche à l’écran', () => {
     expect(root.querySelector<HTMLInputElement>('#search')!.value).toBe('')
   })
 
-  it('reste utilisable quand tout correspond, sans tout déverser', async () => {
+  it('stays usable when everything matches, without dumping it all', async () => {
     for (let i = 0; i < 60; i++) {
       await store.mutate((s) =>
         addConstraint(s, { rule: `Rule about widgets number ${i}`, basedOnVersion: null }, 'human'),
@@ -106,7 +106,7 @@ describe('la recherche à l’écran', () => {
   })
 })
 
-describe('le clavier ferme ce qui est ouvert', () => {
+describe('the keyboard closes what is open', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -138,7 +138,7 @@ describe('le clavier ferme ce qui est ouvert', () => {
     return event
   }
 
-  it('referme le formulaire d’étape, sans avoir à viser le bouton Annuler', async () => {
+  it('closes the step form, without having to aim at the Cancel button', async () => {
     root.querySelector<HTMLButtonElement>('#log-step')!.click()
     await settled()
     expect(root.querySelector('#form-step')).not.toBeNull()
@@ -147,7 +147,7 @@ describe('le clavier ferme ce qui est ouvert', () => {
     expect(root.querySelector('#form-step')).toBeNull()
   })
 
-  it('referme la correction en cours d’édition', async () => {
+  it('closes the edit in progress', async () => {
     root.querySelector<HTMLButtonElement>('#edit-title')!.click()
     __renderNow()
     expect(root.querySelector('#edit-form')).not.toBeNull()
@@ -156,7 +156,7 @@ describe('le clavier ferme ce qui est ouvert', () => {
     expect(root.querySelector('#edit-form')).toBeNull()
   })
 
-  it('referme la création d’une tâche', async () => {
+  it('closes the new task form', async () => {
     root.querySelector<HTMLButtonElement>('#new-task')!.click()
     __renderNow()
     expect(root.querySelector('#create-task')).not.toBeNull()
@@ -165,12 +165,12 @@ describe('le clavier ferme ce qui est ouvert', () => {
     expect(root.querySelector('#create-task')).toBeNull()
   })
 
-  it('ne ferme rien quand rien n’est ouvert, et laisse la touche passer', () => {
+  it('closes nothing when nothing is open, and lets the key through', () => {
     const event = escape()
     expect(event.defaultPrevented).toBe(false)
   })
 
-  it('ferme ce qui est à l’écran : la recherche masque le formulaire', async () => {
+  it('closes what is on screen: the search hides the form', async () => {
     root.querySelector<HTMLButtonElement>('#log-step')!.click()
     await settled()
     expect(root.querySelector('#form-step')).not.toBeNull()
@@ -179,8 +179,8 @@ describe('le clavier ferme ce qui est ouvert', () => {
     field.value = 'issuer'
     field.dispatchEvent(new Event('input', { bubbles: true }))
     await settled()
-    // Le formulaire n'est plus à l'écran : fermer « le formulaire » d'abord
-    // donnerait l'impression que la touche ne fait rien.
+    // The form is no longer on screen: closing "the form" first would give the
+    // impression that the key does nothing.
     expect(root.querySelector('#form-step')).toBeNull()
 
     escape()
@@ -192,7 +192,7 @@ describe('le clavier ferme ce qui est ouvert', () => {
   })
 })
 
-describe('le surlignage', () => {
+describe('highlighting', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -227,7 +227,7 @@ describe('le surlignage', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('marque chaque occurrence, pas seulement la première', async () => {
+  it('marks every occurrence, not just the first', async () => {
     const field = root.querySelector<HTMLInputElement>('#search')!
     field.value = 'token'
     field.dispatchEvent(new Event('input', { bubbles: true }))
@@ -236,12 +236,12 @@ describe('le surlignage', () => {
     const row = [...root.querySelectorAll('[aria-labelledby="search-title"] li')].find((li) =>
       li.textContent!.includes('signs the token'),
     )!
-    // Surligner la première seule laisse croire que le reste ne correspond pas.
+    // Highlighting only the first suggests the rest does not match.
     expect(row.querySelectorAll('mark').length).toBeGreaterThanOrEqual(4)
   })
 })
 
-describe('filtrer les résultats par nature', () => {
+describe('filtering results by kind', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -276,13 +276,13 @@ describe('filtrer les résultats par nature', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('ne propose que les natures réellement présentes dans les résultats', () => {
+  it('offers only the kinds actually present in the results', () => {
     const filters = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
     expect(filters.length).toBeGreaterThan(1)
 
     const kinds = filters.map((b) => b.dataset.filter)
     expect(kinds).toContain('all')
-    // Aucun filtre pour une nature qui ne rendrait rien.
+    // No filter for a kind that would return nothing.
     for (const kind of kinds) {
       if (kind === 'all') continue
       expect(
@@ -293,35 +293,35 @@ describe('filtrer les résultats par nature', () => {
   })
 
   /**
-   * Les comptes portés par les filtres n'étaient vérifiés nulle part : deux
-   * mutants les faussaient sans que la suite bronche. Ils disent pourtant à
-   * l'utilisateur ce qu'il trouvera en cliquant.
+   * The counts carried by the filters were checked nowhere: two mutants
+   * falsified them without the suite flinching. Yet they tell the user what
+   * they will find on clicking.
    */
-  it('porte le compte exact de chaque nature, et leur somme', () => {
-    const trouvés = searchTask(store.currentTask()!, 'token')
+  it('carries the exact count of each kind, and their sum', () => {
+    const found = searchTask(store.currentTask()!, 'token')
     const attendu = new Map<string, number>()
-    for (const m of trouvés) attendu.set(m.kind, (attendu.get(m.kind) ?? 0) + 1)
+    for (const m of found) attendu.set(m.kind, (attendu.get(m.kind) ?? 0) + 1)
 
-    const compte = (bouton: HTMLButtonElement) =>
+    const count = (bouton: HTMLButtonElement) =>
       Number(/\((\d+)\)\s*$/.exec(bouton.textContent!.trim())![1])
 
     for (const bouton of root.querySelectorAll<HTMLButtonElement>('[data-filter]')) {
       const nature = bouton.dataset.filter!
-      expect(compte(bouton), nature).toBe(
-        nature === 'all' ? trouvés.length : (attendu.get(nature) ?? 0),
+      expect(count(bouton), nature).toBe(
+        nature === 'all' ? found.length : (attendu.get(nature) ?? 0),
       )
     }
 
-    // Et « All » est bien la somme des autres, pas un nombre à part.
+    // And "All" really is the sum of the others, not a number of its own.
     const parNature = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
       .filter((b) => b.dataset.filter !== 'all')
-      .reduce((n, b) => n + compte(b), 0)
-    expect(parNature).toBe(trouvés.length)
+      .reduce((n, b) => n + count(b), 0)
+    expect(parNature).toBe(found.length)
   })
 
-  it('range les natures dans l’ordre où le cahier les présente', () => {
-    // Une règle passe avant une étape parce que c'est l'ordre du cahier ; un
-    // ordre tiré d'ailleurs ferait danser les boutons d'une frappe à l'autre.
+  it('orders the kinds the way the log presents them', () => {
+    // A rule comes before a step because that is the order of the log; an order
+    // drawn from elsewhere would make the buttons dance from one keystroke to the next.
     const ordre = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
       .map((b) => b.dataset.filter!)
       .filter((k) => k !== 'all')
@@ -329,23 +329,23 @@ describe('filtrer les résultats par nature', () => {
     expect(ordre).toEqual(attendu)
   })
 
-  it('réduit aux seules lignes de la nature choisie', async () => {
-    const avant = rows().length
+  it('narrows down to the rows of the chosen kind', async () => {
+    const before = rows().length
     const bouton = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')].find(
       (b) => b.dataset.filter === 'step',
     )!
     bouton.click()
     __renderNow()
 
-    const après = rows().length
-    expect(après).toBeGreaterThan(0)
-    expect(après).toBeLessThan(avant)
+    const after = rows().length
+    expect(after).toBeGreaterThan(0)
+    expect(after).toBeLessThan(before)
     for (const li of rows()) {
       expect(li.textContent!.toUpperCase()).toContain('STEP')
     }
   })
 
-  it('dit lequel est actif, pour le lecteur d’écran aussi', () => {
+  it('says which one is active, for the screen reader too', () => {
     const bouton = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')].find(
       (b) => b.dataset.filter === 'step',
     )!
@@ -357,19 +357,19 @@ describe('filtrer les résultats par nature', () => {
     expect(root.querySelector('[data-filter="all"]')!.getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('revient à tout, et le compte du titre suit le filtre', async () => {
-    const tout = rows().length
+  it('goes back to all, and the count in the title follows the filter', async () => {
+    const all = rows().length
     root.querySelector<HTMLButtonElement>('[data-filter="step"]')!.click()
     __renderNow()
-    const filtré = rows().length
-    expect(root.querySelector('#search-title')!.textContent).toContain(String(filtré))
+    const filtered = rows().length
+    expect(root.querySelector('#search-title')!.textContent).toContain(String(filtered))
 
     root.querySelector<HTMLButtonElement>('[data-filter="all"]')!.click()
     __renderNow()
-    expect(rows().length).toBe(tout)
+    expect(rows().length).toBe(all)
   })
 
-  it('oublie le filtre quand la recherche change', async () => {
+  it('forgets the filter when the search changes', async () => {
     root.querySelector<HTMLButtonElement>('[data-filter="step"]')!.click()
     __renderNow()
     expect(root.querySelector('[data-filter="step"]')!.getAttribute('aria-pressed')).toBe('true')
@@ -377,7 +377,7 @@ describe('filtrer les résultats par nature', () => {
     type('rotation')
     await settled()
 
-    // Un filtre gardé d'une recherche à l'autre fait croire à un résultat vide.
+    // A filter kept from one search to the next makes an empty result look real.
     const actif = root.querySelector('[data-filter="all"]')
     expect(actif?.getAttribute('aria-pressed')).toBe('true')
   })

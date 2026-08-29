@@ -82,10 +82,10 @@ export class ConcurrentWriteError extends Error {
 }
 
 /**
- * Une écriture qui porte une version attendue est une mise à jour ; les créations passent
- * par le chemin sans version. Un enregistrement disparu signifie donc qu'une autre page a
- * supprimé le cahier, et le réécrire le ressusciterait sans ses identifiants scellés, eux
- * bien effacés, chaque référence `${name}` pendant dans le vide.
+ * A write carrying an expected version is an update; creations take the versionless
+ * path. A missing record therefore means another page deleted the task, and rewriting
+ * it would resurrect it without its sealed credentials, which really were erased,
+ * every `${name}` reference left dangling in the void.
  */
 export class TaskGoneError extends Error {
   readonly taskId: string

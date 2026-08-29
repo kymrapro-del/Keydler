@@ -18,20 +18,20 @@ import * as store from '../src/store/taskStore'
 import { call, clearDatabase, currentTask, textOf } from './helpers'
 import type { TaskState } from '../src/domain/types'
 
-describe('ce qui a changé depuis une version', () => {
+describe('what changed since a version', () => {
   let task: TaskState
 
   beforeEach(() => {
     task = buildDemoTask()
   })
 
-  it('ne dit rien quand rien n’a bougé, sans laisser croire à une panne', () => {
+  it('says nothing when nothing moved, without looking like a failure', () => {
     const rendered = renderChanges(task, task.version)
     expect(rendered).toContain('NOTHING CHANGED')
     expect(rendered).toContain(`v${task.version}`)
   })
 
-  it('nomme ce que l’humain a fait, en phrases, pas en codes', () => {
+  it('names what the human did, in sentences, not in codes', () => {
     const withRule = addConstraint(
       task,
       { rule: 'Do not add Redis', basedOnVersion: null },
@@ -44,7 +44,7 @@ describe('ce qui a changé depuis une version', () => {
     expect(rendered).not.toContain('add_constraint')
   })
 
-  it('sépare ce qui vous engage de ce qui est seulement informatif', () => {
+  it('separates what binds you from what only informs', () => {
     let next = addConstraint(task, { rule: 'Do not add Redis', basedOnVersion: null }, 'human')
     next = logStep(
       next,
@@ -53,15 +53,15 @@ describe('ce qui a changé depuis une version', () => {
     )
     const rendered = renderChanges(next, task.version)
 
-    // Une nouvelle règle change ce que l'agent a le droit de faire ; une étape
-    // consignée par un autre agent ne fait que l'informer.
+    // A new rule changes what the agent may do; a step logged by another agent
+    // only informs it.
     expect(rendered).toContain('CHANGES WHAT YOU MAY DO')
     expect(rendered).toContain('Do not add Redis')
     expect(rendered).toContain('ALSO HAPPENED')
     expect(rendered).toContain('Another agent ran the suite')
   })
 
-  it('signale une réponse humaine comme le débloquant', () => {
+  it('flags a human answer as what unblocks it', () => {
     const asked = askHuman(
       task,
       { question: 'Which baseline?', why: 'Thresholds depend on it.', basedOnVersion: null },
@@ -74,13 +74,13 @@ describe('ce qui a changé depuis une version', () => {
     expect(rendered).toContain('The p95 baseline.')
   })
 
-  it('dit qu’une règle a été levée, ce qui élargit ce qui est permis', () => {
+  it('says a rule was lifted, which widens what is allowed', () => {
     const rule = task.constraints.find((c) => c.active)!
     const lifted = setConstraintActive(task, rule.id, false)
     expect(renderChanges(lifted, task.version)).toContain('lifted')
   })
 
-  it('dit qu’une proposition a été acceptée, donc devenue contraignante', () => {
+  it('says a proposal was accepted, and so has become binding', () => {
     const proposed = addConstraint(
       task,
       { rule: 'Keep the CLI flags stable', basedOnVersion: null },
@@ -96,25 +96,25 @@ describe('ce qui a changé depuis une version', () => {
     expect(rendered).toContain('Keep the CLI flags stable')
   })
 
-  it('avoue quand il ne peut pas remonter aussi loin, plutôt que de sembler complet', () => {
+  it('admits when it cannot go back that far, rather than seeming complete', () => {
     let big = task
     for (let i = 0; i < MAX_AUDIT_ENTRIES + 20; i++) {
       big = addConstraint(big, { rule: `Rule number ${i}`, basedOnVersion: null }, 'human')
     }
 
     const rendered = renderChanges(big, 1)
-    // Le journal est borné : prétendre restituer depuis v1 serait un mensonge.
+    // The audit log is bounded: claiming to replay from v1 would be a lie.
     expect(rendered).toContain('INCOMPLETE')
     expect(rendered).toContain('resume_task')
   })
 
-  it('refuse une version venue du futur plutôt que de rendre une liste vide', () => {
+  it('refuses a version from the future rather than returning an empty list', () => {
     const rendered = renderChanges(task, task.version + 5)
     expect(rendered).toContain('AHEAD OF THIS PAGE')
     expect(rendered).toContain('resume_task')
   })
 
-  it('reste beaucoup moins cher qu’une relecture complète', () => {
+  it('stays far cheaper than a full re-read', () => {
     const withRule = addConstraint(
       task,
       { rule: 'Do not add Redis', basedOnVersion: null },
@@ -123,7 +123,7 @@ describe('ce qui a changé depuis une version', () => {
     expect(estimateTokens(renderChanges(withRule, task.version))).toBeLessThan(120)
   })
 
-  it('borne sa réponse quand tout a changé, et dit ce qu’il a laissé', () => {
+  it('bounds its answer when everything changed, and says what it left out', () => {
     let busy = task
     for (let i = 0; i < 40; i++) {
       busy = addConstraint(busy, { rule: `Rule number ${i}`, basedOnVersion: null }, 'human')
@@ -146,13 +146,13 @@ describe('what_changed', () => {
     store.__resetStore()
   })
 
-  it('est en lecture seule, et rangé avec les lectures', () => {
+  it('is read-only, and filed with the reads', () => {
     expect(whatChangedTool.annotations?.readOnlyHint).toBe(true)
     expect(READ_TOOLS).toContain(whatChangedTool)
     expect(WRITE_TOOLS).not.toContain(whatChangedTool)
   })
 
-  it('répond à la question posée par un refus d’état périmé', async () => {
+  it('answers the question a stale-state refusal raises', async () => {
     const stale = currentTask().version
     await store.mutate((s) =>
       addConstraint(s, { rule: 'Do not add Redis', basedOnVersion: null }, 'human'),
@@ -163,7 +163,7 @@ describe('what_changed', () => {
     expect(rendered).toContain('The human')
   })
 
-  it('exige une version, et la refuse si elle n’en est pas une', async () => {
+  it('requires a version, and refuses it if it is not one', async () => {
     for (const bad of [undefined, 0, -3, 'soon', 2.5]) {
       const result = await call(whatChangedTool, { since_version: bad })
       expect(result.isError, String(bad)).toBe(true)
@@ -171,7 +171,7 @@ describe('what_changed', () => {
     }
   })
 
-  it('renonce quand l’exécution est annulée', async () => {
+  it('gives up when the call is cancelled', async () => {
     const controller = new AbortController()
     controller.abort()
     const result = await call(whatChangedTool, { since_version: 1 }, controller.signal)

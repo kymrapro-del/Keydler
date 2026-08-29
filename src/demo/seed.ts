@@ -18,9 +18,9 @@ import {
 import type { TaskState } from '../domain/types'
 
 /**
- * Le socle : règles, rejets, décisions, travail avec preuves. Sans question,
- * ni autorisation, ni contestation. C'est sur lui que s'appuient les cas qui
- * ont besoin d'une page blanche pour ces trois-là.
+ * The base: rules, rejections, decisions, work with evidence. No question, no
+ * approval, no dispute. It is what the cases that need a blank page for those
+ * three build on.
  */
 export function buildCoreTask(): TaskState {
   let task = createTask({
@@ -158,9 +158,9 @@ export function buildCoreTask(): TaskState {
 }
 
 /**
- * La démonstration livrée au bouton « Try the demo » : le socle, plus une
- * question répondue, une autorisation refusée et une étape contestée. Sans
- * cela, un juré verrait un produit d'il y a trois lots.
+ * The demo shipped behind the “Try the demo” button: the base, plus one
+ * answered question, one denied approval and one disputed step. Without this, a
+ * judge would see a product three batches old.
  */
 export function buildDemoTask(): TaskState {
   let task = buildCoreTask()
@@ -198,10 +198,9 @@ export function buildDemoTask(): TaskState {
     'That run came from the other branch: the issuer had not been extracted yet.',
   )
 
-  // Le cahier se termine sur une écriture d'AGENT : à l'ouverture, « Undo that »
-  // ne doit pas proposer de révoquer une décision que personne ne vient de
-  // prendre. Et l'agent répondant à la contestation, la démonstration montre
-  // la boucle entière.
+  // The log ends on an AGENT write: when it opens, “Undo that” must not offer
+  // to revoke a decision that nobody has just taken. And with the agent
+  // answering the dispute, the demo shows the whole loop.
   task = logStep(
     task,
     {

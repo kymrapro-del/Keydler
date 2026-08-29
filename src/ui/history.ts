@@ -136,7 +136,7 @@ export function describeEntry(entry: AuditEntry): HistoryLine {
 }
 
 /**
- * Les lignes les plus récentes d'abord.
+ * Most recent lines first.
  */
 export function describeHistory(audit: readonly AuditEntry[]): HistoryLine[] {
   return [...audit].reverse().map(describeEntry)

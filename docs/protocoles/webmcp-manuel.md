@@ -1,38 +1,36 @@
-# Protocole manuel : WebMCP dans un vrai navigateur
+# Manual protocol: WebMCP in a real browser
 
-Ce que la suite de tests couvre, elle le couvre contre un faux
-`ModelContext` écrit d'après l'IDL de la spécification. C'est utile et c'est
-insuffisant : un faux ne peut pas se tromper autrement que comme on l'a écrit.
-Ce document liste ce qui doit être constaté dans un navigateur réel, et ce qu'il
-faut voir exactement.
+What the test suite covers, it covers against a fake `ModelContext` written
+from the specification IDL. That is useful and it is not enough: a fake cannot
+fail in any way other than the way it was written. This document lists what has
+to be observed in a real browser, and exactly what has to be seen.
 
-Six vérifications, une demi-heure. À rejouer après toute modification de
-`src/webmcp/`.
+Six checks, half an hour. To be replayed after any change to `src/webmcp/`.
 
-> Deux modes, et le mode décide de ce qu'on doit voir. Le retrait d'un
-> outil pendant la vie du document n'est sûr qu'à partir de Chromium 153 :
-> avant, avorter le contrôleur d'un outil qui répond peut emporter sa réponse.
-> La page renifle la version majeure par `navigator.userAgentData` et affiche
-> sa décision dans le panneau d'état.
+> Two modes, and the mode decides what has to be seen. Removing a tool during
+> the life of the document is only safe from Chromium 153 onwards: before that,
+> aborting the controller of a tool that is answering can carry its answer away.
+> The page sniffs the major version through `navigator.userAgentData` and
+> displays its decision in the status panel.
 >
-> - **Chromium ≥ 153** → mode dynamique : les outils suivent l'état.
-> - **Chromium 149–152, non-Chromium, version illisible** → mode statique :
->   les outils, une fois posés, le restent, et refusent proprement.
+> - **Chromium ≥ 153** → dynamic mode: the tools follow the state.
+> - **Chromium 149–152, non-Chromium, unreadable version** → static mode: the
+>   tools, once placed, stay placed, and refuse cleanly.
 >
-> Relever le mode affiché avant de commencer, et suivre la colonne
-> correspondante. Un mode inattendu invalide les vérifications 3 et 4.
+> Note the displayed mode before starting, and follow the matching column. An
+> unexpected mode invalidates checks 3 and 4.
 
 ---
 
-## Préparation
+## Preparation
 
 ```bash
 npm run trial
 ```
 
-Le build d'essai est obligatoire : le serveur de développement sert tout le
-source en HTTP, et un agent « navigateur seul » lit alors l'intégralité du
-projet par `fetch`. Un essai fait sur `npm run dev` est nul.
+The trial build is mandatory: the development server serves the whole source
+over HTTP, and a “browser only” agent then reads the entire project through
+`fetch`. A trial run on `npm run dev` is void.
 
 ```bash
 brave --remote-debugging-port=9222 \
@@ -41,148 +39,145 @@ brave --remote-debugging-port=9222 \
   http://localhost:5174
 ```
 
-Passer les deux drapeaux : la fonctionnalité s'appelle `WebMCPTesting` dans
-Brave 151, alors que l'aide de `chrome-devtools-mcp` annonce `WebMCP`. Le
-basculement dans `brave://inspect/#remote-debugging` n'ouvre aucun port, et
-Chromium ≥ 136 refuse le débogage distant sur le profil par défaut.
+Pass both flags: the feature is called `WebMCPTesting` in Brave 151, whereas
+the `chrome-devtools-mcp` help announces `WebMCP`. The toggle in
+`brave://inspect/#remote-debugging` opens no port, and Chromium ≥ 136 refuses
+remote debugging on the default profile.
 
 ```bash
 claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest \
   --browserUrl http://127.0.0.1:9222 --categoryExperimentalWebmcp
 ```
 
-Repartir d'un cahier vide : bouton Supprimer ce cahier jusqu'à l'état vide,
-ou profil neuf.
+Start from an empty log: the Delete this task button until the empty state, or
+a fresh profile.
 
-> Ce que `getTools()` prouve et ne prouve pas. La ligne « Outils
-> enregistrés, relus par `getTools()` » du panneau lit la table du navigateur.
-> C'est une seconde source, distincte de ce que la page croit avoir posé, donc
-> utile. Ce n'est pas une preuve que l'agent intégré voit ces outils : la
-> spécification réserve `getTools()` aux agents qui vivent dans la page, et
-> l'agent du navigateur passe par un mécanisme interne. Les vérifications 1 et 2
-> ci-dessous doivent donc être faites depuis le client MCP, pas depuis la
-> console.
+> What `getTools()` proves and does not prove. The panel's “Observed through
+> `getTools()`” line reads the browser's table. It is a second source, distinct
+> from what the page believes it has placed, and therefore useful. It is not
+> proof that the built-in agent sees those tools: the specification reserves
+> `getTools()` for agents that live in the page, and the browser's agent goes
+> through an internal mechanism. Checks 1 and 2 below must therefore be done
+> from the MCP client, not from the console.
 
 ---
 
-## 1. Page sans tâche : deux outils
+## 1. Page with no task: two tools
 
-État : aucun cahier ouvert.
+State: no log open.
 
-Depuis le client MCP, lister les outils de la page.
+From the MCP client, list the page's tools.
 
-- [ ] **Exactement deux** : `resume_task`, `read_task_detail`.
-- [ ] Aucun outil d'écriture n'apparaît.
-- [ ] `resume_task` rend `NO ACTIVE TASK`.
+- [ ] **Exactly two**: `resume_task`, `read_task_detail`.
+- [ ] No write tool appears.
+- [ ] `resume_task` returns `NO ACTIVE TASK`.
 
-> Un outil d'écriture exposé ici ne pourrait que refuser. Il allongerait la
-> liste que l'agent doit lire pour choisir, sans jamais pouvoir aboutir.
+> A write tool exposed here could only refuse. It would lengthen the list the
+> agent has to read in order to choose, without ever being able to succeed.
 
-## 2. Tâche active : sept outils
+## 2. Active task: seven tools
 
-Ouvrir un cahier (bouton Ouvrir un cahier de démonstration, ou `?mesure=1`).
+Open a log (the Try the demo button, or `?mesure=1`).
 
-- [ ] La liste passe à sept sans rechargement de la page. _(Vrai dans les
-      deux modes : POSER un outil n'avorte rien, seul le retrait est risqué.)_
-- [ ] Les cinq écritures sont présentes : `log_step`, `add_constraint`,
+- [ ] The list goes to seven with no page reload. _(True in both modes: PLACING
+      a tool aborts nothing, only removal is risky.)_
+- [ ] The five writes are present: `log_step`, `add_constraint`,
       `reject_approach`, `add_decision`, `complete_task`.
-- [ ] `resume_task` rend un `TASK ID` et une `URL` en `/t/:id`, et l'adresse de
-      la barre correspond.
+- [ ] `resume_task` returns a `TASK ID` and a `URL` at `/t/:id`, and the address
+      in the bar matches.
 
-> C'est ici que se voit ce qu'un faux ne peut pas garantir : que le client MCP
-> rafraîchit réellement sa liste sur `toolchange`. Si les sept outils
-> n'apparaissent qu'après un rechargement, le cycle de vie dynamique n'a
-> d'existence que dans la page.
+> This is where what a fake cannot guarantee becomes visible: that the MCP
+> client really does refresh its list on `toolchange`. If the seven tools only
+> appear after a reload, the dynamic lifecycle has no existence outside the
+> page.
 
-## 3. `complete_task` rend sa réponse
+## 3. `complete_task` returns its answer
 
-Demander à l'agent de clore la tâche.
+Ask the agent to close the task.
 
-- [ ] L'agent reçoit la réponse : `OK: complete_task recorded.` avec la
-      nouvelle version. Pas d'erreur, pas de silence, pas de délai d'attente.
-- [ ] `resume_task` rend `TASK CLOSED`.
+- [ ] The agent receives the answer: `OK: complete_task recorded.` with the new
+      version. No error, no silence, no timeout.
+- [ ] `resume_task` returns `TASK CLOSED`.
 
-Puis, selon le mode relevé :
+Then, according to the mode noted:
 
-- **statique** : [ ] la liste reste à sept ; un `log_step` refuse avec
-  `task … is already completed` et l'invitation à faire rouvrir par l'humain.
-- **dynamique** : [ ] la liste retombe à deux outils.
+- **static**: [ ] the list stays at seven; a `log_step` refuses with
+  `task … is already completed` and the invitation to have the human reopen it.
+- **dynamic**: [ ] the list drops back to two tools.
 
-> La vérification la plus importante du lot. C'est le déroulé où le produit
-> peut perdre une réponse : l'écriture de `complete_task` provoque son propre
-> retrait.
+> The most important check of the set. This is the sequence where the product
+> can lose an answer: the `complete_task` write causes its own removal.
 >
-> Une version antérieure du code retenait le retrait d'un tour de boucle, par
-> `setTimeout`, en supposant la réponse livrée entre-temps. La spécification dit
-> le contraire : l'ordre entre la source de tâches WebMCP et celle des
-> minuteurs ne peut pas être invoqué. Un tour de boucle n'est pas une
-> garantie de livraison. Le mode statique supprime le risque à la racine : on
-> ne casse pas une exécution avec un contrôleur qu'on n'avorte jamais.
+> An earlier version of the code held the removal back by one turn of the loop,
+> through `setTimeout`, assuming the answer was delivered in the meantime. The
+> specification says the opposite: the ordering between the WebMCP task source
+> and the timer task source cannot be relied upon. One turn of the loop is not a
+> delivery guarantee. Static mode removes the risk at the root: you do not break
+> a run with a controller you never abort.
 >
-> Noter la version exacte du navigateur sur cette ligne : c'est la seule
-> mesure qui dise quelque chose du comportement réel de Chrome 149–152.
+> Note the exact browser version on this line: it is the only measurement that
+> says anything about the real behaviour of Chrome 149–152.
 
-## 4. Réouverture : les écritures fonctionnent de nouveau
+## 4. Reopening: the writes work again
 
-Cliquer Rouvrir la tâche, donner un motif.
+Click Reopen this task, give a reason.
 
-- [ ] `log_step` aboutit de nouveau, avec la version rendue par `resume_task`.
-- **dynamique** : [ ] la liste remonte à sept sans rechargement.
-- **statique** : [ ] la liste est restée à sept ; rien ne bouge, et c'est
-  attendu.
+- [ ] `log_step` succeeds again, with the version returned by `resume_task`.
+- **dynamic**: [ ] the list goes back up to seven with no reload.
+- **static**: [ ] the list stayed at seven; nothing moves, and that is
+  expected.
 
-## 5. Annulation pendant une file d'attente
+## 5. Cancellation during a queue wait
 
-Lancer deux écritures d'agent rapprochées, puis interrompre la seconde
-(bouton « stop » du client, ou `Esc`) pendant qu'elle attend son tour.
+Fire two agent writes close together, then interrupt the second one (the
+client's “stop” button, or `Esc`) while it is waiting its turn.
 
-- [ ] Aucune mutation n'est créée par l'appel interrompu : le compteur
-      d'étapes n'augmente que d'une.
-- [ ] La version n'avance que d'un cran.
-- [ ] Le refus est audité : dans « Journal des écritures » de l'export, une
-      ligne `log_step` marquée `refusé`, de motif « cancelled before anything
-      was written », sans changement de version.
-- [ ] Le compteur d'appels de la page montre l'appel refusé.
+- [ ] No mutation is created by the interrupted call: the step counter goes up
+      by one only.
+- [ ] The version advances by one notch only.
+- [ ] The refusal is audited: in the export's “Write log”, a `log_step` line
+      marked `refused`, with the reason “cancelled before anything was
+      written”, and no change of version.
+- [ ] The page's call counter shows the refused call.
 
-> Un appel annulé qui écrirait quand même produirait une écriture que personne
-> ne voit passer : l'agent ne reçoit rien, réessaie, et le cahier compte deux
-> fois le même travail.
+> A cancelled call that wrote anyway would produce a write nobody sees go past:
+> the agent receives nothing, retries, and the log counts the same work twice.
 
-## 6. Rejeu exact après perte simulée de réponse
+## 6. Exact replay after a simulated lost answer
 
-Faire consigner une étape par l'agent, en notant son `mutation_id`. Puis, depuis
-le client MCP, rappeler `log_step` avec exactement les mêmes arguments,
-`mutation_id` compris.
+Have the agent record a step, noting its `mutation_id`. Then, from the MCP
+client, call `log_step` again with exactly the same arguments, `mutation_id`
+included.
 
-- [ ] La réponse est identique à la première, suivie de la mention
-      « Replay of an earlier call with this mutation_id. Nothing was written
-      twice. »
-- [ ] Le nombre d'étapes n'a pas changé.
-- [ ] La version n'a pas changé.
+- [ ] The answer is identical to the first one, followed by the note
+      “Replay of an earlier call with this mutation_id. Nothing was written
+      twice.”
+- [ ] The number of steps has not changed.
+- [ ] The version has not changed.
 
-Puis rappeler `log_step` avec le même `mutation_id` et une `action`
-différente.
+Then call `log_step` again with the same `mutation_id` and a different
+`action`.
 
-- [ ] L'appel est refusé, message contenant `different arguments`.
-- [ ] Rien n'est écrit, et surtout aucun `OK` n'est rendu : un agent qui
-      croit son travail consigné ne le reconsigne pas.
-- [ ] Le refus est audité : ligne `log_step` … `refusé`, motif
+- [ ] The call is refused, with a message containing `different arguments`.
+- [ ] Nothing is written, and above all no `OK` is returned: an agent that
+      believes its work recorded does not record it again.
+- [ ] The refusal is audited: a `log_step` line … `refused`, reason
       `mutation_id: mutation-id-collision`.
 
 ---
 
-## Fiche de relevé
+## Record sheet
 
-| #   | Vérification                                 | Navigateur / version | Mode relevé | Résultat | Notes |
-| --- | -------------------------------------------- | -------------------- | ----------- | -------- | ----- |
-| 0   | Mode affiché dans le panneau d'état          |                      |             |          |       |
-| 1   | 2 outils sans tâche                          |                      |             |          |       |
-| 2   | 7 outils sur tâche active, sans rechargement |                      |             |          |       |
-| 3   | `complete_task` rend bien sa réponse         |                      |             |          |       |
-| 4   | Réouverture : écritures fonctionnelles       |                      |             |          |       |
-| 5   | Annulation : aucune mutation, refus audité   |                      |             |          |       |
-| 6   | Rejeu exact / collision d'arguments          |                      |             |          |       |
+| #   | Check                                      | Browser / version | Mode noted | Result | Notes |
+| --- | ------------------------------------------ | ----------------- | ---------- | ------ | ----- |
+| 0   | Mode displayed in the status panel         |                   |            |        |       |
+| 1   | 2 tools with no task                       |                   |            |        |       |
+| 2   | 7 tools on an active task, no reload       |                   |            |        |       |
+| 3   | `complete_task` does return its answer     |                   |            |        |       |
+| 4   | Reopening: writes working again            |                   |            |        |       |
+| 5   | Cancellation: no mutation, refusal audited |                   |            |        |       |
+| 6   | Exact replay / argument collision          |                   |            |        |       |
 
-Reporter les relevés dans `docs/verification.md`, avec la version exacte du
-navigateur. Un point non relevé se note « non vérifié », jamais « supposé
-bon ».
+Report the readings in `docs/verification.md`, with the exact browser version. A
+point that was not observed is recorded as “not verified”, never as “assumed
+good”.

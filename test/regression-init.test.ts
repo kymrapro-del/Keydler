@@ -9,17 +9,17 @@ beforeEach(async () => {
   await clearDatabase()
 })
 
-describe('chargement initial concurrent à une écriture', () => {
-  it('ne remplace pas l’état appliqué par une lecture du disque plus ancienne', async () => {
+describe('initial load racing a write', () => {
+  it('does not replace the applied state with an older read from disk', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
 
-    const premier = store.mutate((s) => setNext(s, { next: 'première', basedOnVersion: null }))
+    const first = store.mutate((s) => setNext(s, { next: 'première', basedOnVersion: null }))
     const agent = call(resumeTaskTool)
     const second = store.mutate((s) =>
       setNext(s, { next: 'nouvelle prochaine action', basedOnVersion: null }),
     )
 
-    await Promise.all([premier, agent, second])
+    await Promise.all([first, agent, second])
     await settle(4)
 
     const final = currentTask()
@@ -27,7 +27,7 @@ describe('chargement initial concurrent à une écriture', () => {
     expect(final.next).toBe('nouvelle prochaine action')
   })
 
-  it('ne fait jamais reculer la version, même sur plusieurs écritures en vol', async () => {
+  it('never walks the version backwards, even with several writes in flight', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const versions: number[] = []
     store.subscribe(() => {
@@ -35,12 +35,12 @@ describe('chargement initial concurrent à une écriture', () => {
       if (v !== undefined) versions.push(v)
     })
 
-    const écritures = [
+    const writes = [
       store.mutate((s) => setNext(s, { next: 'une', basedOnVersion: null })),
       call(resumeTaskTool),
       store.mutate((s) => setNext(s, { next: 'deux', basedOnVersion: null })),
     ]
-    await Promise.all(écritures)
+    await Promise.all(writes)
     await settle(4)
 
     const reculs = versions.filter((v, i) => i > 0 && v < versions[i - 1])

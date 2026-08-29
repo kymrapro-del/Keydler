@@ -19,8 +19,8 @@ function ctx(seed = 0) {
   return { now: 1_700_000_000_000, newId: () => `id-${n++}` }
 }
 
-describe('corrections humaines, dans le domaine', () => {
-  it('renomme la tâche et garde la trace de l’ancien nom', () => {
+describe('human corrections, in the domain', () => {
+  it('renames the task and keeps a trace of the old name', () => {
     const before = createTask({ title: 'Refactor auth', next: 'Map it' }, ctx())
     const after = renameTask(before, 'Refactor the authentication module', ctx(10))
 
@@ -30,13 +30,13 @@ describe('corrections humaines, dans le domaine', () => {
     expect(after.audit.at(-1)!.detail).toContain('Refactor auth →')
   })
 
-  it('refuse un renommage vide, et un renommage qui ne change rien', () => {
+  it('refuses an empty rename, and a rename that changes nothing', () => {
     const task = createTask({ title: 'Same' }, ctx())
     expect(() => renameTask(task, '   ', ctx(10))).toThrow(ValidationError)
     expect(() => renameTask(task, 'Same', ctx(10))).toThrow(ValidationError)
   })
 
-  it('reformule une règle sans toucher à sa force ni à sa source', () => {
+  it('rewords a rule without touching its force or its source', () => {
     const task = buildDemoTask()
     const rule = activeConstraints(task)[0]
     const after = editConstraint(task, rule.id, 'Never modify the database schema, ever')
@@ -47,11 +47,11 @@ describe('corrections humaines, dans le domaine', () => {
     expect(edited.standing).toBe(rule.standing)
     expect(edited.active).toBe(rule.active)
 
-    // Ce que l'agent relit suit immédiatement.
+    // What the agent re-reads follows immediately.
     expect(renderTaskState(after)).toContain('Never modify the database schema, ever')
   })
 
-  it('reformule un rejet, motif compris', () => {
+  it('rewords a rejection, reason included', () => {
     const task = buildDemoTask()
     const rejection = acceptedRejections(task)[0]
     const after = editRejection(task, rejection.id, {
@@ -65,7 +65,7 @@ describe('corrections humaines, dans le domaine', () => {
     expect(after.audit.at(-1)).toMatchObject({ operation: 'edit_rejection', actor: 'human' })
   })
 
-  it('exige toujours un motif : reformuler ne permet pas de le vider', () => {
+  it('still demands a reason: rewording is no way to empty it', () => {
     const task = buildDemoTask()
     const rejection = acceptedRejections(task)[0]
     expect(() =>
@@ -73,7 +73,7 @@ describe('corrections humaines, dans le domaine', () => {
     ).toThrow(ValidationError)
   })
 
-  it('refuse de reformuler ce qui n’existe pas', () => {
+  it('refuses to reword what does not exist', () => {
     const task = buildDemoTask()
     expect(() => editConstraint(task, 'nope', 'x')).toThrow(ValidationError)
     expect(() => editRejection(task, 'nope', { approach: 'a', reason: 'b' })).toThrow(
@@ -81,12 +81,12 @@ describe('corrections humaines, dans le domaine', () => {
     )
   })
 
-  it('n’est jamais refusé pour version périmée : l’humain reste autoritaire', () => {
+  it('is never refused for a stale version: the human stays authoritative', () => {
     const task = buildDemoTask()
     const rule = activeConstraints(task)[0]
 
-    // Aucune de ces mutations ne porte de `basedOnVersion` : c'est exactement
-    // ce qui périme la version sur laquelle l'agent travaille.
+    // None of these mutations carries a `basedOnVersion`: that is exactly
+    // what goes stale on the version the agent works from.
     for (const entry of [
       renameTask(task, 'A new name').audit.at(-1)!,
       editConstraint(task, rule.id, 'A reworded rule').audit.at(-1)!,
@@ -97,7 +97,7 @@ describe('corrections humaines, dans le domaine', () => {
   })
 })
 
-describe('corrections humaines, à l’écran', () => {
+describe('human corrections, on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -128,7 +128,7 @@ describe('corrections humaines, à l’écran', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('renomme la tâche depuis l’en-tête, sans rechargement', async () => {
+  it('renames the task from the header, with no reload', async () => {
     root.querySelector<HTMLButtonElement>('#edit-title')!.click()
     await settled()
     expect(document.activeElement?.id).toBe('edit-value')
@@ -144,7 +144,7 @@ describe('corrections humaines, à l’écran', () => {
     expect(root.querySelector('h1')!.textContent!.trim()).toBe('Rework the auth module')
   })
 
-  it('change la prochaine action, ce que l’agent relira', async () => {
+  it('changes the next action, which is what the agent re-reads', async () => {
     root.querySelector<HTMLButtonElement>('#edit-next')!.click()
     await settled()
 
@@ -158,7 +158,7 @@ describe('corrections humaines, à l’écran', () => {
     expect(root.querySelector('.hero__value')!.textContent).toContain('Measure rotation')
   })
 
-  it('reformule une règle sans la lever', async () => {
+  it('rewords a rule without lifting it', async () => {
     const before = activeConstraints(store.currentTask()!).length
     root.querySelector<HTMLButtonElement>('[data-edit-rule]')!.click()
     await settled()
@@ -172,7 +172,7 @@ describe('corrections humaines, à l’écran', () => {
     expect(rules.map((r) => r.rule)).toContain('Never touch the database schema')
   })
 
-  it('reformule un rejet en gardant son motif obligatoire', async () => {
+  it('rewords a rejection while keeping its reason mandatory', async () => {
     root.querySelector<HTMLButtonElement>('[data-edit-rejection]')!.click()
     await settled()
 
@@ -183,11 +183,11 @@ describe('corrections humaines, à l’écran', () => {
     expect(root.querySelector('[role="alert"]')!.textContent).toContain(
       'the reason cannot be empty',
     )
-    // Rien n'a été écrit : le rejet garde son motif.
+    // Nothing was written: the rejection keeps its reason.
     expect(acceptedRejections(store.currentTask()!)[0].reason).toContain('breaks refresh token')
   })
 
-  it('abandonne une édition sans rien changer', async () => {
+  it('abandons an edit without changing anything', async () => {
     const title = store.currentTask()!.title
     root.querySelector<HTMLButtonElement>('#edit-title')!.click()
     await settled()
@@ -200,7 +200,7 @@ describe('corrections humaines, à l’écran', () => {
     expect(root.querySelector('#edit-form')).toBeNull()
   })
 
-  it('consigne une étape faite à la main, comptée comme vérifiée par vous', async () => {
+  it('logs a step done by hand, counted as verified by you', async () => {
     const before = store.currentTask()!.steps.length
     root.querySelector<HTMLButtonElement>('#log-step')!.click()
     await settled()
@@ -216,13 +216,13 @@ describe('corrections humaines, à l’écran', () => {
     expect(steps).toHaveLength(before + 1)
     const added = steps.at(-1)!
     expect(added.source).toBe('human')
-    // Une preuve que la personne a produite elle-même : elle était là.
+    // Evidence the person produced themselves: they were there.
     expect(added.confidence).toBe('human_verified')
     expect(added.evidence!.content).toContain('183 passed')
     expect(added.evidence!.verifiedAt).not.toBeNull()
   })
 
-  it('consigne une étape sans preuve comme simplement affirmée', async () => {
+  it('logs a step with no evidence as merely claimed', async () => {
     root.querySelector<HTMLButtonElement>('#log-step')!.click()
     await settled()
 
@@ -234,7 +234,7 @@ describe('corrections humaines, à l’écran', () => {
     expect(store.currentTask()!.steps.at(-1)!.confidence).toBe('claimed')
   })
 
-  it('refuse une étape sans action, en langage humain', async () => {
+  it('refuses a step with no action, in human words', async () => {
     const before = store.currentTask()!.steps.length
     root.querySelector<HTMLButtonElement>('#log-step')!.click()
     await settled()
@@ -247,7 +247,7 @@ describe('corrections humaines, à l’écran', () => {
     expect(store.currentTask()!.steps).toHaveLength(before)
   })
 
-  it('inscrit chaque correction dans l’historique, en mots', async () => {
+  it('writes every correction into the history, in words', async () => {
     root.querySelector<HTMLButtonElement>('#edit-title')!.click()
     await settled()
     type('edit-value', 'A different name')

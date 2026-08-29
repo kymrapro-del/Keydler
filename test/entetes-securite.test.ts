@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import headers from '../public/_headers?raw'
 import vercelBrut from '../vercel.json?raw'
 
-// La page tient un coffre d'identifiants chiffrés et treize outils appelables
-// par un agent : un script injecté y aurait accès à tout. Les épreuves tiennent
-// la politique par ses DIRECTIVES, qu'on affaiblit en la réécrivant, et gardent
-// les deux hébergeurs alignés. Vérifié dans Brave sur `dist/` : script en ligne,
-// script de CDN, `fetch` sortant, image-balise et cadrage tous refusés, sans une
-// erreur de console.
+// The page holds a vault of encrypted credentials and thirteen tools an agent
+// can call: an injected script would have access to all of it. The tests hold
+// the policy by its DIRECTIVES, which rewriting it weakens, and keep the two
+// hosts aligned. Checked in Brave on `dist/`: inline script, CDN script,
+// outbound `fetch`, image beacon and framing all refused, without one console
+// error.
 const vercel = JSON.parse(vercelBrut) as {
   headers: { source: string; headers: { key: string; value: string }[] }[]
 }
@@ -25,8 +25,8 @@ const directive = (csp: string, nom: string) =>
     .map((d) => d.trim())
     .find((d) => d === nom || d.startsWith(`${nom} `)) ?? ''
 
-describe('la politique de sécurité du contenu', () => {
-  it('part de rien et n’ouvre que cette origine', () => {
+describe('the content security policy', () => {
+  it('starts from nothing and opens only this origin', () => {
     for (const csp of [cspHeaders, cspVercel]) {
       expect(directive(csp, 'default-src')).toBe("default-src 'none'")
       for (const nom of ['style-src', 'img-src', 'connect-src', 'manifest-src', 'worker-src']) {
@@ -35,9 +35,9 @@ describe('la politique de sécurité du contenu', () => {
     }
   })
 
-  it('n’autorise jamais ni `unsafe-inline` ni `unsafe-eval`', () => {
-    // Le seul script en ligne est autorisé par son empreinte. `unsafe-inline`
-    // viderait la politique de tout son intérêt d'un seul mot.
+  it('never allows `unsafe-inline` or `unsafe-eval`', () => {
+    // The only inline script is allowed by its hash. `unsafe-inline` would empty
+    // the policy of its whole point in a single word.
     for (const csp of [cspHeaders, cspVercel]) {
       expect(csp).not.toContain('unsafe-inline')
       expect(csp).not.toContain('unsafe-eval')
@@ -45,10 +45,10 @@ describe('la politique de sécurité du contenu', () => {
     }
   })
 
-  it('autorise le script d’amorce par une empreinte, et une seule', () => {
-    // Dans le dépôt, `_headers` porte un marqueur : c'est `scripts/headers.mjs`
-    // qui calcule l'empreinte sur le HTML réellement construit, la substitue,
-    // et refuse la construction si `vercel.json` n'en porte pas la même.
+  it('allows the bootstrap script by one hash, and only one', () => {
+    // In the repo, `_headers` carries a marker: `scripts/headers.mjs` is what
+    // computes the hash over the HTML actually built, substitutes it, and
+    // refuses the build if `vercel.json` does not carry the same one.
     expect(directive(cspHeaders, 'script-src')).toBe("script-src 'self' '__CSP_SCRIPT_HASH__'")
 
     const dansVercel = cspVercel.match(/'sha256-[A-Za-z0-9+/=]+'/g) ?? []
@@ -56,7 +56,7 @@ describe('la politique de sécurité du contenu', () => {
     expect(directive(cspVercel, 'script-src')).toBe(`script-src 'self' ${dansVercel[0]}`)
   })
 
-  it('interdit le cadrage, la soumission de formulaire et la réécriture de base', () => {
+  it('forbids framing, form submission and base rewriting', () => {
     for (const csp of [cspHeaders, cspVercel]) {
       expect(directive(csp, 'frame-ancestors')).toBe("frame-ancestors 'none'")
       expect(directive(csp, 'form-action')).toBe("form-action 'none'")
@@ -66,7 +66,7 @@ describe('la politique de sécurité du contenu', () => {
   })
 })
 
-describe('les autres en-têtes', () => {
+describe('the other headers', () => {
   const attendus: [string, RegExp][] = [
     ['Strict-Transport-Security', /max-age=31536000/],
     ['X-Content-Type-Options', /^nosniff$/],
@@ -76,26 +76,26 @@ describe('les autres en-têtes', () => {
     ['Cross-Origin-Resource-Policy', /^same-origin$/],
   ]
 
-  it.each(attendus)('pose %s des deux côtés', (nom, motif) => {
-    const côtéFichier = new RegExp(`${nom}:\\s*(.*)`).exec(headers)?.[1]?.trim() ?? ''
-    expect(côtéFichier, `_headers ${nom}`).toMatch(motif)
+  it.each(attendus)('sets %s on both sides', (nom, motif) => {
+    const fromFile = new RegExp(`${nom}:\\s*(.*)`).exec(headers)?.[1]?.trim() ?? ''
+    expect(fromFile, `_headers ${nom}`).toMatch(motif)
     expect(vercelHeader(nom).trim(), `vercel.json ${nom}`).toMatch(motif)
   })
 
-  it('refuse toutes les permissions que le produit n’utilise pas', () => {
-    // Aucune n'est utilisée : la page ne demande ni caméra, ni micro, ni
-    // position, ni paiement. Les refuser coûte zéro et retire autant de
-    // surface à un script qui parviendrait quand même à s'exécuter.
+  it('refuses every permission the product does not use', () => {
+    // None is used: the page asks for no camera, no microphone, no location,
+    // no payment. Refusing them costs zero and takes that much surface away
+    // from a script that would manage to run anyway.
     for (const source of [headers, vercelHeader('Permissions-Policy')]) {
-      for (const clé of ['camera', 'microphone', 'geolocation', 'payment', 'usb', 'serial']) {
-        expect(source, clé).toContain(`${clé}=()`)
+      for (const key of ['camera', 'microphone', 'geolocation', 'payment', 'usb', 'serial']) {
+        expect(source, key).toContain(`${key}=()`)
       }
     }
   })
 
-  it('ne garde en cache que ce qui porte une empreinte', () => {
-    // Mettre `index.html` en cache ferait servir une ancienne page qui réclame
-    // des fichiers supprimés : l'écran blanc classique après un déploiement.
+  it('caches only what carries a hash in its name', () => {
+    // Caching `index.html` would serve an old page asking for files that have
+    // been deleted: the classic white screen after a deployment.
     expect(headers).toMatch(/\/assets\/\*\n\s+Cache-Control: public, max-age=31536000, immutable/)
     for (const f of ['/index.html', '/sw.js', '/manifest.webmanifest']) {
       expect(headers, f).toMatch(new RegExp(`${f}\\n\\s+Cache-Control: no-cache`))

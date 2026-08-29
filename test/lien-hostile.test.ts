@@ -42,19 +42,19 @@ async function gzip(text: string): Promise<Uint8Array> {
   return merged
 }
 
-describe('un lien hostile', () => {
-  it('refuse une charge qui se décompresse en une masse énorme', async () => {
-    // Un « zip bomb » : une charge SOUS la borne d'entrée, au ratio maximal de
-    // gzip. Le lien étant ouvert par la victime, borner l'entrée ne protège de
-    // rien : c'est la sortie qu'il faut borner.
-    const énorme = JSON.stringify({ id: 'bomb', title: 'x'.repeat(6_000_000), version: 1 })
-    const packed = `z${toBase64Url(await gzip(énorme))}`
+describe('a hostile link', () => {
+  it('refuses a payload that decompresses into an enormous mass', async () => {
+    // A "zip bomb": a payload UNDER the input bound, at gzip's maximum ratio.
+    // Since the link is opened by the victim, bounding the input protects
+    // nothing: it is the output that has to be bounded.
+    const huge = JSON.stringify({ id: 'bomb', title: 'x'.repeat(6_000_000), version: 1 })
+    const packed = `z${toBase64Url(await gzip(huge))}`
     expect(packed.length).toBeLessThan(MAX_LINK_LENGTH)
 
     await expect(unpackTask(packed)).rejects.toThrow()
   })
 
-  it('refuse une charge dont le JSON est valide mais démesuré', async () => {
+  it('refuses a payload whose JSON is valid but oversized', async () => {
     const listes = JSON.stringify({
       id: 'flood',
       title: 'Flood',
@@ -68,10 +68,10 @@ describe('un lien hostile', () => {
   })
 })
 
-describe('une charge démesurée est refusée avant même d’être lue', () => {
-  it('refuse un lien plus long que ce que l’on sait produire, même valide', async () => {
-    // Un cahier PARFAITEMENT valide, simplement trop long. Sans la borne
-    // d'entrée il serait accepté : c'est ce qui isole cette garde-là.
+describe('an oversized payload is refused before it is even read', () => {
+  it('refuses a link longer than anything it can produce, valid or not', async () => {
+    // A PERFECTLY valid task, simply too long. Without the input bound it
+    // would be accepted: that is what isolates this particular guard.
     const valide = JSON.stringify({
       ...buildCoreTask(),
       title: 'x'.repeat(20_000),
@@ -82,7 +82,7 @@ describe('une charge démesurée est refusée avant même d’être lue', () => 
     await expect(unpackTask(packed)).rejects.toThrow()
   })
 
-  it('accepte le même cahier une fois sous la borne', async () => {
+  it('accepts the same log once it is under the bound', async () => {
     const valide = JSON.stringify(buildCoreTask())
     const packed = `p${toBase64Url(new TextEncoder().encode(valide))}`
     expect(packed.length).toBeLessThan(MAX_LINK_LENGTH)
@@ -91,9 +91,9 @@ describe('une charge démesurée est refusée avant même d’être lue', () => 
   })
 })
 
-describe('un cahier reçu ne porte pas un journal sans fin', () => {
-  it('applique la même borne qu’à l’écriture', () => {
-    const gonflé = {
+describe('a received log carries no endless audit trail', () => {
+  it('applies the same bound as on write', () => {
+    const inflated = {
       ...buildCoreTask(),
       audit: Array.from({ length: MAX_AUDIT_ENTRIES * 3 }, (_, i) => ({
         id: `e${i}`,
@@ -108,15 +108,15 @@ describe('un cahier reçu ne porte pas un journal sans fin', () => {
       })),
     }
 
-    const propre = normalizeTask(gonflé as never)!
+    const propre = normalizeTask(inflated as never)!
     expect(propre.audit.length).toBe(MAX_AUDIT_ENTRIES)
-    // Ce sont les plus récentes qui survivent, comme à l'écriture.
+    // It is the most recent ones that survive, as on write.
     expect(propre.audit.at(-1)!.detail).toBe(`entry ${MAX_AUDIT_ENTRIES * 3 - 1}`)
   })
 })
 
-describe('l’histoire d’un élément quand le journal a été élagué', () => {
-  it('ne laisse pas croire qu’elle est complète', () => {
+describe('the history of one item when the audit trail has been trimmed', () => {
+  it('does not let it look complete', () => {
     let task = buildCoreTask()
     const rule = task.constraints[0]
     task = setConstraintActive(task, rule.id, false)
@@ -125,17 +125,17 @@ describe('l’histoire d’un élément quand le journal a été élagué', () =
       task = logStep(task, { action: `step ${i}`, result: 'x', basedOnVersion: null }, 'agent')
     }
 
-    // La levée est tombée hors du journal borné.
+    // The lifting fell out of the bounded log.
     const trail = historyOf(task, rule.id)
     expect(trail.entries).toHaveLength(0)
-    // Et il le dit, plutôt que de laisser croire qu'il ne s'est rien passé.
+    // And it says so, rather than letting it look like nothing happened.
     expect(trail.mayBeIncomplete).toBe(true)
     expect(task.audit.some((e) => e.operation === 'audit_trimmed')).toBe(true)
   })
 })
 
-describe('la garde anti-répétition', () => {
-  it('ne bloque pas une règle rendue à l’état de proposition puis reposée', () => {
+describe('the anti-repeat guard', () => {
+  it('does not block a rule returned to the proposed state and then added again', () => {
     const task = buildCoreTask()
     const declined = {
       ...task,

@@ -3,12 +3,12 @@ import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-// Le service worker ne peut pas connaître à l'avance des noms empreintés : sa
-// liste de précache ne citait aucun des deux fichiers dont l'application est
-// faite, et un audit a trouvé une page blanche hors ligne après une seule
-// visite, là où le README annonce le contraire. Le nom de cache change avec la
-// liste : sans cela `activate` ne supprimait jamais rien et une entrée fautive
-// survivait à tous les déploiements suivants.
+// The service worker cannot know fingerprinted names in advance: its precache
+// list named neither of the two files the application is made of, and an audit
+// found a blank page offline after a single visit, where the README announces
+// the opposite. The cache name changes with the list: without this `activate`
+// never deleted anything and a faulty entry survived every deployment that
+// followed.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 
 const actifs = (await readdir(join(dist, 'assets')))
@@ -21,19 +21,19 @@ if (actifs.length === 0) {
   process.exit(1)
 }
 
-const chemin = join(dist, 'sw.js')
-const source = await readFile(chemin, 'utf8')
+const path = join(dist, 'sw.js')
+const source = await readFile(path, 'utf8')
 const shell = ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png', ...actifs]
 const version = createHash('sha256').update(shell.join('|')).digest('hex').slice(0, 12)
 
-const écrit = source
+const written = source
   .replace(/^const CACHE = .*$/m, `const CACHE = 'keydler-${version}'`)
   .replace(/^const SHELL = .*$/m, `const SHELL = ${JSON.stringify(shell)}`)
 
-if (écrit === source) {
+if (written === source) {
   console.error('precache: ni CACHE ni SHELL trouvés dans dist/sw.js')
   process.exit(1)
 }
 
-await writeFile(chemin, écrit)
+await writeFile(path, written)
 console.log(`precache: ${shell.length} entrées, cache keydler-${version}`)

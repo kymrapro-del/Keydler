@@ -9,11 +9,11 @@ function encode(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(encode).join(',')}]`
 
   if (typeof value === 'object') {
-    const entrées = Object.entries(value as Record<string, unknown>)
+    const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, v]) => v !== undefined && v !== null && v !== '')
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([clé, v]) => `${JSON.stringify(clé)}:${encode(v)}`)
-    return `{${entrées.join(',')}}`
+      .map(([key, v]) => `${JSON.stringify(key)}:${encode(v)}`)
+    return `{${entries.join(',')}}`
   }
 
   return JSON.stringify(String(value))
@@ -26,11 +26,11 @@ export function fingerprintIntent(operation: string, args: Record<string, unknow
   return `${canonique.length.toString(36)}.${a.toString(36)}.${b.toString(36)}`
 }
 
-function cyrb53(texte: string, seed: number): number {
+function cyrb53(text: string, seed: number): number {
   let h1 = 0xdeadbeef ^ seed
   let h2 = 0x41c6ce57 ^ seed
-  for (let i = 0; i < texte.length; i++) {
-    const ch = texte.charCodeAt(i)
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i)
     h1 = Math.imul(h1 ^ ch, 2654435761)
     h2 = Math.imul(h2 ^ ch, 1597334677)
   }

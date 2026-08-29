@@ -21,14 +21,14 @@ describe('search_task', () => {
     store.__resetStore()
   })
 
-  it('est déclaré en lecture seule, et annoncé comme tel', () => {
+  it('is declared read-only, and announced as such', () => {
     expect(searchTaskTool.annotations?.readOnlyHint).toBe(true)
     expect(searchTaskTool.annotations?.untrustedContentHint).toBe(true)
     expect(READ_TOOLS).toContain(searchTaskTool)
     expect(WRITE_TOOLS).not.toContain(searchTaskTool)
   })
 
-  it('répond à la question du produit : a-t-on déjà essayé cela ?', async () => {
+  it('answers the product question: has this been tried already?', async () => {
     await store.mutate((s) =>
       rejectApproach(
         s,
@@ -47,7 +47,7 @@ describe('search_task', () => {
     expect(found).toMatch(/RULED OUT|Ruled out/)
   })
 
-  it('cherche dans les étapes, les preuves, les règles et les décisions', async () => {
+  it('searches the steps, the evidence, the rules and the decisions', async () => {
     await store.mutate((s) =>
       logStep(
         s,
@@ -66,26 +66,26 @@ describe('search_task', () => {
 
     const found = textOf(await call(searchTaskTool, { query: 'monogram-parser' }))
     expect(found).toContain('Never touch monogram-parser')
-    // La preuve compte : c'est souvent là que se trouve la trace d'un essai.
+    // The evidence counts: it is often where the trace of an attempt sits.
     expect(found).toContain('Ran the suite')
   })
 
-  it('dit clairement qu’il n’a rien trouvé, sans laisser croire à une absence de trace', async () => {
+  it('says plainly that it found nothing, without implying there is no trace', async () => {
     const found = textOf(await call(searchTaskTool, { query: 'quantum-flux-capacitor' }))
     expect(found).toContain('NO MATCH')
     expect(found).toContain('quantum-flux-capacitor')
-    // Une recherche vide ne prouve pas que rien n'a été tenté : le cahier peut
-    // simplement employer d'autres mots.
+    // An empty search does not prove nothing was tried: the log may simply
+    // use other words.
     expect(found.toLowerCase()).toContain('does not prove')
   })
 
-  it('refuse une requête trop courte plutôt que de tout déverser', async () => {
+  it('refuses a query that is too short rather than dumping everything', async () => {
     const result = await call(searchTaskTool, { query: 'a' })
     expect(result.isError).toBe(true)
     expect(textOf(result)).toContain('query')
   })
 
-  it('borne sa réponse, et dit combien de résultats il a laissés de côté', async () => {
+  it('bounds its answer, and says how many results it left out', async () => {
     for (let i = 0; i < 30; i++) {
       await store.mutate((s) =>
         addConstraint(s, { rule: `Rule about widgets number ${i}`, basedOnVersion: null }, 'human'),
@@ -98,7 +98,7 @@ describe('search_task', () => {
     expect(found.length).toBeLessThan(6000)
   })
 
-  it('ne rend jamais la valeur d’un identifiant', async () => {
+  it('never returns the value of a credential', async () => {
     const task = currentTask()
     await addSecret({
       taskId: task.id,
@@ -123,31 +123,31 @@ describe('search_task', () => {
     expect(found).not.toContain('AIzaSy-never-leaves-this-device')
   })
 
-  it('refuse une limite hors bornes plutôt que de la rogner en silence', async () => {
+  it('refuses an out-of-range limit rather than clamping it silently', async () => {
     for (const limit of [0, 99, 2.5, 'beaucoup']) {
       const result = await call(searchTaskTool, { query: 'token', limit })
       expect(result.isError, String(limit)).toBe(true)
       expect(textOf(result), String(limit)).toContain('limit')
     }
 
-    // Absente, elle vaut le maximum : l'agent n'a pas à la connaître.
+    // Absent, it means the maximum: the agent does not have to know about it.
     expect((await call(searchTaskTool, { query: 'token' })).isError).toBeFalsy()
     expect((await call(searchTaskTool, { query: 'token', limit: 1 })).isError).toBeFalsy()
   })
 
-  it('refuse une requête qui n’est pas du texte', async () => {
+  it('refuses a query that is not text', async () => {
     const result = await call(searchTaskTool, { query: 42 })
     expect(result.isError).toBe(true)
     expect(textOf(result)).toContain('query')
   })
 
-  it('refuse une requête interminable', async () => {
+  it('refuses an endless query', async () => {
     const result = await call(searchTaskTool, { query: 'x'.repeat(201) })
     expect(result.isError).toBe(true)
     expect(textOf(result)).toContain('200')
   })
 
-  it('renonce quand l’exécution est annulée', async () => {
+  it('gives up when the call is cancelled', async () => {
     const controller = new AbortController()
     controller.abort()
     const result = await call(searchTaskTool, { query: 'token' }, controller.signal)
@@ -156,8 +156,8 @@ describe('search_task', () => {
   })
 })
 
-describe('la mise en mots d’une recherche', () => {
-  it('nomme la section où continuer, pour que l’agent sache quoi lire ensuite', () => {
+describe('putting a search into words', () => {
+  it('names the section to continue in, so the agent knows what to read next', () => {
     const rendered = renderSearch(buildDemoTask(), 'token', 10)
     expect(rendered).toContain('read_task_detail')
   })

@@ -8,9 +8,9 @@ import { call, clearDatabase, currentTask, textOf, writeArgs } from './helpers'
 
 const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
 
-async function cahierChargé(nbÉtapes: number, tailleDePreuve = 40) {
+async function loadedLog(stepCount: number, tailleDePreuve = 40) {
   const task = await store.createAndOpenTask('Tâche chargée', 'Continuer')
-  for (let i = 0; i < nbÉtapes; i++) {
+  for (let i = 0; i < stepCount; i++) {
     await call(
       logStep,
       writeArgs(currentTask(), {
@@ -29,8 +29,8 @@ beforeEach(async () => {
 })
 
 describe('pagination', () => {
-  it('rend une page bornée et dit combien il reste, avec le décalage suivant', async () => {
-    await cahierChargé(12)
+  it('renders a bounded page and says how many are left, with the next offset', async () => {
+    await loadedLog(12)
 
     const page = textOf(await call(readTaskDetailTool, { section: 'steps', limit: 5 }))
     expect(page).toContain('PAGE        1–5 of 12')
@@ -40,51 +40,51 @@ describe('pagination', () => {
     expect(page).not.toContain('Étape 5')
   })
 
-  it('parcourt toute la collection sans trou ni recouvrement', async () => {
-    await cahierChargé(12)
+  it('walks the whole collection with no gap and no overlap', async () => {
+    await loadedLog(12)
 
     const vues: string[] = []
     let offset = 0
-    for (let garde = 0; garde < 10; garde++) {
+    for (let guard = 0; guard < 10; guard++) {
       const page = textOf(await call(readTaskDetailTool, { section: 'steps', limit: 5, offset }))
       vues.push(...(page.match(/Étape \d+/g) ?? []))
-      const suivant = page.match(/call again with offset: (\d+)/)
-      if (!suivant) break
-      offset = Number(suivant[1])
+      const next = page.match(/call again with offset: (\d+)/)
+      if (!next) break
+      offset = Number(next[1])
     }
 
     expect(vues).toEqual(Array.from({ length: 12 }, (_, i) => `Étape ${i}`))
     expect(new Set(vues).size).toBe(12)
   })
 
-  it('dit explicitement qu’une section est épuisée, plutôt que de rendre une page muette', async () => {
-    await cahierChargé(3)
+  it('says outright that a section is exhausted, rather than a silent page', async () => {
+    await loadedLog(3)
     const page = textOf(await call(readTaskDetailTool, { section: 'steps' }))
     expect(page).toContain('MORE        none, this is the end of the section')
   })
 
-  it('dit qu’une section est vide, sans laisser croire à une panne', async () => {
+  it('says a section is empty, without looking like a failure', async () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     const page = textOf(await call(readTaskDetailTool, { section: 'decisions' }))
     expect(page).toContain('PAGE        empty, this section holds nothing')
   })
 
-  it('signale un décalage au-delà de la fin, et dit lequel serait valable', async () => {
-    await cahierChargé(3)
+  it('flags an offset past the end, and says which one would work', async () => {
+    await loadedLog(3)
     const page = textOf(await call(readTaskDetailTool, { section: 'steps', offset: 50 }))
     expect(page).toContain('past the end of this section')
     expect(page).toContain('between 0 and 2')
   })
 
-  it('refuse une section inconnue en nommant celles qui existent', async () => {
+  it('refuses an unknown section by naming the ones that exist', async () => {
     await store.createAndOpenTask('Tâche', 'Continuer')
     const result = await call(readTaskDetailTool, { section: 'etapes' })
     expect(result.isError).toBe(true)
     for (const s of SECTIONS) expect(textOf(result)).toContain(s)
   })
 
-  it('refuse une taille de page hors bornes, plutôt que de rendre le cahier entier', async () => {
-    await cahierChargé(3)
+  it('refuses an out-of-bounds page size, rather than returning the whole log', async () => {
+    await loadedLog(3)
     for (const limit of [0, MAX_LIMIT + 1, -3]) {
       const result = await call(readTaskDetailTool, { section: 'steps', limit })
       expect(result.isError).toBe(true)
@@ -93,8 +93,8 @@ describe('pagination', () => {
   })
 })
 
-describe('lecture ciblée', () => {
-  it('tronque la preuve en page, et la rend entière quand on la nomme', async () => {
+describe('targeted reading', () => {
+  it('truncates evidence in a page, and returns it whole when it is named', async () => {
     const long = 'L'.repeat(EVIDENCE_PREVIEW + 500)
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     await call(
@@ -116,14 +116,14 @@ describe('lecture ciblée', () => {
     expect(entier).toContain('one entry, in full')
   })
 
-  it('dit qu’un identifiant est inconnu, et combien la section en contient', async () => {
-    await cahierChargé(2)
+  it('says an id is unknown, and how many the section holds', async () => {
+    await loadedLog(2)
     const result = textOf(await call(readTaskDetailTool, { section: 'steps', id: 'inexistant' }))
     expect(result).toContain('No entry with id "inexistant"')
     expect(result).toContain('2 entries')
   })
 
-  it('sépare les propositions du reste, jusque dans le détail', async () => {
+  it('keeps proposals apart from the rest, right into the detail', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     const reject = ALL_TOOLS.find((t) => t.name === 'reject_approach')!
     await call(reject, writeArgs(task, { approach: 'Approche X', reason: 'supposée' }))
@@ -134,46 +134,46 @@ describe('lecture ciblée', () => {
   })
 })
 
-describe('le pointeur reste court, et dit où trouver le reste', () => {
-  it('tient sous le budget alors même que le détail est volumineux', async () => {
-    await cahierChargé(30, 2000)
+describe('the pointer stays short, and says where to find the rest', () => {
+  it('stays under budget even when the detail is bulky', async () => {
+    await loadedLog(30, 2000)
 
-    const résumé = textOf(await call(resumeTaskTool))
-    expect(estimateTokens(résumé)).toBeLessThanOrEqual(TOKEN_BUDGET)
+    const summary = textOf(await call(resumeTaskTool))
+    expect(estimateTokens(summary)).toBeLessThanOrEqual(TOKEN_BUDGET)
 
-    expect(résumé).toContain('FULL DETAIL')
-    expect(résumé).toContain('read_task_detail')
+    expect(summary).toContain('FULL DETAIL')
+    expect(summary).toContain('read_task_detail')
 
-    const détail = textOf(await call(readTaskDetailTool, { section: 'steps', limit: 5 }))
-    expect(estimateTokens(détail)).toBeGreaterThan(TOKEN_BUDGET)
+    const detail = textOf(await call(readTaskDetailTool, { section: 'steps', limit: 5 }))
+    expect(estimateTokens(detail)).toBeGreaterThan(TOKEN_BUDGET)
   })
 
-  it('ne mute rien : c’est le contrat d’une lecture', async () => {
-    await cahierChargé(3)
-    const avant = currentTask()
+  it('mutates nothing: that is the contract of a read', async () => {
+    await loadedLog(3)
+    const before = currentTask()
 
     await call(readTaskDetailTool, { section: 'steps' })
     await call(readTaskDetailTool, { section: 'audit' })
     await call(resumeTaskTool)
 
-    const après = currentTask()
-    expect(après.version).toBe(avant.version)
-    expect(après.audit).toHaveLength(avant.audit.length)
+    const after = currentTask()
+    expect(after.version).toBe(before.version)
+    expect(after.audit).toHaveLength(before.audit.length)
     expect(readTaskDetailTool.annotations?.readOnlyHint).toBe(true)
   })
 })
 
-describe('ce que resume_task annonce du détail', () => {
-  it('renvoie au schéma plutôt que de recopier la liste des sections', () => {
-    // Une énumération en prose a déjà pris du retard deux fois, et chaque mot
-    // ajouté ici coûte un nom d'identifiant dans un budget de 400 jetons.
-    // L'énumération du schéma, elle, ne peut pas dériver.
+describe('what resume_task announces about the detail', () => {
+  it('points at the schema rather than copying out the list of sections', () => {
+    // A prose enumeration has already fallen behind twice, and every word
+    // added here costs an id name in a 400-token budget.
+    // The schema's own enumeration cannot drift.
     const rendered = renderTaskState(buildDemoTask())
     expect(rendered).toContain('read_task_detail')
     expect(rendered).toContain('schema')
   })
 
-  it('déclare chaque section dans le schéma de l’outil, sans en oublier', () => {
+  it('declares every section in the tool schema, leaving none out', () => {
     const schema = readTaskDetailTool.inputSchema as {
       properties: { section: { enum: string[] } }
     }
@@ -181,7 +181,7 @@ describe('ce que resume_task annonce du détail', () => {
   })
 })
 
-describe('section credentials', () => {
+describe('the credentials section', () => {
   const names = (n: number) =>
     Array.from({ length: n }, (_, i) => ({
       id: `s${i}`,
@@ -190,37 +190,37 @@ describe('section credentials', () => {
       kind: 'api_key' as const,
     }))
 
-  it('rend la liste complète des noms, page par page', () => {
-    const rendu = renderDetail(
+  it('renders the full list of names, page by page', () => {
+    const output = renderDetail(
       buildDemoTask(),
       { section: 'credentials', offset: 0, limit: 5, id: null },
       names(8),
     )
-    expect(rendu).toContain('SECTION     credentials')
-    expect(rendu).toContain('${service-0-api-key}')
-    expect(rendu).toContain('${service-4-api-key}')
-    expect(rendu).not.toContain('${service-5-api-key}')
-    expect(rendu).toMatch(/MORE\s+3 left, call again with offset: 5/)
+    expect(output).toContain('SECTION     credentials')
+    expect(output).toContain('${service-0-api-key}')
+    expect(output).toContain('${service-4-api-key}')
+    expect(output).not.toContain('${service-5-api-key}')
+    expect(output).toMatch(/MORE\s+3 left, call again with offset: 5/)
   })
 
-  it('ne porte que la projection publique : jamais une valeur, jamais un scellé', () => {
-    const rendu = renderDetail(
+  it('carries only the public projection: never a value, never a seal', () => {
+    const output = renderDetail(
       buildDemoTask(),
       { section: 'credentials', offset: 0, limit: 20, id: null },
       names(3),
     )
     for (const mot of ['ciphertext', 'salt', 'iv', 'iterations', 'sealed:']) {
-      expect(rendu, mot).not.toContain(mot)
+      expect(output, mot).not.toContain(mot)
     }
-    expect(rendu).toContain('no tool here returns a value')
+    expect(output).toContain('no tool here returns a value')
   })
 
-  it('dit qu’il n’y en a aucun, sans laisser croire à une panne', () => {
-    const rendu = renderDetail(
+  it('says there are none, without looking like a failure', () => {
+    const output = renderDetail(
       buildDemoTask(),
       { section: 'credentials', offset: 0, limit: 5, id: null },
       [],
     )
-    expect(rendu).toContain('empty')
+    expect(output).toContain('empty')
   })
 })

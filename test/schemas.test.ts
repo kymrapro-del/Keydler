@@ -19,29 +19,29 @@ type Schema = {
 const schemaOf = (name: string): Schema =>
   ALL_TOOLS.find((t) => t.name === name)!.inputSchema as Schema
 
-function objets(schema: Schema, chemin = '$'): [string, Schema][] {
-  const ici: [string, Schema][] = schema.type === 'object' ? [[chemin, schema]] : []
-  const enfants = Object.entries(schema.properties ?? {}).flatMap(([clé, valeur]) =>
-    objets(valeur, `${chemin}.${clé}`),
+function objets(schema: Schema, path = '$'): [string, Schema][] {
+  const here: [string, Schema][] = schema.type === 'object' ? [[path, schema]] : []
+  const enfants = Object.entries(schema.properties ?? {}).flatMap(([key, value]) =>
+    objets(value, `${path}.${key}`),
   )
-  return [...ici, ...enfants]
+  return [...here, ...enfants]
 }
 
-describe('durcissement', () => {
-  it('refuse tout champ inconnu, aux racines COMME dans les objets imbriqués', () => {
+describe('hardening', () => {
+  it('refuses any unknown field, at the roots AS WELL AS in nested objects', () => {
     for (const tool of ALL_TOOLS) {
-      for (const [chemin, objet] of objets(tool.inputSchema as Schema)) {
-        expect(objet.additionalProperties, `${tool.name} ${chemin}`).toBe(false)
+      for (const [path, objet] of objets(tool.inputSchema as Schema)) {
+        expect(objet.additionalProperties, `${tool.name} ${path}`).toBe(false)
       }
     }
   })
 
-  it('atteint bien l’objet imbriqué qu’on croit vérifier', () => {
-    const chemins = objets(schemaOf('log_step')).map(([c]) => c)
-    expect(chemins).toContain('$.evidence')
+  it('reaches the nested object one believes is being checked', () => {
+    const paths = objets(schemaOf('log_step')).map(([c]) => c)
+    expect(paths).toContain('$.evidence')
   })
 
-  it('déclare les bornes de longueur que le domaine applique', () => {
+  it('declares the length bounds the domain enforces', () => {
     const logStep = schemaOf('log_step')
     expect(logStep.properties!.action.maxLength).toBe(MAX_FIELD_LENGTH)
     expect(logStep.properties!.action.minLength).toBe(1)
@@ -50,7 +50,7 @@ describe('durcissement', () => {
     expect(schemaOf('complete_task').properties!.summary.maxLength).toBe(4000)
   })
 
-  it('énumère les natures de preuve plutôt que d’attendre le refus', () => {
+  it('enumerates the evidence kinds rather than waiting for the refusal', () => {
     const evidence = schemaOf('log_step').properties!.evidence
     expect(evidence.properties!.kind.enum).toEqual([
       'command_output',
@@ -62,7 +62,7 @@ describe('durcissement', () => {
     expect(evidence.required).toEqual(['kind', 'content'])
   })
 
-  it('exige version et jeton d’idempotence sur chaque écriture', () => {
+  it('requires a version and an idempotency token on every write', () => {
     for (const tool of WRITE_TOOLS) {
       const schema = tool.inputSchema as Schema
       expect(schema.required).toContain('based_on_version')
@@ -73,7 +73,7 @@ describe('durcissement', () => {
     }
   })
 
-  it('n’exige ni version ni jeton d’une lecture', () => {
+  it('requires neither version nor token of a read', () => {
     for (const tool of READ_TOOLS) {
       const schema = tool.inputSchema as Schema
       expect(schema.required ?? []).not.toContain('based_on_version')
@@ -81,12 +81,12 @@ describe('durcissement', () => {
     }
   })
 
-  it('n’accepte que l’objet vide là où l’outil ne prend rien', () => {
+  it('accepts only the empty object where the tool takes nothing', () => {
     const resume = schemaOf('resume_task')
     expect(resume).toMatchObject({ type: 'object', properties: {}, additionalProperties: false })
   })
 
-  it('borne la pagination dans le schéma, pas seulement à l’exécution', () => {
+  it('bounds pagination in the schema, not only at run time', () => {
     const detail = schemaOf('read_task_detail')
     expect(detail.properties!.limit.minimum).toBe(1)
     expect(detail.properties!.limit.maximum).toBe(20)
@@ -94,7 +94,7 @@ describe('durcissement', () => {
     expect(detail.required).toEqual(['section'])
   })
 
-  it('décrit chaque champ : un nom seul ne dit pas quoi y mettre', () => {
+  it('describes every field: a name alone does not say what to put in it', () => {
     for (const tool of ALL_TOOLS) {
       for (const [nom, prop] of Object.entries((tool.inputSchema as Schema).properties ?? {})) {
         expect(prop.description, `${tool.name}.${nom}`).toBeTruthy()
@@ -103,22 +103,22 @@ describe('durcissement', () => {
   })
 })
 
-describe('ce que la description doit porter faute d’annotation', () => {
-  it('dit le contrat de rejeu, que WebMCP ne sait pas transporter', () => {
+describe('what the description must carry for lack of an annotation', () => {
+  it('states the replay contract, which WebMCP cannot carry', () => {
     for (const tool of WRITE_TOOLS) {
-      // Le contrat vit dans la description du PARAMÈTRE, pas dans celle de
-      // l'outil : c'est là qu'un agent le lit au moment de remplir l'appel, et
-      // le répéter dans les deux ne faisait que gonfler un budget que Chrome
-      // recommande de tenir. Ce qui compte, c'est qu'il soit dit une fois.
-      const schéma = tool.inputSchema as Schema
-      expect(schéma.required, tool.name).toContain('mutation_id')
-      const jeton = schéma.properties!.mutation_id.description!
+      // The contract lives in the PARAMETER description, not the tool's: that
+      // is where an agent reads it while filling in the call, and repeating it
+      // in both only inflated a budget Chrome recommends holding to. What
+      // matters is that it is said once.
+      const theSchema = tool.inputSchema as Schema
+      expect(theSchema.required, tool.name).toContain('mutation_id')
+      const jeton = theSchema.properties!.mutation_id.description!
       expect(jeton, tool.name).toContain('retry with the SAME mutation_id')
       expect(jeton, tool.name).toContain('the write happens once')
     }
   })
 
-  it('dit que ce qu’un agent écrit est une proposition', () => {
+  it('says that what an agent writes is a proposal', () => {
     const contrainte = ALL_TOOLS.find((t) => t.name === 'add_constraint')!
     const rejet = ALL_TOOLS.find((t) => t.name === 'reject_approach')!
     expect(contrainte.description).toContain('PROPOSAL')
@@ -126,24 +126,24 @@ describe('ce que la description doit porter faute d’annotation', () => {
     expect(rejet.description).toContain('until a human approves it')
   })
 
-  it('dit qu’une preuve jointe n’est pas une preuve vérifiée', () => {
+  it('says attached evidence is not verified evidence', () => {
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     expect(logStep.description).toContain('not as verified')
   })
 })
 
-describe('les descriptions livrées', () => {
-  it('n’ont laissé aucune interpolation vider une référence', () => {
-    // `${name}` dans un gabarit TypeScript s'évalue silencieusement : la
-    // variable globale `name` vaut '' dans un navigateur, et l'agent reçoit
-    // « write as , and what it is for ». Rien ne plante.
+describe('the shipped descriptions', () => {
+  it('let no interpolation empty a reference', () => {
+    // `${name}` in a TypeScript template evaluates silently: the global
+    // variable `name` is '' in a browser, and the agent receives
+    // "write as , and what it is for". Nothing crashes.
     for (const tool of ALL_TOOLS) {
       expect(tool.description, tool.name).not.toMatch(/\bas ,|\{\}|as\s+,/)
       expect(tool.description, tool.name).not.toMatch(/ {2,},/)
     }
   })
 
-  it('écrit la syntaxe de référence en toutes lettres là où elle est citée', () => {
+  it('spells out the reference syntax where it is quoted', () => {
     for (const tool of ALL_TOOLS) {
       if (!/refer to one as|write as/.test(tool.description)) continue
       expect(tool.description, tool.name).toContain('${name}')

@@ -16,10 +16,10 @@ import { referenceSyntax, type SecretName } from './secret'
 import { sinceThen } from './elapsed'
 
 /**
- * Chrome recommande 1,5 k caractères par sortie d'outil, soit 375 tokens à quatre caractères
- * par token, la mesure d'`estimateTokens`. Descendre de 400 à 375 a été essayé puis retiré :
- * une restitution ordinaire passait de 1506 à 1489 caractères, dix-sept de gagnés, contre un
- * nom d'identifiant perdu à l'écran sur un cahier chargé.
+ * Chrome recommends 1.5k characters per tool output, that is 375 tokens at four characters
+ * per token, the measure `estimateTokens` uses. Dropping from 400 to 375 was tried then
+ * reverted: an ordinary render went from 1,506 to 1,489 characters, seventeen gained, against
+ * one credential name lost from the screen on a loaded task.
  */
 export const TOKEN_BUDGET = 400
 
@@ -58,10 +58,10 @@ export type RenderOptions = {
 const CLIP_FLOOR = 0.4
 
 /**
- * Rien ne bornait les règles ni les approches écartées : dix règles suffisaient à dépasser
- * le budget (487 tokens), deux mille le portaient à 37 800 (94 fois l'annoncé) et
- * l'échelle de dégradation ne coupait que l'histoire. On les coupe donc en dernier, jamais
- * sous ce plancher et jamais sans le dire : l'agent doit savoir qu'il lui en manque.
+ * Nothing bounded the rules or the ruled-out approaches: ten rules were enough to blow the
+ * budget (487 tokens), two thousand took it to 37,800 (94 times what is advertised) and the
+ * degradation ladder cut only the history. So they are cut last, never below this floor and
+ * never silently: the agent must know that some are missing.
  */
 const MIN_BINDING_SHOWN = 12
 
@@ -82,7 +82,7 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
   const proven = provenStepCount(state)
   const counts = evidenceCounts(state)
   const active = activeConstraints(state)
-  const condamnées = acceptedRejections(state)
+  const ruledOut = acceptedRejections(state)
   const propositions = [
     ...proposedConstraints(state).map((p) => ({ kind: 'constraint', text: p.rule })),
     ...proposedRejections(state).map((p) => ({
@@ -127,13 +127,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  const tranchées = decidedApprovals(state)
-  if (tranchées.length > 0 && recentApprovals > 0) {
-    const shown = tranchées.slice(-recentApprovals)
+  const decided = decidedApprovals(state)
+  if (decided.length > 0 && recentApprovals > 0) {
+    const shown = decided.slice(-recentApprovals)
     lines.push('')
     lines.push(
-      tranchées.length > shown.length
-        ? `DECIDED BY THE HUMAN (last ${shown.length} of ${tranchées.length})`
+      decided.length > shown.length
+        ? `DECIDED BY THE HUMAN (last ${shown.length} of ${decided.length})`
         : 'DECIDED BY THE HUMAN',
     )
     for (const a of shown) {
@@ -141,14 +141,14 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  const contestées = disputedSteps(state)
-  if (contestées.length > 0) {
-    const shown = contestées.slice(-recentDisputes)
+  const disputed = disputedSteps(state)
+  if (disputed.length > 0) {
+    const shown = disputed.slice(-recentDisputes)
     lines.push('')
     lines.push(
-      contestées.length > shown.length
-        ? `DISPUTED BY THE HUMAN: treat as wrong (${shown.length} of ${contestées.length})`
-        : `DISPUTED BY THE HUMAN: treat as wrong (${contestées.length})`,
+      disputed.length > shown.length
+        ? `DISPUTED BY THE HUMAN: treat as wrong (${shown.length} of ${disputed.length})`
+        : `DISPUTED BY THE HUMAN: treat as wrong (${disputed.length})`,
     )
     for (const s of shown) {
       lines.push(`  ${clip(s.action, c(120))}`)
@@ -171,13 +171,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  const répondues = answeredQuestions(state)
-  if (répondues.length > 0 && recentAnswers > 0) {
-    const shown = répondues.slice(-recentAnswers)
+  const answered = answeredQuestions(state)
+  if (answered.length > 0 && recentAnswers > 0) {
+    const shown = answered.slice(-recentAnswers)
     lines.push('')
     lines.push(
-      répondues.length > shown.length
-        ? `ANSWERED BY THE HUMAN (last ${shown.length} of ${répondues.length})`
+      answered.length > shown.length
+        ? `ANSWERED BY THE HUMAN (last ${shown.length} of ${answered.length})`
         : 'ANSWERED BY THE HUMAN',
     )
     for (const q of shown) {
@@ -186,8 +186,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  // Un cahier resté longtemps sans écriture est un cahier dont les hypothèses
-  // ont pu vieillir. On ne le dit que si c'est vrai, et jamais à la minute.
+  // A task left a long time without a write is a task whose assumptions may
+  // have aged. Say it only when true, and never to the minute.
   const dormant = sinceThen(state.updatedAt)
   if (dormant !== null && Date.now() - state.updatedAt >= 24 * 60 * 60 * 1000) {
     lines.push(`LAST WRITE  ${dormant}. Check that what is below still holds`)
@@ -210,13 +210,13 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     }
   }
 
-  if (condamnées.length > 0) {
-    const shown = condamnées.slice(0, recentRejections)
-    const hidden = condamnées.length - shown.length
+  if (ruledOut.length > 0) {
+    const shown = ruledOut.slice(0, recentRejections)
+    const hidden = ruledOut.length - shown.length
     lines.push('')
     lines.push(
       hidden > 0
-        ? `REJECTED: do not retry (${shown.length} of ${condamnées.length} shown)`
+        ? `REJECTED: do not retry (${shown.length} of ${ruledOut.length} shown)`
         : 'REJECTED: do not retry',
     )
     for (const r of shown) {
@@ -371,8 +371,8 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     })
   }
 
-  // Dernier recours : ce qui est déjà tranché est de l'histoire, et se relit
-  // page par page. Ce qui attend une décision, non.
+  // Last resort: what is already settled is history, and is re-read page by
+  // page. What is waiting on a decision is not.
   if (recentAnswers > 0 || recentApprovals > 0) {
     return renderTaskState(state, {
       ...options,
@@ -403,12 +403,12 @@ export function renderTaskState(state: TaskState, options: RenderOptions = {}): 
     })
   }
 
-  // Tout le reste est épuisé : ce qui engage cède en dernier, et par moitiés
-  // plutôt que d'un coup, pour ne couper que ce qu'il faut couper. Le
-  // plancher part de la longueur réelle, sinon la moitié de l'infini reste
-  // l'infini et la descente ne finit jamais.
+  // Everything else is exhausted: what binds gives way last, and by halves
+  // rather than all at once, to cut only what has to be cut. The floor
+  // starts from the real length, otherwise half of infinity is still
+  // infinity and the descent never ends.
   const fitConstraints = Math.min(recentConstraints, active.length)
-  const fitRejections = Math.min(recentRejections, condamnées.length)
+  const fitRejections = Math.min(recentRejections, ruledOut.length)
   if (fitConstraints > MIN_BINDING_SHOWN || fitRejections > MIN_BINDING_SHOWN) {
     return renderTaskState(state, {
       ...options,

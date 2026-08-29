@@ -6,14 +6,14 @@ import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase, waitUntil } from './helpers'
 
-describe('la mémoire de ce que vous avez déjà vu', () => {
+describe('the memory of what you have already seen', () => {
   beforeEach(() => forgetSeen('t1'))
 
-  it('ne prétend rien pour une tâche jamais ouverte', () => {
+  it('claims nothing for a task never opened', () => {
     expect(seenVersion('t1')).toBeNull()
   })
 
-  it('retient la version, par tâche', () => {
+  it('remembers the version, per task', () => {
     markSeen('t1', 7)
     markSeen('t2', 3)
     expect(seenVersion('t1')).toBe(7)
@@ -21,19 +21,19 @@ describe('la mémoire de ce que vous avez déjà vu', () => {
     forgetSeen('t2')
   })
 
-  it('n’avance jamais à reculons', () => {
+  it('never moves backwards', () => {
     markSeen('t1', 9)
     markSeen('t1', 4)
     expect(seenVersion('t1')).toBe(9)
   })
 
-  it('survit à une valeur abîmée sans faire tomber la page', () => {
+  it('survives a damaged value without bringing the page down', () => {
     localStorage.setItem('watch-log:seen:t1', 'not a number')
     expect(seenVersion('t1')).toBeNull()
   })
 })
 
-describe('pendant votre absence', () => {
+describe('while you were away', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -75,13 +75,13 @@ describe('pendant votre absence', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('ne montre rien à la première ouverture', () => {
+  it('shows nothing on the first opening', () => {
     expect(card()).toBeUndefined()
   })
 
-  it('montre ce qu’un agent a écrit pendant que la page était fermée', async () => {
-    // La page est fermée : personne ne regarde, donc la version vue n'avance
-    // plus. C'est la seule façon d'être vraiment absent.
+  it('shows what an agent wrote while the page was closed', async () => {
+    // The page is closed: nobody is looking, so the seen version stops
+    // advancing. That is the only way to be really away.
     unmount()
     await store.mutate((s) =>
       logStep(
@@ -97,7 +97,7 @@ describe('pendant votre absence', () => {
     expect(card()!.textContent).toContain('Agent')
   })
 
-  it('se referme d’un clic, et ne revient pas', async () => {
+  it('closes with one click, and does not come back', async () => {
     const id = store.currentTask()!.id
     unmount()
     await store.mutate((s) =>
@@ -113,7 +113,7 @@ describe('pendant votre absence', () => {
     expect(seenVersion(id)).toBe(store.currentTask()!.version)
   })
 
-  it('met en avant une question laissée par un agent', async () => {
+  it('brings forward a question an agent left', async () => {
     unmount()
     await store.mutate((s) =>
       askHuman(
@@ -127,26 +127,26 @@ describe('pendant votre absence', () => {
     expect(card()!.textContent).toContain('Which region?')
   })
 
-  it('ne compte pas vos propres écritures comme une absence', async () => {
+  it('does not count your own writes as an absence', async () => {
     const before = store.currentTask()!.version
     await store.mutate((s) =>
       addConstraint(s, { rule: 'A rule I just typed', basedOnVersion: null }, 'human'),
     )
     await written(before)
 
-    // On était là : la page a suivi.
+    // We were there: the page kept up.
     expect(card()).toBeUndefined()
     expect(seenVersion(store.currentTask()!.id)).toBe(store.currentTask()!.version)
   })
 
-  it('ne dit rien quand seule la page a été rechargée sans rien de neuf', async () => {
+  it('says nothing when only the page was reloaded with nothing new', async () => {
     unmount()
     await open()
     expect(card()).toBeUndefined()
   })
 })
 
-describe('un onglet en arrière-plan ne compte pas comme une présence', () => {
+describe('a background tab does not count as a presence', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -187,7 +187,7 @@ describe('un onglet en arrière-plan ne compte pas comme une présence', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('rapporte ce qu’un agent a écrit pendant que l’onglet était caché', async () => {
+  it('reports what an agent wrote while the tab was hidden', async () => {
     hide(true)
     await store.mutate((s) =>
       logStep(
@@ -198,8 +198,8 @@ describe('un onglet en arrière-plan ne compte pas comme une présence', () => {
     )
     await waitUntil(() => store.currentTask()!.steps.length > 4, 'l’écriture de l’agent')
 
-    // Sans cela, la page se marquerait « vue » alors que personne ne regardait,
-    // et le digest ne se déclencherait jamais.
+    // Without this the page would mark itself "seen" while nobody was looking,
+    // and the digest would never fire.
     hide(false)
     await settled()
 

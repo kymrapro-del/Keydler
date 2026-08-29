@@ -20,8 +20,8 @@ afterEach(() => {
   store.__resetStore()
 })
 
-describe('supprimer une tâche ne laisse rien derrière', () => {
-  it('emporte les identifiants scellés avec elle', async () => {
+describe('deleting a task leaves nothing behind', () => {
+  it('takes the sealed credentials with it', async () => {
     const task = await store.openPreparedTask(buildCoreTask())
     await addSecret({
       taskId: task.id,
@@ -35,8 +35,8 @@ describe('supprimer une tâche ne laisse rien derrière', () => {
 
     await store.deleteCurrentTask()
 
-    // Le scellé restait dans IndexedDB, hors d'atteinte de l'écran mais bien
-    // présent sur le disque, alors que l'humain croit avoir tout supprimé.
+    // The sealed secret stayed in IndexedDB, out of reach of the screen but
+    // very much present on disk, while the human believes it was all deleted.
     expect(await listSecretNames(task.id)).toHaveLength(0)
 
     const db = await getDb()
@@ -44,10 +44,10 @@ describe('supprimer une tâche ne laisse rien derrière', () => {
     expect(restants.filter((s) => s.taskId === task.id)).toHaveLength(0)
   })
 
-  it('ne touche pas aux identifiants des autres cahiers', async () => {
-    const gardé = await store.openPreparedTask(buildCoreTask())
+  it('leaves the credentials of other logs alone', async () => {
+    const kept = await store.openPreparedTask(buildCoreTask())
     await addSecret({
-      taskId: gardé.id,
+      taskId: kept.id,
       name: 'kept-key',
       purpose: 'stays',
       kind: 'token',
@@ -68,10 +68,10 @@ describe('supprimer une tâche ne laisse rien derrière', () => {
     await store.deleteCurrentTask()
 
     expect(await listSecretNames(jetable.id)).toHaveLength(0)
-    expect(await listSecretNames(gardé.id)).toHaveLength(1)
+    expect(await listSecretNames(kept.id)).toHaveLength(1)
   })
 
-  it('oublie aussi le repère de lecture, qui sinon s’accumule sans fin', async () => {
+  it('forgets the read marker too, which would otherwise pile up forever', async () => {
     const task = await store.openPreparedTask(buildCoreTask())
     markSeen(task.id, task.version)
     expect(seenVersion(task.id)).toBe(task.version)
@@ -82,16 +82,16 @@ describe('supprimer une tâche ne laisse rien derrière', () => {
     expect(seenVersion(task.id)).toBeNull()
   })
 
-  it('n’oublie que le sien', async () => {
-    const gardé = await store.openPreparedTask(buildCoreTask())
-    markSeen(gardé.id, 3)
+  it('forgets only its own', async () => {
+    const kept = await store.openPreparedTask(buildCoreTask())
+    markSeen(kept.id, 3)
     const jetable = await store.createAndOpenTask('To delete', 'x')
     markSeen(jetable.id, 2)
 
     await store.deleteCurrentTask()
 
     expect(seenVersion(jetable.id)).toBeNull()
-    expect(seenVersion(gardé.id)).toBe(3)
-    forgetSeen(gardé.id)
+    expect(seenVersion(kept.id)).toBe(3)
+    forgetSeen(kept.id)
   })
 })

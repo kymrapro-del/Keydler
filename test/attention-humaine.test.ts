@@ -15,8 +15,8 @@ import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase, waitUntil } from './helpers'
 import type { TaskState } from '../src/domain/types'
 
-describe('ce qui attend l’humain', () => {
-  it('ne signale rien sur une tâche neuve', () => {
+describe('what is waiting on the human', () => {
+  it('flags nothing on a fresh task', () => {
     const fresh = addConstraint(buildCoreTask(), { rule: 'A rule', basedOnVersion: null }, 'human')
     const items = needsYou({
       ...fresh,
@@ -27,7 +27,7 @@ describe('ce qui attend l’humain', () => {
     expect(items).toEqual([])
   })
 
-  it('compte chaque sorte de chose à faire, sans les mélanger', () => {
+  it('counts each kind of thing to do, without mixing them', () => {
     const items = needsYou(buildDemoTask())
     const kinds = items.map((i) => i.kind)
 
@@ -36,7 +36,7 @@ describe('ce qui attend l’humain', () => {
     expect(new Set(kinds).size).toBe(kinds.length)
   })
 
-  it('met une demande d’autorisation en premier : un agent y est bloqué', () => {
+  it('puts an approval request first: an agent is blocked on it', () => {
     let task: TaskState = buildCoreTask()
     task = askHuman(task, { question: 'q?', why: 'w', basedOnVersion: null }, 'agent')
     task = requestApproval(task, { action: 'a', why: 'w', basedOnVersion: null }, 'agent')
@@ -46,7 +46,7 @@ describe('ce qui attend l’humain', () => {
     expect(items[1].kind).toBe('question')
   })
 
-  it('donne un libellé au singulier comme au pluriel', () => {
+  it('gives a label in the singular as in the plural', () => {
     let task = buildCoreTask()
     task = askHuman(task, { question: 'q1?', why: 'w', basedOnVersion: null }, 'agent')
     expect(needsYou(task).find((i) => i.kind === 'question')!.label).toContain('1 question')
@@ -55,7 +55,7 @@ describe('ce qui attend l’humain', () => {
     expect(needsYou(task).find((i) => i.kind === 'question')!.label).toContain('2 questions')
   })
 
-  it('cesse de compter une preuve une fois qu’elle est tranchée', () => {
+  it('stops counting a piece of evidence once it is settled', () => {
     const task = buildCoreTask()
     const attente = task.steps.filter(
       (s) => s.evidence !== null && s.confidence === 'evidence',
@@ -63,20 +63,20 @@ describe('ce qui attend l’humain', () => {
     expect(needsYou(task).find((i) => i.kind === 'evidence')!.count).toBe(attente)
 
     const step = task.steps.find((s) => s.confidence === 'evidence')!
-    const après = verifyEvidence(task, step.id, step.evidence!.content)
-    expect(needsYou(après).find((i) => i.kind === 'evidence')!.count).toBe(attente - 1)
+    const after = verifyEvidence(task, step.id, step.evidence!.content)
+    expect(needsYou(after).find((i) => i.kind === 'evidence')!.count).toBe(attente - 1)
 
-    const autre = après.steps.find((s) => s.confidence === 'evidence')!
-    const contesté = disputeStep(après, autre.id, 'wrong branch')
-    expect(needsYou(contesté).find((i) => i.kind === 'evidence')).toBeUndefined()
+    const other = after.steps.find((s) => s.confidence === 'evidence')!
+    const disputed = disputeStep(after, other.id, 'wrong branch')
+    expect(needsYou(disputed).find((i) => i.kind === 'evidence')).toBeUndefined()
   })
 
-  it('ne signale rien sur une tâche close', () => {
+  it('flags nothing on a closed task', () => {
     const closed: TaskState = { ...buildDemoTask(), status: 'completed' }
     expect(needsYou(closed)).toEqual([])
   })
 
-  it('compte une proposition de règle et une proposition de rejet ensemble', () => {
+  it('counts a proposed rule and a proposed rejection together', () => {
     let task = buildCoreTask()
     task = addConstraint(task, { rule: 'Proposed rule', basedOnVersion: null }, 'agent')
     task = rejectApproach(
@@ -88,7 +88,7 @@ describe('ce qui attend l’humain', () => {
     expect(proposals.count).toBeGreaterThanOrEqual(2)
   })
 
-  it('signale le travail affirmé sans la moindre preuve', () => {
+  it('flags work claimed without a shred of evidence', () => {
     const task = logStep(
       buildCoreTask(),
       { action: 'Something', result: 'done', basedOnVersion: null },
@@ -100,7 +100,7 @@ describe('ce qui attend l’humain', () => {
   })
 })
 
-describe('la barre à l’écran', () => {
+describe('the bar on screen', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -127,18 +127,18 @@ describe('la barre à l’écran', () => {
     history.replaceState(null, '', '/')
   })
 
-  it('résume en haut ce qui vous attend, avant d’avoir à lire dix cartes', () => {
+  it('sums up at the top what is waiting on you, before you have to read ten cards', () => {
     expect(bar()).not.toBeNull()
     expect(bar()!.textContent).toMatch(/needs you/i)
   })
 
-  it('emmène à la carte concernée d’un clic', async () => {
+  it('takes you to the card in question in one click', async () => {
     const link = bar()!.querySelector<HTMLAnchorElement>('a[href="#evidence-title"]')
     expect(link).not.toBeNull()
     expect(root.querySelector('#evidence-title')).not.toBeNull()
   })
 
-  it('disparaît quand il n’y a plus rien à faire', async () => {
+  it('disappears when there is nothing left to do', async () => {
     await store.openPreparedTask({ ...buildDemoTask(), status: 'completed' })
     await waitUntil(() => store.currentTask()?.status === 'completed', 'la clôture')
     __renderNow()

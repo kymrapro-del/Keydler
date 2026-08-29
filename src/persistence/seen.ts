@@ -22,8 +22,8 @@ export function markSeen(taskId: string, version: number): void {
   try {
     localStorage.setItem(key(taskId), String(version))
   } catch {
-    // Le stockage peut être refusé (navigation privée, site bloqué). Le digest
-    // se contentera alors de ne rien montrer, ce qui est le bon défaut.
+    // Storage can be refused (private browsing, blocked site). The digest will
+    // then show nothing, which is the right default.
   }
 }
 
@@ -31,6 +31,6 @@ export function forgetSeen(taskId: string): void {
   try {
     localStorage.removeItem(key(taskId))
   } catch {
-    // Rien à faire : il n'y avait déjà rien à oublier.
+    // Nothing to do: there was already nothing to forget.
   }
 }

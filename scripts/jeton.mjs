@@ -1,17 +1,17 @@
-// La charge utile d'un jeton d'origin trial est du JSON en clair, seulement
-// signée : on peut donc vérifier ce qu'elle autorise (structure : Chromium,
-// `origin_trials_token_structure.md`). L'origine y inclut schéma et port
-// (`https://keydler.com:443`), et Chrome vérifie HORS LIGNE, sans rien signaler :
-// un jeton pris pour `www.` ou `http://` échoue en silence. La signature n'est
-// pas vérifiée, faute de clé publique ; le risque est la mauvaise origine.
+// The payload of an origin trial token is plain JSON, only signed: what it
+// allows can therefore be checked (structure: Chromium,
+// `origin_trials_token_structure.md`). The origin includes scheme and port
+// (`https://keydler.com:443`), and Chrome checks OFFLINE, reporting nothing: a
+// token taken for `www.` or `http://` fails silently. The signature is not
+// verified, for want of a public key; the risk is the wrong origin.
 
 /**
- * Un jeton est lié à une origine EXACTE : keydler.com et keydler.pages.dev, la
- * surface de repli, en demandent chacune un. Chrome lit toutes les balises et
- * retient celle qui correspond, donc les porter toutes ne coûte rien.
+ * A token is bound to an EXACT origin: keydler.com and keydler.pages.dev, the
+ * fallback surface, each need one. Chrome reads every tag and keeps the one
+ * that matches, so carrying them all costs nothing.
  */
-export function tokensDe(brut) {
-  return (brut ?? '')
+export function tokensDe(raw) {
+  return (raw ?? '')
     .split(/[,\n]/)
     .map((t) => t.trim())
     .filter((t) => t.length > 0)
@@ -22,33 +22,33 @@ export function lireJeton(base64) {
   try {
     octets = Buffer.from(base64, 'base64')
   } catch {
-    return { erreur: 'ce n’est pas du base64' }
+    return { error: 'ce n’est pas du base64' }
   }
-  if (octets.length < 70) return { erreur: `trop court (${octets.length} octets)` }
+  if (octets.length < 70) return { error: `trop court (${octets.length} octets)` }
 
   const version = octets[0]
   if (version !== 2 && version !== 3) {
-    return { erreur: `version inconnue (${version}), 2 ou 3 attendues` }
+    return { error: `version inconnue (${version}), 2 ou 3 attendues` }
   }
 
   const longueur = octets.readUInt32BE(65)
   if (longueur === 0 || 69 + longueur > octets.length) {
-    return { erreur: `longueur de charge utile incohérente (${longueur})` }
+    return { error: `longueur de charge utile incohérente (${longueur})` }
   }
 
   let charge
   try {
     charge = JSON.parse(octets.subarray(69, 69 + longueur).toString('utf8'))
   } catch {
-    return { erreur: 'charge utile illisible' }
+    return { error: 'charge utile illisible' }
   }
 
   return {
     version,
     origine: charge.origin,
     fonctionnalite: charge.feature,
-    // `isSubdomain` omis vaut false : la couverture des sous-domaines est à
-    // demander explicitement à l'inscription, elle n'est jamais implicite.
+    // `isSubdomain` omitted means false: subdomain coverage has to be asked for
+    // explicitly at sign-up, it is never implicit.
     sousDomaines: charge.isSubdomain === true,
     tiers: charge.isThirdParty === true,
     expire: typeof charge.expiry === 'number' ? new Date(charge.expiry * 1000) : null,

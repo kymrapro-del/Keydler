@@ -11,8 +11,8 @@ function horodatage(at: number): string {
 
 function bloc(contenu: string, langue = ''): string[] {
   const plusLongue = (contenu.match(/`+/g) ?? []).reduce((n, m) => Math.max(n, m.length), 0)
-  const clôture = '`'.repeat(Math.max(3, plusLongue + 1))
-  return [`${clôture}${langue}`, contenu, clôture]
+  const fence = '`'.repeat(Math.max(3, plusLongue + 1))
+  return [`${fence}${langue}`, contenu, fence]
 }
 
 function enTete(task: TaskState): string[] {
@@ -88,15 +88,15 @@ function journal(task: TaskState): string[] {
           ? `v${e.versionBefore}`
           : `v${e.versionBefore} → v${e.versionAfter}`
       const issue = e.outcome === 'refused' ? '**refused**' : 'applied'
-      const répété = e.repeated && e.repeated > 1 ? ` (×${e.repeated})` : ''
-      const détail = e.detail.replace(/\|/g, '\\|').replace(/\n/g, ' ')
-      return `| ${horodatage(e.at)} | ${e.actor} | \`${e.operation}\` | ${versions} | ${issue}${répété} | ${détail} |`
+      const repeated = e.repeated && e.repeated > 1 ? ` (×${e.repeated})` : ''
+      const detail = e.detail.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+      return `| ${horodatage(e.at)} | ${e.actor} | \`${e.operation}\` | ${versions} | ${issue}${repeated} | ${detail} |`
     }),
     '',
   ]
 }
 
-function preuves(task: TaskState): string[] {
+function evidence(task: TaskState): string[] {
   const avecPreuve = task.steps.filter((s) => s.evidence !== null)
   if (avecPreuve.length === 0) return []
 
@@ -134,7 +134,7 @@ export function buildTaskExport(task: TaskState): string {
       }),
     ),
     '',
-    ...preuves(task),
+    ...evidence(task),
     ...questions(task),
     ...autorisations(task),
     ...journal(task),

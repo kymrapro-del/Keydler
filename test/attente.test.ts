@@ -45,7 +45,7 @@ const waitingCard = () =>
     c.querySelector('h2')?.textContent?.includes('Waiting on you'),
   )
 
-describe('ce que l’agent attend de vous', () => {
+describe('what the agent is waiting on you for', () => {
   async function ask() {
     const before = store.currentTask()!.version
     await store.mutate((s) =>
@@ -62,11 +62,11 @@ describe('ce que l’agent attend de vous', () => {
     await written(before)
   }
 
-  it('ne montre rien tant que personne n’a demandé', () => {
+  it('shows nothing until someone asks', () => {
     expect(waitingCard()).toBeUndefined()
   })
 
-  it('montre la question et son motif, dès qu’elle est posée', async () => {
+  it('shows the question and its reason, as soon as it is asked', async () => {
     await ask()
     const card = waitingCard()!
     expect(card).toBeDefined()
@@ -74,7 +74,7 @@ describe('ce que l’agent attend de vous', () => {
     expect(card.textContent).toContain('The thresholds are relative to them')
   })
 
-  it('répond depuis la page, et la question se ferme', async () => {
+  it('answers from the page, and the question closes', async () => {
     await ask()
     const id = openQuestions(store.currentTask()!)[0].id
 
@@ -89,7 +89,7 @@ describe('ce que l’agent attend de vous', () => {
     expect(waitingCard()!.textContent).toContain('Use the p95 baselines')
   })
 
-  it('refuse une réponse vide plutôt que de fermer la question pour rien', async () => {
+  it('refuses an empty answer rather than closing the question for nothing', async () => {
     await ask()
     const id = openQuestions(store.currentTask()!)[0].id
     root.querySelector<HTMLButtonElement>(`[data-answer="${id}"]`)!.click()
@@ -102,7 +102,7 @@ describe('ce que l’agent attend de vous', () => {
     expect(openQuestions(store.currentTask()!)).toHaveLength(1)
   })
 
-  it('appelle l’attention : une question ouverte se voit avant le travail', async () => {
+  it('calls for attention: an open question is seen before the work', async () => {
     await ask()
     const cards = [...root.querySelectorAll('.card')]
     const waiting = cards.indexOf(waitingCard()!)
@@ -112,7 +112,7 @@ describe('ce que l’agent attend de vous', () => {
   })
 })
 
-describe('joindre une preuve après coup', () => {
+describe('attaching evidence after the fact', () => {
   async function claimed() {
     const before = store.currentTask()!.version
     await store.mutate((s) =>
@@ -126,12 +126,12 @@ describe('joindre une preuve après coup', () => {
     return store.currentTask()!.steps.at(-1)!.id
   }
 
-  it('propose de joindre une preuve à une étape restée sans', async () => {
+  it('offers to attach evidence to a step that has none', async () => {
     const id = await claimed()
     expect(root.querySelector(`[data-attach="${id}"]`)).not.toBeNull()
   })
 
-  it('ne le propose pas quand une preuve est déjà là', async () => {
+  it('does not offer it when evidence is already there', async () => {
     const before = store.currentTask()!.version
     await store.mutate((s) =>
       logStep(
@@ -150,7 +150,7 @@ describe('joindre une preuve après coup', () => {
     expect(root.querySelector(`[data-attach="${id}"]`)).toBeNull()
   })
 
-  it('dit, au moment de joindre, où la preuve ira', async () => {
+  it('says, at the moment of attaching, where the evidence will go', async () => {
     const id = await claimed()
     root.querySelector<HTMLButtonElement>(`[data-attach="${id}"]`)!.click()
     __renderNow()
@@ -162,7 +162,7 @@ describe('joindre une preuve après coup', () => {
     expect(note).toContain('travels with every export and shared link')
   })
 
-  it('joint une preuve multiligne, validée par vous puisque vous l’avez lue', async () => {
+  it('attaches multiline evidence, verified by you since you read it', async () => {
     const id = await claimed()
     root.querySelector<HTMLButtonElement>(`[data-attach="${id}"]`)!.click()
     __renderNow()
@@ -178,14 +178,14 @@ describe('joindre une preuve après coup', () => {
   })
 })
 
-describe('le coffre accepte toute nature de secret', () => {
-  it('laisse choisir la nature, et les propose toutes', () => {
+describe('the vault takes every kind of secret', () => {
+  it('lets you choose the kind, and offers them all', () => {
     const select = root.querySelector<HTMLSelectElement>('#new-secret-kind')!
     expect(select).not.toBeNull()
     expect([...select.options].map((o) => o.value)).toEqual([...SECRET_KINDS])
   })
 
-  it('passe à un champ multiligne pour une clé privée', async () => {
+  it('switches to a multiline field for a private key', async () => {
     const select = root.querySelector<HTMLSelectElement>('#new-secret-kind')!
     expect(root.querySelector('#new-secret-value')!.tagName).toBe('INPUT')
 
@@ -193,12 +193,12 @@ describe('le coffre accepte toute nature de secret', () => {
     select.dispatchEvent(new Event('input', { bubbles: true }))
     __renderNow()
 
-    // Une clé PEM tient sur plusieurs lignes : un <input> la tronquerait à la
-    // première, et rien ne le signalerait avant l'usage.
+    // A PEM key spans several lines: an <input> would cut it at the first one,
+    // and nothing would say so before it is used.
     expect(root.querySelector('#new-secret-value')!.tagName).toBe('TEXTAREA')
   })
 
-  it('scelle une clé privée entière, et l’annonce par sa nature', async () => {
+  it('seals a whole private key, and announces it by its kind', async () => {
     const select = root.querySelector<HTMLSelectElement>('#new-secret-kind')!
     select.value = 'private_key'
     select.dispatchEvent(new Event('input', { bubbles: true }))
@@ -221,8 +221,8 @@ describe('le coffre accepte toute nature de secret', () => {
   })
 })
 
-describe('reclasser un identifiant depuis la page', () => {
-  it('préremplit la nature enregistrée, et la change sans redemander la valeur', async () => {
+describe('reclassifying a credential from the page', () => {
+  it('prefills the stored kind, and changes it without asking for the value again', async () => {
     const type2 = (id: string, value: string) => {
       const field = root.querySelector<HTMLInputElement>(`#${id}`)!
       field.value = value

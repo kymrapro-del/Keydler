@@ -47,32 +47,32 @@ afterEach(() => {
   history.replaceState(null, '', '/')
 })
 
-describe('offrir le cahier dans un lien', () => {
-  it('copie une adresse qui porte tout le cahier', async () => {
+describe('offering the log in a link', () => {
+  it('copies an address that carries the whole log', async () => {
     root.querySelector<HTMLButtonElement>('#copy-link')!.click()
     await waitUntil(() => copied !== null, 'la copie')
     await settled()
 
     expect(copied).toContain(`#${FRAGMENT_KEY}`)
     expect(copied!.length).toBeGreaterThan(200)
-    // Le fragment ne quitte jamais le navigateur : il n'est pas envoyé au serveur.
+    // The fragment never leaves the browser: it is not sent to the server.
     expect(copied!.split('#')[0]).toContain('/t/')
   })
 
-  // Le lien emporte les preuves telles quelles, et une sortie de commande peut
-  // porter un jeton ou le nom d'une machine interne. Le dire après le clic ne
-  // sert à rien : l'adresse est déjà dans le presse-papier.
-  it('prévient de ce qui voyage AVANT le clic, pas après', async () => {
+  // The link carries the evidence as it is, and command output can carry a
+  // token or the name of an internal machine. Saying so after the click is
+  // useless: the address is already in the clipboard.
+  it('warns what travels BEFORE the click, not after', async () => {
     const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
 
     expect(zone).toContain('pieces of evidence travel with it')
     expect(zone).toContain('token or an internal hostname')
-    // Et il rassure sur ce qui ne peut PAS voyager, parce que c'est structurel.
+    // And it reassures about what CANNOT travel, because that is structural.
     expect(zone).toContain('Sealed credentials never travel')
   })
 
-  it('se tait quand aucune preuve n’est attachée', async () => {
-    // Un avertissement affiché sans raison s'apprend à ne plus être lu.
+  it('stays quiet when no evidence is attached', async () => {
+    // A warning shown for no reason teaches people to stop reading it.
     const nue = { ...buildDemoTask(), id: 'sans-preuve', steps: [] }
     await store.openPreparedTask(nue)
     await settled()
@@ -80,43 +80,43 @@ describe('offrir le cahier dans un lien', () => {
     const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
     expect(zone).not.toContain('evidence travel')
     expect(zone).not.toContain('internal hostname')
-    // Le bouton, lui, reste offert.
+    // The button itself is still offered.
     expect(root.querySelector('#copy-link')).not.toBeNull()
   })
 
-  it('compte au singulier quand il n’y a qu’une preuve', async () => {
+  it('counts in the singular when there is only one piece of evidence', async () => {
     const demo = buildDemoTask()
-    const une = {
+    const one = {
       ...demo,
       id: 'une-preuve',
       steps: demo.steps.filter((s) => s.evidence !== null).slice(0, 1),
     }
-    await store.openPreparedTask(une)
+    await store.openPreparedTask(one)
     await settled()
 
     const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
     expect(zone).toContain('One piece of evidence travels with it')
   })
 
-  it('dit ce qu’il vient de copier, et que c’est une copie', async () => {
+  it('says what it just copied, and that it is a copy', async () => {
     root.querySelector<HTMLButtonElement>('#copy-link')!.click()
     await waitUntil(() => !!root.querySelector('.notice--ok'), 'le message')
     __renderNow()
 
     const message = root.querySelector('.notice--ok')!.textContent!
     expect(message.toLowerCase()).toContain('copy')
-    // Et il nomme ce qui est parti avec, pas seulement « le cahier ».
+    // And it names what went with it, not just “the log”.
     expect(message).toContain('evidence included')
   })
 })
 
-describe('recevoir un cahier par un lien', () => {
+describe('receiving a log through a link', () => {
   async function arriveWith(packed: string) {
     unmount()
     store.__resetStore()
     await clearDatabase()
-    // Comme main.ts : l'adresse est lue AVANT l'ouverture du magasin, donc le
-    // cahier est bien lié à un identifiant absent de cet appareil.
+    // Like main.ts: the address is read BEFORE the store opens, so the task is
+    // indeed bound to an id absent from this device.
     history.replaceState(null, '', `/t/notonthisdevice#${FRAGMENT_KEY}${packed}`)
     await store.init('notonthisdevice')
     await open()
@@ -127,26 +127,26 @@ describe('recevoir un cahier par un lien', () => {
       c.querySelector('h2')?.textContent?.includes('A shared log'),
     )
 
-  it('propose, et n’importe rien tout seul', async () => {
+  it('offers, and imports nothing on its own', async () => {
     const packed = await packTask(buildDemoTask())
     await arriveWith(packed)
 
     expect(offer()).toBeDefined()
     expect(offer()!.textContent).toContain('Refactor the authentication module')
-    // Rien n'a été écrit : ouvrir un lien n'est pas consentir à l'écrire.
+    // Nothing was written: opening a link is not consenting to write it.
     expect(await store.allTasks()).toHaveLength(0)
   })
 
-  it('ne contredit pas l’offre par un bandeau « cette tâche n’existe pas »', async () => {
+  it('does not contradict the offer with a "this task does not exist" banner', async () => {
     await arriveWith(await packTask(buildDemoTask()))
 
-    // L'adresse pointe bien vers une tâche absente, mais le lien porte
-    // justement de quoi la créer. Dire les deux à la fois affole pour rien.
+    // The address does point at a missing task, but the link carries exactly
+    // what it takes to create it. Saying both at once alarms for nothing.
     expect(root.textContent).not.toContain('does not exist on this device')
     expect(offer()).toBeDefined()
   })
 
-  it('dit à nouveau la tâche absente si l’on refuse le lien', async () => {
+  it('says the task is missing again if the link is declined', async () => {
     await arriveWith(await packTask(buildDemoTask()))
     root.querySelector<HTMLButtonElement>('#decline-link')!.click()
     await settled()
@@ -154,12 +154,12 @@ describe('recevoir un cahier par un lien', () => {
     expect(root.textContent).toContain('does not exist on this device')
   })
 
-  it('annonce que ce sera une copie, sans lien avec l’original', async () => {
+  it('announces it will be a copy, with no tie to the original', async () => {
     await arriveWith(await packTask(buildDemoTask()))
     expect(offer()!.textContent!.toLowerCase()).toContain('copy')
   })
 
-  it('importe sur demande, et ouvre le cahier reçu', async () => {
+  it('imports on request, and opens the log it received', async () => {
     const source = buildDemoTask()
     await arriveWith(await packTask(source))
 
@@ -170,11 +170,11 @@ describe('recevoir un cahier par un lien', () => {
     expect(store.currentTask()!.title).toBe(source.title)
     expect(store.currentTask()!.steps.length).toBe(source.steps.length)
     expect(offer()).toBeUndefined()
-    // L'adresse ne garde pas la charge : recharger ne reproposerait pas.
+    // The address does not keep the payload: reloading would not offer again.
     expect(location.hash).toBe('')
   })
 
-  it('se refuse d’un clic, et laisse la page vide comme avant', async () => {
+  it('declines in one click, and leaves the page as empty as before', async () => {
     await arriveWith(await packTask(buildDemoTask()))
 
     root.querySelector<HTMLButtonElement>('#decline-link')!.click()
@@ -185,7 +185,7 @@ describe('recevoir un cahier par un lien', () => {
     expect(location.hash).toBe('')
   })
 
-  it('dit qu’un lien est illisible plutôt que de laisser croire à une page cassée', async () => {
+  it('says a link is unreadable rather than letting the page look broken', async () => {
     await arriveWith('zdefinitivementpasuncahier')
     await waitUntil(() => !!root.querySelector('.notice--error'), 'le message d’erreur', 3000)
     __renderNow()
@@ -195,7 +195,7 @@ describe('recevoir un cahier par un lien', () => {
   })
 })
 
-describe('le lien protégé, depuis l’écran', () => {
+describe('the protected link, from the screen', () => {
   async function arriveWith(packed: string) {
     unmount()
     store.__resetStore()
@@ -211,7 +211,7 @@ describe('le lien protégé, depuis l’écran', () => {
     champ.dispatchEvent(new Event('input', { bubbles: true }))
   }
 
-  it('copie un lien scellé, et le dit sans promettre plus que ça', async () => {
+  it('copies a sealed link, and says so without promising more than that', async () => {
     const bouton = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
       (b) => b.textContent?.trim() === 'Copy a protected link',
     )!
@@ -225,33 +225,33 @@ describe('le lien protégé, depuis l’écran', () => {
     await settled()
 
     expect(copied).toContain(`#${FRAGMENT_KEY}s`)
-    // Rien du cahier ne transparaît dans l'adresse.
+    // Nothing of the log shows through in the address.
     expect(copied).not.toContain(store.currentTask()!.title.replace(/ /g, ''))
     expect(root.querySelector('.notice--ok')?.textContent).toContain('unreadable')
   })
 
-  it('n’annonce pas ce qu’il ne fait pas', async () => {
-    // La phrase ne vérifie pas une identité : elle vérifie la connaissance
-    // d'un secret. L'écran doit le dire, et dire pourquoi.
+  it('does not announce what it does not do', async () => {
+    // The passphrase does not check an identity: it checks knowledge of a
+    // secret. The screen must say so, and say why.
     const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
     expect(zone).toContain('Nobody can tell who opens a link')
     expect(zone).toContain('would need a server')
   })
 
-  it('ne dit rien du cahier tant que la phrase n’est pas donnée', async () => {
+  it('says nothing about the log until the passphrase is given', async () => {
     const packed = await packSealedTask(store.currentTask()!, 'la phrase du téléphone')
-    const titre = store.currentTask()!.title
+    const title = store.currentTask()!.title
     await arriveWith(packed)
 
-    const texte = root.textContent!.replace(/\s+/g, ' ')
-    expect(texte).toContain('A protected log')
-    expect(texte).not.toContain(titre)
+    const text = root.textContent!.replace(/\s+/g, ' ')
+    expect(text).toContain('A protected log')
+    expect(text).not.toContain(title)
     expect(root.querySelector('#sealed-passphrase')).not.toBeNull()
   })
 
-  it('ouvre avec la bonne phrase, et propose la copie comme d’habitude', async () => {
+  it('opens with the right passphrase, and offers the copy as usual', async () => {
     const packed = await packSealedTask(store.currentTask()!, 'la phrase du téléphone')
-    const titre = store.currentTask()!.title
+    const title = store.currentTask()!.title
     await arriveWith(packed)
 
     type('sealed-passphrase', 'la phrase du téléphone')
@@ -259,11 +259,11 @@ describe('le lien protégé, depuis l’écran', () => {
     await waitUntil(() => root.textContent!.includes('A shared log'), 'l’offre')
     __renderNow()
 
-    expect(root.textContent).toContain(titre)
+    expect(root.textContent).toContain(title)
     expect(root.querySelector('#accept-link')).not.toBeNull()
   })
 
-  it('refuse une phrase fausse en disant que le lien, lui, est bon', async () => {
+  it('refuses a wrong passphrase while saying the link itself is fine', async () => {
     const packed = await packSealedTask(store.currentTask()!, 'la phrase du téléphone')
     await arriveWith(packed)
 
@@ -275,7 +275,7 @@ describe('le lien protégé, depuis l’écran', () => {
     const message = root.querySelector('.notice--error')!.textContent!
     expect(message).toContain('does not open this link')
     expect(message).toContain('the link itself is fine')
-    // Et il reste ouvert : on peut retaper.
+    // And it stays open: you can type it again.
     expect(root.querySelector('#sealed-passphrase')).not.toBeNull()
   })
 })
