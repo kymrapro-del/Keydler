@@ -19,7 +19,10 @@ async function fichiers(dossier) {
   return trouves
 }
 
-const LIEN = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g
+// `<...>` autour d'une cible est du Markdown valide, et prettier l'ajoute
+// autour des URL qui contiennent des caractères spéciaux. Sans ce cas, le
+// vérificateur prenait une adresse externe pour un chemin relatif.
+const LIEN = /\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\)/g
 const morts = []
 let comptes = 0
 

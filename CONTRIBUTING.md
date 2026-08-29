@@ -1,78 +1,78 @@
-# Conventions de travail
+# Working conventions
 
-## Commandes
+## Commands
 
-| Commande         | Effet                                                          |
-| ---------------- | -------------------------------------------------------------- |
-| `npm run dev`    | Serveur de développement sur `localhost:5173`                  |
-| `npm run trial`  | Build d'essai sans carte de source, servi sur `localhost:5174` |
-| `npm run build`  | Vérification de types puis build de production                 |
-| `npm test`       | Tests d'invariants                                             |
-| `npm run lint`   | ESLint                                                         |
-| `npm run format` | Prettier, en écriture                                          |
-| `npm run check`  | Types, lint, format, tests, build (ce que la CI exécute)       |
+| Command          | Effect                                                       |
+| ---------------- | ------------------------------------------------------------ |
+| `npm run dev`    | Development server on `localhost:5173`                       |
+| `npm run trial`  | Trial build without a source map, served on `localhost:5174` |
+| `npm run build`  | Type check then production build                             |
+| `npm test`       | Invariant tests                                              |
+| `npm run lint`   | ESLint                                                       |
+| `npm run format` | Prettier, writing                                            |
+| `npm run check`  | Types, lint, format, tests, build (what CI runs)             |
 
-`npm run check` doit passer avant toute publication. La CI exécute exactement
-les mêmes étapes : un échec distant doit toujours être reproductible en local.
+`npm run check` must pass before any release. CI runs exactly the same
+steps: a remote failure must always be reproducible locally.
 
-## Règles qui ne bougent pas
+## Rules that do not move
 
-L'enregistrement WebMCP ne vit jamais dans un composant. Il s'exécute une
-fois, à l'import de `src/webmcp`. Quand React arrivera, son mode strict montera
-les composants deux fois en développement : un `registerTool` appelé depuis un
-`useEffect` produirait des outils dédoublés puis détruits.
+WebMCP registration never lives in a component. It runs once, when
+`src/webmcp` is imported. When React arrives, its strict mode will mount
+components twice in development: a `registerTool` called from a `useEffect`
+would produce tools that are duplicated and then destroyed.
 
-Aucune valeur visuelle en dur hors de `src/tokens.css`. Réécrire ce fichier
-suffit à changer l'apparence sans toucher à la logique. C'est le contrat qui
-permet à deux personnes d'avancer en parallèle.
+No hardcoded visual value outside `src/tokens.css`. Rewriting that file is
+enough to change the appearance without touching the logic. That is the
+contract that lets two people work in parallel.
 
-Le domaine ne connaît rien. `src/domain` n'importe ni React, ni le DOM, ni
-IndexedDB, ni WebMCP. Une couche ne connaît jamais celle qui la consomme.
+The domain knows nothing. `src/domain` imports neither React, nor the DOM,
+nor IndexedDB, nor WebMCP. A layer never knows the one that consumes it.
 
-Les messages du domaine sont écrits pour un agent. Ils restent en anglais et
-portent l'instruction à suivre. C'est l'interface qui traduit pour la personne,
-dans `src/ui/messages.ts`, jamais l'inverse.
+Domain messages are written for an agent. They stay in English and carry the
+instruction to follow. It is the interface that translates for the person, in
+`src/ui/messages.ts`, never the other way round.
 
-Le texte visible de la page n'explique pas le mécanisme. Un essai l'a
-montré : un agent qui lit une page décrivant son versionnage se met à éprouver
-le versionnage au lieu de travailler. Le texte visible concurrence la
-description des outils pour son attention, et il gagne.
+The visible text of the page does not explain the mechanism. A trial showed
+it: an agent that reads a page describing its versioning starts putting the
+versioning to the test instead of working. The visible text competes with the
+tool descriptions for its attention, and it wins.
 
-## Écrire un test qui prouve quelque chose
+## Writing a test that proves something
 
-Un test qui passe avant et après un correctif ne prouve rien. Pour toute
-correction de comportement, vérifier qu'il échoue sur la version d'avant :
+A test that passes before and after a fix proves nothing. For any behavior
+fix, check that it fails on the version from before:
 
 ```bash
-git stash push -q <fichier corrigé>
-npx vitest run <le test>          # doit échouer
+git stash push -q <fixed file>
+npx vitest run <the test>          # must fail
 git stash pop -q
 ```
 
-C'est ce qui a permis de chiffrer sept écritures perdues sous concurrence
-plutôt que de les supposer.
+That is what made it possible to put a number on seven lost writes under
+concurrency rather than assume them.
 
-## La couverture sert à trouver du code mort
+## Coverage is for finding dead code
 
-`npm run coverage`. Une ligne jamais atteinte est d'abord un soupçon de code
-mort, ensuite un test manquant. Trois morceaux l'ont été : `SCHEMA_VERSION`
-qui n'estampillait rien, `TaskNotFoundError` que personne ne construisait, et
-un injecteur de jeton d'origin trial rendu inerte par un correctif antérieur.
+`npm run coverage`. A line that is never reached is first a suspicion of dead
+code, then a missing test. Three pieces turned out to be dead: `SCHEMA_VERSION`
+which stamped nothing, `TaskNotFoundError` which nobody constructed, and an
+origin trial token injector rendered inert by an earlier fix.
 
-Du code mort n'est pas neutre : il décrit un comportement qui n'existe pas, et
-la personne suivante le croira.
+Dead code is not neutral: it describes a behavior that does not exist, and the
+next person will believe it.
 
-## Mesures
+## Measurements
 
-Toute campagne passe par `npm run trial`. Le serveur de développement sert le
-source en HTTP : un agent « navigateur seul » y lit l'intégralité du projet par
-`fetch`, et l'isolement est illusoire.
+Every campaign goes through `npm run trial`. The development server serves the
+source over HTTP: a "browser only" agent reads the whole project there through
+`fetch`, and the isolation is an illusion.
 
-Exporter avant de réinitialiser. Vider IndexedDB entre deux essais détruit
-la pièce en même temps qu'elle assainit l'essai.
+Export before resetting. Clearing IndexedDB between two trials destroys the
+evidence at the same time as it sanitizes the trial.
 
-## Messages de commit
+## Commit messages
 
-Sujet à l'impératif. Le corps explique le _pourquoi_ quand il n'est pas
-évident : le _quoi_ est déjà dans le diff. Un correctif énonce le symptôme
-observé, pas seulement la ligne changée.
+Subject in the imperative. The body explains the _why_ when it is not
+obvious: the _what_ is already in the diff. A fix states the observed symptom,
+not just the line that changed.
