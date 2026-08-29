@@ -3,12 +3,12 @@ import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-// Le service worker ne peut pas connaître à l'avance des noms empreintés : sa
-// liste de précache ne citait aucun des deux fichiers dont l'application est
-// faite, et un audit a trouvé une page blanche hors ligne après une seule
-// visite, là où le README annonce le contraire. Le nom de cache change avec la
-// liste : sans cela `activate` ne supprimait jamais rien et une entrée fautive
-// survivait à tous les déploiements suivants.
+// The service worker cannot know fingerprinted names in advance: its precache
+// list named neither of the two files the application is made of, and an audit
+// found a blank page offline after a single visit, where the README announces
+// the opposite. The cache name changes with the list: without this `activate`
+// never deleted anything and a faulty entry survived every deployment that
+// followed.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 
 const actifs = (await readdir(join(dist, 'assets')))

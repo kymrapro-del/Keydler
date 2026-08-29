@@ -38,15 +38,15 @@ describe('mise en mots du journal', () => {
     expect(describeEntry(entry({ actor: 'human', operation: 'add_constraint' })).what).toBe(
       'added a rule',
     )
-    // C'est toute l'asymétrie du produit, et elle doit se lire dans l'historique.
+    // That is the whole asymmetry of the product, and it must be readable in the history.
     expect(describeEntry(entry({ actor: 'agent', operation: 'add_constraint' })).what).toBe(
       'proposed a rule',
     )
   })
 
   it('met la tentative à l’infinitif, pas au passé', () => {
-    // « tried to recorded a step » : la table des verbes est au passé pour ce
-    // qui a eu lieu, et une tentative refusée n'a précisément pas eu lieu.
+    // "tried to recorded a step": the verb table is past tense for what did
+    // happen, and a refused attempt precisely did not happen.
     for (const operation of ['log_step', 'add_constraint', 'reject_approach', 'complete_task']) {
       const line = describeEntry(entry({ operation, outcome: 'refused', detail: 'stale write' }))
       expect(line.what, operation).toMatch(/^tried to [a-z]/)
@@ -137,8 +137,8 @@ describe('l’historique à l’écran', () => {
   it('montre le passé du cahier en langage humain', async () => {
     expect(section().textContent).toContain('recorded a step')
 
-    // L'extrait ne montre que les plus récentes ; la création est la plus
-    // ancienne du cahier de démonstration et n'y figure donc pas.
+    // The excerpt shows only the most recent ones; creation is the oldest of
+    // the demo task and so does not appear there.
     root.querySelector<HTMLButtonElement>('#toggle-history')!.click()
     await settled()
 
@@ -147,7 +147,7 @@ describe('l’historique à l’écran', () => {
     expect(text).toContain('added a rule')
     expect(text).toContain('approved evidence')
 
-    // Aucun nom d'opération machine ne doit atteindre l'écran.
+    // No machine operation name must reach the screen.
     for (const raw of ['log_step', 'add_constraint', 'verify_evidence', 'create_task']) {
       expect(text, raw).not.toContain(raw)
     }
@@ -212,9 +212,8 @@ describe('l’historique à l’écran', () => {
 
 describe('installable', () => {
   const manifest = JSON.parse(manifestRaw)
-  // Les fichiers réellement présents, vus par le graphe de modules, pas une
-  // liste écrite à la main qui resterait vraie après la suppression d'un
-  // fichier.
+  // The files really present, seen through the module graph, not a hand
+  // written list that would stay true after a file has been deleted.
   const shipped = new Set(
     Object.keys(import.meta.glob('../public/icons/*', { eager: true, query: '?url' })).map((p) =>
       p.replace('../public', ''),
@@ -243,8 +242,8 @@ describe('installable', () => {
   it('pointe vers des fichiers qui existent réellement', () => {
     for (const icon of manifest.icons as { src: string; type: string }[]) {
       expect(icon.type).toBe('image/png')
-      // Une icône déclarée mais absente casse l'installation sans que rien ne
-      // le signale avant l'essai sur un vrai navigateur.
+      // An icon declared but missing breaks installation with nothing to
+      // report it before trying on a real browser.
       expect(shipped, icon.src).toContain(icon.src)
     }
   })
@@ -259,25 +258,25 @@ describe('installable', () => {
 
   it('ne sert le service worker qu’en production', () => {
     const main = mainRaw
-    // En développement, un cache s'interpose entre le rechargement à chaud et
-    // la page : on perd des heures à déboguer une version qui n'existe plus.
+    // In development, a cache comes between hot reload and the page: you lose
+    // hours debugging a version that no longer exists.
     expect(main).toContain('import.meta.env.PROD')
     expect(main).toMatch(/serviceWorker\s*\n?\s*\.register\(\s*'\/sw\.js'/)
   })
 
   it('enregistre le service worker sans passer par le cache HTTP', () => {
-    // Mesuré en production : `_headers` demande `no-cache` sur `/sw.js` et
-    // Cloudflare sert quand même `max-age=14400`, et un visiteur qui revient
-    // gardait l'ancien worker, et l'ancienne application, jusqu'à quatre
-    // heures. `updateViaCache: 'none'` tient quel que soit l'hébergeur.
+    // Measured in production: `_headers` asks for `no-cache` on `/sw.js` and
+    // Cloudflare serves `max-age=14400` anyway, and a returning visitor kept
+    // the old worker, and the old application, for up to four hours.
+    // `updateViaCache: 'none'` holds whatever the host.
     expect(mainRaw).toContain("updateViaCache: 'none'")
   })
 
   it('sert la page par le réseau d’abord, le cache seulement en secours', () => {
     const sw = swRaw
-    // Cache-first sur le document servirait une ancienne version après un
-    // déploiement. Les fichiers d'assets, eux, portent une empreinte dans leur
-    // nom : les mettre en cache sans condition est sans risque.
+    // Cache-first on the document would serve an old version after a deploy.
+    // The asset files carry a fingerprint in their name: caching those
+    // unconditionally carries no risk.
     expect(sw).toContain("request.mode === 'navigate'")
     expect(sw).toMatch(/fetch\(request\)[\s\S]*\.catch\(\(\) =>[\s\S]*caches\s*\n?\s*\.match/)
     expect(sw).toContain('caches.delete')

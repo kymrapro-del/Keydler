@@ -188,8 +188,8 @@ describe('pour un agent qui n’a pas WebMCP', () => {
     root.querySelector<HTMLButtonElement>('#copy-state')!.click()
     await waitUntil(() => copied !== null, 'la copie', 3000)
 
-    // Le même texte que resume_task, aux mêmes options près : c'est tout
-    // l'intérêt, l'agent lit exactement ce que l'outil aurait rendu.
+    // The same text as resume_task, down to the same options: that is the
+    // whole point, the agent reads exactly what the tool would have returned.
     const attendu = renderTaskState(store.currentTask()!, {
       url: taskUrl(store.currentTask()!.id),
       credentials: [],

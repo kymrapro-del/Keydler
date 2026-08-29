@@ -206,8 +206,8 @@ describe('un nom, un identifiant', () => {
   it('refuse un second identifiant qui porterait le même nom', async () => {
     await addSecret({ ...base, name: 'gemini-api-key' })
 
-    // ${gemini-api-key} est la seule chose que l'agent reçoit. Deux entrées de
-    // ce nom rendent la référence ambiguë : il ne peut plus désigner une valeur.
+    // ${gemini-api-key} is the only thing the agent receives. Two entries under
+    // that name make the reference ambiguous: it can no longer name one value.
     await expect(
       addSecret({ ...base, name: 'gemini-api-key', value: 'AIzaSy-second' }),
     ).rejects.toBeInstanceOf(DuplicateSecretNameError)
@@ -272,8 +272,8 @@ b25lIGxpbmUgdHdvIGxpbmUgdGhyZWUgbGluZSBmb3VyIGxpbmUgZml2ZSBsaW5l
       value: PEM,
     })
 
-    // Une clé PEM tronquée à sa première ligne est inutilisable, et rien ne le
-    // signalerait avant l'usage.
+    // A PEM key truncated to its first line is unusable, and nothing would
+    // report it before use.
     expect(await revealSecret(id, base.passphrase)).toBe(PEM)
   })
 

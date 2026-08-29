@@ -150,8 +150,8 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       decidedAt: typeof a.decidedAt === 'number' ? a.decidedAt : null,
     })),
 
-    // La même borne qu'à l'écriture : un cahier reçu d'ailleurs ne doit pas
-    // pouvoir porter un journal sans fin.
+    // The same bound as at write time: a log received from elsewhere must not
+    // be able to carry an endless write log.
     audit: asObjects(stored.audit)
       .slice(-MAX_AUDIT_ENTRIES)
       .map((a) => ({

@@ -4,10 +4,10 @@ import paquetBrut from '../package.json?raw'
 import ci from '../.github/workflows/ci.yml?raw'
 import { ALL_TOOLS } from '../src/webmcp/tools'
 
-// Un badge affiche un nombre et personne ne le relit. Celui du dépôt disait
-// « 13 outils » et « 1 dépendance » : si l'un des deux change sans que le
-// badge suive, le README ment à la première ligne, là où on le croit le plus.
-// Ces épreuves lient chaque badge à ce qu'il prétend.
+// A badge shows a number and nobody rereads it. The one in this repository
+// said "13 tools" and "1 dependency": if either changes without the badge
+// following, the README lies on its first line, where it is believed most.
+// These tests tie each badge to what it claims.
 const paquet = JSON.parse(paquetBrut) as {
   dependencies: Record<string, string>
   scripts: Record<string, string>
@@ -22,16 +22,16 @@ describe('les badges du README', () => {
   })
 
   it('annonce le vrai nombre de dépendances de production', () => {
-    // C'est un argument du produit, pas une statistique : « zéro dépendance
-    // sauf idb » revient dans le README, la documentation et les audits.
+    // This is a product claim, not a statistic: "zero dependencies except idb"
+    // comes back in the README, the documentation and the audits.
     expect(Object.keys(paquet.dependencies)).toEqual(['idb'])
     expect(badge('runtime%20dependencies')).toBe('1')
   })
 
   it('n’annonce pas plus d’épreuves qu’il n’en existe', () => {
-    // Le compte exact dériverait à chaque ajout ; ce qui doit rester vrai,
-    // c'est qu'il n'est pas gonflé. On le compare au nombre de fichiers
-    // d'épreuve, à raison d'une par fichier au minimum.
+    // The exact count would drift with every addition; what has to stay true
+    // is that it is not inflated. It is compared against the number of test
+    // files, at one per file minimum.
     const annonce = Number(badge('tests'))
     expect(annonce).toBeGreaterThan(0)
     expect(annonce).toBeLessThanOrEqual(20_000)
@@ -43,18 +43,18 @@ describe('les badges du README', () => {
   })
 
   it('ne pose un badge d’intégration continue que si elle lance bien `check`', () => {
-    // Le flux détaillait ses étapes et avait dérivé : il lançait `vite build`
-    // nu, donc sans le garde d'artefact ni le vérificateur de liens que
-    // `check` avait fini par contenir. Un badge vert sur un contrôle plus
-    // faible que la commande locale est pire qu'aucun badge.
+    // The workflow spelled out its steps and had drifted: it ran `vite build`
+    // bare, so without the artifact guard or the link checker that `check` had
+    // ended up holding. A green badge over a check weaker than the local
+    // command is worse than no badge at all.
     expect(ci).toContain('npm run check')
     expect(ci).not.toMatch(/run:\s*(npx )?vite build\s*$/m)
   })
 
   it('reproduit la notice de chaque dépendance qui atteint le navigateur', async () => {
-    // ISC et MIT demandent que leur mention de copyright accompagne le code
-    // distribue. `idb` est compilé DANS le fichier servi : la notice doit donc
-    // vivre dans le dépôt, pas seulement dans node_modules.
+    // ISC and MIT ask that their copyright notice travel with the distributed
+    // code. `idb` is compiled INTO the file served: the notice has to live in
+    // the repository, not only in node_modules.
     const notices = (await import('../THIRD-PARTY-NOTICES.md?raw')).default
     for (const nom of Object.keys(paquet.dependencies)) {
       expect(notices, nom).toContain(nom)

@@ -105,7 +105,7 @@ describe('attach_evidence', () => {
     const step = currentTask().steps.find((s) => s.id === stepId)!
     expect(step.confidence).toBe('evidence')
     expect(step.evidence!.content).toContain('\n')
-    // Une preuve fournie par l'agent n'est pas une preuve vérifiée.
+    // Evidence supplied by the agent is not verified evidence.
     expect(step.evidence!.verifiedAt).toBeNull()
   })
 
@@ -183,7 +183,7 @@ describe('set_next_action', () => {
 
     expect(result.isError).toBeFalsy()
     expect(currentTask().next).toBe('Benchmark approach C against the p95 baseline')
-    // C'est tout l'intérêt : consigner une intention n'est pas consigner un fait.
+    // That is the whole point: recording an intention is not recording a fact.
     expect(currentTask().steps).toHaveLength(before)
   })
 

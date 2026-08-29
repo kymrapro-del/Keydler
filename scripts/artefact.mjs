@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { lireJeton } from './jeton.mjs'
 
-// `dist/` peut avoir l'air complet et n'être pas déployable : deux
-// substitutions se font APRÈS `vite build`. Sans elles, la CSP porte
-// `'__CSP_SCRIPT_HASH__'`, qui n'est pas une source valide et fait BLOQUER le
-// script d'amorce du thème, et le service worker ne précharge rien sous le nom
-// de cache fixe `keydler-dev`, qui ne s'invalide jamais. Rien de cela ne se
-// voit en regardant le dossier.
+// `dist/` can look complete and not be deployable: two substitutions happen
+// AFTER `vite build`. Without them the CSP carries `'__CSP_SCRIPT_HASH__'`,
+// which is not a valid source and gets the theme bootstrap script BLOCKED, and
+// the service worker precaches nothing under the fixed cache name
+// `keydler-dev`, which never invalidates. None of this shows by looking at the
+// folder.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 const racine = fileURLToPath(new URL('../', import.meta.url))
 
@@ -39,11 +39,11 @@ if (headers?.includes('__CSP_SCRIPT_HASH__')) {
 const construits = (await readdir(join(dist, 'assets')).catch(() => [])).map((f) => `/assets/${f}`)
 
 if (sw !== null) {
-  // Le gabarit porte déjà une liste SHELL, mais elle ne cite que des fichiers
-  // aux noms fixes. Ce qui distingue un artefact substitué d'un autre, c'est
-  // qu'elle nomme les fichiers EMPREINTÉS réellement produits. Le gabarit
-  // l'écrit en JavaScript, la version substituée en JSON : on relève les
-  // chemins cités sans supposer laquelle des deux on lit.
+  // The template already carries a SHELL list, but it only names files with
+  // fixed names. What tells a substituted artifact from another one is that it
+  // names the FINGERPRINTED files actually produced. The template writes it in
+  // JavaScript, the substituted version in JSON: we pick up the paths named
+  // without assuming which of the two we are reading.
   const shell = /const SHELL = (\[[^\]]*\])/.exec(sw)?.[1]
   const empreintés = [...(shell ?? '').matchAll(/['"](\/assets\/[^'"]+)['"]/g)].map((m) => m[1])
 
@@ -73,8 +73,8 @@ if (sw !== null) {
   }
 }
 
-// L'empreinte doit correspondre au HTML réellement construit, et `vercel.json`
-// la porte en dur : il est lu depuis le dépôt au déploiement, pas depuis dist.
+// The fingerprint has to match the HTML actually built, and `vercel.json` holds
+// it hard-coded: it is read from the repository at deploy time, not from dist.
 if (html !== null && headers !== null) {
   const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
   if (scripts.length !== 1) {
@@ -100,11 +100,11 @@ if (html !== null && headers !== null) {
   }
 }
 
-// Tout le reste peut être parfait et le produit rester invisible : sans jeton
-// d'origin trial valide pour l'origine servie, `document.modelContext` n'existe
-// pas et un juge lit « WebMCP is not available in this browser ».
-// `ALLOW_NO_ORIGIN_TRIAL=1` lève l'exigence : c'est ce que fait `npm run check`,
-// qui construit pour vérifier, pas pour publier.
+// Everything else can be perfect and the product stay invisible: without an
+// origin trial token valid for the origin served, `document.modelContext` does
+// not exist and a judge reads "WebMCP is not available in this browser".
+// `ALLOW_NO_ORIGIN_TRIAL=1` lifts the requirement: that is what `npm run check`
+// does, building to verify, not to publish.
 const ORIGINES_SERVIES = ['https://keydler.com', 'https://keydler.pages.dev']
 const FONCTIONNALITE = 'WebMCP'
 
@@ -145,8 +145,8 @@ if (html !== null && process.env.ALLOW_NO_ORIGIN_TRIAL !== '1') {
       )
       continue
     }
-    // L'origine du jeton inclut le port (`https://keydler.com:443`) alors que
-    // l'origine servie ne l'écrit pas. On compare sur le préfixe d'origine.
+    // The token origin includes the port (`https://keydler.com:443`) while the
+    // origin served does not write it. We compare on the origin prefix.
     const origine = String(jeton.origine ?? '').replace(/:443$/, '')
     if (!ORIGINES_SERVIES.includes(origine)) {
       grief(

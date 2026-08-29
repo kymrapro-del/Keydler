@@ -117,9 +117,9 @@ afterEach(() => {
   history.replaceState(null, '', '/')
 })
 
-// Mesuré avant ces bornes : 2000 règles portaient un aller-retour de rendu de 17 ms à
-// 501 ms, pour 1,2 Mo de HTML et 10 000 nœuds, et la page se redessine à chaque
-// frappe dans la recherche.
+// Measured before these caps: 2000 rules took a render round trip from 17 ms to
+// 501 ms, for 1.2 MB of HTML and 10,000 nodes, and the page repaints on every
+// keystroke in the search field.
 describe('la page ne grandit pas avec les données', () => {
   it('garde le même ordre de grandeur avec cent fois plus de tout', async () => {
     await open({
@@ -138,8 +138,8 @@ describe('la page ne grandit pas avec les données', () => {
   })
 
   it('borne chaque liste séparément, pour qu’aucune ne passe entre les mailles', async () => {
-    // Une seule liste laissée libre suffirait à faire tomber la page ; le
-    // test les prend donc une par une, sans que les autres la masquent.
+    // A single unbounded list would be enough to bring the page down; the test
+    // therefore takes them one at a time, with no other list masking it.
     for (const [nom, champ] of [
       ['règles', { constraints: rules(400) }],
       ['approches écartées', { rejected: rejections(400) }],
@@ -171,7 +171,7 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
 
     button('Show all 40 rules').click()
     __renderNow()
-    // Une fois tout à l'écran, plus rien n'est caché : l'avertissement s'en va.
+    // Once everything is on screen nothing is hidden: the warning goes away.
     expect(text()).not.toContain('still in force are not shown')
   })
 
@@ -204,9 +204,9 @@ describe('ce qui est caché est dit, et reste atteignable', () => {
 })
 
 /**
- * Le rendu est réveillé par le magasin, par les appels d'outil et par les
- * enregistrements ; beaucoup de ces réveils ne changent rien. Mesuré sur la
- * suite d'interface : 30 % des rendus produisaient un HTML identique.
+ * The render is woken by the store, by tool calls and by writes; many of those
+ * wakeups change nothing. Measured on the interface suite: 30% of the renders
+ * produced identical HTML.
  */
 describe('ne redessine pas ce qui n’a pas changé', () => {
   it('garde les mêmes nœuds quand rien ne bouge', async () => {
@@ -216,8 +216,8 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
     __renderNow()
     __renderNow()
 
-    // Le même objet DOM, pas seulement le même texte : c'est la preuve que
-    // rien n'a été reconstruit.
+    // The same DOM object, not just the same text: that is the proof that
+    // nothing was rebuilt.
     expect(card('rules-title')).toBe(avant)
   })
 
@@ -233,9 +233,9 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
   })
 
   it('peint une racine neuve, même si l’état est resté le même', async () => {
-    // Le piège de l'optimisation : se souvenir du HTML déjà peint sans
-    // remarquer que la racine, elle, a été remplacée, et laisser une page
-    // blanche.
+    // The trap of the optimization: remembering the HTML already painted
+    // without noticing that the root itself was replaced, and leaving a blank
+    // page.
     await open({ constraints: rules(3) })
     const attendu = root.innerHTML
     expect(attendu).not.toBe('')
@@ -279,7 +279,7 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
       })
     }
     __renderNow()
-    // La liste des cahiers est relue de façon asynchrone après le rendu.
+    // The task list is re-read asynchronously after the render.
     await waitUntil(
       () => (root.textContent ?? '').includes(`${nombre} tasks on this device`),
       'la liste des cahiers',
@@ -288,8 +288,8 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
   }
 
   it('borne le sélecteur de cahiers, qui balaie chaque cahier du poste', async () => {
-    // `needsYou` parcourt les étapes de CHAQUE cahier pour sa pastille : la
-    // page coûtait donc le poste entier, et pas seulement le cahier ouvert.
+    // `needsYou` walks the steps of EVERY task for its badge: the page
+    // therefore cost the whole device, not just the open task.
     await poser(40)
 
     const switcher = root.querySelector<HTMLElement>('.switcher')!
@@ -299,9 +299,9 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
 })
 
 /**
- * Le sélecteur gardait les cahiers ENTIERS en mémoire : tout le poste, en
- * permanence, pour une liste déroulante repliée. Mesuré : 1,5 Mo en tas pour
- * un cahier de 1000 étapes, 29,6 Mo pour 20 000.
+ * The switcher kept WHOLE tasks in memory: the entire device, permanently, for
+ * a collapsed dropdown. Measured: 1.5 MB on the heap for a task of 1000 steps,
+ * 29.6 MB for 20,000.
  */
 describe('la liste des cahiers ne retient pas les cahiers', () => {
   it('ne rend que ce que le sélecteur affiche', async () => {
@@ -317,21 +317,21 @@ describe('la liste des cahiers ne retient pas les cahiers', () => {
     const carte = cards.find((c) => c.id === 'gros')!
 
     expect(carte.title).toBe('Gros cahier')
-    // Ce qui pèse n'est pas là. Un test de mémoire clignoterait ; celui-ci dit
-    // la même chose et ne clignote pas.
+    // What weighs is not there. A memory test would flake; this one says the
+    // same thing and does not flake.
     for (const lourd of ['steps', 'audit', 'mutations', 'decisions', 'rejected', 'constraints']) {
       expect(Object.keys(carte), lourd).not.toContain(lourd)
     }
-    // Et ce qui doit survivre à la réduction survit : la pastille est calculée
-    // avant que le cahier ne soit relâché.
+    // And what must survive the trimming survives: the badge is computed
+    // before the task is released.
     expect(carte.needs.some((n) => n.kind === 'question')).toBe(true)
   })
 })
 
-// Le panneau technique montre ce que `resume_task` rendrait : 5 ms sur un cahier de
-// 20 000 étapes, recalculé à chaque frappe, donc mémorisé. Une mémorisation qui rate
-// son invalidation montre un état périmé, pire que lent dans un produit dont c'est
-// le sujet.
+// The technical panel shows what `resume_task` would return: 5 ms on a task of
+// 20,000 steps, recomputed on every keystroke, hence memoized. A memo that misses
+// its invalidation shows stale state, worse than slow in a product whose subject
+// is exactly that.
 describe('l’aperçu de ce que lit l’agent reste à jour', () => {
   function apercu(): string {
     const pre = [...root.querySelectorAll('pre')].find((p) => p.textContent?.includes('TASK ID'))
@@ -369,8 +369,8 @@ describe('l’aperçu de ce que lit l’agent reste à jour', () => {
 })
 
 /**
- * L'export emporte les preuves telles quelles. Le README le disait ; l'écran,
- * non, et c'est l'écran qu'on lit avant de cliquer.
+ * The export carries the evidence as it is. The README said so; the screen did
+ * not, and the screen is what you read before clicking.
  */
 describe('l’export dit ce qu’il emporte', () => {
   it('nomme les preuves, et ce qui ne peut pas partir', async () => {

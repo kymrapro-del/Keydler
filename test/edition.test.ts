@@ -47,7 +47,7 @@ describe('corrections humaines, dans le domaine', () => {
     expect(edited.standing).toBe(rule.standing)
     expect(edited.active).toBe(rule.active)
 
-    // Ce que l'agent relit suit immédiatement.
+    // What the agent re-reads follows immediately.
     expect(renderTaskState(after)).toContain('Never modify the database schema, ever')
   })
 
@@ -85,8 +85,8 @@ describe('corrections humaines, dans le domaine', () => {
     const task = buildDemoTask()
     const rule = activeConstraints(task)[0]
 
-    // Aucune de ces mutations ne porte de `basedOnVersion` : c'est exactement
-    // ce qui périme la version sur laquelle l'agent travaille.
+    // None of these mutations carries a `basedOnVersion`: that is exactly
+    // what goes stale on the version the agent works from.
     for (const entry of [
       renameTask(task, 'A new name').audit.at(-1)!,
       editConstraint(task, rule.id, 'A reworded rule').audit.at(-1)!,
@@ -183,7 +183,7 @@ describe('corrections humaines, à l’écran', () => {
     expect(root.querySelector('[role="alert"]')!.textContent).toContain(
       'the reason cannot be empty',
     )
-    // Rien n'a été écrit : le rejet garde son motif.
+    // Nothing was written: the rejection keeps its reason.
     expect(acceptedRejections(store.currentTask()!)[0].reason).toContain('breaks refresh token')
   })
 
@@ -216,7 +216,7 @@ describe('corrections humaines, à l’écran', () => {
     expect(steps).toHaveLength(before + 1)
     const added = steps.at(-1)!
     expect(added.source).toBe('human')
-    // Une preuve que la personne a produite elle-même : elle était là.
+    // Evidence the person produced themselves: they were there.
     expect(added.confidence).toBe('human_verified')
     expect(added.evidence!.content).toContain('183 passed')
     expect(added.evidence!.verifiedAt).not.toBeNull()

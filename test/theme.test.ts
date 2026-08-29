@@ -45,8 +45,8 @@ describe('choix du thème', () => {
       throw new Error('denied')
     }
 
-    // Navigation privée, données de site bloquées : le choix vaut pour cette
-    // page, et rien ne doit tomber.
+    // Private browsing, site data blocked: the choice holds for this
+    // page, and nothing must fall over.
     expect(() => applyTheme('dark')).not.toThrow()
     expect(document.documentElement.dataset.theme).toBe('dark')
 
@@ -60,7 +60,7 @@ describe('choix du thème', () => {
 
     applyTheme('light')
     const metas = document.querySelectorAll('meta[name="theme-color"]')
-    // Une seule : empiler les balises laisserait le navigateur choisir.
+    // Only one: stacking the tags would leave the browser to choose.
     expect(metas).toHaveLength(1)
     expect((metas[0] as HTMLMetaElement).content).toBe('#ffffff')
   })
@@ -73,8 +73,8 @@ describe('choix du thème', () => {
 
 describe('sans flash au chargement', () => {
   it('lit le choix avant la première peinture, dans le document lui-même', () => {
-    // Le lire depuis le module s'exécuterait après le premier rendu : la page
-    // s'afficherait une fraction de seconde dans le thème du système.
+    // Reading it from the module would run after the first render: the page
+    // would show for a fraction of a second in the system theme.
     const head = indexRaw.slice(0, indexRaw.indexOf('</head>'))
     expect(head).toContain("localStorage.getItem('watch-log.theme')")
     expect(head).toContain('document.documentElement.dataset.theme')

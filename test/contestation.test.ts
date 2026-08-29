@@ -66,8 +66,8 @@ describe('contester une étape', () => {
     const verified = verifyEvidence(task, step.id, step.evidence!.content)
     expect(verified.steps.find((s) => s.id === step.id)!.confidence).toBe('human_verified')
 
-    // On peut s'être trompé en validant : c'est précisément ce qu'il faut
-    // pouvoir corriger.
+    // You can have been wrong in approving: that is precisely what has to be
+    // correctable.
     const next = disputeStep(verified, step.id, 'I read the wrong run.')
     expect(next.steps.find((s) => s.id === step.id)!.confidence).toBe('disputed')
   })
@@ -206,8 +206,8 @@ describe('contester depuis la page', () => {
     )!
     expect(card).toBeDefined()
 
-    // Lire une preuve et ne pouvoir que l'approuver, c'est un formulaire à une
-    // seule issue : le refus doit être au même endroit que l'accord.
+    // Reading evidence and only being able to approve it is a form with a
+    // single outcome: refusal must sit where approval sits.
     expect(card.querySelector('[data-verify]')).not.toBeNull()
     expect(card.querySelector('[data-dispute]')).not.toBeNull()
   })

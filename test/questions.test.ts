@@ -102,8 +102,8 @@ describe('ce que l’agent suivant en voit', () => {
 
     expect(rendered).toContain('WAITING ON THE HUMAN')
     expect(rendered).toContain('Which of the five telemetry baselines')
-    // Une conversation qui reprend doit voir tout de suite qu'elle est bloquée,
-    // avant de dépenser son budget à refaire le travail.
+    // A conversation picking up again has to see at once that it is blocked,
+    // before spending its budget redoing the work.
     expect(rendered.indexOf('WAITING ON THE HUMAN')).toBeLessThan(rendered.indexOf('RECENT WORK'))
     expect(estimateTokens(rendered)).toBeLessThanOrEqual(TOKEN_BUDGET)
   })

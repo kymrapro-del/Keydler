@@ -53,8 +53,8 @@ describe('ce qui a changé depuis une version', () => {
     )
     const rendered = renderChanges(next, task.version)
 
-    // Une nouvelle règle change ce que l'agent a le droit de faire ; une étape
-    // consignée par un autre agent ne fait que l'informer.
+    // A new rule changes what the agent may do; a step logged by another agent
+    // only informs it.
     expect(rendered).toContain('CHANGES WHAT YOU MAY DO')
     expect(rendered).toContain('Do not add Redis')
     expect(rendered).toContain('ALSO HAPPENED')
@@ -103,7 +103,7 @@ describe('ce qui a changé depuis une version', () => {
     }
 
     const rendered = renderChanges(big, 1)
-    // Le journal est borné : prétendre restituer depuis v1 serait un mensonge.
+    // The audit log is bounded: claiming to replay from v1 would be a lie.
     expect(rendered).toContain('INCOMPLETE')
     expect(rendered).toContain('resume_task')
   })

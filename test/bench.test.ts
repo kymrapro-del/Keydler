@@ -27,9 +27,9 @@ let root: HTMLElement
 let unmount: () => void
 
 /**
- * Attendre un nombre fixe de tours suffisait à vide et échouait en suite
- * complète : la file d'écriture passe par IndexedDB, dont la latence dépend de
- * la charge. On attend l'effet, pas un délai.
+ * Waiting a fixed number of turns was enough on an empty run and failed in the
+ * full suite: the write queue goes through IndexedDB, whose latency depends on
+ * the load. We wait for the effect, not for a delay.
  */
 async function settled(turns = 4) {
   for (let i = 0; i < turns; i++) await new Promise((r) => setTimeout(r, 0))
@@ -307,9 +307,9 @@ describe('tableau de bord', () => {
   })
 
   it('montre exactement ce que resume_task renvoie, pas une version voisine', async () => {
-    // Le panneau s'intitule « What resume_task returns ». S'il rendait l'état
-    // sans l'URL ni les identifiants, il montrerait autre chose que ce que
-    // l'agent reçoit, dans un produit dont toute la valeur est l'honnêteté.
+    // The panel is titled “What resume_task returns”. If it rendered the state
+    // without the URL or the credentials, it would show something other than
+    // what the agent receives, in a product whose whole value is honesty.
     const resume = ALL_TOOLS.find((t) => t.name === 'resume_task')!
     const attendu = textOf(await resume.execute({}, { signal: new AbortController().signal }))
     await settled()
@@ -522,8 +522,8 @@ describe('un message de succès ne s’installe pas', () => {
     await vi.advanceTimersByTimeAsync(NOTICE_TTL + 1000)
     __renderNow()
 
-    // Un message qui reste affirme, une minute plus tard, qu'une action vient
-    // d'avoir lieu. Il faut le lire comme faux.
+    // A notice that stays claims, a minute later, that an action has just
+    // happened. It has to be read as false.
     expect(root.querySelector('.notice--ok')).toBeNull()
   })
 })

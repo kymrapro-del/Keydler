@@ -7,8 +7,8 @@ function plural(n: number, one: string): string {
 }
 
 /**
- * `null` quand l'horodatage n'est pas exploitable. On ne devine pas : une date
- * inventée dans un cahier vaut moins que pas de date du tout.
+ * `null` when the timestamp is not usable. We do not guess: an invented date
+ * in a task is worth less than no date at all.
  */
 export function sinceThen(at: number, now: number = Date.now()): string | null {
   if (!Number.isFinite(at) || at <= 0) return null

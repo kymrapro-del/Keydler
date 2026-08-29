@@ -72,8 +72,8 @@ describe('savoir si le travail tient sur cet appareil', () => {
   it('reste prudent même quand la durabilité est accordée', () => {
     const solide: StorageState = { persisted: true, usage: 1024, quota: 2048 }
     const texte = describeStorage(solide)
-    // Le navigateur promet de ne pas l'effacer tout seul, pas que rien
-    // n'arrivera jamais.
+    // The browser promises not to clear it on its own, not that nothing will
+    // ever happen.
     expect(texte).toMatch(/will not|won’t/i)
     expect(texte.toLowerCase()).toContain('you can still')
   })
@@ -133,7 +133,7 @@ describe('à l’écran', () => {
     await waitUntil(() => asked.mock.calls.length > 0, 'la demande', 3000)
     await waitUntil(() => !root.querySelector('#persist'), 'le bouton retiré', 3000)
 
-    // Le nœud est remplacé à chaque rendu : le relire, pas garder l'ancien.
+    // The node is replaced on every render: read it again, do not keep the old one.
     expect(root.querySelector('details.technical')!.textContent).toMatch(/will not|won’t/i)
   })
 
@@ -149,7 +149,7 @@ describe('à l’écran', () => {
     )
     __renderNow()
 
-    // Un clic sans effet visible se lit comme un bouton cassé.
+    // A click with no visible effect reads as a broken button.
     const message = root.querySelector('.notice--ok, .notice--error')!.textContent!
     expect(message.toLowerCase()).toContain('declined')
     expect(root.querySelector('#persist')).not.toBeNull()

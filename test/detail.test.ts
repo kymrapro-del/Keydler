@@ -165,9 +165,9 @@ describe('le pointeur reste court, et dit où trouver le reste', () => {
 
 describe('ce que resume_task annonce du détail', () => {
   it('renvoie au schéma plutôt que de recopier la liste des sections', () => {
-    // Une énumération en prose a déjà pris du retard deux fois, et chaque mot
-    // ajouté ici coûte un nom d'identifiant dans un budget de 400 jetons.
-    // L'énumération du schéma, elle, ne peut pas dériver.
+    // A prose enumeration has already fallen behind twice, and every word
+    // added here costs an id name in a 400-token budget.
+    // The schema's own enumeration cannot drift.
     const rendered = renderTaskState(buildDemoTask())
     expect(rendered).toContain('read_task_detail')
     expect(rendered).toContain('schema')

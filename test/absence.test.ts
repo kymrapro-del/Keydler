@@ -80,8 +80,8 @@ describe('pendant votre absence', () => {
   })
 
   it('montre ce qu’un agent a écrit pendant que la page était fermée', async () => {
-    // La page est fermée : personne ne regarde, donc la version vue n'avance
-    // plus. C'est la seule façon d'être vraiment absent.
+    // The page is closed: nobody is looking, so the seen version stops
+    // advancing. That is the only way to be really away.
     unmount()
     await store.mutate((s) =>
       logStep(
@@ -134,7 +134,7 @@ describe('pendant votre absence', () => {
     )
     await written(before)
 
-    // On était là : la page a suivi.
+    // We were there: the page kept up.
     expect(card()).toBeUndefined()
     expect(seenVersion(store.currentTask()!.id)).toBe(store.currentTask()!.version)
   })
@@ -198,8 +198,8 @@ describe('un onglet en arrière-plan ne compte pas comme une présence', () => {
     )
     await waitUntil(() => store.currentTask()!.steps.length > 4, 'l’écriture de l’agent')
 
-    // Sans cela, la page se marquerait « vue » alors que personne ne regardait,
-    // et le digest ne se déclencherait jamais.
+    // Without this the page would mark itself "seen" while nobody was looking,
+    // and the digest would never fire.
     hide(false)
     await settled()
 

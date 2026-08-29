@@ -5,11 +5,11 @@ import { getDb } from '../src/persistence/db'
 import * as store from '../src/store/taskStore'
 import { clearDatabase, waitUntil } from './helpers'
 
-// Deux onglets sur la même tâche : le second avait écrit jusqu'à v31 pendant que le
-// premier affichait encore v29 et « Task closed ». L'écriture du premier aurait bien
-// été refusée, mais son écran mentait jusque-là.
-// « L'autre onglet » est un second `BroadcastChannel` : dans un même processus comme
-// entre deux onglets, il ne livre jamais au contexte qui poste.
+// Two tabs on the same task: the second had written up to v31 while the first
+// still showed v29 and "Task closed". The write from the first would indeed have
+// been refused, but its screen lied until then.
+// "The other tab" is a second `BroadcastChannel`: within one process as between
+// two tabs, it never delivers to the context that posts.
 let autreOnglet: BroadcastChannel
 
 function annonce(id: string, version: number): void {
@@ -31,7 +31,7 @@ describe('ce qu’un onglet apprend de l’autre', () => {
     const task = await store.createAndOpenTask('Partagée', 'Continuer')
     expect(store.currentTask()!.version).toBe(1)
 
-    // L'autre page écrit sur le disque, sans passer par ce magasin.
+    // The other page writes to disk, without going through this store.
     const surLeDisque = await loadTask(task.id)
     await saveTask(
       addConstraint(surLeDisque!, { rule: 'Posée ailleurs', basedOnVersion: null }, 'human'),
@@ -43,9 +43,9 @@ describe('ce qu’un onglet apprend de l’autre', () => {
   })
 
   it('écoute même sans avoir jamais écrit', async () => {
-    // Le piège : le canal était ouvert à la première ANNONCE. Un onglet qui ne
-    // fait que lire n'annonce rien, restait donc sourd, et c'est justement
-    // celui qu'il fallait réveiller. Ici, le magasin n'écrit pas une fois.
+    // The trap: the channel was opened on the first ANNOUNCEMENT. A tab that
+    // only reads announces nothing, so it stayed deaf, and it is exactly the
+    // one that had to be woken. Here the store does not write once.
     const posé = await store.createAndOpenTask('Écrite ailleurs', undefined)
     const id = posé.id
     store.__resetStore()
@@ -74,7 +74,7 @@ describe('ce qu’un onglet apprend de l’autre', () => {
   })
 
   it('ignore une annonce plus ancienne que ce qu’il tient déjà', async () => {
-    // Sinon une annonce en retard ferait reculer l'écran vers un état dépassé.
+    // Otherwise a late announcement would walk the screen back to a stale state.
     const task = await store.createAndOpenTask('La mienne', undefined)
     await store.mutate((s) =>
       addConstraint(s, { rule: 'Posée ici', basedOnVersion: null }, 'human'),
@@ -97,8 +97,8 @@ describe('ce qu’un onglet apprend de l’autre', () => {
       logStep(s, { action: 'a', result: 'b', basedOnVersion: s.version }, 'agent'),
     )
 
-    // On attend l'annonce de CETTE tâche : la création en a déjà émis une pour
-    // la liste, qui arrive de façon asynchrone et gagnerait la course.
+    // We wait for the announcement of THIS task: creation already emitted one
+    // for the list, which arrives asynchronously and would win the race.
     await waitUntil(() => reçues.some((m) => m.id === task.id), 'l’annonce de la tâche')
     expect(reçues).toContainEqual({
       id: task.id,
@@ -111,18 +111,18 @@ describe('ce qu’un onglet apprend de l’autre', () => {
     await store.createAndOpenTask('La mienne', undefined)
     const avant = store.tasksRevision()
 
-    // Une création ailleurs : l'identifiant ne nous concerne pas, mais la
-    // liste, si.
+    // A creation elsewhere: the id does not concern us, but the list
+    // does.
     autreOnglet.postMessage({ id: null, version: 0 })
     await waitUntil(() => store.tasksRevision() > avant, 'la révision de la liste')
   })
 })
 
 describe('ce qu’un onglet fait d’une suppression venue d’ailleurs', () => {
-  // La suppression n'annonçait que « la liste a changé », sans nommer le cahier :
-  // l'onglet d'à côté le gardait à l'écran et sa prochaine écriture le RESSUSCITAIT,
-  // avec toutes ses étapes et toutes ses preuves, mais sans ses identifiants scellés,
-  // eux réellement effacés. L'humain croyait la donnée partie ; elle revenait amputée.
+  // Deletion only announced "the list has changed", without naming the task: the
+  // tab next door kept it on screen and its next write RESURRECTED it, with all
+  // its steps and all its evidence, but without its sealed credentials, those
+  // really erased. The human believed the data gone; it came back maimed.
   it('apprend que le cahier ouvert a été supprimé, et cesse de le montrer', async () => {
     const task = await store.createAndOpenTask('Supprimée ailleurs', undefined)
     expect(store.getSnapshot().status).toBe('ready')
@@ -136,7 +136,7 @@ describe('ce qu’un onglet fait d’une suppression venue d’ailleurs', () => 
 
   it('ne ressuscite pas un cahier supprimé quand il tente d’écrire', async () => {
     const task = await store.createAndOpenTask('Supprimée ailleurs', undefined)
-    // L'autre onglet supprime pour de bon, puis l'annonce arrive.
+    // The other tab deletes for good, then the announcement arrives.
     const db = await getDb()
     await db.delete('tasks', task.id)
     autreOnglet.postMessage({ id: task.id, version: 0, gone: true })
@@ -157,20 +157,20 @@ describe('ce qu’un onglet fait d’une suppression venue d’ailleurs', () => 
 })
 
 describe('la relecture ne va pas écraser le mauvais cahier', () => {
-  // La garde « est-ce bien le cahier ouvert ? » était évaluée à la RÉCEPTION du
-  // message, la relecture étant différée dans la file d'écriture : ouvrir un autre
-  // cahier entre les deux rebasculait l'écran, et `boundId`, sur le précédent.
+  // The "is this really the open task?" guard was evaluated when the message was
+  // RECEIVED, the re-read being deferred in the write queue: opening another task
+  // in between switched the screen, and `boundId`, back to the previous one.
   it('abandonne si le cahier ouvert a changé entre l’annonce et son tour', async () => {
     const a = await store.createAndOpenTask('Cahier A', undefined)
     const b = await store.createAndOpenTask('Cahier B', undefined)
 
-    // Faire avancer A sur le disque, sans passer par ce magasin.
+    // Move A forward on disk, without going through this store.
     const surLeDisque = await loadTask(a.id)
     await saveTask(
       addConstraint(surLeDisque!, { rule: 'Posée ailleurs', basedOnVersion: null }, 'human'),
     )
 
-    // B est ouvert ; l'annonce parle de A.
+    // B is open; the announcement is about A.
     expect(store.currentTask()!.id).toBe(b.id)
     autreOnglet.postMessage({ id: a.id, version: 99 })
     await new Promise((r) => setTimeout(r, 60))

@@ -193,8 +193,8 @@ describe('le coffre accepte toute nature de secret', () => {
     select.dispatchEvent(new Event('input', { bubbles: true }))
     __renderNow()
 
-    // Une clé PEM tient sur plusieurs lignes : un <input> la tronquerait à la
-    // première, et rien ne le signalerait avant l'usage.
+    // A PEM key spans several lines: an <input> would cut it at the first one,
+    // and nothing would say so before it is used.
     expect(root.querySelector('#new-secret-value')!.tagName).toBe('TEXTAREA')
   })
 

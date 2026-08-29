@@ -141,7 +141,7 @@ describe('une demande d’autorisation à l’écran', () => {
     )
     await written(before)
 
-    // Une demande bloquante et une question ouverte : deux choses à traiter.
+    // A blocking request and an open question: two things to deal with.
     expect(document.title).toMatch(/^\(2\)/)
 
     Object.defineProperty(document, 'visibilityState', {

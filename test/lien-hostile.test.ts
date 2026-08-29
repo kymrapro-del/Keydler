@@ -44,9 +44,9 @@ async function gzip(text: string): Promise<Uint8Array> {
 
 describe('un lien hostile', () => {
   it('refuse une charge qui se décompresse en une masse énorme', async () => {
-    // Un « zip bomb » : une charge SOUS la borne d'entrée, au ratio maximal de
-    // gzip. Le lien étant ouvert par la victime, borner l'entrée ne protège de
-    // rien : c'est la sortie qu'il faut borner.
+    // A "zip bomb": a payload UNDER the input bound, at gzip's maximum ratio.
+    // Since the link is opened by the victim, bounding the input protects
+    // nothing: it is the output that has to be bounded.
     const énorme = JSON.stringify({ id: 'bomb', title: 'x'.repeat(6_000_000), version: 1 })
     const packed = `z${toBase64Url(await gzip(énorme))}`
     expect(packed.length).toBeLessThan(MAX_LINK_LENGTH)
@@ -70,8 +70,8 @@ describe('un lien hostile', () => {
 
 describe('une charge démesurée est refusée avant même d’être lue', () => {
   it('refuse un lien plus long que ce que l’on sait produire, même valide', async () => {
-    // Un cahier PARFAITEMENT valide, simplement trop long. Sans la borne
-    // d'entrée il serait accepté : c'est ce qui isole cette garde-là.
+    // A PERFECTLY valid task, simply too long. Without the input bound it
+    // would be accepted: that is what isolates this particular guard.
     const valide = JSON.stringify({
       ...buildCoreTask(),
       title: 'x'.repeat(20_000),
@@ -110,7 +110,7 @@ describe('un cahier reçu ne porte pas un journal sans fin', () => {
 
     const propre = normalizeTask(gonflé as never)!
     expect(propre.audit.length).toBe(MAX_AUDIT_ENTRIES)
-    // Ce sont les plus récentes qui survivent, comme à l'écriture.
+    // It is the most recent ones that survive, as on write.
     expect(propre.audit.at(-1)!.detail).toBe(`entry ${MAX_AUDIT_ENTRIES * 3 - 1}`)
   })
 })
@@ -125,10 +125,10 @@ describe('l’histoire d’un élément quand le journal a été élagué', () =
       task = logStep(task, { action: `step ${i}`, result: 'x', basedOnVersion: null }, 'agent')
     }
 
-    // La levée est tombée hors du journal borné.
+    // The lifting fell out of the bounded log.
     const trail = historyOf(task, rule.id)
     expect(trail.entries).toHaveLength(0)
-    // Et il le dit, plutôt que de laisser croire qu'il ne s'est rien passé.
+    // And it says so, rather than letting it look like nothing happened.
     expect(trail.mayBeIncomplete).toBe(true)
     expect(task.audit.some((e) => e.operation === 'audit_trimmed')).toBe(true)
   })

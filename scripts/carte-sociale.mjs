@@ -3,17 +3,17 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-// L'image annoncée par `og:image` n'existait pas : le repli SPA rendait la page
-// d'accueil à sa place et toute carte partagée était cassée (vérifié en
-// production, 200 avec `content-type: text/html`). 1200×630, soit le 1,91:1 que
-// les plateformes recadrent le moins. Du SVG rendu par un outil du système
-// plutôt qu'une dépendance de plus ; le PNG versionné, pour que la construction
-// n'exige pas cet outil.
+// The image announced by `og:image` did not exist: the SPA fallback served the
+// home page in its place and every shared card was broken (checked in
+// production, 200 with `content-type: text/html`). 1200×630, the 1.91:1 that
+// platforms crop the least. SVG rendered by a system tool rather than one more
+// dependency; the PNG committed to the repo, so that the build does not
+// require that tool.
 const racine = fileURLToPath(new URL('../', import.meta.url))
 
-// Palette sombre de `src/tokens.css`, recopiée à dessein : l'image est
-// produite hors de la chaîne CSS, et une valeur qui change là-bas doit se
-// reporter ici sciemment.
+// Dark palette from `src/tokens.css`, copied on purpose: the image is produced
+// outside the CSS pipeline, and a value that changes over there has to be
+// carried here knowingly.
 const FOND = '#131316'
 const SURFACE = '#1c1c20'
 const BORDURE = '#34343a'

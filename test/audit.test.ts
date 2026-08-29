@@ -43,9 +43,9 @@ describe('journal d’audit', () => {
 
   it('ne fusionne jamais une réussite avec ce qui la précède', () => {
     let t = tâche()
-    // Deux règles DIFFÉRENTES : une répétition mot pour mot est refusée depuis
-    // qu'un garde-fou existe, et ce cas-ci parle de fusion d'entrées, pas de
-    // doublons.
+    // Two DIFFERENT rules: a word-for-word repeat has been refused ever since
+    // a guard exists, and this case is about merging entries, not about
+    // duplicates.
     t = addConstraint(t, { rule: 'R one', basedOnVersion: 1 }, 'human', ctx(10))
     t = addConstraint(t, { rule: 'R two', basedOnVersion: 2 }, 'human', ctx(20))
 

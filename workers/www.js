@@ -1,17 +1,17 @@
-// `keydler.com` et `www.keydler.com` sont deux ORIGINES : le stockage est
-// cloisonné par origine et le jeton d'origin trial n'active WebMCP que sur la
-// bonne. Une Redirect Rule serait plus simple, mais ce jeton de déploiement n'a
-// que `workers_routes`, pas l'écriture sur les rulesets (403). Le Worker ne sert
-// aucun fichier : rien ne garantirait que la CSP de `_headers` survive à une
-// liaison d'assets. Le fragment, reporté par le navigateur, survit au passage.
+// `keydler.com` and `www.keydler.com` are two ORIGINS: storage is
+// partitioned by origin and the origin trial token only enables WebMCP on
+// the right one. A Redirect Rule would be simpler, but this deployment token
+// only has `workers_routes`, not ruleset writes (403). The Worker serves no
+// file: nothing would guarantee that the CSP in `_headers` survives an assets
+// binding. The fragment, carried over by the browser, survives the hop.
 const CANONIQUE = 'keydler.com'
 
 export default {
   fetch(request) {
     const url = new URL(request.url)
 
-    // Ce Worker n'est monté que sur www, mais une route se déplace : si on
-    // l'atteint depuis l'apex, rediriger bouclerait indéfiniment.
+    // This Worker is only mounted on www, but a route moves: reached from the
+    // apex, redirecting would loop forever.
     if (url.hostname === CANONIQUE) {
       return new Response('This host is served elsewhere.', {
         status: 404,
@@ -27,10 +27,10 @@ export default {
       status: 301,
       headers: {
         location: url.toString(),
-        // Une 301 est mise en cache même sans cette en-tête. Une heure la
-        // tempère : ce montage est temporaire, et pouvoir rebasculer sur www en
-        // cas de panne de l'apex vaut mieux qu'une redirection gravée chez les
-        // visiteurs.
+        // A 301 is cached even without this header. One hour tempers it:
+        // this mount is temporary, and being able to switch back to www if
+        // the apex goes down beats a redirect carved into the
+        // visitors' caches.
         'cache-control': 'public, max-age=3600',
         'referrer-policy': 'no-referrer',
         'x-content-type-options': 'nosniff',

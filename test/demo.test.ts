@@ -14,7 +14,7 @@ const task = buildDemoTask()
 
 describe('le cahier de démonstration montre ce que le produit sait faire', () => {
   it('porte une question posée par un agent, et la réponse humaine', () => {
-    // Sans cela, « Try the demo » montre un produit d'il y a trois lots.
+    // Without this, "Try the demo" shows a product three batches old.
     expect(answeredQuestions(task).length).toBeGreaterThan(0)
     expect(answeredQuestions(task)[0].answer).toBeTruthy()
     expect(answeredQuestions(task)[0].why).toBeTruthy()
@@ -31,7 +31,7 @@ describe('le cahier de démonstration montre ce que le produit sait faire', () =
   })
 
   it('laisse quelque chose à faire à l’humain qui arrive', () => {
-    // Une démo entièrement tranchée ne montre aucun des gestes de supervision.
+    // A demo already fully decided shows none of the supervision gestures.
     const proposals = task.constraints.filter((c) => c.standing === 'proposed').length
     const rejections = task.rejected.filter((r) => r.standing === 'proposed').length
     expect(proposals + rejections).toBeGreaterThan(0)
@@ -39,7 +39,7 @@ describe('le cahier de démonstration montre ce que le produit sait faire', () =
   })
 
   it('ne laisse ni question ni autorisation en attente au démarrage', () => {
-    // Une démo qui s'ouvre sur un agent bloqué laisserait croire à une panne.
+    // A demo that opens on a blocked agent would look like a breakdown.
     expect(openQuestions(task)).toHaveLength(0)
     expect(pendingApprovals(task)).toHaveLength(0)
   })

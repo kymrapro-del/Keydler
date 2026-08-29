@@ -35,8 +35,8 @@ describe('supprimer une tâche ne laisse rien derrière', () => {
 
     await store.deleteCurrentTask()
 
-    // Le scellé restait dans IndexedDB, hors d'atteinte de l'écran mais bien
-    // présent sur le disque, alors que l'humain croit avoir tout supprimé.
+    // The sealed secret stayed in IndexedDB, out of reach of the screen but
+    // very much present on disk, while the human believes it was all deleted.
     expect(await listSecretNames(task.id)).toHaveLength(0)
 
     const db = await getDb()

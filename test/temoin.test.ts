@@ -41,9 +41,9 @@ describe('le témoin sait si l’agent a lu avant d’écrire', () => {
   })
 
   it('ne compte que les écritures qui ont abouti', () => {
-    // Une écriture refusée n'a rien consigné : la signaler comme « vérifiez ce
-    // qu'il a écrit » enverrait chercher quelque chose qui n'existe pas. Le
-    // refus, lui, se voit déjà dans la liste des appels.
+    // A refused write recorded nothing: flagging it as "check what it wrote"
+    // would send someone looking for something that does not exist. The
+    // refusal itself already shows in the list of calls.
     recordCall('log_step', true)
     expect(getWitness().blindWrites).toBe(0)
     expect(getWitness().refused).toBe(1)
@@ -53,7 +53,7 @@ describe('le témoin sait si l’agent a lu avant d’écrire', () => {
   })
 
   it('ne tient pas une lecture refusée pour une lecture', () => {
-    // Un resume_task qui a échoué n'a rien appris à l'agent.
+    // A resume_task that failed taught the agent nothing.
     recordCall('resume_task', true)
     recordCall('log_step', false)
     expect(getWitness().blindWrites).toBe(1)

@@ -52,8 +52,8 @@ describe('plusieurs cahiers', () => {
     const second = await store.createAndOpenTask('Second task', 'Do the second thing')
     await waitFor(() => root.querySelector('[data-open]') !== null, 'liste des tâches')
 
-    // Sans ce sélecteur, la première tâche n'était joignable que par son
-    // adresse : créer une deuxième la faisait disparaître de l'interface.
+    // Without this switcher, the first task was reachable only by its address:
+    // creating a second one made it disappear from the interface.
     const switcher = root.querySelector('.switcher')!
     expect(switcher.textContent).toContain('2 tasks on this device')
     expect(switcher.textContent).toContain('First task')
@@ -91,8 +91,8 @@ describe('plusieurs cahiers', () => {
     button('New task').click()
     await settled()
 
-    // Le formulaire ne vivait que dans l'écran d'accueil : depuis un tableau
-    // de bord, « New task » n'affichait rien du tout.
+    // The form lived only in the home screen: from a dashboard, "New task"
+    // showed nothing at all.
     expect(root.querySelector('#create-task')).not.toBeNull()
     expect(document.activeElement?.id).toBe('new-title')
   })
@@ -166,7 +166,7 @@ describe('import', () => {
 
     const outcome = await store.importTasks([stale])
 
-    // Écraser détruirait du travail que personne n'a demandé à perdre.
+    // Overwriting would destroy work nobody asked to lose.
     expect(outcome.copied).toEqual(['Live task (imported)'])
     const kept = await store.allTasks()
     expect(kept.find((t) => t.id === original.id)!.version).toBe(original.version)
@@ -264,8 +264,8 @@ describe('import depuis l’écran', () => {
 
     const message = root.querySelector('[role="status"]')!.textContent!
     expect(message).toContain('1 imported')
-    // Un export ne contient aucun identifiant : le dire évite qu'on croie en
-    // avoir restauré.
+    // An export holds no credential: saying so stops anyone believing they
+    // restored some.
     expect(message).toContain('Credentials are never in an export')
     expect((await store.allTasks()).map((t) => t.title)).toContain('From a file')
   })

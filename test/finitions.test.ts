@@ -36,8 +36,8 @@ function entry(over: Partial<AuditEntry>): AuditEntry {
 
 const NEW_OPERATIONS = ['ask_human', 'attach_evidence', 'set_next_action', 'answer_question']
 
-// « undo » n'existe que côté humain : un agent ne révoque pas une décision de
-// supervision, c'est précisément ce que le modèle de confiance lui interdit.
+// “undo” exists on the human side only: an agent does not revoke a supervision
+// decision, which is precisely what the trust model forbids it.
 const HUMAN_ONLY = ['undo']
 
 describe('le journal met en mots ce que les nouveaux outils écrivent', () => {
@@ -89,7 +89,7 @@ describe('ce que l’agent lit d’une annulation', () => {
     const rendered = renderChanges(back, withRule.version)
     expect(rendered).not.toContain('ran undo')
     expect(rendered).toContain('The human')
-    // Une annulation rétablit une règle : elle change ce que l'agent peut faire.
+    // An undo restores a rule: it changes what the agent may do.
     expect(rendered).toContain('CHANGES WHAT YOU MAY DO')
   })
 })

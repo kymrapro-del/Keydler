@@ -76,9 +76,9 @@ describe('request_approval', () => {
     const texte = textOf(result)
     expect(texte).toContain('NO ANSWER')
     expect(texte).not.toContain('ALLOWED')
-    // Le silence n'est pas un accord : c'est la phrase qui compte le plus ici.
+    // Silence is not approval: that is the sentence that matters most here.
     expect(texte.toLowerCase()).toContain('is not approval')
-    // La demande reste ouverte : l'humain la trouvera en revenant.
+    // The request stays open: the human will find it on coming back.
     expect(pendingApprovals(currentTask())).toHaveLength(1)
   })
 
@@ -130,14 +130,14 @@ describe('request_approval', () => {
       why: 'It rewrites 40k rows.',
     }
 
-    // Première demande : autorisée.
+    // First request: allowed.
     const first = call(requestApprovalTool, writeArgs(currentTask(), même))
     await decide('allowed')
     expect(textOf(await first)).toContain('ALLOWED')
 
-    // Seconde demande, identique mot pour mot, mais NOUVELLE. Rendre le « allowed »
-    // d'hier autoriserait une action que personne n'a validée. C'est la pire
-    // défaillance possible pour cet outil.
+    // Second request, word for word identical, but NEW. Returning yesterday's
+    // “allowed” would authorize an action nobody signed off. It is the worst
+    // failure this tool can have.
     __setApprovalTimeout(60)
     const second = await call(requestApprovalTool, writeArgs(currentTask(), même))
 

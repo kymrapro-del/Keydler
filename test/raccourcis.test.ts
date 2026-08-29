@@ -55,7 +55,7 @@ describe('les raccourcis', () => {
 
     press('?')
     expect(root.querySelector('#shortcuts')).not.toBeNull()
-    // Chaque raccourci annoncé est effectivement listé.
+    // Every announced shortcut is actually listed.
     for (const shortcut of SHORTCUTS) {
       expect(root.querySelector('#shortcuts')!.textContent, shortcut.key).toContain(shortcut.what)
     }
@@ -112,8 +112,8 @@ describe('l’impression', () => {
 
   it('retire de la page imprimée ce qui ne s’imprime pas', () => {
     const bloc = css.slice(css.search(/@media\s+print/))
-    // Des boutons sur une feuille de papier ne servent à personne, et le
-    // fond sombre vide une cartouche.
+    // Buttons on a sheet of paper are of use to nobody, and the dark
+    // background empties a cartridge.
     expect(bloc).toContain('.btn')
     expect(bloc).toContain('display: none')
   })

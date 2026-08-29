@@ -3,10 +3,10 @@ import { addConstraint, createTask, setNext } from '../src/domain/task'
 import { StaleStateError } from '../src/domain/errors'
 import type { TaskState } from '../src/domain/types'
 
-// `set_next_action` validait la forme de `based_on_version` puis jetait la valeur. Sur le
-// déploiement réel : une écriture périmée écrasait la prochaine action que l'humain venait de
-// poser, l'entrée était consignée `actor: 'human'`, et l'opération s'appelait `set_next` en
-// succès, `set_next_action` en échec.
+// `set_next_action` validated the shape of `based_on_version` then threw the value away. On the
+// real deployment: a stale write overwrote the next action the human had just set, the entry was
+// recorded as `actor: 'human'`, and the operation was named `set_next` on success,
+// `set_next_action` on failure.
 describe('set_next_action, écrit par un agent', () => {
   let cahier: TaskState
 
@@ -37,16 +37,16 @@ describe('set_next_action, écrit par un agent', () => {
   })
 
   it('garde la version invoquée dans le registre', () => {
-    // Sans elle, on ne peut pas relire après coup sur quel état l'agent
-    // s'appuyait, c'est-à-dire savoir s'il travaillait à l'aveugle.
+    // Without it, you cannot read back afterwards which state the agent was
+    // working from, that is, know whether it was working blind.
     const après = setNext(cahier, { next: 'Autre chose', basedOnVersion: cahier.version }, 'agent')
     expect(après.audit[après.audit.length - 1].basedOnVersion).toBe(cahier.version)
   })
 
   it('porte le même nom que l’outil qui l’a déclenchée', () => {
-    // Le refus est consigné sous le nom de l'outil (`recordRefusal` reçoit
-    // `tool.name`). Si le succès en portait un autre, le registre montrerait
-    // la même action sous deux noms, et seulement quand elle échoue.
+    // The refusal is recorded under the name of the tool (`recordRefusal` gets
+    // `tool.name`). If success carried another one, the log would show the
+    // same action under two names, and only when it fails.
     const après = setNext(cahier, { next: 'Autre chose', basedOnVersion: cahier.version }, 'agent')
     expect(après.audit[après.audit.length - 1].operation).toBe('set_next_action')
   })
@@ -63,9 +63,9 @@ describe('set_next_action, écrit par l’humain', () => {
   })
 
   it('peut vider le champ, ce qu’un agent ne peut pas', () => {
-    // L'interdiction côté agent tient au schéma (`minLength: 1`) et à
-    // `requireText` dans l'outil, pas ici : le domaine accepte le vide pour
-    // que l'humain puisse effacer une prochaine action devenue fausse.
+    // The ban on the agent side comes from the schema (`minLength: 1`) and
+    // from `requireText` in the tool, not here: the domain accepts empty so
+    // the human can clear a next action that has become wrong.
     const cahier = createTask({ title: 'Un cahier', next: 'La première chose' })
     expect(setNext(cahier, { next: '', basedOnVersion: null }).next).toBeNull()
   })

@@ -45,7 +45,7 @@ describe('un cahier qui tient dans un lien', () => {
       )
     }
 
-    // Un lien tronqué par un client de messagerie est pire qu'un refus clair.
+    // A link truncated by a mail client is worse than a clear refusal.
     await expect(packTask(big)).rejects.toBeInstanceOf(TooLargeForLinkError)
     await expect(packTask(big)).rejects.toThrow(/export/i)
   })
@@ -70,7 +70,7 @@ describe('un cahier qui tient dans un lien', () => {
 
   it('marche sans CompressionStream, en se contentant d’être plus long', async () => {
     const real = globalThis.CompressionStream
-    // @ts-expect-error on retire volontairement l'API pour éprouver le repli
+    // @ts-expect-error the API is removed on purpose to exercise the fallback
     delete globalThis.CompressionStream
 
     try {
@@ -89,7 +89,7 @@ describe('un cahier qui tient dans un lien', () => {
     const withCompression = await packTask(task)
 
     const real = globalThis.CompressionStream
-    // @ts-expect-error repli volontaire pour comparer
+    // @ts-expect-error deliberate fallback, to compare
     delete globalThis.CompressionStream
     const without = await packTask(task)
     globalThis.CompressionStream = real

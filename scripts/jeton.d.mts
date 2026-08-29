@@ -1,20 +1,20 @@
 /**
- * `jeton.mjs` est du JavaScript simple : il tourne dans Node pendant la
- * construction, hors du programme TypeScript. Sans ces déclarations, chaque
- * import depuis une épreuve exigeait un `@ts-expect-error`, c'est-à-dire de
- * TAIRE une erreur plutôt que de la résoudre, et de perdre au passage toute
- * vérification de type sur ce que le module rend vraiment.
+ * `jeton.mjs` is plain JavaScript: it runs in Node during the build, outside
+ * the TypeScript program. Without these declarations, every import from a test
+ * required a `@ts-expect-error`, that is, SILENCING an error rather than
+ * resolving it, and losing along the way all type checking on what the module
+ * actually returns.
  */
 
-/** Ce que porte un jeton d'origin trial, une fois sa charge utile lue. */
+/** What an origin trial token carries, once its payload is read. */
 export type Jeton = {
-  /** Renseigné quand le jeton n'a pas pu être lu ; les autres champs sont alors absents. */
+  /** Set when the token could not be read; the other fields are then absent. */
   erreur?: string
   version?: number
-  /** L'origine exacte, port compris : `https://keydler.com:443`. */
+  /** The exact origin, port included: `https://keydler.com:443`. */
   origine?: string
   fonctionnalite?: string
-  /** Faux quand `isSubdomain` est absent : la couverture n'est jamais implicite. */
+  /** False when `isSubdomain` is absent: coverage is never implicit. */
   sousDomaines?: boolean
   tiers?: boolean
   expire?: Date | null
@@ -22,5 +22,5 @@ export type Jeton = {
 
 export function lireJeton(base64: string): Jeton
 
-/** Découpe la variable d'environnement : une origine, un jeton. */
+/** Splits the environment variable: one origin, one token. */
 export function tokensDe(brut: string | undefined): string[]

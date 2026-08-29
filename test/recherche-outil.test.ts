@@ -66,7 +66,7 @@ describe('search_task', () => {
 
     const found = textOf(await call(searchTaskTool, { query: 'monogram-parser' }))
     expect(found).toContain('Never touch monogram-parser')
-    // La preuve compte : c'est souvent là que se trouve la trace d'un essai.
+    // The evidence counts: it is often where the trace of an attempt sits.
     expect(found).toContain('Ran the suite')
   })
 
@@ -74,8 +74,8 @@ describe('search_task', () => {
     const found = textOf(await call(searchTaskTool, { query: 'quantum-flux-capacitor' }))
     expect(found).toContain('NO MATCH')
     expect(found).toContain('quantum-flux-capacitor')
-    // Une recherche vide ne prouve pas que rien n'a été tenté : le cahier peut
-    // simplement employer d'autres mots.
+    // An empty search does not prove nothing was tried: the log may simply
+    // use other words.
     expect(found.toLowerCase()).toContain('does not prove')
   })
 
@@ -130,7 +130,7 @@ describe('search_task', () => {
       expect(textOf(result), String(limit)).toContain('limit')
     }
 
-    // Absente, elle vaut le maximum : l'agent n'a pas à la connaître.
+    // Absent, it means the maximum: the agent does not have to know about it.
     expect((await call(searchTaskTool, { query: 'token' })).isError).toBeFalsy()
     expect((await call(searchTaskTool, { query: 'token', limit: 1 })).isError).toBeFalsy()
   })

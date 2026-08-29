@@ -106,10 +106,10 @@ describe('durcissement', () => {
 describe('ce que la description doit porter faute d’annotation', () => {
   it('dit le contrat de rejeu, que WebMCP ne sait pas transporter', () => {
     for (const tool of WRITE_TOOLS) {
-      // Le contrat vit dans la description du PARAMÈTRE, pas dans celle de
-      // l'outil : c'est là qu'un agent le lit au moment de remplir l'appel, et
-      // le répéter dans les deux ne faisait que gonfler un budget que Chrome
-      // recommande de tenir. Ce qui compte, c'est qu'il soit dit une fois.
+      // The contract lives in the PARAMETER description, not the tool's: that
+      // is where an agent reads it while filling in the call, and repeating it
+      // in both only inflated a budget Chrome recommends holding to. What
+      // matters is that it is said once.
       const schéma = tool.inputSchema as Schema
       expect(schéma.required, tool.name).toContain('mutation_id')
       const jeton = schéma.properties!.mutation_id.description!
@@ -134,9 +134,9 @@ describe('ce que la description doit porter faute d’annotation', () => {
 
 describe('les descriptions livrées', () => {
   it('n’ont laissé aucune interpolation vider une référence', () => {
-    // `${name}` dans un gabarit TypeScript s'évalue silencieusement : la
-    // variable globale `name` vaut '' dans un navigateur, et l'agent reçoit
-    // « write as , and what it is for ». Rien ne plante.
+    // `${name}` in a TypeScript template evaluates silently: the global
+    // variable `name` is '' in a browser, and the agent receives
+    // "write as , and what it is for". Nothing crashes.
     for (const tool of ALL_TOOLS) {
       expect(tool.description, tool.name).not.toMatch(/\bas ,|\{\}|as\s+,/)
       expect(tool.description, tool.name).not.toMatch(/ {2,},/)

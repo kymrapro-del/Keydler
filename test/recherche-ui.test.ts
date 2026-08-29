@@ -47,8 +47,8 @@ describe('la recherche à l’écran', () => {
     expect(here).toBeGreaterThan(0)
 
     const headings = [...results()!.querySelectorAll('h3')].map((h) => h.textContent ?? '')
-    // Un sous-titre sans compte oblige à compter les lignes soi-même pour
-    // savoir si la réponse est ici ou ailleurs.
+    // A subheading without a count forces you to count the rows yourself to
+    // know whether the answer is here or elsewhere.
     expect(headings[0]).toContain(String(here))
     expect(headings[1]).toMatch(/\d/)
   })
@@ -179,8 +179,8 @@ describe('le clavier ferme ce qui est ouvert', () => {
     field.value = 'issuer'
     field.dispatchEvent(new Event('input', { bubbles: true }))
     await settled()
-    // Le formulaire n'est plus à l'écran : fermer « le formulaire » d'abord
-    // donnerait l'impression que la touche ne fait rien.
+    // The form is no longer on screen: closing "the form" first would give the
+    // impression that the key does nothing.
     expect(root.querySelector('#form-step')).toBeNull()
 
     escape()
@@ -236,7 +236,7 @@ describe('le surlignage', () => {
     const row = [...root.querySelectorAll('[aria-labelledby="search-title"] li')].find((li) =>
       li.textContent!.includes('signs the token'),
     )!
-    // Surligner la première seule laisse croire que le reste ne correspond pas.
+    // Highlighting only the first suggests the rest does not match.
     expect(row.querySelectorAll('mark').length).toBeGreaterThanOrEqual(4)
   })
 })
@@ -282,7 +282,7 @@ describe('filtrer les résultats par nature', () => {
 
     const kinds = filters.map((b) => b.dataset.filter)
     expect(kinds).toContain('all')
-    // Aucun filtre pour une nature qui ne rendrait rien.
+    // No filter for a kind that would return nothing.
     for (const kind of kinds) {
       if (kind === 'all') continue
       expect(
@@ -293,9 +293,9 @@ describe('filtrer les résultats par nature', () => {
   })
 
   /**
-   * Les comptes portés par les filtres n'étaient vérifiés nulle part : deux
-   * mutants les faussaient sans que la suite bronche. Ils disent pourtant à
-   * l'utilisateur ce qu'il trouvera en cliquant.
+   * The counts carried by the filters were checked nowhere: two mutants
+   * falsified them without the suite flinching. Yet they tell the user what
+   * they will find on clicking.
    */
   it('porte le compte exact de chaque nature, et leur somme', () => {
     const trouvés = searchTask(store.currentTask()!, 'token')
@@ -312,7 +312,7 @@ describe('filtrer les résultats par nature', () => {
       )
     }
 
-    // Et « All » est bien la somme des autres, pas un nombre à part.
+    // And "All" really is the sum of the others, not a number of its own.
     const parNature = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
       .filter((b) => b.dataset.filter !== 'all')
       .reduce((n, b) => n + compte(b), 0)
@@ -320,8 +320,8 @@ describe('filtrer les résultats par nature', () => {
   })
 
   it('range les natures dans l’ordre où le cahier les présente', () => {
-    // Une règle passe avant une étape parce que c'est l'ordre du cahier ; un
-    // ordre tiré d'ailleurs ferait danser les boutons d'une frappe à l'autre.
+    // A rule comes before a step because that is the order of the log; an order
+    // drawn from elsewhere would make the buttons dance from one keystroke to the next.
     const ordre = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')]
       .map((b) => b.dataset.filter!)
       .filter((k) => k !== 'all')
@@ -377,7 +377,7 @@ describe('filtrer les résultats par nature', () => {
     type('rotation')
     await settled()
 
-    // Un filtre gardé d'une recherche à l'autre fait croire à un résultat vide.
+    // A filter kept from one search to the next makes an empty result look real.
     const actif = root.querySelector('[data-filter="all"]')
     expect(actif?.getAttribute('aria-pressed')).toBe('true')
   })

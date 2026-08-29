@@ -31,8 +31,8 @@ describe('corriger un identifiant sans le desceller', () => {
     expect(named.name).toBe('gemini-api-key')
     expect(named.purpose).toBe('Calls Gemini from the ingest job')
 
-    // La valeur scellée n'a pas bougé : c'est tout l'intérêt de ne pas la
-    // redemander pour corriger une faute de frappe.
+    // The sealed value has not moved: that is the whole point of not asking for
+    // it again to fix a typo.
     expect(await revealSecret(id, PASSPHRASE)).toBe('AIzaSy-original')
   })
 
@@ -129,8 +129,8 @@ describe('une valeur révélée ne reste pas à l’écran', () => {
     await vi.advanceTimersByTimeAsync(REVEAL_TTL + 1000)
     __renderNow()
 
-    // Une valeur en clair oubliée sur un écran partagé est exactement ce que
-    // le scellement était censé éviter.
+    // A plaintext value left on a shared screen is exactly what sealing was
+    // meant to avoid.
     expect(root.querySelector('[data-revealed]')).toBeNull()
     expect(root.textContent).not.toContain('AIzaSy-on-screen')
   })

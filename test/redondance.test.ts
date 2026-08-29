@@ -55,7 +55,7 @@ describe('ne pas répéter ce qui est déjà écrit', () => {
     })()!
 
     expect(error.message).toContain('already')
-    // On compare des chaînes, pas des sens : il faut le dire.
+    // Strings are compared, not meanings: that has to be said.
     expect(error.message.toLowerCase()).toContain('word for word')
   })
 

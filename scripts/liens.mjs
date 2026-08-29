@@ -2,10 +2,9 @@ import { readFile, readdir, access } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, relative, resolve } from 'node:path'
 
-// Chaque cible est résolue RELATIVEMENT au fichier qui la cite, ce qu'une
-// recherche par motif ne peut pas faire. Les adresses externes sont ignorées :
-// les vérifier demanderait le réseau et rendrait la barrière dépendante de
-// sites tiers.
+// Every target is resolved RELATIVE to the file that cites it, which a pattern
+// search cannot do. External addresses are ignored: checking them would need
+// the network and would make the gate depend on third party sites.
 const racine = fileURLToPath(new URL('../', import.meta.url))
 
 async function fichiers(dossier) {
@@ -19,9 +18,9 @@ async function fichiers(dossier) {
   return trouves
 }
 
-// `<...>` autour d'une cible est du Markdown valide, et prettier l'ajoute
-// autour des URL qui contiennent des caractères spéciaux. Sans ce cas, le
-// vérificateur prenait une adresse externe pour un chemin relatif.
+// `<...>` around a target is valid Markdown, and prettier adds it around URLs
+// that contain special characters. Without that case, the checker took an
+// external address for a relative path.
 const LIEN = /\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\)/g
 const morts = []
 let comptes = 0

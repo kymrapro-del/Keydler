@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addConstraint } from '../src/domain/task'
 
-// Une rafale d'annonces ne doit pas produire une rafale de relectures : mesuré sur un
-// cahier de 20 000 étapes, cinquante annonces coûtaient cinquante lectures et 1702 ms,
-// dont 1668 ms jetés, et retardaient les écritures de cet onglet d'un facteur 51 : la
-// file d'écriture est partagée. Le compteur passe par `vi.mock` plutôt que par un
-// chronomètre : ce qui compte est un NOMBRE de lectures, et un nombre ne clignote pas.
+// A burst of announcements must not produce a burst of re-reads: measured on a
+// 20,000 step task, fifty announcements cost fifty reads and 1702 ms, of which
+// 1668 ms thrown away, and delayed this tab's writes by a factor of 51: the write
+// queue is shared. The counter goes through `vi.mock` rather than a stopwatch:
+// what counts is a NUMBER of reads, and a number does not flicker.
 const lectures = { loadTask: 0 }
 
 vi.mock('../src/persistence/taskRepository', async (original) => {
@@ -40,8 +40,8 @@ describe('une rafale d’annonces ne coûte qu’une relecture', () => {
   it('regroupe cinquante annonces en une seule lecture', async () => {
     const task = await store.createAndOpenTask('Sous la rafale', undefined)
 
-    // L'autre onglet écrit une fois, puis annonce cinquante fois, ce qui est
-    // exactement ce que produit un agent qui écrit en rafale.
+    // The other tab writes once, then announces fifty times, which is exactly
+    // what an agent writing in a burst produces.
     const surLeDisque = await loadTask(task.id)
     await saveTask(
       addConstraint(surLeDisque!, { rule: 'Posée ailleurs', basedOnVersion: null }, 'human'),
@@ -54,14 +54,14 @@ describe('une rafale d’annonces ne coûte qu’une relecture', () => {
     await new Promise((r) => setTimeout(r, 80))
 
     expect(store.currentTask()!.constraints.map((c) => c.rule)).toContain('Posée ailleurs')
-    // Une, pas cinquante. La borne est lâche exprès : ce qu'on refuse, c'est
-    // que le nombre de lectures suive le nombre d'annonces.
+    // One, not fifty. The bound is loose on purpose: what we refuse is the
+    // number of reads following the number of announcements.
     expect(lectures.loadTask).toBeLessThanOrEqual(2)
   })
 
   it('relit à nouveau si une annonce arrive APRÈS que la première a été servie', async () => {
-    // Regrouper ne doit pas vouloir dire ignorer : deux vagues séparées sont
-    // deux relectures, sans quoi l'écran resterait en retard.
+    // Batching must not mean ignoring: two separate waves are two re-reads,
+    // without which the screen would stay behind.
     const task = await store.createAndOpenTask('Deux vagues', undefined)
 
     const avancer = async (règle: string) => {

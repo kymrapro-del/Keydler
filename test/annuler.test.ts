@@ -59,7 +59,7 @@ describe('annuler la dernière décision de supervision', () => {
 
     const back = undoLastSupervision(accepted)
     expect(proposedConstraints(back).some((c) => c.id === id)).toBe(true)
-    // Une règle rendue à l'état de proposition ne contraint plus personne.
+    // A rule returned to the proposed state no longer constrains anyone.
     expect(activeConstraints(back).some((c) => c.id === id)).toBe(false)
   })
 
@@ -113,17 +113,17 @@ describe('annuler la dernière décision de supervision', () => {
   it('ne touche pas à ce qui n’est plus dans l’état qu’il avait laissé', () => {
     const rule = activeConstraints(task)[0]
     const lifted = setConstraintActive(task, rule.id, false)
-    // L'humain a changé d'avis à la main entre-temps.
+    // The human changed their mind by hand in the meantime.
     const restored = setConstraintActive(lifted, rule.id, true)
 
-    // La levée n'est plus en vigueur : l'annuler la rejouerait à l'envers.
+    // The lift is no longer in force: undoing it would replay it backwards.
     expect(undoable(restored)).toContain('restored')
   })
 
   it('n’annule ni une réponse, ni une étape consignée', () => {
-    // Une réponse a pu être lue et suivie par un agent : la retirer d'un clic
-    // effacerait ce sur quoi il s'est appuyé. Une étape est le récit d'un
-    // travail, pas une décision de supervision.
+    // An answer may have been read and followed by an agent: pulling it back in
+    // one click would erase what it leaned on. A step is the account of a piece
+    // of work, not a supervision decision.
     const asked = askHuman(
       task,
       { question: 'Which region?', why: 'It changes the endpoint.', basedOnVersion: null },

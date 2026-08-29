@@ -1,9 +1,8 @@
-// Contrôles contre le site RÉELLEMENT EN LIGNE. La suite d'épreuves tourne dans
-// jsdom sur du code source ; ce projet en a déjà fait quatre fois les frais, des
-// épreuves vertes pendant qu'un navigateur trouvait le défaut en une minute. On
-// couvre ici ce qu'elles ne peuvent pas voir (en-têtes de l'hébergeur,
-// redirections, types MIME, mise en cache, repli SPA), et on sort non nul, pour
-// que ce script puisse servir de barrière.
+// Checks against the site as it REALLY IS ONLINE. The test suite runs in jsdom
+// over source code; this project has paid for that four times already, green
+// tests while a browser found the defect in a minute. We cover here what they
+// cannot see (host headers, redirects, MIME types, caching, SPA fallback), and
+// we exit non zero, so this script can serve as a gate.
 const ORIGINE = process.argv[2] ?? 'https://keydler.com'
 const seulementEchecs = process.argv.includes('--echecs')
 
@@ -18,9 +17,9 @@ function verifier(nom, condition, observe) {
 }
 
 /**
- * Ce qu'on observe sans pouvoir le corriger : cela doit se voir à chaque
- * campagne, mais ne doit pas faire échouer une barrière, sans quoi la barrière
- * devient du bruit qu'on finit par ignorer.
+ * What we observe without being able to fix it: it has to show on every run,
+ * but must not fail a gate, otherwise the gate becomes noise that everyone
+ * ends up ignoring.
  */
 function constater(nom, valeur, remarque) {
   constats.push({ nom, valeur, remarque })
@@ -44,7 +43,7 @@ const directive = (csp, nom) =>
     .map((d) => d.trim())
     .find((d) => d === nom || d.startsWith(`${nom} `)) ?? ''
 
-// ---------------------------------------------------------------- la racine
+// ----------------------------------------------------------------- the root
 const racine = await chercher('/')
 
 verifier('la racine répond 200', racine.statut === 200, racine.statut)
@@ -55,7 +54,7 @@ verifier(
 )
 verifier('la racine porte un charset', /charset=utf-8/i.test(entete(racine, 'content-type')))
 
-// ------------------------------------------------------- en-têtes de sécurité
+// ----------------------------------------------------------- security headers
 const csp = entete(racine, 'content-security-policy')
 verifier('une politique de sécurité du contenu est servie', csp.length > 0)
 verifier("default-src part de 'none'", directive(csp, 'default-src') === "default-src 'none'", csp)
@@ -123,7 +122,7 @@ verifier(
   !racine.corps.includes('X-Powered-By') && entete(racine, 'x-powered-by') === '',
 )
 
-// ------------------------------------------------------------------ le jeton
+// ----------------------------------------------------------------- the token
 const jetons = [...racine.corps.matchAll(/http-equiv="origin-trial"\s+content="([^"]*)"/g)]
 verifier('un jeton origin trial est servi', jetons.length >= 1, jetons.length)
 if (jetons.length >= 1) {
@@ -153,7 +152,7 @@ if (jetons.length >= 1) {
   verifier("le jeton n'est pas un jeton tiers, qui n'activerait rien dans une page", !j.tiers)
 }
 
-// ----------------------------------------------------------------- le balisage
+// ------------------------------------------------------------------ the markup
 verifier('la page déclare sa langue', /<html[^>]+lang="/.test(racine.corps))
 verifier('la page a un titre', /<title>[^<]{10,70}<\/title>/.test(racine.corps))
 verifier(
@@ -182,12 +181,12 @@ verifier('une icône est déclarée', racine.corps.includes('rel="icon"'))
 verifier('une couleur de thème est déclarée', racine.corps.includes('name="theme-color"'))
 verifier('la page se dimensionne sur mobile', racine.corps.includes('name="viewport"'))
 
-// ------------------------------------------------------- fichiers d'exploration
+// -------------------------------------------------------------- discovery files
 for (const [chemin, type, libelle] of [
   ['/robots.txt', 'text/plain', 'robots.txt'],
   ['/sitemap.xml', 'xml', 'sitemap.xml'],
-  // Les navigateurs et les agrégateurs le demandent à la racine sans lire le
-  // HTML. Le repli SPA leur rendait la page d'accueil en text/html.
+  // Browsers and aggregators ask for it at the root without reading the HTML.
+  // The SPA fallback handed them the home page as text/html.
   ['/favicon.ico', 'image/', 'favicon.ico'],
   ['/manifest.webmanifest', 'json', 'le manifeste'],
   ['/icons/icon.svg', 'svg', "l'icône"],
@@ -206,7 +205,7 @@ for (const [chemin, type, libelle] of [
   )
 }
 
-// L'image de carte sociale annoncée doit exister et être une image.
+// The social card image that is announced has to exist and be an image.
 const annoncee = /property="og:image"\s+content="([^"]*)"/.exec(racine.corps)?.[1] ?? ''
 verifier('une image de carte sociale est annoncée', annoncee.length > 0)
 if (annoncee.startsWith(ORIGINE)) {
@@ -229,7 +228,7 @@ for (const [, adresse] of plan.corps.matchAll(/<loc>([^<]+)<\/loc>/g)) {
   )
 }
 
-// ------------------------------------------------------------------ le routage
+// --------------------------------------------------------------------- routing
 const profond = await chercher('/t/abc123def456')
 verifier('un lien profond rend l’application', profond.statut === 200, profond.statut)
 verifier(
@@ -256,7 +255,7 @@ verifier(
   entete(inexistant, 'content-type'),
 )
 
-// -------------------------------------------------------------- mise en cache
+// -------------------------------------------------------------------- caching
 const script = scriptDe(racine.corps)
 if (script) {
   const asset = await chercher(script)
@@ -280,12 +279,12 @@ verifier(
 )
 const sw = await chercher('/sw.js')
 verifier('le service worker répond 200', sw.statut === 200, sw.statut)
-// `public/_headers` demande `no-cache` sur `/sw.js` et Cloudflare sert
-// `max-age=14400` : il met le fichier en cache de bord par son extension
-// (`cf-cache-status: REVALIDATED`, contre `DYNAMIC` pour `index.html`, à qui la
-// même règle s'applique bien). Le corriger demande un droit sur la zone que le
-// jeton de déploiement n'a pas ; l'enregistrement passe donc
-// `updateViaCache: 'none'` et le navigateur ignore son cache HTTP pour ce script.
+// `public/_headers` asks for `no-cache` on `/sw.js` and Cloudflare serves
+// `max-age=14400`: it edge-caches the file by its extension
+// (`cf-cache-status: REVALIDATED`, against `DYNAMIC` for `index.html`, which the
+// same rule does reach). Fixing it needs a right on the zone that the
+// deployment token does not have; registration therefore passes
+// `updateViaCache: 'none'` and the browser ignores its HTTP cache for this script.
 constater(
   "l'hébergeur garde le service worker en cache",
   entete(sw, 'cache-control'),
@@ -305,7 +304,7 @@ verifier(
   !/keydler-dev/.test(sw.corps),
 )
 
-// ---------------------------------------------------------------- redirections
+// ------------------------------------------------------------------- redirects
 const clair = await fetch(`http://keydler.com/`, { redirect: 'manual' })
 verifier('le trafic en clair est redirigé', clair.status >= 300 && clair.status < 400, clair.status)
 verifier(
@@ -327,13 +326,13 @@ for (const [chemin, attendu] of [
   )
 }
 
-// -------------------------------------------------------------------- le poids
+// ------------------------------------------------------------------ the weight
 const octets = new TextEncoder().encode(racine.corps).length
 verifier("le HTML d'entrée reste sous 8 ko", octets < 8192, `${octets} octets`)
 if (script) {
-  // `content-length` disparaît sur une réponse compressée en flux : c'est
-  // `content-encoding` qui dit la vérité. Une première version de ce contrôle
-  // mesurait la longueur et déclarait un échec là où tout allait bien.
+  // `content-length` disappears on a stream-compressed response: it is
+  // `content-encoding` that tells the truth. A first version of this check
+  // measured the length and declared a failure where nothing was wrong.
   const compresse = await fetch(`${ORIGINE}${script}`, {
     headers: { 'accept-encoding': 'gzip, br' },
   })
@@ -341,7 +340,7 @@ if (script) {
   verifier('le script est servi compressé', /br|gzip|zstd/.test(codage), codage || '(aucun)')
 }
 
-// -------------------------------------------------------------------- fonctions
+// -------------------------------------------------------------------- functions
 function scriptDe(html) {
   return /src="(\/assets\/[^"]+\.js)"/.exec(html)?.[1] ?? ''
 }
@@ -353,7 +352,7 @@ async function empreinteDuScriptEnLigne(html) {
   return `sha256-${createHash('sha256').update(m[1], 'utf8').digest('base64')}`
 }
 
-// ----------------------------------------------------------------- le verdict
+// ---------------------------------------------------------------- the verdict
 const total = reussites.length + echecs.length
 if (!seulementEchecs) for (const n of reussites) console.log(`  ok    ${n}`)
 for (const c of constats) console.log(`  note  ${c.nom} : ${c.valeur}\n          ${c.remarque}`)

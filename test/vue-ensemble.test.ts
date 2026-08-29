@@ -26,7 +26,7 @@ describe('résumer ce qui attend, en peu de mots', () => {
   it('compte le reste plutôt que de tout énumérer', () => {
     const task = buildCoreTask()
     const résumé = summariseNeeds(needsYou(task))!
-    // Une liste complète dans une pastille de sélecteur ne se lit pas.
+    // A full list inside a switcher badge does not get read.
     expect(résumé).toMatch(/\+\d+ more|and \d+ more/)
     expect(résumé.length).toBeLessThan(60)
   })
@@ -115,7 +115,7 @@ describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
     const ligne = [...switcher()!.querySelectorAll('li')].find((li) =>
       li.textContent!.includes('Migration work'),
     )!
-    // Le titre ne contient pas le mot : c'est bien la pastille qui parle.
+    // The title does not contain the word: it really is the badge speaking.
     const badge = ligne.querySelector('.needs__badge')!
     expect(badge).not.toBeNull()
     expect(badge.textContent).toMatch(/blocked/i)
@@ -141,7 +141,7 @@ describe('le sélecteur dit ce qui attend, tâche par tâche', () => {
     const live = root.querySelector('.agent-live')!
     expect(live).not.toBeNull()
     expect(live.textContent).toContain('log_step')
-    // On rapporte un appel observé, pas une présence supposée.
+    // We report an observed call, not a presumed presence.
     expect(live.textContent!.toLowerCase()).not.toContain('connected')
   })
 })

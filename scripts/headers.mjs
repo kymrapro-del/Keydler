@@ -3,12 +3,12 @@ import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-// Le seul script en ligne (l'amorce de thème, exécutée avant la première
-// peinture pour éviter un clignotement) est autorisé par son empreinte, pas
-// par `'unsafe-inline'` qui viderait la politique de son intérêt. `vercel.json`
-// est lu depuis le dépôt au déploiement et ne peut rien recevoir de calculé :
-// il porte l'empreinte en dur et ce script vérifie qu'elle correspond encore,
-// une politique qui a dérivé rassurant sans protéger.
+// The only inline script (the theme bootstrap, run before the first paint to
+// avoid a flash) is allowed by its hash, not by `'unsafe-inline'` which would
+// empty the policy of its point. `vercel.json` is read from the repo at deploy
+// time and can receive nothing computed: it carries the hash hard-coded and
+// this script checks that it still matches, a policy that has drifted being
+// reassuring without protecting.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 const racine = fileURLToPath(new URL('../', import.meta.url))
 

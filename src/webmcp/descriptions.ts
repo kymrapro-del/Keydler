@@ -1,7 +1,7 @@
 /**
- * Chrome recommande 500 caractères par description d'outil et 150 par description de
- * paramètre : pas des limites dures, mais il y en a treize à lire d'un coup. Une
- * description instruit, le README explique ; `test/budgets-webmcp.test.ts` tient ces bornes.
+ * Chrome recommends 500 characters per tool description and 150 per parameter
+ * description: not hard limits, but there are thirteen to read at once. A description
+ * instructs, the README explains; `test/budgets-webmcp.test.ts` holds these bounds.
  */
 
 export const RESUME_TASK_DESCRIPTION = `Persistent, human-supervised checkpoint for the current task. It holds:
@@ -143,8 +143,8 @@ Write the summary for someone who was not present: what was done, what
 was decided, and what remains out of scope.`
 
 /**
- * Le protocole complet est enseigné là où il sert : le bloc WRITE PROTOCOL de
- * `resume_task`, et le texte des refus. Ici, on dit seulement quoi mettre.
+ * The full protocol is taught where it is used: the WRITE PROTOCOL block of
+ * `resume_task`, and the text of the refusals. Here we only say what to put in.
  */
 export const BASED_ON_VERSION_DESCRIPTION =
   'The version from your most recent resume_task. If the task has moved since, ' +

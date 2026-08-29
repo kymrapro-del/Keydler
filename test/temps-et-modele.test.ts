@@ -64,7 +64,7 @@ describe('reprendre les règles d’un cahier', () => {
     const attendues = activeConstraints(source).map((c) => c.rule)
     expect(activeConstraints(cible).map((c) => c.rule)).toEqual(attendues)
 
-    // Ni le travail, ni les rejets, ni le journal de l'autre.
+    // Not the work, not the rejections, not the other one's write log.
     expect(cible.steps).toHaveLength(0)
     expect(cible.rejected).toHaveLength(0)
     expect(cible.decisions).toHaveLength(0)
@@ -159,8 +159,8 @@ describe('depuis la page', () => {
     box.dispatchEvent(new Event('change', { bubbles: true }))
 
     root.querySelector<HTMLFormElement>('#create-task')!.requestSubmit()
-    // La création et la reprise des règles sont deux écritures : attendre la
-    // seconde, pas la première.
+    // Creating and carrying the rules over are two writes: wait for the second,
+    // not the first.
     await waitUntil(
       () =>
         store.currentTask()?.title === 'Second task' && store.currentTask()!.constraints.length > 0,

@@ -43,8 +43,8 @@ describe('le journal retient ce qui a été remplacé', () => {
   })
 
   it('consigne une valeur vide plutôt que rien, quand il n’y avait rien', () => {
-    // Confondre « il n'y avait rien » avec « rien n'a été consigné » rendait
-    // impossible d'annuler la toute première pose d'un champ.
+    // Confusing "there was nothing" with "nothing was recorded" made it
+    // impossible to undo the very first setting of a field.
     const sansNext = { ...task, next: null }
     const next = setNext(sansNext, { next: 'First next action', basedOnVersion: null })
     expect(next.audit.at(-1)!.previous).toBe('')
@@ -80,7 +80,7 @@ describe('annuler ce qui a été remplacé', () => {
     const renamed = renameTask(task, 'A different name')
     const again = renameTask(renamed, 'A third name')
 
-    // La plus récente reste annulable ; l'ancienne ne doit pas ressurgir.
+    // The most recent one stays undoable; the older one must not resurface.
     const back = undoLastSupervision(again)
     expect(back.title).toBe('A different name')
   })

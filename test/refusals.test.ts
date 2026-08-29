@@ -91,11 +91,11 @@ describe('refus consignés', () => {
 
     const texte = result.content[0].text
     expect(texte).toContain('STALE STATE')
-    // Le rappel « retry with based_on_version » n'a pas de sens ici : la
-    // version que l'agent tenait est précisément celle qui a été refusée.
+    // The "retry with based_on_version" reminder makes no sense here: the
+    // version the agent held is precisely the one that was refused.
     expect(texte).not.toMatch(/Retry with based_on_version/i)
-    // Le refus doit nommer l'outil fait pour ce cas précis, pas seulement la
-    // relecture complète : c'est le chemin le plus fréquent d'un agent.
+    // The refusal must name the tool made for this exact case, not only the
+    // full re-read: it is an agent's most frequent path.
     expect(texte).toContain('what_changed')
     expect(texte).toContain(`since_version: ${task.version}`)
     expect(texte).toContain('resume_task')

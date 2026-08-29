@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { lireJeton, tokensDe } from '../scripts/jeton.mjs'
 
-// Sans jeton d'origin trial, `document.modelContext` n'existe pas et un juge lit « WebMCP is not
-// available in this browser ». Chrome le vérifie HORS LIGNE, sur l'appareil : ni alerte, ni
-// rattrapage après le gel des déploiements. La charge utile est du JSON en clair, donc lisible :
-// les jetons ci-dessous sont fabriqués, une origine fausse ne s'obtenant pas autrement.
+// Without an origin trial token, `document.modelContext` does not exist and a judge reads “WebMCP
+// is not available in this browser”. Chrome checks it OFFLINE, on the device: no alert, no
+// catching up after the deploy freeze. The payload is plain JSON, hence readable: the tokens
+// below are fabricated, a false origin not being obtainable any other way.
 
-// API web plutôt que `Buffer` : le dépôt n'a pas `@types/node`, et n'en veut
-// pas pour trois lignes d'épreuve.
+// Web API rather than `Buffer`: the repo has no `@types/node`, and does not want
+// one for three lines of test.
 const enBase64 = (octets: Uint8Array) => btoa(String.fromCharCode(...octets))
 const depuisBase64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
 
@@ -15,8 +15,8 @@ function fabriquer(charge: Record<string, unknown>, version = 3): string {
   const utile = new TextEncoder().encode(JSON.stringify(charge))
   const octets = new Uint8Array(69 + utile.length)
   octets[0] = version
-  // Les octets 1..64 sont la signature Ed25519 ; on ne la vérifie pas, et
-  // sans la clé publique de Chrome cela n'aurait aucun sens.
+  // Bytes 1..64 are the Ed25519 signature; we do not check it, and without
+  // Chrome's public key that would mean nothing anyway.
   new DataView(octets.buffer).setUint32(65, utile.length, false)
   octets.set(utile, 69)
   return enBase64(octets)
@@ -31,8 +31,8 @@ describe('la lecture d’un jeton', () => {
     expect(j.erreur).toBeUndefined()
     expect(j.origine).toBe('https://keydler.com:443')
     expect(j.fonctionnalite).toBe('WebMCP')
-    // `expire` vaut null sur une charge utile sans date : l'affirmer d'abord
-    // fait échouer ici plutôt qu'à la ligne suivante, avec un meilleur message.
+    // `expire` is null on a payload with no date: asserting it first fails
+    // here rather than on the next line, with a better message.
     expect(j.expire).toBeInstanceOf(Date)
     expect(j.expire?.getTime()).toBe(DANS_UN_AN * 1000)
   })
@@ -42,16 +42,16 @@ describe('la lecture d’un jeton', () => {
   })
 
   it('tient `isSubdomain` absent pour faux', () => {
-    // La couverture des sous-domaines est à demander explicitement à
-    // l'inscription. La supposer acquise ferait croire qu'un jeton pour
-    // keydler.com couvre www.keydler.com. Il ne le couvre pas.
+    // Subdomain coverage has to be asked for explicitly at registration.
+    // Assuming it comes for free would suggest that a token for keydler.com
+    // covers www.keydler.com. It does not cover it.
     expect(lireJeton(fabriquer(VALIDE)).sousDomaines).toBe(false)
     expect(lireJeton(fabriquer({ ...VALIDE, isSubdomain: true })).sousDomaines).toBe(true)
   })
 
   it('signale un jeton « third-party »', () => {
-    // Ceux-là ne valent qu'injectés depuis un script tiers. Dans le HTML
-    // d'une page, ils n'activent rien, sans rien dire.
+    // Those are only good injected from a third-party script. In a page's own
+    // HTML they activate nothing, and say nothing.
     expect(lireJeton(fabriquer({ ...VALIDE, isThirdParty: true })).tiers).toBe(true)
   })
 })
@@ -80,16 +80,16 @@ describe('ce que la lecture refuse', () => {
 
 describe('la lecture de la variable d’environnement', () => {
   it('accepte plusieurs jetons, séparés par virgule ou saut de ligne', () => {
-    // Une origine, un jeton : keydler.com et keydler.pages.dev en sont deux.
-    // Chrome lit toutes les balises et retient celle qui correspond.
+    // One origin, one token: keydler.com and keydler.pages.dev are two of them.
+    // Chrome reads every tag and keeps the one that matches.
     expect(tokensDe('a,b')).toEqual(['a', 'b'])
     expect(tokensDe('a\nb')).toEqual(['a', 'b'])
     expect(tokensDe('  a , b  ')).toEqual(['a', 'b'])
   })
 
   it('ne fabrique pas de jeton vide à partir de rien', () => {
-    // Une balise `content=""` serait pire qu'aucune balise : elle donnerait
-    // à croire que le jeton est posé.
+    // A `content=""` tag would be worse than no tag at all: it would give the
+    // impression that the token is in place.
     for (const rien of [undefined, '', '   ', ',', '\n,\n']) {
       expect(tokensDe(rien), JSON.stringify(rien)).toEqual([])
     }

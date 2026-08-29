@@ -52,8 +52,8 @@ afterEach(() => {
 })
 
 async function withSecret() {
-  // Le secret existe AVANT l'ouverture du cahier : c'est l'ordre réel, et
-  // c'est aussi le seul qui garantisse que le premier rendu le voie.
+  // The secret exists BEFORE the task is opened: that is the real order, and
+  // it is also the only one that guarantees the first render sees it.
   const task = buildDemoTask()
   await addSecret({
     taskId: task.id,
@@ -63,8 +63,8 @@ async function withSecret() {
     passphrase: PASSPHRASE,
   })
   await store.openPreparedTask(task)
-  // La condition vise la LIGNE, pas le nom : `gemini-api-key` est aussi le
-  // texte indicatif du formulaire, et l'attente se terminait aussitôt sur lui.
+  // The condition targets the ROW, not the name: `gemini-api-key` is also the
+  // form's placeholder text, and the wait ended on it straight away.
   await waitFor(() => root.querySelector('[data-reveal]') !== null, 'affichage du nom scellé')
   return task
 }
@@ -75,9 +75,9 @@ describe('ce que l’agent reçoit', () => {
 
     const rendered = textOf(await call(resumeTaskTool))
     expect(rendered).toContain('CREDENTIALS')
-    // Le NOM est exact, toujours : c'est ce que l'agent recopie.
+    // The NAME is exact, always: it is what the agent copies out.
     expect(rendered).toContain('${gemini-api-key}')
-    // L'usage, lui, est de la prose et peut être raccourci sous le budget.
+    // The purpose is prose, and can be shortened under the budget.
     expect(rendered).toContain('Calls the Gemini API')
     expect(rendered).not.toContain(VALUE)
     expect(rendered).not.toContain(PASSPHRASE)
@@ -115,8 +115,8 @@ describe('ce que l’agent reçoit', () => {
       outputs.push(textOf(await call(tool, input)))
     }
 
-    // La garantie est structurelle : un secret ne vit pas dans TaskState, donc
-    // aucune sortie d'outil ne peut en contenir un, même par accident.
+    // The guarantee is structural: a secret does not live in TaskState, so no
+    // tool output can contain one, even by accident.
     for (const out of outputs) {
       expect(out).not.toContain(VALUE)
       expect(out).not.toContain(PASSPHRASE)
@@ -156,17 +156,17 @@ describe('ce que l’agent reçoit', () => {
     const deux = estimateTokens(renderTaskState(task, { credentials: creds(2) }))
     const trente = estimateTokens(renderTaskState(task, { credentials: creds(30) }))
 
-    // Le coût est borné, pas proportionnel. On le compare à ce que coûteraient
-    // les vingt-huit noms supplémentaires s'ils étaient tous rendus, et l'on
-    // exige de rester sous le cinquième. Mesuré : 17 tokens contre 131, soit
-    // 13 %. Un seuil en dur ne dirait pas pourquoi
-    // et dériverait à chaque reformulation : celui-ci a déjà dû passer de 5 à
-    // 20 le jour où une phrase a raccourci et laissé tenir un nom de plus.
+    // The cost is bounded, not proportional. It is compared against what the
+    // twenty-eight extra names would cost if they were all rendered, and we
+    // require staying under a fifth of that. Measured: 17 tokens against 131,
+    // that is 13%. A hardcoded threshold would not say why
+    // and would drift with every rewording: this one already had to go from 5
+    // to 20 the day a sentence shortened and let one more name fit.
     //
-    // On ne mesure PAS un prix unitaire par différence : la sortie de deux
-    // identifiants est plus COURTE que celle d'un seul, parce que l'échelle de
-    // dégradation rogne ailleurs dès que la place manque. C'est précisément ce
-    // qui borne le coût.
+    // We do NOT measure a unit price by difference: the output for two
+    // credentials is SHORTER than the output for one, because the degradation
+    // ladder trims elsewhere as soon as room runs out. That is exactly what
+    // bounds the cost.
     const vingtHuitNoms = estimateTokens(
       creds(30)
         .slice(2)
@@ -176,9 +176,9 @@ describe('ce que l’agent reçoit', () => {
     expect(trente).toBeLessThanOrEqual(TOKEN_BUDGET)
     expect(trente - deux).toBeLessThan(vingtHuitNoms * 0.2)
 
-    // Un NOM n'est jamais tronqué : un agent qui citerait `${service-1-api-k…}`
-    // écrirait une référence fausse. Sous pression, on en montre moins, on ne
-    // les raccourcit pas, et on dit combien sont cachés.
+    // A NAME is never truncated: an agent quoting `${service-1-api-k…}` would
+    // write a false reference. Under pressure we show fewer of them, we do not
+    // shorten them, and we say how many are hidden.
     const rendu = renderTaskState(task, { credentials: creds(30) })
     expect(rendu).toMatch(/CREDENTIALS: names only, values sealed \(\d+ of 30\)/)
     expect(rendu).not.toMatch(/\$\{service-\d+-api-k…/)
@@ -194,13 +194,13 @@ describe('ce que l’agent reçoit', () => {
         kind: 'api_key' as const,
       }))
 
-    // Le budget passe d'abord sur le travail ancien, qui se relit page par
-    // page, avant de toucher aux identifiants.
+    // The budget goes first on the older work, which is re-read page by page,
+    // before touching the credentials.
     const sans = renderTaskState(task)
     const avec = renderTaskState(task, { credentials: creds(4) })
 
-    // Sans identifiants, le budget tient deux étapes. Avec, il n'en tient plus
-    // qu'une : c'est le travail ancien qui paie, et il se relit page par page.
+    // Without credentials the budget holds two steps. With them it holds only
+    // one: the older work pays, and it is re-read page by page.
     expect(sans).toMatch(/RECENT WORK \(last 2 of 4\)/)
     expect(avec).toMatch(/RECENT WORK \(last 1 of 4\)/)
     expect(avec).toContain('${service-0-api-key}')
@@ -218,9 +218,9 @@ describe('ce que l’agent reçoit', () => {
       })),
     })
 
-    // Le compte est ce qui compte : « 2 of 8 » dit à l'agent qu'il lui en manque
-    // six. La section où les lire est déclarée par le schéma de
-    // read_task_detail, qui ne peut pas dériver, et n'occupe pas le budget.
+    // The count is what counts: "2 of 8" tells the agent six are missing. The
+    // section where to read them is declared by the read_task_detail schema,
+    // which cannot drift, and does not take up the budget.
     expect(rendu).toMatch(/CREDENTIALS: names only, values sealed \(\d+ of 8\)/)
     expect(rendu).toContain('read_task_detail')
 
@@ -247,7 +247,7 @@ describe('ce que l’écran montre', () => {
     expect(card.textContent).toContain('Calls the Gemini API')
     expect(card.textContent).toContain('never the value')
 
-    // Rien de la valeur dans le DOM tant que personne n'a demandé à la voir.
+    // Nothing of the value in the DOM until someone asks to see it.
     expect(root.innerHTML).not.toContain(VALUE)
   })
 
@@ -302,9 +302,9 @@ describe('ce que l’écran montre', () => {
 
     expect((await listSecretNames(task.id)).map((s) => s.name)).toContain('stripe-secret')
 
-    // Le champ de valeur n'est PAS conservé entre deux rendus, contrairement aux
-    // autres saisies : une valeur qu'un rendu réinjecterait dans le DOM serait
-    // lisible par un agent qui pilote le navigateur.
+    // The value field is NOT kept between two renders, unlike the other inputs:
+    // a value that a render put back into the DOM would be readable by an agent
+    // driving the browser.
     expect(root.querySelector<HTMLInputElement>('#new-secret-value')!.value).toBe('')
     expect(root.querySelector<HTMLInputElement>('#new-secret-passphrase')!.value).toBe('')
     expect(root.innerHTML).not.toContain(VALUE)

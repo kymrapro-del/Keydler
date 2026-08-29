@@ -27,8 +27,8 @@ export function matches(haystack: string, query: string): boolean {
 }
 
 /**
- * Replier la requête une fois plutôt qu'à chaque comparaison. Sur un cahier
- * chargé, `matches` la repliait des dizaines de milliers de fois par frappe.
+ * Fold the query once rather than at every comparison. On a loaded task,
+ * `matches` folded it tens of thousands of times per keystroke.
  */
 function seeker(query: string): (haystack: string) => boolean {
   const needle = fold(query)

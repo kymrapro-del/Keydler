@@ -28,7 +28,7 @@ export function applyTheme(choice: ThemeChoice): void {
     if (choice === 'system') localStorage.removeItem(KEY)
     else localStorage.setItem(KEY, choice)
   } catch {
-    /* stockage refusé : le choix vaut pour cette page seulement */
+    /* storage refused: the choice holds for this page only */
   }
 
   const resolved =

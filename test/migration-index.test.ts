@@ -5,11 +5,11 @@ import { loadTask, saveTask } from '../src/persistence/taskRepository'
 import { getDb } from '../src/persistence/db'
 import type { TaskState } from '../src/domain/types'
 
-// Le contrôle de concurrence passe par l'index `by-id-version` plutôt que par une
-// relecture complète du cahier : 2 ms pour 800 ko dans Chrome, contre 0,1 ms pour une
-// clé. Ce fichier ouvre la base à l'ANCIENNE version avant que quoi que ce soit
-// d'autre n'y touche, pour que la migration ait vraiment lieu : `getDb()` mémorise sa
-// promesse, et un seul appel plus tôt rendrait l'épreuve creuse.
+// Concurrency control goes through the `by-id-version` index rather than a full
+// re-read of the task: 2 ms for 800 kB in Chrome, against 0.1 ms for a key. This
+// file opens the database at the OLD version before anything else touches it, so
+// that the migration really happens: `getDb()` memoises its promise, and a single
+// earlier call would make the test hollow.
 function ancienneBase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const requête = indexedDB.open('cahier-de-quart', 2)
@@ -43,30 +43,30 @@ describe('un cahier écrit avant l’index reste protégé', () => {
     await écrireÀLAncienne(vieille, posé)
     vieille.close()
 
-    // Premier contact du code applicatif avec la base : c'est ici que la
-    // migration vers l'index a lieu, sur un enregistrement déjà présent.
+    // First contact between the application code and the database: this is
+    // where the migration to the index happens, on a record already present.
     const db = await getDb()
     expect(db.version).toBe(3)
 
     const relu = await loadTask('ancien')
     expect(relu?.version).toBe(7)
 
-    // À la bonne version : accepté.
+    // At the right version: accepted.
     await saveTask({ ...relu!, version: 8 }, 7)
     expect((await loadTask('ancien'))?.version).toBe(8)
 
-    // À une version périmée : refusé, et le message porte la version RÉELLE,
-    // sans quoi l'appelant ne saurait pas sur quoi se rebaser.
+    // At a stale version: refused, and the message carries the REAL version,
+    // without which the caller would not know what to rebase on.
     const erreur = await saveTask({ ...relu!, version: 9 }, 7).catch((e) => e)
     expect(erreur).toBeInstanceOf(ConcurrentWriteError)
     expect((erreur as ConcurrentWriteError).message).toContain('8')
     expect((await loadTask('ancien'))?.version).toBe(8)
   })
 
-  // Une écriture qui PORTE une version attendue est par définition une mise à jour :
-  // les créations passent par le chemin sans version. Une clé absente est donc un
-  // cahier supprimé ailleurs, et le laisser passer le ressuscitait avec toutes ses
-  // étapes et ses preuves, mais sans ses identifiants scellés, eux réellement effacés.
+  // A write that CARRIES an expected version is by definition an update: creations
+  // take the versionless path. A missing key is therefore a task deleted elsewhere,
+  // and letting it through resurrected it with all its steps and its evidence, but
+  // without its sealed credentials, which really were erased.
   it('refuse de ressusciter un cahier supprimé, et ne le recrée pas', async () => {
     const posé: TaskState = { ...buildCoreTask(), id: 'supprime', version: 3 }
     await saveTask(posé)

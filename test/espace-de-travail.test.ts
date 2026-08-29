@@ -4,9 +4,9 @@ import { __renderNow, mount } from '../src/ui/bench'
 import * as store from '../src/store/taskStore'
 import { clearDatabase } from './helpers'
 
-// `/workspace` est ce qu'un bouton « Sign in » doit atteindre sur un produit sans compte ni
-// serveur. La liste des cahiers, l'export et l'import existaient déjà, mais repliés à l'intérieur
-// d'un cahier ouvert : qui arrive d'une page d'accueil n'en a aucun, et ne voyait donc rien.
+// `/workspace` is what a "Sign in" button has to reach on a product with no account and no
+// server. The log list, the export and the import already existed, but folded inside an open
+// log: whoever arrives from a home page has none, and so saw nothing.
 describe('l’adresse de l’espace de travail', () => {
   it('reconnaît la sienne, avec ou sans barre finale', () => {
     expect(isWorkspacePath(WORKSPACE_PATH)).toBe(true)
@@ -14,9 +14,9 @@ describe('l’adresse de l’espace de travail', () => {
   })
 
   it('ne reconnaît rien d’autre', () => {
-    // `/workspaces` ou `/workspace-2` ne doivent pas ouvrir cette vue : ce
-    // sont des adresses différentes, et les confondre volerait leur page à
-    // d'éventuelles routes futures.
+    // `/workspaces` or `/workspace-2` must not open this view: they are
+    // different addresses, and confusing them would steal their page from
+    // any future routes.
     for (const autre of ['/', '/t/abc', '/workspaces', '/workspace-2', '/Workspace', '']) {
       expect(isWorkspacePath(autre), autre).toBe(false)
     }
@@ -25,9 +25,9 @@ describe('l’adresse de l’espace de travail', () => {
 
 describe('la porte d’entrée depuis l’accueil', () => {
   it('est un lien, pas un bouton', async () => {
-    // Un contrôle qui change l'adresse doit être un <a href> : clic-milieu,
-    // Ctrl+clic et lecteurs d'écran en dépendent. C'est aussi le seul chemin
-    // d'exploration qu'un moteur trouve sur ce site, qui n'a aucune autre ancre.
+    // A control that changes the address has to be an <a href>: middle-click,
+    // Ctrl+click and screen readers depend on it. It is also the only crawl
+    // path a search engine finds on this site, which has no other anchor.
     localStorage.clear()
     store.__resetStore()
     await clearDatabase()
@@ -75,9 +75,9 @@ describe('la page de l’espace de travail', () => {
   })
 
   it('garde son adresse au lieu de se faire renvoyer à la racine', async () => {
-    // `reflectAddress` réécrit l'adresse à chaque rendu vers `/t/:id` ou `/`.
-    // Sans exception pour cette vue, l'adresse partait à `/` dès le premier
-    // rendu et un rechargement ne ramenait plus la page.
+    // `reflectAddress` rewrites the address on every render to `/t/:id` or `/`.
+    // Without an exception for this view, the address left for `/` on the first
+    // render and a reload no longer brought the page back.
     démonter = mount(root)
     await store.init()
     await attendre()
@@ -96,9 +96,9 @@ describe('la page de l’espace de travail', () => {
   })
 
   it('liste TOUS les cahiers du poste, pas seulement celui qui est ouvert', async () => {
-    // `store.init()` sans identifiant rouvre le dernier cahier et `deleteCurrentTask` en rouvre
-    // un autre : aucun état n'a des cahiers sans qu'un soit ouvert. Une première version de cette
-    // épreuve prétendait le contraire, et une mutation l'a démentie.
+    // `store.init()` with no id reopens the last log and `deleteCurrentTask` reopens another
+    // one: no state has logs without one being open. A first version of this test claimed the
+    // opposite, and a mutation proved it wrong.
     await store.init()
     await store.createAndOpenTask('Refactor the auth module', 'Map the entry points')
     await store.createAndOpenTask('Ship the landing page', 'Replace the sign-in button')
@@ -128,8 +128,8 @@ describe('la page de l’espace de travail', () => {
   })
 
   it('ne promet aucun compte', async () => {
-    // Le produit refuse d'écrire « vérifié » à la place d'un humain ; sa
-    // propre page ne doit pas suggérer un dos qu'il n'a pas.
+    // The product refuses to write "verified" in place of a human; its own
+    // page must not suggest a backing it does not have.
     démonter = mount(root)
     await store.init()
     await attendre()
@@ -143,10 +143,10 @@ describe('la page de l’espace de travail', () => {
   })
 
   it('ne prétend pas que les cahiers sont chiffrés, parce qu’ils ne le sont pas', async () => {
-    // Seuls le coffre d'identifiants et les liens scellés sont chiffrés. Les
-    // cahiers eux-mêmes sont en clair dans IndexedDB, et quiconque a la main
-    // sur la session du navigateur peut les lire. Écrire « encrypted » ici
-    // serait la seule vraie fausseté que cette page pourrait porter.
+    // Only the credential vault and sealed links are encrypted. The logs
+    // themselves sit in the clear in IndexedDB, and anyone with a hand on the
+    // browser session can read them. Writing "encrypted" here would be the
+    // only real falsehood this page could carry.
     démonter = mount(root)
     await store.init()
     await attendre()
@@ -159,10 +159,10 @@ describe('la page de l’espace de travail', () => {
   })
 
   it('ne promet la confidentialité que par ce qui est vérifiable', async () => {
-    // Une première rédaction disait « nobody else can read it, not even us ».
-    // C'est une promesse sur la confiance : nous servons le code, donc nous
-    // pourrions le changer. Ce qui est démontrable, c'est qu'il n'y a aucune
-    // destination et que la politique de sécurité bloque les autres origines.
+    // A first draft said "nobody else can read it, not even us". That is a
+    // promise about trust: we serve the code, so we could change it. What is
+    // demonstrable is that there is no destination and that the security
+    // policy blocks other origins.
     démonter = mount(root)
     await store.init()
     await attendre()
@@ -174,8 +174,8 @@ describe('la page de l’espace de travail', () => {
   })
 
   it('avertit que vider le navigateur efface tout', async () => {
-    // Sans serveur, il n'y a pas de sauvegarde ailleurs. Le taire serait la
-    // seule promesse fausse que cette page pourrait faire.
+    // With no server, there is no backup anywhere else. Staying silent about
+    // it would be the only false promise this page could make.
     démonter = mount(root)
     await store.init()
     await attendre()

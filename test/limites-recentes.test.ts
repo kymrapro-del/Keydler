@@ -104,7 +104,7 @@ describe('bornes des surfaces récentes', () => {
     const posé = setGoal(buildCoreTask(), 'Ship it')
     const clos = completeTask(posé, { summary: 'Done', basedOnVersion: null }, 'human')
     expect(clos.goal).toBe('Ship it')
-    // Poser un but sur une tâche close reste possible : l'humain reste maître.
+    // Setting a goal on a closed task stays possible: the human stays in charge.
     expect(() => setGoal(clos, 'Another goal')).not.toThrow()
   })
 
@@ -164,7 +164,7 @@ describe('le filtre de recherche entre deux cahiers', () => {
     again.dispatchEvent(new Event('input', { bubbles: true }))
     await settled()
 
-    // Un filtre hérité d'un autre cahier ferait passer une trouvaille pour rien.
+    // A filter inherited from another task would make a hit look like nothing.
     const all = root.querySelector('[data-filter="all"]')
     expect(all === null || all.getAttribute('aria-pressed') === 'true').toBe(true)
   })

@@ -30,14 +30,14 @@ describe('la nature d’une preuve', () => {
 
   it('reconnaît une adresse seule, pas une adresse au milieu d’un texte', () => {
     expect(guessEvidenceKind('https://github.com/x/y/pull/3')).toBe('url')
-    // Une sortie de commande qui contient une adresse reste une sortie de commande.
+    // A command output that contains an address stays a command output.
     expect(guessEvidenceKind('curl https://example.test\n200 OK')).toBe('command_output')
   })
 
   it('reconnaît une empreinte, quelle que soit sa longueur usuelle', () => {
     expect(guessEvidenceKind('a94a8fe5ccb19ba61c4c0873d391e987982fbbd3')).toBe('hash')
     expect(guessEvidenceKind('9f86d081')).toBe('hash')
-    // Un mot de huit lettres n'est pas une empreinte.
+    // An eight-letter word is not a hash.
     expect(guessEvidenceKind('deadbeaf zzz')).toBe('command_output')
   })
 
@@ -97,9 +97,9 @@ describe('consigner une étape à la main', () => {
   })
 
   /**
-   * Une preuve collée part avec chaque export et chaque lien partageable, et
-   * une sortie de commande porte volontiers un jeton. Le champ le dit là où on
-   * colle, pas dans une page d'aide.
+   * Pasted evidence leaves with every export and every shareable link, and a
+   * command output readily carries a token. The field says so where you paste,
+   * not in a help page.
    */
   it('dit, au moment de coller, où la preuve ira', () => {
     const champ = root.querySelector('#step-evidence')!
@@ -110,9 +110,9 @@ describe('consigner une étape à la main', () => {
   })
 
   it('accueille une preuve sur plusieurs lignes', async () => {
-    // Un <input type="text"> écrase les retours à la ligne : une sortie de
-    // commande ou un diff collé y arrivait sur une seule ligne, illisible pour
-    // l'humain comme pour l'agent qui la relit ensuite.
+    // An <input type="text"> flattens line breaks: a command output or a pasted
+    // diff arrived there on a single line, unreadable for the human as for the
+    // agent that reads it back afterwards.
     const field = root.querySelector('#step-evidence')!
     expect(field.tagName).toBe('TEXTAREA')
 
@@ -169,8 +169,8 @@ describe('consigner une étape à la main', () => {
     root.querySelector<HTMLFormElement>('#form-step')!.requestSubmit()
     await recorded(before)
 
-    // C'est le point qui compte : read_task_detail annonçait « command_output »
-    // pour un diff, donc le produit mentait à l'agent sur la nature d'une preuve.
+    // This is the point that counts: read_task_detail announced "command_output"
+    // for a diff, so the product lied to the agent about the kind of evidence it holds.
     const rendered = renderDetail(store.currentTask()!, {
       section: 'steps',
       offset: 0,

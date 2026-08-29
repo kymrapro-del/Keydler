@@ -317,16 +317,16 @@ describe('budget de restitution sous pression', () => {
     const moyen = renderTaskState(chargé(8, 6))
 
     expect(léger).toContain('détaillé à dessein pour occuper')
-    // Chargé, tout est encore là, mais coupé.
+    // Loaded, everything is still there, but cut short.
     for (let i = 0; i < 8; i++) expect(moyen).toContain(`Approche condamnée numéro ${i}`)
     expect(moyen).not.toContain(
       'Motif 7, détaillé à dessein pour occuper de la place dans la restitution',
     )
   })
 
-  // Ne JAMAIS retirer une obligation rendait 37 800 tokens pour deux mille
-  // règles, soit 94 fois le budget, et une restitution que la fenêtre de contexte
-  // tronque en silence. Couper ici en le disant, ou laisser couper ailleurs.
+  // NEVER dropping a binding rule rendered 37,800 tokens for two thousand
+  // rules, 94 times the budget, and a render the context window truncates in
+  // silence. Cut here and say so, or let it be cut elsewhere.
   it('en dernier recours retire des obligations, et le dit sans détour', () => {
     const output = renderTaskState(chargé(30, 10))
 
@@ -349,13 +349,13 @@ describe('budget de restitution sous pression', () => {
 
     const montrées = output.split('\n').filter((l) => l.includes('Contrainte ')).length
     expect(montrées).toBeGreaterThanOrEqual(12)
-    // Sans cette borne, la même mesure donnait 37 800 tokens à 2000 règles.
+    // Without this bound, the same measurement gave 37,800 tokens at 2000 rules.
     expect(estimateTokens(output)).toBeLessThan(1000)
   })
 
   it('montre les mêmes obligations d’un appel à l’autre', () => {
-    // Couper par la fin ferait glisser la fenêtre à chaque ajout : l'agent
-    // verrait disparaître une règle qu'il avait lue, sans qu'elle change.
+    // Cutting from the end would slide the window on every addition: the agent
+    // would see a rule it had read disappear, without that rule changing.
     const avant = renderTaskState(chargé(0, 40))
     const après = renderTaskState(chargé(0, 60))
 

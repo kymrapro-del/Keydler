@@ -60,7 +60,7 @@ describe('suivre ce qui est arrivé à une seule règle', () => {
   it('n’oublie pas une règle proposée puis acceptée', () => {
     const proposée = addConstraint(task, { rule: 'A proposed rule', basedOnVersion: null }, 'agent')
     const id = proposée.constraints.at(-1)!.id
-    // La proposition elle-même n'a pas de cible : c'est la décision qui en a une.
+    // The proposal itself has no target: it is the decision that has one.
     expect(historyOf(proposée, id).entries).toEqual([])
   })
 })
@@ -82,7 +82,7 @@ describe('depuis la page', () => {
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
 
-    // Un seul cahier : deux appels donneraient des identifiants différents.
+    // A single task: two calls would give different ids.
     const base = buildCoreTask()
     const rule = activeConstraints(base)[0]
     await store.openPreparedTask(
@@ -109,7 +109,7 @@ describe('depuis la page', () => {
     const trail = root.querySelector('.trail')!
     expect(trail).not.toBeNull()
     expect(trail.textContent).toContain('reworded a rule')
-    // Aucun nom d'opération machine à l'écran.
+    // No machine operation name on screen.
     expect(trail.textContent).not.toContain('edit_constraint')
   })
 
@@ -166,8 +166,8 @@ describe('une histoire élaguée le dit', () => {
     const { task, ruleId } = saturé()
     const trail = historyOf(task, ruleId)
 
-    // Les entrées de cette règle sont tombées hors du journal borné : ne rien
-    // dire reviendrait à affirmer qu'il ne s'est rien passé.
+    // This rule's entries fell out of the bounded audit log: saying nothing
+    // would amount to claiming that nothing happened.
     expect(trail.entries).toHaveLength(0)
     expect(trail.mayBeIncomplete).toBe(true)
   })
@@ -233,7 +233,7 @@ describe('l’avertissement à l’écran', () => {
   })
 
   it('propose encore l’histoire même quand tout a été élagué', async () => {
-    // Sans entrée survivante, cacher le bouton reviendrait à taire l'élagage.
+    // With no surviving entry, hiding the button would keep the pruning quiet.
     const task = store.currentTask()!
     const oubliée = task.constraints[1]
     expect(root.querySelector(`[data-trail="${oubliée.id}"]`)).not.toBeNull()
