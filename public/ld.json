@@ -1,0 +1,27 @@
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Keydler",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Web",
+  "isAccessibleForFree": true,
+  "license": "https://opensource.org/licenses/MIT",
+  "copyrightHolder": {
+    "@type": "Organization",
+    "name": "Moon1pact"
+  },
+  "copyrightYear": 2026,
+  "creditText": "Google Sans Flex from Google Fonts. Interface follows Material Design 3 and Google Icons.",
+  "description": "Free, local-first supervised task memory for you and your AI, exposed to agents through WebMCP.",
+  "sameAs": ["https://github.com/kymrapro-del/ChatGPT-WebMCP"],
+  "featureList": [
+    "Local-first task memory in the browser",
+    "Supervised WebMCP tools for ChatGPT, Claude and Gemini",
+    "Human-editable rules, evidence and rejected approaches"
+  ],
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}

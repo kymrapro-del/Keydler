@@ -1,6 +1,6 @@
 import { buildMeasureTask } from '../demo/measures'
 import { buildFullExport, buildTaskExport, exportFilename } from '../export/notebook'
-import { parseExport } from '../export/restore'
+import { ImportTooLargeError, MAX_IMPORT_BYTES, parseExport } from '../export/restore'
 import { linkFor, packTask, readLinkFragment, unpackTask } from '../export/link'
 import { escapeHtml } from './escape'
 import { humanMessage } from './messages'
@@ -18,11 +18,9 @@ import {
   type StorageState,
 } from '../persistence/durability'
 import { attentionTitle } from './attention'
-import { applyTheme, nextTheme, readTheme, themeLabel } from './theme'
 import { mountTextLoop } from './textLoop'
 import { mountSilkBackground } from './silkBackground'
 import { mountNavSpy } from './navSpy'
-import { mountScrollVideo } from './scrollVideo'
 import { buildDemoTask, DEMO_TASK_ID } from '../demo/seed'
 import { renderTaskState } from '../domain/render'
 import { MIN_QUERY, searchTask, searchTasks, type Match, type MatchKind } from '../domain/search'
@@ -94,6 +92,23 @@ import {
   taskPath,
   taskUrl,
 } from '../webmcp'
+import {
+  connectProvider,
+  disconnectProvider,
+  getCloudState,
+  loadConnectors,
+  onCloudStateChange,
+  saveSettings,
+  sendMagicLink,
+  signOut,
+  startCloudSync,
+  stopCloudSync,
+  syncNow,
+  updateCloudState,
+  type ConnectorProvider,
+} from '../cloud'
+import { enabledToolNames, setToolEnabled } from '../security/toolPermissions'
+import { refreshToolRegistration } from '../webmcp/register'
 
 let root: HTMLElement | null = null
 
@@ -103,18 +118,15 @@ let root: HTMLElement | null = null
  * `render()` remplace tout `innerHTML` : sans cet arrêt explicite, le
  * `requestAnimationFrame` du ruban continuerait à tourner sur des nœuds
  * détachés à chaque nouveau rendu, une boucle de plus empilée sur les
- * précédentes — jamais visible à l'œil, jamais libéré non plus.
+ * précédentes · jamais visible à l'œil, jamais libéré non plus.
  */
 let stopTextLoop: (() => void) | null = null
 
-/** Même contrat d'arrêt que `stopTextLoop`, pour le fond WebGL de la landing. */
+/** Même contrat d'arrêt que `stopTextLoop`, pour le fond WebGL landing + workspace. */
 let stopSilkBackground: (() => void) | null = null
 
 /** Même contrat d'arrêt, pour la mise en évidence du lien de nav actif. */
 let stopNavSpy: (() => void) | null = null
-
-/** Même contrat d'arrêt, pour la vidéo pilotée par le scroll de « Under the hood ». */
-let stopToolAnatomyVideo: (() => void) | null = null
 
 /* -------------------------------------------------------------------------- */
 /* Saisies en cours                                                            */
@@ -148,6 +160,10 @@ const DEFAULT_DRAFTS: Record<string, string> = {
   'dispute-reason': '',
   'new-secret-kind': 'api_key',
   'edit-secret-kind': 'other',
+  'auth-email': '',
+  'connector-key-openai': '',
+  'connector-key-anthropic': '',
+  'connector-key-gemini': '',
   search: '',
 }
 
@@ -238,12 +254,6 @@ let online = true
 let carryRules = false
 let searchFilter: MatchKind | 'all' = 'all'
 let showArchived = false
-
-function renderThemeToggle(): string {
-  const choice = readTheme()
-  return `<button type="button" id="toggle-theme" class="btn btn--quiet"
-            aria-label="${themeLabel(choice)}. Click to switch.">${themeLabel(choice)}</button>`
-}
 
 function query(): string {
   return drafts['search'].trim()
@@ -362,6 +372,7 @@ let previewNotice: string | null = null
 
 /** Le panneau de connexion factice de la landing est-il visible ? */
 let previewAuthOpen = false
+let connectorEditing: ConnectorProvider | null = null
 
 /** Exécute une action humaine en rendant son échec lisible. */
 function humanAction(
@@ -392,6 +403,7 @@ function plural(n: number, one: string, many: string): string {
 
 function renderAppBar(task: TaskState | null): string {
   const { phase, toolNames } = getRegistrationState()
+  const cloud = getCloudState()
   const connection =
     phase === 'registered'
       ? { label: 'WebMCP ready', tone: 'ready' }
@@ -402,9 +414,8 @@ function renderAppBar(task: TaskState | null): string {
           : { label: 'WebMCP off', tone: 'off' }
 
   return `<header class="top-app-bar">
-      <div class="top-app-bar__brand" aria-label="Watch Log home">
-        <span class="brand-mark" aria-hidden="true">W</span>
-        <span>Watch Log</span>
+      <div class="top-app-bar__brand" aria-label="Keydler home">
+        <span class="brand-name">Keydler</span>
       </div>
       <div class="top-app-bar__status" aria-label="Application status">
         <span class="status-pill status-pill--${connection.tone}">
@@ -412,11 +423,49 @@ function renderAppBar(task: TaskState | null): string {
           ${connection.label}${toolNames.length > 0 ? ` · ${toolNames.length} ${plural(toolNames.length, 'tool', 'tools')}` : ''}
         </span>
         ${task ? `<span class="version-pill">Version ${task.version}</span>` : ''}
-        <button type="button" class="profile-preview" data-preview-action="Sign-in is a design preview. No account or cloud session was created." aria-label="Preview account menu">
-          <span aria-hidden="true">K</span>
+        <button type="button" class="profile-preview" data-open-auth aria-label="${cloud.user ? 'Open account and security menu' : 'Sign in'}">
+          <span aria-hidden="true">${cloud.user ? escapeHtml(cloud.user.email.slice(0, 1).toLocaleUpperCase()) : '↗'}</span>
         </button>
       </div>
     </header>`
+}
+
+function renderCloudAuthPanel(): string {
+  if (!previewAuthOpen) return ''
+  const cloud = getCloudState()
+
+  if (!cloud.configured) {
+    return `<section class="preview-auth account-panel" aria-labelledby="account-title">
+        <div><span class="preview-flag">Local-only deployment</span><h2 id="account-title">Cloud accounts are not configured.</h2><p>The workspace remains fully usable on this device. Add the two public Supabase variables to enable real authentication and encrypted sync.</p></div>
+        <button type="button" data-close-auth class="btn">Close</button>
+      </section>`
+  }
+
+  if (cloud.auth === 'loading') {
+    return `<section class="preview-auth account-panel" aria-live="polite"><p>Checking the secure session…</p></section>`
+  }
+
+  if (cloud.user) {
+    return `<section class="preview-auth account-panel" aria-labelledby="account-title">
+        <div><span class="preview-flag">Authenticated workspace</span><h2 id="account-title">${escapeHtml(cloud.user.email)}</h2><p>${cloud.workspace ? `${escapeHtml(cloud.workspace.name)} · ${escapeHtml(cloud.workspace.role)}` : 'Loading workspace access…'}</p></div>
+        <div class="account-panel__status">
+          <span class="status-pill status-pill--ready"><span class="status-dot" aria-hidden="true"></span>Session protected</span>
+          <span class="status-pill">${cloud.sync === 'synced' ? 'Cloud synced' : cloud.sync === 'syncing' ? 'Syncing…' : 'Local-only'}</span>
+        </div>
+        <div class="actions">
+          ${cloud.settings.cloudSyncEnabled ? '<button type="button" id="sync-now" class="btn btn--primary">Sync now</button>' : ''}
+          <button type="button" id="sign-out" class="btn">Sign out here</button>
+          <button type="button" id="sign-out-everywhere" class="btn btn--danger">Sign out everywhere</button>
+          <button type="button" data-close-auth class="btn btn--text">Close</button>
+        </div>
+      </section>`
+  }
+
+  return `<form id="cloud-auth" class="preview-auth account-panel" novalidate>
+      <div><span class="preview-flag">Passwordless authentication</span><h2 id="account-title">Open your private workspace.</h2><p>We send a single-use sign-in link. The session stays in this browser session and the database enforces access with row-level security.</p></div>
+      <div class="field"><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com" /></div>
+      <div class="actions"><button type="submit" class="btn btn--primary">Send secure link</button><button type="button" data-close-auth class="btn">Cancel</button></div>
+    </form>`
 }
 
 function renderPreviewNotice(): string {
@@ -443,7 +492,7 @@ function alertBlock(): string {
 
 function renderLanding(): string {
   // La pastille de la nav montre le compte RÉEL d'outils enregistrés à cet
-  // instant — 0 sans support WebMCP, jusqu'à sept sinon — jamais un chiffre
+  // instant · 0 sans support WebMCP, jusqu'à treize sinon · jamais un chiffre
   // choisi pour faire joli. `onRegistrationChange` est déjà abonné à
   // `scheduleRender` dans `mount()`, donc ce nombre se retrouve à jour tout
   // seul au prochain rendu, sans abonnement supplémentaire ici.
@@ -474,32 +523,14 @@ function renderLanding(): string {
        </form>`
     : ''
 
-  const signIn = previewAuthOpen
-    ? `<form id="preview-auth" class="preview-auth" novalidate>
-        <div>
-          <span class="preview-flag">Design preview</span>
-          <h2>Enter the workspace preview</h2>
-          <p>No account will be created and no email will be sent.</p>
-        </div>
-        <div class="field">
-          <label for="preview-email">Email</label>
-          <input id="preview-email" type="email" autocomplete="email" placeholder="you@example.com" />
-        </div>
-        <div class="actions">
-          <button type="submit" class="btn btn--primary">Continue to dashboard</button>
-          <button type="button" id="close-preview-auth" class="btn">Cancel</button>
-        </div>
-      </form>`
-    : ''
-
   return `<div class="marketing-site">
       <div class="silk-background" data-silk-background aria-hidden="true"></div>
       <nav class="marketing-nav" aria-label="Public navigation">
         <div class="marketing-nav__pill">
-          <a class="marketing-brand" href="#landing-hero"><span class="brand-mark" aria-hidden="true">W</span><span>Watch Log</span></a>
+          <a class="marketing-brand" href="#landing-hero"><span class="brand-name">Keydler</span></a>
           <div class="marketing-nav__links" data-nav-links>
             <a href="#how-it-works">How it works</a>
-            <a href="#dashboard-tour" aria-label="Dashboard — ${toolCount} WebMCP ${plural(toolCount, 'tool', 'tools')} registered right now">Dashboard<span class="marketing-nav__badge" aria-hidden="true">${toolCount}</span></a>
+            <a href="#dashboard-tour" aria-label="Dashboard \\\\ ${toolCount} WebMCP ${plural(toolCount, 'tool', 'tools')} registered right now">Dashboard<span class="marketing-nav__badge" aria-hidden="true">${toolCount}</span></a>
             <a href="#free">Free</a>
           </div>
         </div>
@@ -515,8 +546,10 @@ function renderLanding(): string {
             <path d="M8 7h9v9" />
           </svg>
         </a>
-        <button type="button" id="open-preview-auth" class="btn btn--tonal marketing-nav__signin">Sign in</button>
+        <button type="button" data-open-auth class="btn btn--tonal marketing-nav__signin">${getCloudState().user ? 'Account' : 'Sign in'}</button>
       </nav>
+
+      ${renderCloudAuthPanel()}
 
       <section id="landing-hero" class="landing landing--product">
         <div class="landing__copy brand-hero">
@@ -526,14 +559,14 @@ function renderLanding(): string {
             <img class="brand-hero__shape brand-hero__shape--gem" src="/assets/brand/gem.webp" alt="" width="376" height="384" loading="lazy" decoding="async" />
           </div>
           <div class="brand-hero__content">
-            <p class="landing__eyebrow">Open-source memory for WebMCP agents</p>
+            <p class="landing__eyebrow">Keydler \\\\ open source memory for WebMCP agents</p>
             <h1 class="landing__headline">Give every AI the context it must <mark class="brand-hero__highlight">not</mark> lose.</h1>
             <p class="landing__lede">
-              Watch Log keeps decisions, rules, evidence and failed approaches in one supervised
+              Keydler keeps decisions, rules, evidence and failed approaches in one supervised
               workspace. A new conversation reads the same memory and continues from the right place.
             </p>
             <div class="actions landing__actions">
-              <button type="button" id="start-create" class="btn btn--primary">Create a task</button>
+              <button type="button" id="start-create" data-start-create class="btn btn--primary">Create a task</button>
               <button type="button" id="seed" class="btn">Try the demo</button>
             </div>
           </div>
@@ -542,9 +575,8 @@ function renderLanding(): string {
 
       ${alertBlock()}
       ${creationForm}
-      ${signIn}
-
-      <section id="how-it-works" class="marketing-section" aria-label="How it works">
+      <section id="how-it-works" class="marketing-section" aria-labelledby="how-it-works-title">
+        <h2 id="how-it-works-title" class="visually-hidden">How Keydler works</h2>
         <div class="reason-stack">
           <article class="reason-card">
             <img class="reason-card__mascot" src="/assets/brand/mascot.webp" alt="" width="292" height="309" loading="lazy" decoding="async" />
@@ -571,64 +603,40 @@ function renderLanding(): string {
         </div>
       </section>
 
-      <section id="tool-anatomy" class="marketing-section" aria-labelledby="anatomy-title">
-        <p class="section-heading__eyebrow">Under the hood</p>
-        <h2 id="anatomy-title">One call, five parts a browser understands.</h2>
-        <p class="anatomy-intro">
-          Every action an agent can take on this page is registered the same way: a
-          <strong>name</strong> to call, a <strong>description</strong> telling the agent when to
-          reach for it, an <strong>inputSchema</strong> for its arguments, the
-          <strong>execute</strong> function that runs, and <strong>annotations</strong> such as
-          <code>readOnlyHint</code> that describe it before it ever runs.
-        </p>
-        <div class="tool-anatomy" aria-hidden="true">
-          <button type="button" class="tool-anatomy__button" tabindex="-1">
-            <svg
-              class="tool-anatomy__icon"
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M8 6 3 12l5 6" />
-              <path d="M16 6l5 6-5 6" />
-            </svg>
-            <span class="tool-anatomy__label">resume_task()</span>
-          </button>
-          <span class="tool-anatomy__callout tool-anatomy__callout--name"
-            ><i class="tool-anatomy__dot"></i>name</span
-          >
-          <span class="tool-anatomy__callout tool-anatomy__callout--schema"
-            >inputSchema<i class="tool-anatomy__dot"></i
-          ></span>
-          <span class="tool-anatomy__callout tool-anatomy__callout--desc"
-            ><i class="tool-anatomy__dot"></i>description</span
-          >
-          <span class="tool-anatomy__callout tool-anatomy__callout--execute"
-            ><i class="tool-anatomy__dot"></i>execute()</span
-          >
-          <span class="tool-anatomy__callout tool-anatomy__callout--annot"
-            >annotations<i class="tool-anatomy__dot"></i
-          ></span>
+      <section id="tool-anatomy" class="marketing-section brand-hero" aria-labelledby="anatomy-title">
+        <div class="brand-hero__decor" aria-hidden="true">
+          <img class="brand-hero__shape brand-hero__shape--cylinder" src="/assets/brand/cylinder.webp" alt="" width="384" height="348" loading="lazy" decoding="async" />
+        </div>
+        <div class="brand-hero__content">
+          <p class="section-heading__eyebrow">Under the hood</p>
+          <h2 id="anatomy-title">One WebMCP call, five parts a browser understands.</h2>
+          <p class="anatomy-intro">
+            Every action an agent can take on this page is registered the same way: a
+            <strong>name</strong> to call, a <strong>description</strong> telling the agent when to
+            reach for it, an <strong>inputSchema</strong> for its arguments, the
+            <strong>execute</strong> function that runs, and <strong>annotations</strong> such as
+            <code>readOnlyHint</code> that describe it before it ever runs.
+          </p>
         </div>
       </section>
 
       <div class="text-loop" data-text-loop aria-hidden="true"></div>
 
-      <section id="dashboard-tour" class="marketing-section" aria-labelledby="tour-title">
-        <header class="prototype-heading">
-          <div><p class="section-heading__eyebrow">Inside the workspace</p><h2 id="tour-title">Everything users need to supervise AI memory.</h2></div>
-          <button type="button" id="seed-tour" class="btn btn--primary">Open dashboard preview</button>
-        </header>
-        <div class="tour-grid">
-          <article class="tour-card tour-card--wide"><span>Overview</span><h3>See what is active, verified and waiting.</h3><p>One operational view across memories, rules and current next actions.</p><div class="tour-bars"><i></i><i></i><i></i></div></article>
-          <article class="tour-card"><span>Connections</span><h3>One memory layer for compatible agents.</h3><p>ChatGPT, Claude and Gemini setup flows are presented without inventing provider access.</p></article>
-          <article class="tour-card"><span>Live console</span><h3>Watch tools register and run.</h3><p>Inspect calls, refusals, versions and the exact state returned to the agent.</p></article>
-          <article class="tour-card tour-card--wide"><span>Configuration</span><h3>Control storage, permissions and retention.</h3><p>The prototype distinguishes settings that work locally from planned cloud controls.</p><div class="tour-toggles"><i></i><i></i><i></i></div></article>
+      <section id="dashboard-tour" class="marketing-section brand-hero" aria-labelledby="tour-title">
+        <div class="brand-hero__decor" aria-hidden="true">
+          <img class="brand-hero__shape brand-hero__shape--gem" src="/assets/brand/gem.webp" alt="" width="376" height="384" loading="lazy" decoding="async" />
+        </div>
+        <div class="brand-hero__content">
+          <header class="prototype-heading">
+            <div><p class="section-heading__eyebrow">Inside the workspace</p><h2 id="tour-title">Everything you need to supervise AI memory.</h2></div>
+            <button type="button" id="seed-tour" class="btn btn--primary">Open interactive dashboard</button>
+          </header>
+          <div class="tour-grid">
+            <article class="tour-card tour-card--wide"><span>Overview</span><h3>See what is active, verified and waiting.</h3><p>One operational view of memories, rules and the next action.</p><div class="tour-bars"><i></i><i></i><i></i></div></article>
+            <article class="tour-card"><span>Connections</span><h3>One memory layer for compatible agents.</h3><p>ChatGPT, Claude and Gemini setup flows are presented without inventing provider access.</p></article>
+            <article class="tour-card"><span>Live console</span><h3>Watch tools register and run.</h3><p>Inspect calls, refusals, versions and the exact state returned to the agent.</p></article>
+            <article class="tour-card tour-card--wide"><span>Configuration</span><h3>Control storage, permissions and retention.</h3><p>Local controls work immediately. Private sync and shared settings activate after secure sign-in.</p><div class="tour-toggles"><i></i><i></i><i></i></div></article>
+          </div>
         </div>
       </section>
 
@@ -639,12 +647,74 @@ function renderLanding(): string {
         </div>
         <div class="brand-hero__content">
           <h2 id="free-title">Free by design</h2>
-          <p class="free-section__callout">0 means 0. No hiding cost.</p>
-          <p>The current product stores data in your browser and ships under the MIT license. Hosted sync is not part of this prototype.</p>
+          <p class="free-section__callout">0 means 0. No hidden cost.</p>
+          <p>The complete local workspace ships under the MIT license. Optional private sync uses your own Supabase project; connected model providers may charge for their API usage.</p>
         </div>
       </section>
 
-      <footer class="marketing-footer"><span>Watch Log</span><span>Free · Open source · Built for the WebMCP Challenge</span></footer>
+      <footer class="marketing-footer">
+        <div class="marketing-footer__glow" aria-hidden="true"></div>
+        <div class="marketing-footer__top">
+          <nav class="marketing-footer__nav" aria-label="Product">
+            <p class="marketing-footer__heading">Product</p>
+            <ul class="marketing-footer__links">
+              <li><a class="marketing-footer__link" href="#how-it-works">How it works</a></li>
+              <li><a class="marketing-footer__link" href="#dashboard-tour">Dashboard</a></li>
+              <li><a class="marketing-footer__link" href="#free">Free</a></li>
+            </ul>
+          </nav>
+          <nav class="marketing-footer__nav" aria-label="Workspace">
+            <p class="marketing-footer__heading">Workspace</p>
+            <ul class="marketing-footer__links">
+              <li><button type="button" class="marketing-footer__link" data-start-create>Create a task</button></li>
+              <li><button type="button" class="marketing-footer__link" id="seed-footer">Try the demo</button></li>
+              <li><button type="button" class="marketing-footer__link" data-open-auth>${getCloudState().user ? 'Account' : 'Sign in'}</button></li>
+            </ul>
+          </nav>
+          <nav class="marketing-footer__nav" aria-label="Source">
+            <p class="marketing-footer__heading">Source</p>
+            <ul class="marketing-footer__links">
+              <li>
+                <a
+                  class="marketing-footer__link"
+                  href="https://github.com/kymrapro-del/ChatGPT-WebMCP"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >GitHub</a
+                >
+              </li>
+              <li><a class="marketing-footer__link" href="#free">MIT license</a></li>
+              <li><a class="marketing-footer__link" href="/licenses/NOTICE.txt">Credits</a></li>
+              <li><a class="marketing-footer__link" href="#tool-anatomy">WebMCP tools</a></li>
+            </ul>
+          </nav>
+          <div class="marketing-footer__note">
+            <p class="marketing-footer__heading">Standing order</p>
+            <p class="marketing-footer__lede">A standing instruction on this page, so the next conversation starts from the right place.</p>
+            <div class="marketing-footer__cta">
+              <p class="marketing-footer__cta-copy">Free · open source · local-first</p>
+              <button type="button" class="marketing-footer__submit" data-start-create>Create a task</button>
+            </div>
+          </div>
+        </div>
+        <div class="marketing-footer__bar">
+          <p>© Keydler 2026</p>
+          <div class="marketing-footer__social" aria-label="Source code">
+            <a
+              class="marketing-footer__link"
+              href="https://github.com/kymrapro-del/ChatGPT-WebMCP"
+              target="_blank"
+              rel="noopener noreferrer"
+              >GitHub</a
+            >
+          </div>
+          <p class="marketing-footer__place">MIT \\\\ WebMCP Challenge</p>
+          <p class="marketing-footer__credits">
+            Google Fonts · Material Design 3 · Google Icons
+          </p>
+        </div>
+        <p class="marketing-footer__wordmark" aria-hidden="true">Keydler</p>
+      </footer>
     </div>`
 }
 
@@ -668,7 +738,7 @@ function renderGoal(task: TaskState): string {
       ${
         task.goal
           ? escapeHtml(task.goal)
-          : '<span class="muted">nobody has said yet — an agent reads the next action but not the destination.</span>'
+          : '<span class="muted">nobody has said yet · an agent reads the next action but not the destination.</span>'
       }
       <button type="button" id="edit-goal" class="btn btn--quiet">
         ${task.goal ? 'Change what done means' : 'Say what done means'}
@@ -701,7 +771,7 @@ function renderNext(task: TaskState): string {
           : `<p class="hero__value">${
               task.next
                 ? escapeHtml(task.next)
-                : '<span class="muted">Not set yet — the agent will decide and record it.</span>'
+                : '<span class="muted">Not set yet · the agent will decide and record it.</span>'
             }</p>
              <div class="actions">
                <button type="button" id="edit-next" class="btn btn--quiet">Change it</button>
@@ -716,7 +786,7 @@ const MAX_ROWS = 8
 function remainder(total: number): string {
   const hidden = total - MAX_ROWS
   return hidden > 0
-    ? `<p class="muted">${hidden} older ${plural(hidden, 'entry', 'entries')} not shown — the export has them all.</p>`
+    ? `<p class="muted">${hidden} older ${plural(hidden, 'entry', 'entries')} not shown · the export has them all.</p>`
     : ''
 }
 
@@ -726,7 +796,7 @@ function disputeForm(step: Step): string {
         <div class="field">
           <label for="dispute-reason">Why this is wrong</label>
           <textarea id="dispute-reason" rows="3" autocomplete="off"
-                    placeholder="What actually happened — every later conversation reads this"></textarea>
+                    placeholder="What actually happened · every later conversation reads this"></textarea>
         </div>
         <div class="actions">
           <button type="submit" class="btn btn--danger">Mark it wrong</button>
@@ -855,7 +925,7 @@ function renderCompletedWork(task: TaskState): string {
                <button type="button" id="cancel-step" class="btn">Cancel</button>
              </div>
              <p class="muted">
-               Work you record yourself counts as verified by you — you were there.
+               Work you record yourself counts as verified by you · you were there.
              </p>
            </form>`
         : `<div class="actions">
@@ -890,7 +960,7 @@ function renderTrail(task: TaskState, id: string): string {
             (l) => `<li class="event">
               <span class="event__when">${escapeHtml(new Date(l.at).toLocaleString('en-GB'))}</span>
               <span class="event__what"><strong>${escapeHtml(l.who)}</strong> ${escapeHtml(l.what)}${
-                l.detail ? ` — ${escapeHtml(l.detail)}` : ''
+                l.detail ? ` · ${escapeHtml(l.detail)}` : ''
               }</span>
             </li>`,
           )
@@ -900,7 +970,7 @@ function renderTrail(task: TaskState, id: string): string {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 3 — DECISIONS                                                               */
+/* 3 · DECISIONS                                                               */
 /* -------------------------------------------------------------------------- */
 
 function renderDecisionRow(decision: Decision): string {
@@ -932,7 +1002,7 @@ function renderDecisions(task: TaskState): string {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 3 — RULES TO FOLLOW                                                         */
+/* 3 · RULES TO FOLLOW                                                         */
 /* -------------------------------------------------------------------------- */
 
 function renderRules(task: TaskState): string {
@@ -991,7 +1061,7 @@ function renderDontRetry(task: TaskState): string {
         <span class="chip chip--${r.source}">${r.source === 'human' ? 'You' : 'Agent'}</span>
         <span class="row__text">
           <strong>${escapeHtml(r.approach)}</strong>
-          <span class="muted"> — ${escapeHtml(r.reason)}</span>
+          <span class="muted"> · ${escapeHtml(r.reason)}</span>
         </span>
         <button type="button" class="btn btn--quiet" data-edit-rejection="${escapeHtml(r.id)}"
                 aria-label="Reword: ${escapeHtml(r.approach)}">Reword</button>
@@ -1016,7 +1086,7 @@ function renderDontRetry(task: TaskState): string {
          </form>
          <p class="muted">
            The reason is required. Without it, the next conversation avoids a word
-           instead of understanding a problem — and loses the part still worth keeping.
+           instead of understanding a problem · and loses the part still worth keeping.
          </p>`
       : ''
 
@@ -1041,7 +1111,7 @@ function renderMatch(match: Match, q: string): string {
       <span class="chip chip--evidence">${escapeHtml(match.label)}</span>
       <span class="row__text">
         <strong>${highlight(match.text, q)}</strong>
-        ${match.context ? `<span class="muted"> — ${highlight(match.context, q)}</span>` : ''}
+        ${match.context ? `<span class="muted"> · ${highlight(match.context, q)}</span>` : ''}
       </span>
     </li>`
 }
@@ -1085,7 +1155,7 @@ function renderSearchResults(task: TaskState | null): string {
         .slice(0, 40)
         .map((m) => renderMatch(m, q))
         .join('')}</ul>
-       ${here.length > 40 ? `<p class="muted">${here.length - 40} more not shown — narrow the search.</p>` : ''}`
+       ${here.length > 40 ? `<p class="muted">${here.length - 40} more not shown · narrow the search.</p>` : ''}`
     : '<p class="empty">Nothing in this task.</p>'
 
   const elsewhereBody = elsewhere.length
@@ -1097,7 +1167,7 @@ function renderSearchResults(task: TaskState | null): string {
             }</span>
             <span class="row__text">
               <strong>${highlight(t.title, q)}</strong>
-              ${t.next ? `<span class="muted"> — ${highlight(t.next, q)}</span>` : ''}
+              ${t.next ? `<span class="muted"> · ${highlight(t.next, q)}</span>` : ''}
             </span>
             <button type="button" class="btn" data-open="${escapeHtml(t.id)}">Open</button>
           </li>`,
@@ -1128,7 +1198,7 @@ function renderSwitcher(task: TaskState): string {
         }</span>
         <span class="row__text">
           <strong>${escapeHtml(t.title)}</strong>
-          <span class="muted"> — ${escapeHtml(t.next ?? 'no next action')}</span>
+          <span class="muted"> · ${escapeHtml(t.next ?? 'no next action')}</span>
           ${
             summariseNeeds(needsYou(t))
               ? `<span class="needs__badge">${escapeHtml(summariseNeeds(needsYou(t))!)}</span>`
@@ -1147,7 +1217,7 @@ function renderSwitcher(task: TaskState): string {
       <div class="switcher__body">
         ${rows ? `<ul class="rows">${rows}</ul>` : '<p class="empty">This is the only one.</p>'}
         <div class="actions">
-          <button type="button" id="new-task" class="btn">New task</button>
+          <button type="button" id="new-task" class="btn" data-new-task>New task</button>
           <button type="button" id="import" class="btn">Import a file</button>
           <button type="button" id="archive-current" class="btn btn--quiet">${
             task.archived ? 'Bring this task back' : 'Archive this task'
@@ -1160,7 +1230,7 @@ function renderSwitcher(task: TaskState): string {
               : ''
           }
           <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown"
-                 aria-label="Choose a watch log file to import" hidden />
+                 aria-label="Choose a Keydler file to import" hidden />
         </div>
       </div>
     </details>`
@@ -1175,9 +1245,9 @@ function renderOffer(): string {
   ].join(' · ')
 
   return `<section class="card card--away" aria-labelledby="offer-title">
-      <h2 id="offer-title" class="card__title">A shared watch log</h2>
+      <h2 id="offer-title" class="card__title">A shared Keydler</h2>
       <p class="muted">
-        Somebody sent you this link, and the whole log travelled inside it — no
+        Somebody sent you this link, and the whole log travelled inside it · no
         server saw it. Nothing has been written here yet.
       </p>
       <ul class="rows">
@@ -1185,7 +1255,7 @@ function renderOffer(): string {
           <span class="chip chip--human">shared</span>
           <span class="row__text">
             <strong>${escapeHtml(offered.title)}</strong>
-            <span class="muted"> — ${escapeHtml(counts)}</span>
+            <span class="muted"> · ${escapeHtml(counts)}</span>
           </span>
         </li>
       </ul>
@@ -1228,7 +1298,7 @@ function renderAgentLive(): string {
 
   return `<p class="agent-live" role="status">
       An agent called <code>${escapeHtml(call.tool)}</code> ${escapeHtml(when)}${
-        call.refused ? ' — and it was refused' : ''
+        call.refused ? ' · and it was refused' : ''
       }.
     </p>`
 }
@@ -1236,7 +1306,7 @@ function renderAgentLive(): string {
 function renderOffline(): string {
   if (online) return ''
   return `<p class="offline" role="status">
-      <strong>Offline.</strong> Everything here is on this device, so nothing stops —
+      <strong>Offline.</strong> Everything here is on this device, so nothing stops ·
       the page and this log both work without a network.
     </p>`
 }
@@ -1284,7 +1354,7 @@ function renderPermission(task: TaskState): string {
             <span class="chip chip--claimed">blocked</span>
             <span class="row__text">
               <strong>${escapeHtml(a.action)}</strong>
-              <span class="muted"> — ${escapeHtml(a.why)}</span>
+              <span class="muted"> · ${escapeHtml(a.why)}</span>
             </span>
             <button type="button" class="btn btn--primary" data-allow="${escapeHtml(a.id)}"
                     aria-label="Allow: ${escapeHtml(a.action)}">Allow</button>
@@ -1298,7 +1368,7 @@ function renderPermission(task: TaskState): string {
   return `<section class="card card--permission" aria-labelledby="permission-title">
       <h2 id="permission-title" class="card__title">Permission to act</h2>
       <p class="muted">
-        An agent is <strong>waiting on this right now</strong> — it stopped before doing
+        An agent is <strong>waiting on this right now</strong> · it stopped before doing
         something it cannot undo. If nobody answers, it is told plainly that silence is
         not approval.
       </p>
@@ -1320,7 +1390,7 @@ function renderAway(task: TaskState): string {
           <span class="chip chip--${l.who === 'You' ? 'human' : 'agent'}">${escapeHtml(l.who)}</span>
           <span class="row__text">
             <strong>${escapeHtml(l.what)}</strong>
-            ${l.detail ? `<span class="muted"> — ${escapeHtml(l.detail)}</span>` : ''}
+            ${l.detail ? `<span class="muted"> · ${escapeHtml(l.detail)}</span>` : ''}
           </span>
         </li>`,
     )
@@ -1358,7 +1428,7 @@ function renderWaiting(task: TaskState): string {
               <div class="field">
                 <label for="answer-text">Your answer</label>
                 <textarea id="answer-text" rows="3" autocomplete="off"
-                          placeholder="Answer in your own words — the next conversation reads this"></textarea>
+                          placeholder="Answer in your own words · the next conversation reads this"></textarea>
               </div>
               <div class="actions">
                 <button type="submit" class="btn btn--primary">Answer it</button>
@@ -1372,7 +1442,7 @@ function renderWaiting(task: TaskState): string {
             <span class="chip chip--agent">asked by ${q.source === 'human' ? 'you' : 'an agent'}</span>
             <span class="row__text">
               <strong>${escapeHtml(q.question)}</strong>
-              <span class="muted"> — ${escapeHtml(q.why)}</span>
+              <span class="muted"> · ${escapeHtml(q.why)}</span>
             </span>
             ${
               task.status === 'active'
@@ -1392,7 +1462,7 @@ function renderWaiting(task: TaskState): string {
           <span class="chip chip--human">answered</span>
           <span class="row__text">
             <strong>${escapeHtml(q.question)}</strong>
-            <span class="muted"> — ${escapeHtml(q.answer ?? '')}</span>
+            <span class="muted"> · ${escapeHtml(q.answer ?? '')}</span>
           </span>
         </li>`,
     )
@@ -1490,7 +1560,7 @@ function renderCredentials(task: TaskState): string {
           <span class="chip chip--human">${escapeHtml(secretKindLabel(secret.kind))}</span>
           <span class="row__text">
             <code>\${${escapeHtml(secret.name)}}</code>
-            <span class="muted"> — ${escapeHtml(secret.purpose)}</span>
+            <span class="muted"> · ${escapeHtml(secret.purpose)}</span>
           </span>
           <button type="button" class="btn btn--quiet" data-edit-secret="${escapeHtml(secret.id)}"
                   aria-label="Correct the name or purpose of ${escapeHtml(secret.name)}">Correct</button>
@@ -1553,7 +1623,7 @@ function renderCredentials(task: TaskState): string {
       ${form}
       <p class="muted">
         Sealed with a passphrase that is never stored, and never written to an
-        export. This is not an audited secret manager — and anything you reveal on
+        export. This is not an audited secret manager · and anything you reveal on
         screen can be read by an agent that drives this browser.
       </p>
     </section>`
@@ -1571,7 +1641,7 @@ function renderProposals(task: TaskState): string {
       id: r.id,
       kind: 'rejection' as const,
       label: 'Don’t retry',
-      text: `${r.approach} — ${r.reason}`,
+      text: `${r.approach} · ${r.reason}`,
     })),
   ]
 
@@ -1630,7 +1700,7 @@ function renderEvidence(task: TaskState): string {
   return `<section class="card" aria-labelledby="evidence-title">
       <h2 id="evidence-title" class="card__title">Evidence to review</h2>
       <p class="muted">
-        Read it before you decide — your click is what says a human checked this.
+        Read it before you decide · your click is what says a human checked this.
         Nothing an agent attaches counts as verified on its own, and “Wrong”
         marks it so every later conversation sees your reason.
       </p>
@@ -1640,7 +1710,7 @@ function renderEvidence(task: TaskState): string {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 7 — PERSISTENT AUDIT                                                        */
+/* 7 · PERSISTENT AUDIT                                                        */
 /* -------------------------------------------------------------------------- */
 
 const MAX_AUDIT_ROWS = 12
@@ -1691,14 +1761,14 @@ function renderAudit(task: TaskState): string {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 7 — ACTIVITY                                                                */
+/* 7 · ACTIVITY                                                                */
 /* -------------------------------------------------------------------------- */
 
 /**
  * Le dernier refus, dit en langage humain.
  *
  * Le témoin d'appels sait qu'un appel a été refusé, pas pourquoi. Le journal
- * d'audit, lui, porte le motif — et c'est le motif qui décide de la phrase. Un
+ * d'audit, lui, porte le motif · et c'est le motif qui décide de la phrase. Un
  * refus pour état périmé n'est pas une panne : c'est la supervision qui
  * fonctionne, et la page doit le dire ainsi.
  */
@@ -1729,7 +1799,7 @@ function readBeforeWrite(total: number, blindWrites: number, sawRead: boolean): 
     return `<p class="notice notice--stale" role="status">
         ${blindWrites} ${plural(blindWrites, 'write', 'writes')} arrived
         <strong>without reading this page first</strong>. That agent was working from
-        its own memory, not from this log — check what it recorded.
+        its own memory, not from this log · check what it recorded.
       </p>`
   }
 
@@ -1760,8 +1830,8 @@ function renderActivity(task: TaskState): string {
   return `<section class="card card--live" aria-labelledby="activity-title" data-live-calls>
       <div class="section-heading">
         <div>
-          <p class="section-heading__eyebrow">This page session only</p>
-          <h2 id="activity-title" class="card__title">Live tool calls</h2>
+          <p class="section-heading__eyebrow">Live tool calls · this page session only</p>
+          <h2 id="activity-title" class="card__title">Activity</h2>
         </div>
         <span class="count-badge">${total}</span>
       </div>
@@ -1786,7 +1856,7 @@ function renderHistory(task: TaskState): string {
           <strong>${line.who}</strong> ${escapeHtml(line.what)}${
             line.repeated > 1 ? ` <span class="muted">×${line.repeated}</span>` : ''
           }
-          ${line.detail ? `<span class="muted"> — ${escapeHtml(line.detail)}</span>` : ''}
+          ${line.detail ? `<span class="muted"> · ${escapeHtml(line.detail)}</span>` : ''}
         </span>
       </li>`,
     )
@@ -1802,7 +1872,7 @@ function renderHistory(task: TaskState): string {
   return `<section class="card" aria-labelledby="history-title">
       <h2 id="history-title" class="card__title">History</h2>
       <p class="muted">
-        Everything recorded on this task, newest first — including writes that
+        Everything recorded on this task, newest first · including writes that
         were refused. The oldest entries are dropped once the log gets long.
       </p>
       ${rows ? `<ol class="events">${rows}</ol>` : '<p class="empty">Nothing yet.</p>'}
@@ -1824,7 +1894,7 @@ function renderToolInspector(): string {
   }).join('')
 
   return `<details id="tools" class="technical">
-      <summary>What an agent reads — ${ALL_TOOLS.length} tools, verbatim</summary>
+      <summary>What an agent reads · ${ALL_TOOLS.length} tools, verbatim</summary>
       <div class="technical__body">
         <p class="muted">
           The registered tool objects themselves: the same descriptions and schemas
@@ -1841,7 +1911,7 @@ function renderTechnical(task: TaskState | null): string {
   const surface = availability.supported ? availability.surface : 'none'
   const webmcp =
     phase === 'registered' || phase === 'partial'
-      ? `<p><strong>WebMCP active</strong> — ${toolNames.length} ${plural(toolNames.length, 'tool', 'tools')} registered, read from <code>${surface}.modelContext</code>.</p>
+      ? `<p><strong>WebMCP active</strong> · ${toolNames.length} ${plural(toolNames.length, 'tool', 'tools')} registered, read from <code>${surface}.modelContext</code>.</p>
          ${error ? `<p>Some tools could not be registered: ${escapeHtml(error)}</p>` : ''}`
       : phase === 'failed'
         ? `<p><strong>Registration failed.</strong> ${escapeHtml(error ?? 'unknown reason')}</p>`
@@ -1859,7 +1929,7 @@ function renderTechnical(task: TaskState | null): string {
         <p class="mono">Observed through <code>getTools()</code>: ${
           observedTools === null ? '(not read)' : escapeHtml(observedTools.join(' · ')) || '(none)'
         }</p>
-        <p class="muted">Lifecycle: <strong>${lifecycle.mode}</strong> — ${escapeHtml(lifecycle.reason)}</p>
+        <p class="muted">Lifecycle: <strong>${lifecycle.mode}</strong> · ${escapeHtml(lifecycle.reason)}</p>
         <p class="muted">${escapeHtml(describeStorage(storage))}</p>
         ${
           storage.persisted === false
@@ -1893,14 +1963,25 @@ function renderTechnical(task: TaskState | null): string {
 /* -------------------------------------------------------------------------- */
 
 function renderWorkspaceNav(): string {
+  const cloud = getCloudState()
+  const storageLabel =
+    cloud.settings.cloudSyncEnabled && cloud.auth === 'signed-in' ? 'Cloud sync on' : 'Local-first'
+  const storageDetail =
+    cloud.sync === 'syncing'
+      ? 'Synchronizing now'
+      : cloud.sync === 'synced' && cloud.lastSyncedAt
+        ? `Synced ${new Date(cloud.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        : cloud.user
+          ? 'Cloud sync is optional'
+          : 'Stored on this device'
   return `<nav class="workspace-nav" aria-label="Workspace navigation">
       <div class="workspace-nav__heading">
         <span class="workspace-nav__label">Private workspace</span>
-        <strong>Kymra's memory</strong>
-        <span class="preview-flag">Design preview</span>
+        <strong>${escapeHtml(cloud.workspace?.name ?? 'Local memory')}</strong>
+        <span class="preview-flag">${cloud.user ? 'Authenticated' : 'Local session'}</span>
       </div>
-      <div class="workspace-nav__links">
-        <a class="workspace-nav__link workspace-nav__link--active" href="#workspace-overview">
+      <div class="workspace-nav__links" data-nav-links>
+        <a class="workspace-nav__link is-active" href="#workspace-overview">
           <span aria-hidden="true">01</span> Overview
         </a>
         <a class="workspace-nav__link" href="#memory-detail">
@@ -1921,7 +2002,7 @@ function renderWorkspaceNav(): string {
       </div>
       <div class="workspace-nav__storage">
         <span class="status-dot status-dot--local" aria-hidden="true"></span>
-        <span><strong>Local mode</strong><small>Cloud sync is not active</small></span>
+        <span><strong>${storageLabel}</strong><small>${storageDetail}</small></span>
       </div>
     </nav>`
 }
@@ -1932,25 +2013,26 @@ function renderWorkspaceOverview(task: TaskState): string {
   ).length
   const verifiedSteps = task.steps.filter((step) => step.confidence === 'human_verified').length
   const toolCount = getRegistrationState().toolNames.length
+  const activeMemories = allTasks.filter((candidate) => !candidate.archived).length || 1
 
   return `<section id="workspace-overview" class="workspace-overview prototype-section" aria-labelledby="workspace-title">
       <div class="workspace-overview__intro">
         <p class="section-heading__eyebrow">AI memory workspace</p>
-        <h1 id="workspace-title">One place for the context your agents must not lose.</h1>
+        <h2 id="workspace-title">One place for the context your agents must not lose.</h2>
         <p>
           Review durable memories, supervise what agents write, and control how future
           conversations pick the work back up.
         </p>
         <div class="actions">
           <a class="btn btn--primary" href="#memory-detail">Open current memory</a>
-          <button type="button" class="btn" data-preview-action="Creating another cloud memory is part of the prototype. The existing local task was not changed.">New memory</button>
+          <button type="button" id="new-memory" class="btn" data-new-task>New memory</button>
         </div>
       </div>
       <div class="workspace-metrics" aria-label="Current workspace facts">
         <article class="metric-card">
           <span>Active memories</span>
-          <strong>1</strong>
-          <small>Stored in this browser</small>
+          <strong>${activeMemories}</strong>
+          <small>${getCloudState().settings.cloudSyncEnabled ? 'Available across signed-in devices' : 'Stored in this browser'}</small>
         </article>
         <article class="metric-card">
           <span>Binding rules</span>
@@ -1986,38 +2068,64 @@ function renderWorkspaceOverview(task: TaskState): string {
     </section>`
 }
 
-const CONNECTOR_PREVIEWS = [
+const CONNECTOR_PROVIDERS: readonly {
+  provider: ConnectorProvider
+  mark: string
+  name: string
+  detail: string
+}[] = [
   {
-    mark: 'C',
-    name: 'ChatGPT',
-    detail: "Use this workspace from ChatGPT's WebMCP-enabled browser.",
+    provider: 'openai',
+    mark: 'O',
+    name: 'OpenAI API',
+    detail: 'Verify and store a user-supplied OpenAI API key in the encrypted server vault.',
   },
   {
+    provider: 'anthropic',
     mark: 'A',
-    name: 'Claude',
-    detail: 'Planned client verification through a compatible browser bridge.',
+    name: 'Anthropic API',
+    detail: 'Verify an Anthropic API key without exposing it again to the browser.',
   },
   {
+    provider: 'gemini',
     mark: 'G',
-    name: 'Gemini',
-    detail: 'Planned compatibility validation when the client exposes WebMCP.',
+    name: 'Gemini API',
+    detail: 'Verify a Gemini API key through the same scoped connector service.',
   },
 ] as const
 
 function renderConnectionsPreview(): string {
-  const cards = CONNECTOR_PREVIEWS.map(
-    (connector) => `<article class="connector-card">
+  const cloud = getCloudState()
+  const cards = CONNECTOR_PROVIDERS.map((connector) => {
+    const saved = cloud.connectors.find((item) => item.provider === connector.provider)
+    const connected = saved?.status === 'connected'
+    const state = connected
+      ? 'Connected'
+      : saved?.status === 'error'
+        ? 'Needs attention'
+        : 'Not connected'
+    const action = cloud.user
+      ? connectorEditing === connector.provider
+        ? `<form class="connector-form" data-connector-form="${connector.provider}" novalidate>
+            <div class="field"><label for="connector-key-${connector.provider}">API key</label><input id="connector-key-${connector.provider}" type="password" autocomplete="off" spellcheck="false" maxlength="512" /></div>
+            <div class="actions"><button type="submit" class="btn btn--primary">Verify & connect</button><button type="button" class="btn" data-cancel-connector>Cancel</button></div>
+          </form>`
+        : connected
+          ? `<button type="button" class="btn btn--danger" data-disconnect-provider="${connector.provider}">Disconnect</button>`
+          : `<button type="button" class="btn btn--tonal" data-connect-provider="${connector.provider}">Connect securely</button>`
+      : '<button type="button" class="btn btn--tonal" data-open-auth>Sign in to connect</button>'
+
+    return `<article class="connector-card">
         <div class="connector-card__top">
           <span class="connector-mark" aria-hidden="true">${connector.mark}</span>
-          <span class="connector-state">Not connected</span>
+          <span class="connector-state${connected ? ' connector-state--on' : ''}">${state}</span>
         </div>
         <h3>${connector.name}</h3>
         <p>${connector.detail}</p>
-        <button type="button" class="btn btn--tonal" data-preview-action="${connector.name} setup is a design preview. No provider account, API key or conversation was connected.">
-          Preview setup
-        </button>
-      </article>`,
-  ).join('')
+        ${saved?.error ? `<p class="connector-card__error" role="status">${escapeHtml(saved.error)}</p>` : ''}
+        ${action}
+      </article>`
+  }).join('')
 
   return `<section id="connections-preview" class="prototype-section prototype-section--connections" aria-labelledby="connections-title">
       <header class="prototype-heading">
@@ -2025,18 +2133,18 @@ function renderConnectionsPreview(): string {
           <p class="section-heading__eyebrow">Connection centre</p>
           <h2 id="connections-title">Bring the memory to every compatible agent.</h2>
         </div>
-        <span class="preview-flag">Sample interface</span>
+        <span class="preview-flag">Encrypted connections</span>
       </header>
       <p class="prototype-heading__copy">
-        These cards demonstrate the future connection flow. No provider identity is inferred,
-        no API key is stored, and no private conversation history is imported.
+        Provider keys are verified by a scoped server function, encrypted with AES-GCM and never
+        returned to this page. Connecting an API does not import private conversation history.
       </p>
       <div class="connector-grid">${cards}</div>
       <div class="connection-explainer">
         <span class="connection-explainer__mark" aria-hidden="true">W</span>
         <div>
           <strong>WebMCP is the shared connection layer</strong>
-          <p>The seven tools on this page expose the same supervised memory to any compatible agent, without rebuilding the product for each model.</p>
+          <p>The ${ALL_TOOLS.length} tools on this page expose the same supervised memory to any compatible WebMCP agent. Provider API connections are optional and separate.</p>
         </div>
         <a href="#memory-detail">Inspect tools</a>
       </div>
@@ -2044,32 +2152,33 @@ function renderConnectionsPreview(): string {
 }
 
 function renderSecurityPreview(task: TaskState): string {
+  const cloud = getCloudState()
   return `<section id="security-preview" class="prototype-section prototype-section--security" aria-labelledby="security-title">
       <header class="prototype-heading">
         <div>
           <p class="section-heading__eyebrow">Access & privacy</p>
           <h2 id="security-title">The security controls users will understand.</h2>
         </div>
-        <span class="preview-flag">Sample interface</span>
+        <span class="preview-flag">Enforced controls</span>
       </header>
       <div class="security-grid">
         <article class="security-card security-card--actual">
           <span class="security-card__state">Active now</span>
           <h3>Local private storage</h3>
-          <p>This task currently lives only in this browser profile. No cloud account is active.</p>
+          <p>IndexedDB keeps the offline copy on this device. Credentials are sealed with PBKDF2 and AES-GCM.</p>
           <span class="security-card__detail mono">Task ${escapeHtml(task.id)}</span>
         </article>
         <article class="security-card">
-          <span class="security-card__state">Planned</span>
+          <span class="security-card__state">${cloud.user ? 'Active now' : cloud.configured ? 'Available' : 'Not configured'}</span>
           <h3>Passwordless sign-in</h3>
-          <p>Magic-link authentication, private workspaces and explicit device sessions.</p>
-          <button type="button" class="btn btn--text" data-preview-action="Authentication is a design preview. No email was sent and no account was created.">Preview sign-in</button>
+          <p>Single-use PKCE links, rotating refresh tokens and a session that ends when this browser session closes.</p>
+          ${cloud.user ? `<span class="security-card__detail mono">${escapeHtml(cloud.user.email)}</span>` : '<button type="button" class="btn btn--text" data-open-auth>Sign in securely</button>'}
         </article>
         <article class="security-card">
-          <span class="security-card__state">Planned</span>
+          <span class="security-card__state">${cloud.user ? 'Active now' : 'Sign-in required'}</span>
           <h3>Connection permissions</h3>
-          <p>Review and revoke the agents or devices allowed to open each memory.</p>
-          <button type="button" class="btn btn--text" data-preview-action="Permission management is a design preview. The current local task remains unchanged.">Preview access</button>
+          <p>Postgres row-level security isolates each workspace. Owners, editors and viewers receive distinct server-enforced rights.</p>
+          <a class="btn btn--text" href="#connections-preview">Review connections</a>
         </article>
         <article class="security-card security-card--actual">
           <span class="security-card__state">Active now</span>
@@ -2082,34 +2191,42 @@ function renderSecurityPreview(task: TaskState): string {
 }
 
 function renderConfigurationPreview(): string {
+  const cloud = getCloudState()
+  const enabled = new Set(enabledToolNames())
+  const toolControls = ALL_TOOLS.map(
+    (tool) =>
+      `<label class="tool-permission"><input type="checkbox" data-tool-permission="${escapeHtml(tool.name)}" ${enabled.has(tool.name) ? 'checked' : ''} /><span><strong>${escapeHtml(tool.title ?? tool.name)}</strong><small>${tool.annotations?.readOnlyHint ? 'Read-only' : 'Can write supervised memory'}</small></span></label>`,
+  ).join('')
   return `<section id="settings-preview" class="prototype-section prototype-section--settings" aria-labelledby="settings-title">
       <header class="prototype-heading">
         <div>
           <p class="section-heading__eyebrow">Workspace configuration</p>
-          <h2 id="settings-title">Every important behavior, visible before it ships.</h2>
+          <h2 id="settings-title">Every important behavior, under your control.</h2>
         </div>
-        <span class="preview-flag">Sample interface</span>
+        <span class="preview-flag">Live configuration</span>
       </header>
-      <p class="prototype-heading__copy">These controls define the future product contract. They are interactive design previews and do not change storage, permissions or retention yet.</p>
+      <p class="prototype-heading__copy">These settings are real. Local mode never uploads a task; cloud mode requires an authenticated workspace and applies row-level access policies.</p>
       <div class="settings-preview">
         <article class="settings-group">
           <div><h3>Memory storage</h3><p>Choose where supervised memory is authoritative.</p></div>
-          <div class="segmented-preview" role="group" aria-label="Preview storage mode">
-            <button type="button" class="segmented-preview__active" data-preview-action="Local storage is already active. Cloud storage is not connected in this prototype.">Local</button>
-            <button type="button" data-preview-action="Cloud sync is a design preview. No remote database was contacted.">Cloud</button>
+          <div class="segmented-preview" role="group" aria-label="Storage mode">
+            <button type="button" data-storage-mode="local" class="${cloud.settings.cloudSyncEnabled ? '' : 'segmented-preview__active'}">Local</button>
+            <button type="button" data-storage-mode="cloud" class="${cloud.settings.cloudSyncEnabled ? 'segmented-preview__active' : ''}" ${cloud.user ? '' : 'disabled'}>Cloud sync</button>
           </div>
+          ${cloud.user ? `<small class="settings-group__status">${cloud.sync === 'synced' ? 'Last sync completed.' : cloud.sync === 'error' ? `Sync error: ${escapeHtml(cloud.error ?? 'unknown')}` : 'Signed-in workspace ready.'}</small>` : '<button type="button" class="btn btn--text" data-open-auth>Sign in to enable cloud sync</button>'}
         </article>
         <article class="settings-group">
           <div><h3>Agent write access</h3><p>Require version checks and keep human approval authoritative.</p></div>
-          <button type="button" class="switch-preview switch-preview--on" data-preview-action="Strict agent writes are already enforced by the real WebMCP engine." aria-label="Preview strict write setting"><span></span></button>
+          <button type="button" class="switch-preview switch-preview--on" aria-label="Strict agent writes are enforced" aria-pressed="true" disabled><span></span></button>
+          <small class="settings-group__status">Always enforced by the WebMCP write contract.</small>
         </article>
         <article class="settings-group">
-          <div><h3>Conversation retention</h3><p>Future cloud conversations would follow an explicit deletion window.</p></div>
-          <button type="button" class="select-preview" data-preview-action="Retention selection is a design preview. No conversation transcript is stored.">30 days <span aria-hidden="true">⌄</span></button>
+          <div><h3>Cloud audit retention</h3><p>Choose when server audit metadata is pruned. Task memory is never silently deleted.</p></div>
+          <label class="field field--compact" for="retention-days"><span>Retention window</span><select id="retention-days" class="select-preview" ${cloud.user ? '' : 'disabled'}>${[7, 30, 90, 365].map((days) => `<option value="${days}" ${cloud.settings.retentionDays === days ? 'selected' : ''}>${days} days</option>`).join('')}</select></label>
         </article>
-        <article class="settings-group">
-          <div><h3>Tool permissions</h3><p>Read tools can stay available while sensitive writes require supervision.</p></div>
-          <button type="button" class="btn btn--tonal" data-preview-action="Tool permission editing is a design preview. The seven current tool contracts were not changed.">Configure tools</button>
+        <article class="settings-group settings-group--tools">
+          <div><h3>Tool permissions</h3><p>Disable any WebMCP capability you do not want exposed in this browser.</p></div>
+          <div class="tool-permissions">${toolControls}</div>
         </article>
       </div>
     </section>`
@@ -2128,8 +2245,9 @@ function renderProductShell(task: TaskState): string {
         ${renderSecurityPreview(task)}
         ${renderConfigurationPreview()}
         <footer class="product-footer">
-          <span>Watch Log · WebMCP memory workspace</span>
-          <span>Prototype surfaces are labelled. Real memory data remains distinct.</span>
+          <span>Keydler · WebMCP memory workspace · © 2026</span>
+          <span>${getCloudState().user ? 'Authenticated workspace · RLS enforced' : 'Local-first · no account required'}</span>
+          <p class="product-footer__credits">Google Fonts · Material Design 3 · Google Icons</p>
         </footer>
       </div>
     </div>`
@@ -2151,8 +2269,7 @@ function renderDashboard(task: TaskState): string {
 
   return `<header class="page-head">
       <div class="eyebrow-row">
-        <p class="page-head__eyebrow">Watch Log</p>
-        ${renderThemeToggle()}
+        <p class="page-head__eyebrow">Keydler</p>
       </div>
       ${
         editingIs('title')
@@ -2211,11 +2328,12 @@ function renderDashboard(task: TaskState): string {
 function renderBody(): string {
   const { status, task, error, boundId } = store.getSnapshot()
   const appBar = renderAppBar(task)
+  const account = renderCloudAuthPanel()
 
-  if (status === 'loading') return `${appBar}<p class="muted loading-state">Loading…</p>`
+  if (status === 'loading') return `${appBar}${account}<p class="muted loading-state">Loading…</p>`
 
   if (status === 'error') {
-    return `${appBar}<div class="notice notice--error" role="alert">
+    return `${appBar}${account}<div class="notice notice--error" role="alert">
         <p>${escapeHtml(humanMessage(new Error(error ?? ''), 'Opening the task'))}</p>
       </div>${renderTechnical(null)}`
   }
@@ -2231,14 +2349,24 @@ function renderBody(): string {
              <p>The address points at <code>${escapeHtml(boundId ?? '')}</code>, which is not here.
                 No other task has been opened in its place.</p>
            </div>`
-    return `${appBar}${alarm}${renderLanding()}`
+    // `renderOffer()` vivait seulement dans `renderDashboard`, qui exige une
+    // tâche ouverte · précisément ce que « missing » n'a pas. Sans cet appel
+    // ici, un lien reçu pour une tâche absente de cet appareil n'affichait
+    // jamais la proposition de la prendre.
+    return `${alarm}${renderOffer()}${renderLanding()}`
   }
 
   // Le formulaire de création prend toute la place, même quand un cahier est
   // déjà ouvert : sans cela, « New task » ne montrait rien depuis un tableau
   // de bord, le formulaire ne vivant que dans l'écran d'accueil.
+  //
+  // La landing possède sa propre navigation M3.
+  // L'app bar applicative reste réservée au workspace pour éviter deux barres
+  // superposées sur la page publique.
   if (creating) return renderLanding()
-  return task ? `${appBar}${renderProductShell(task)}` : renderLanding()
+  return task
+    ? `<div class="silk-background" data-silk-background aria-hidden="true"></div>${appBar}${account}${renderProductShell(task)}`
+    : renderLanding()
 }
 
 function bindDrafts(): void {
@@ -2271,6 +2399,197 @@ function bindPreviewInteractions(): void {
   })
 }
 
+function cloudFailure(action: string, error: unknown): void {
+  humanError = humanMessage(error, action)
+  scheduleRender()
+}
+
+function bindCloudControls(): void {
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open-auth]')) {
+    button.addEventListener('click', () => {
+      previewAuthOpen = true
+      renderNow()
+      document.querySelector<HTMLInputElement>('#auth-email')?.focus()
+    })
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-close-auth]')) {
+    button.addEventListener('click', () => {
+      previewAuthOpen = false
+      renderNow()
+    })
+  }
+
+  document.querySelector<HTMLFormElement>('#cloud-auth')?.addEventListener('submit', (event) => {
+    event.preventDefault()
+    humanError = null
+    const email = drafts['auth-email']
+    void sendMagicLink(email).then(
+      () => {
+        previewAuthOpen = false
+        drafts['auth-email'] = ''
+        previewNotice = 'Secure sign-in link sent. Open it in this browser to finish signing in.'
+        scheduleRender()
+      },
+      (error: unknown) => cloudFailure('Sending the sign-in link', error),
+    )
+  })
+
+  document.querySelector('#sign-out')?.addEventListener('click', () => {
+    void signOut(false).then(
+      () => {
+        previewAuthOpen = false
+        previewNotice = 'This browser session is signed out. Local memories remain on this device.'
+        scheduleRender()
+      },
+      (error: unknown) => cloudFailure('Signing out', error),
+    )
+  })
+
+  document.querySelector('#sign-out-everywhere')?.addEventListener('click', () => {
+    void signOut(true).then(
+      () => {
+        previewAuthOpen = false
+        previewNotice = 'All refresh-token sessions for this account were revoked.'
+        scheduleRender()
+      },
+      (error: unknown) => cloudFailure('Revoking sessions', error),
+    )
+  })
+
+  document.querySelector('#sync-now')?.addEventListener('click', () => {
+    void syncNow().then(
+      () => scheduleRender(),
+      (error: unknown) => cloudFailure('Synchronizing the workspace', error),
+    )
+  })
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-connect-provider]')) {
+    button.addEventListener('click', () => {
+      connectorEditing = button.dataset.connectProvider as ConnectorProvider
+      humanError = null
+      renderNow()
+      document.querySelector<HTMLInputElement>(`#connector-key-${connectorEditing}`)?.focus()
+    })
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-cancel-connector]')) {
+    button.addEventListener('click', () => {
+      connectorEditing = null
+      renderNow()
+    })
+  }
+
+  for (const form of document.querySelectorAll<HTMLFormElement>('[data-connector-form]')) {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault()
+      const provider = form.dataset.connectorForm as ConnectorProvider
+      const cloud = getCloudState()
+      if (!cloud.workspace)
+        return cloudFailure('Connecting the provider', new Error('Sign in first.'))
+      const key = drafts[`connector-key-${provider}`]
+      void connectProvider(cloud.workspace.id, provider, key).then(
+        async () => {
+          drafts[`connector-key-${provider}`] = ''
+          connectorEditing = null
+          const connectors = await loadConnectors(cloud.workspace!.id)
+          updateCloudState({ connectors })
+          previewNotice = `${provider} was verified and connected. The key will not be shown again.`
+          scheduleRender()
+        },
+        (error: unknown) => cloudFailure(`Connecting ${provider}`, error),
+      )
+    })
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-disconnect-provider]')) {
+    button.addEventListener('click', () => {
+      const provider = button.dataset.disconnectProvider as ConnectorProvider
+      const cloud = getCloudState()
+      if (!cloud.workspace) return
+      void disconnectProvider(cloud.workspace.id, provider).then(
+        async () => {
+          const connectors = await loadConnectors(cloud.workspace!.id)
+          updateCloudState({ connectors })
+          previewNotice = `${provider} was disconnected and its encrypted credential was deleted.`
+          scheduleRender()
+        },
+        (error: unknown) => cloudFailure(`Disconnecting ${provider}`, error),
+      )
+    })
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-storage-mode]')) {
+    button.addEventListener('click', () => {
+      const cloud = getCloudState()
+      if (!cloud.workspace) {
+        previewAuthOpen = true
+        renderNow()
+        return
+      }
+      const enabled = button.dataset.storageMode === 'cloud'
+      const settings = { ...cloud.settings, cloudSyncEnabled: enabled }
+      void saveSettings(cloud.workspace.id, settings).then(
+        () => {
+          updateCloudState({ settings, sync: enabled ? 'idle' : 'local-only', error: null })
+          if (enabled) startCloudSync(cloud.workspace!.id)
+          else stopCloudSync()
+          previewNotice = enabled
+            ? 'Cloud sync enabled. Local memories remain available offline.'
+            : 'Cloud sync paused. New changes stay on this device.'
+          scheduleRender()
+        },
+        (error: unknown) => cloudFailure('Changing storage mode', error),
+      )
+    })
+  }
+
+  document
+    .querySelector<HTMLSelectElement>('#retention-days')
+    ?.addEventListener('change', (event) => {
+      const cloud = getCloudState()
+      if (!cloud.workspace) return
+      const value = Number((event.currentTarget as HTMLSelectElement).value)
+      if (value !== 7 && value !== 30 && value !== 90 && value !== 365) return
+      const retentionDays = value as 7 | 30 | 90 | 365
+      const settings = { ...cloud.settings, retentionDays }
+      void saveSettings(cloud.workspace.id, settings).then(
+        () => {
+          updateCloudState({ settings })
+          previewNotice = `Cloud audit retention set to ${value} days.`
+          scheduleRender()
+        },
+        (error: unknown) => cloudFailure('Changing retention', error),
+      )
+    })
+
+  for (const input of document.querySelectorAll<HTMLInputElement>('[data-tool-permission]')) {
+    input.addEventListener('change', () => {
+      const name = input.dataset.toolPermission
+      if (!name) return
+      setToolEnabled(name, input.checked)
+      const cloud = getCloudState()
+      const settings = { ...cloud.settings, enabledTools: enabledToolNames() }
+      updateCloudState({ settings })
+      if (cloud.workspace)
+        void saveSettings(cloud.workspace.id, settings).catch((error) =>
+          cloudFailure('Saving tool permissions', error),
+        )
+      void refreshToolRegistration()
+      if (
+        getRegistrationState().lifecycle.mode === 'static' &&
+        getRegistrationState().toolNames.includes(name) &&
+        !input.checked
+      ) {
+        previewNotice =
+          'Tool permissions saved. Reloading once so this browser can unregister the disabled tool.'
+        scheduleRender()
+        setTimeout(() => location.reload(), 150)
+      }
+    })
+  }
+}
+
 function bindCreation(): void {
   const carryBox = document.querySelector<HTMLInputElement>('#carry-rules')
   if (carryBox) {
@@ -2287,30 +2606,13 @@ function bindCreation(): void {
     document.body.scrollTop = 0
   }
 
-  document.querySelector('#open-preview-auth')?.addEventListener('click', () => {
-    previewAuthOpen = true
-    renderNow()
-    document.querySelector<HTMLInputElement>('#preview-email')?.focus()
-  })
-
-  document.querySelector('#close-preview-auth')?.addEventListener('click', () => {
-    previewAuthOpen = false
-    renderNow()
-    document.querySelector<HTMLButtonElement>('#open-preview-auth')?.focus()
-  })
-
-  document.querySelector<HTMLFormElement>('#preview-auth')?.addEventListener('submit', (event) => {
-    event.preventDefault()
-    previewAuthOpen = false
-    previewNotice =
-      'You entered the design-preview workspace. No account was created and no email was sent.'
-    void store.openPreparedTask(buildDemoTask()).then(resetWorkspaceViewport)
-  })
-
-  document.querySelector('#start-create')?.addEventListener('click', () => {
-    creating = true
-    renderNow()
-    document.querySelector<HTMLInputElement>('#new-title')?.focus()
+  document.querySelectorAll('[data-start-create]').forEach((button) => {
+    button.addEventListener('click', () => {
+      creating = true
+      renderNow()
+      document.querySelector<HTMLInputElement>('#new-title')?.focus()
+      document.querySelector('#create-task')?.scrollIntoView?.({ block: 'start' })
+    })
   })
 
   document.querySelector('#cancel-create')?.addEventListener('click', () => {
@@ -2378,7 +2680,7 @@ function bindCreation(): void {
       .then(resetWorkspaceViewport)
   }
 
-  for (const id of ['seed', 'seed-tour']) {
+  for (const id of ['seed', 'seed-tour', 'seed-footer']) {
     document.querySelector(`#${id}`)?.addEventListener('click', openPreparedDemo)
   }
 }
@@ -2799,13 +3101,15 @@ function bindSupervision(): void {
     })
   }
 
-  document.querySelector('#new-task')?.addEventListener('click', () => {
-    creating = true
-    clearNotice()
-    humanError = null
-    renderNow()
-    document.querySelector<HTMLInputElement>('#new-title')?.focus()
-  })
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-new-task]')) {
+    button.addEventListener('click', () => {
+      creating = true
+      clearNotice()
+      humanError = null
+      renderNow()
+      document.querySelector<HTMLInputElement>('#new-title')?.focus()
+    })
+  }
 
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-open]')) {
     button.addEventListener('click', () => {
@@ -2824,6 +3128,12 @@ function bindSupervision(): void {
     if (!file) return
     humanError = null
     clearNotice()
+    if (file.size > MAX_IMPORT_BYTES) {
+      humanError = humanMessage(new ImportTooLargeError(file.size), 'Importing the file')
+      fileField.value = ''
+      scheduleRender()
+      return
+    }
     void file
       .text()
       .then((text) => store.importTasks(parseExport(text)))
@@ -2912,7 +3222,7 @@ function bindSupervision(): void {
     const task = store.currentTask()
     if (!task) return
     humanError = null
-    // Pour les agents sans WebMCP — l'immense majorité aujourd'hui. Le texte
+    // Pour les agents sans WebMCP · l'immense majorité aujourd'hui. Le texte
     // est celui de resume_task, pas une variante rédigée pour l'écran.
     const body = [
       'Read this before doing anything. It is the shared log for the task we are',
@@ -2924,7 +3234,7 @@ function bindSupervision(): void {
     ].join('\n')
 
     void navigator.clipboard?.writeText(body).then(
-      () => showNotice('Copied. Paste it to any assistant — WebMCP or not.'),
+      () => showNotice('Copied. Paste it to any assistant · WebMCP or not.'),
       (error: unknown) => {
         humanError = humanMessage(error, 'Copying the log')
         scheduleRender()
@@ -3103,12 +3413,6 @@ function bindTechnical(): void {
     document.querySelector<HTMLButtonElement>('#toggle-history')?.focus()
   })
 
-  document.querySelector('#toggle-theme')?.addEventListener('click', () => {
-    applyTheme(nextTheme(readTheme()))
-    renderNow()
-    document.querySelector<HTMLButtonElement>('#toggle-theme')?.focus()
-  })
-
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
 
   document.querySelector('#export-one')?.addEventListener('click', () => {
@@ -3118,7 +3422,7 @@ function bindTechnical(): void {
 
   document.querySelector('#export-all')?.addEventListener('click', () => {
     void store.allTasks().then(
-      (tasks) => download('watch-logs.md', buildFullExport(tasks)),
+      (tasks) => download('nightorders.md', buildFullExport(tasks)),
       (error: unknown) => {
         humanError = humanMessage(error, 'Exporting the tasks')
         scheduleRender()
@@ -3254,7 +3558,7 @@ function render(): void {
 
   // N'importe quel élément identifié, pas seulement les champs : une écriture
   // d'agent redessine la page, et sans cela le focus retombait sur `body`
-  // depuis n'importe quel bouton — au clavier, on repart du début de la page.
+  // depuis n'importe quel bouton · au clavier, on repart du début de la page.
   const focusedId =
     !focused && active instanceof HTMLElement && active.id && root.contains(active)
       ? active.id
@@ -3266,13 +3570,12 @@ function render(): void {
   stopSilkBackground = null
   stopNavSpy?.()
   stopNavSpy = null
-  stopToolAnatomyVideo?.()
-  stopToolAnatomyVideo = null
 
   root.innerHTML = `<main id="content">${renderBody()}</main>`
 
   bindDrafts()
   bindPreviewInteractions()
+  bindCloudControls()
   bindCreation()
   bindSupervision()
   bindTechnical()
@@ -3280,14 +3583,6 @@ function render(): void {
   const silkHost = root.querySelector<HTMLElement>('[data-silk-background]')
   if (silkHost) {
     stopSilkBackground = mountSilkBackground(silkHost)
-  }
-
-  const toolAnatomyHost = root.querySelector<HTMLElement>('.tool-anatomy')
-  if (toolAnatomyHost) {
-    stopToolAnatomyVideo = mountScrollVideo(toolAnatomyHost, {
-      lightSrc: '/assets/brand/tool-anatomy-light.webm',
-      darkSrc: '/assets/brand/tool-anatomy-dark.webm',
-    })
   }
 
   const navLinksHost = root.querySelector<HTMLElement>('[data-nav-links]')
@@ -3499,6 +3794,7 @@ export function mount(target: HTMLElement): () => void {
   humanError = null
   previewNotice = null
   previewAuthOpen = false
+  connectorEditing = null
   lastAnnouncement = ''
   renderScheduled = false
   credentials = []
@@ -3532,6 +3828,7 @@ export function mount(target: HTMLElement): () => void {
     onRegistrationChange(scheduleRender),
     onCall(scheduleRender),
     store.subscribe(scheduleRender),
+    onCloudStateChange(scheduleRender),
   ]
 
   document.addEventListener('keydown', focusSearchOnSlash)

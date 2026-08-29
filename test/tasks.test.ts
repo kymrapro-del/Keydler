@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildDemoTask } from '../src/demo/seed'
 import { buildFullExport, buildTaskExport } from '../src/export/notebook'
-import { NothingToImportError, parseExport } from '../src/export/restore'
+import {
+  ImportTooLargeError,
+  MAX_IMPORT_BYTES,
+  NothingToImportError,
+  parseExport,
+} from '../src/export/restore'
 import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase } from './helpers'
@@ -140,6 +145,10 @@ describe('relecture d’un export', () => {
     expect(read).toHaveLength(1)
     expect(read[0].title).toBe(task.title)
   })
+
+  it('refuse de parser un export démesuré', () => {
+    expect(() => parseExport('x'.repeat(MAX_IMPORT_BYTES + 1))).toThrow(ImportTooLargeError)
+  })
 })
 
 describe('import', () => {
@@ -253,7 +262,7 @@ describe('import depuis l’écran', () => {
 
     const incoming = { ...buildDemoTask(), id: 'from-file', title: 'From a file' }
     const field = root.querySelector<HTMLInputElement>('#import-file')!
-    const file = new File([buildTaskExport(incoming)], 'watch-logs.md', { type: 'text/markdown' })
+    const file = new File([buildTaskExport(incoming)], 'nightorders.md', { type: 'text/markdown' })
     Object.defineProperty(field, 'files', { configurable: true, value: [file] })
     field.dispatchEvent(new Event('change', { bubbles: true }))
 
@@ -280,7 +289,23 @@ describe('import depuis l’écran', () => {
     field.dispatchEvent(new Event('change', { bubbles: true }))
 
     await waitFor(() => root.querySelector('[role="alert"]') !== null, 'refus')
-    expect(root.querySelector('[role="alert"]')!.textContent).toContain('No watch log found')
+    expect(root.querySelector('[role="alert"]')!.textContent).toContain('No nightorder found')
+  })
+
+  it('refuse un gros fichier avant de le lire en mémoire', async () => {
+    await store.createAndOpenTask('Existing', 'Continue')
+    await waitFor(() => root.querySelector('#import-file') !== null, 'champ de fichier')
+
+    const field = root.querySelector<HTMLInputElement>('#import-file')!
+    const file = new File(['small'], 'oversized.md', { type: 'text/markdown' })
+    Object.defineProperty(file, 'size', { configurable: true, value: MAX_IMPORT_BYTES + 1 })
+    const read = vi.spyOn(file, 'text')
+    Object.defineProperty(field, 'files', { configurable: true, value: [file] })
+    field.dispatchEvent(new Event('change', { bubbles: true }))
+
+    await waitFor(() => root.querySelector('[role="alert"]') !== null, 'refus de taille')
+    expect(root.querySelector('[role="alert"]')!.textContent).toContain('Imports are limited')
+    expect(read).not.toHaveBeenCalled()
   })
 })
 

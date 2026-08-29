@@ -9,9 +9,8 @@
  * scène n'aurait rien ajouté d'autre que son propre poids.
  *
  * La couleur n'est pas un hex choisi une fois : elle est lue depuis
- * `--md-sys-color-primary` au montage, et relue si le thème système change —
- * c'est ce qui garde le fond « toujours dans les verts du site » sans dupliquer
- * la couleur de marque nulle part.
+ * `--md-sys-color-primary` au montage. Le produit n'a qu'un thème sombre,
+ * donc cette lecture n'a plus à suivre un changement de `prefers-color-scheme`.
  *
  * La boucle s'arrête aussi hors du viewport (voir `watchVisibility`) : un
  * shader plein écran qui tourne pendant qu'on lit le tableau de bord plus bas
@@ -219,7 +218,6 @@ export function mountSilkBackground(
   resize()
 
   const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-  const colorSchemeQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
   function draw(time: number): void {
     if (Number.isFinite(time)) gl.uniform1f(uTime, time)
@@ -250,12 +248,6 @@ export function mountSilkBackground(
   draw(0)
   if (canAnimate) raf = requestAnimationFrame(frame)
 
-  const onColorSchemeChange = () => applyColor()
-  colorSchemeQuery.addEventListener('change', onColorSchemeChange)
-
-  const themeObserver = new MutationObserver(applyColor)
-  themeObserver.observe(document.documentElement, { attributeFilter: ['data-theme'] })
-
   const onResize = () => {
     resize()
     if (!canAnimate) draw(clock)
@@ -265,8 +257,6 @@ export function mountSilkBackground(
   return () => {
     if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
     window.removeEventListener('resize', onResize)
-    colorSchemeQuery.removeEventListener('change', onColorSchemeChange)
-    themeObserver.disconnect()
     stopWatchingVisibility()
     if (canvas.parentElement) canvas.parentElement.removeChild(canvas)
   }

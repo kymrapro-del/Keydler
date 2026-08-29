@@ -1,10 +1,12 @@
 import {
   CONFIDENCE_ORDER,
   EVIDENCE_KINDS,
+  MAX_AUDIT_ENTRIES,
   MAX_MUTATION_RECORDS,
   SCHEMA_VERSION,
 } from '../domain/types'
 import type { Confidence, EvidenceKind, Standing, TaskState } from '../domain/types'
+import { MAX_EVIDENCE_LENGTH, MAX_FIELD_LENGTH } from '../domain/validate'
 
 export type StoredTask = TaskState & { schemaVersion?: number }
 
@@ -13,7 +15,7 @@ export class FutureSchemaError extends Error {
     super(
       [
         'STORAGE FROM A NEWER VERSION',
-        `This watch log was written with schema v${found}, but this build only understands v${SCHEMA_VERSION}.`,
+        `This nightorder was written with schema v${found}, but this build only understands v${SCHEMA_VERSION}.`,
         'Reading it could silently drop information. Update the page instead.',
       ].join('\n'),
     )
@@ -21,18 +23,32 @@ export class FutureSchemaError extends Error {
   }
 }
 
-const asArray = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
+/**
+ * Imported or manually corrupted IndexedDB values must not turn one task into
+ * an unbounded allocation. This is intentionally generous compared with the
+ * visible dashboard, while still giving every collection a finite ceiling.
+ */
+export const MAX_NORMALIZED_ITEMS = 1_000
+export const MAX_NORMALIZED_ID_LENGTH = 200
+export const MAX_NORMALIZED_RECORD_TEXT = 32_000
 
-const asObjects = (v: unknown): Record<string, unknown>[] =>
-  asArray<unknown>(v).filter(
+const asArray = <T>(v: unknown, max = MAX_NORMALIZED_ITEMS): T[] =>
+  Array.isArray(v) ? (v as T[]).slice(-max) : []
+
+const asObjects = (v: unknown, max = MAX_NORMALIZED_ITEMS): Record<string, unknown>[] =>
+  asArray<unknown>(v, max).filter(
     (e): e is Record<string, unknown> => typeof e === 'object' && e !== null,
   )
 
-const asId = (v: unknown): string => (typeof v === 'string' ? v : '')
+const bounded = (value: string, max: number): string => value.slice(0, max)
+const asId = (v: unknown): string =>
+  typeof v === 'string' ? bounded(v, MAX_NORMALIZED_ID_LENGTH) : ''
 const asNumber = (v: unknown, fallback: number): number =>
   typeof v === 'number' && Number.isFinite(v) ? v : fallback
-const asString = (v: unknown, fallback: string): string => (typeof v === 'string' ? v : fallback)
-const asNullableString = (v: unknown): string | null => (typeof v === 'string' ? v : null)
+const asString = (v: unknown, fallback: string, max = MAX_FIELD_LENGTH): string =>
+  typeof v === 'string' ? bounded(v, max) : fallback
+const asNullableString = (v: unknown, max = MAX_FIELD_LENGTH): string | null =>
+  typeof v === 'string' ? bounded(v, max) : null
 
 function normalizeConfidence(v: unknown): Confidence {
   if (v === 'machine_verified') return 'evidence'
@@ -50,7 +66,7 @@ function normalizeEvidence(v: unknown): TaskState['steps'][number]['evidence'] {
   if (!EVIDENCE_KINDS.includes(e.kind as EvidenceKind)) return null
   return {
     kind: e.kind as EvidenceKind,
-    content: asString(e.content, ''),
+    content: asString(e.content, '', MAX_EVIDENCE_LENGTH),
     verifiedAt: typeof e.verifiedAt === 'number' ? e.verifiedAt : null,
   }
 }
@@ -58,7 +74,7 @@ function normalizeEvidence(v: unknown): TaskState['steps'][number]['evidence'] {
 function normalizeDispute(v: unknown): TaskState['steps'][number]['dispute'] {
   if (!v || typeof v !== 'object') return null
   const d = v as Record<string, unknown>
-  const reason = asString(d.reason, '')
+  const reason = asString(d.reason, '', 400)
   if (reason === '') return null
   return { reason, at: asNumber(d.at, 0) }
 }
@@ -73,13 +89,13 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
 
   return {
     id: asId(stored.id),
-    title: asString(stored.title, 'Untitled task'),
+    title: asString(stored.title, 'Untitled task', 200),
     version: Math.max(1, Math.trunc(asNumber(stored.version, 1))),
-    next: asNullableString(stored.next),
-    goal: asNullableString(stored.goal),
+    next: asNullableString(stored.next, 400),
+    goal: asNullableString(stored.goal, 400),
     status: stored.status === 'completed' ? 'completed' : 'active',
     archived: stored.archived === true,
-    summary: asNullableString(stored.summary),
+    summary: asNullableString(stored.summary, 4_000),
 
     constraints: asObjects(stored.constraints).map((c) => {
       const source = c.source === 'human' ? ('human' as const) : ('agent' as const)
@@ -149,7 +165,7 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       decidedAt: typeof a.decidedAt === 'number' ? a.decidedAt : null,
     })),
 
-    audit: asObjects(stored.audit).map((a) => ({
+    audit: asObjects(stored.audit, MAX_AUDIT_ENTRIES).map((a) => ({
       id: asId(a.id),
       operation: asString(a.operation, 'unknown'),
       actor: a.actor === 'human' ? 'human' : 'agent',
@@ -157,20 +173,24 @@ export function normalizeTask(stored: StoredTask | undefined): TaskState | undef
       versionAfter: asNumber(a.versionAfter, 0),
       basedOnVersion: typeof a.basedOnVersion === 'number' ? a.basedOnVersion : null,
       outcome: a.outcome === 'refused' ? 'refused' : 'applied',
-      detail: asString(a.detail, ''),
-      ...(typeof a.targetId === 'string' && a.targetId !== '' ? { targetId: a.targetId } : {}),
-      ...(typeof a.previous === 'string' ? { previous: a.previous } : {}),
+      detail: asString(a.detail, '', MAX_EVIDENCE_LENGTH),
+      ...(typeof a.targetId === 'string' && a.targetId !== ''
+        ? { targetId: asId(a.targetId) }
+        : {}),
+      ...(typeof a.previous === 'string'
+        ? { previous: bounded(a.previous, MAX_NORMALIZED_RECORD_TEXT) }
+        : {}),
       ...(typeof a.repeated === 'number' ? { repeated: a.repeated } : {}),
       at: asNumber(a.at, now),
     })),
 
-    mutations: asObjects(stored.mutations)
+    mutations: asObjects(stored.mutations, MAX_MUTATION_RECORDS)
       .map((m) => ({
         id: asId(m.id),
         operation: asString(m.operation, 'unknown'),
         version: asNumber(m.version, 1),
-        fingerprint: asString(m.fingerprint, ''),
-        result: asString(m.result, ''),
+        fingerprint: asString(m.fingerprint, '', MAX_NORMALIZED_RECORD_TEXT),
+        result: asString(m.result, '', MAX_NORMALIZED_RECORD_TEXT),
         at: asNumber(m.at, now),
       }))
       .filter((m) => m.id !== '' && m.fingerprint !== '')

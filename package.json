@@ -1,10 +1,10 @@
 {
-  "name": "cahier-de-quart",
+  "name": "nightorder",
   "private": true,
   "version": "0.0.1",
   "type": "module",
   "license": "MIT",
-  "description": "Cahier de quart — mémoire de tâche persistante pour agents WebMCP",
+  "description": "Keydler \\\\ persistent task memory for WebMCP agents",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@fontsource-variable/google-sans-flex": "^5.3.1",
+    "@supabase/supabase-js": "^2.112.4",
     "idb": "^8.0.3"
   }
 }

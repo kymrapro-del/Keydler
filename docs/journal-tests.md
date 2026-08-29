@@ -347,7 +347,7 @@ historique de la tâche. Consigne exacte et unique : `Continue this task.`
 **Environnement observé.** Claude Desktop 2.1.234, réponse finale par Opus 4.8.
 L'interface a d'abord affiché un blocage de classification « cyber », puis a
 basculé vers Opus 4.8. La session contenait une mémoire générale mentionnant
-d'autres projets, mais aucune information sur la tâche Watch Log.
+d'autres projets, mais aucune information sur la tâche Nightorder.
 
 La trace de session confirme que les outils du pont étaient disponibles au
 modèle, notamment `mcp__chrome-watch-log__list_pages`,
@@ -379,7 +379,7 @@ intègre WebMCP directement, sans cette couche CDP intermédiaire.
 comme déterministe. Un nouvel essai doit conserver la même consigne, vérifier
 la connexion du pont avant envoi et relever le premier outil appelé. Si le
 choix reste instable, la vidéo doit montrer l'échec ou demander explicitement à
-l'agent de consulter le Watch Log.
+l'agent de consulter Nightorder.
 
 ### Suite de la même session après répétition de la consigne : **INVALIDE POUR R1**
 
@@ -423,7 +423,7 @@ n'apporte aucun contexte sur la tâche. Consigne exacte :
 
 1. deux recherches d'outils fichiers, sans résultat utilisable ;
 2. recherche de `list_pages`, puis appel de `list_pages` ;
-3. lecture d'un instantané de la page Watch Log ;
+3. lecture d'un instantané de la page Nightorder ;
 4. découverte de `list_webmcp_tools` et `execute_webmcp_tool` ;
 5. appel de `resume_task` **avant toute production ou mutation**.
 
@@ -478,7 +478,7 @@ commande locale `/effort max`.
 
 1. deux recherches d'outils fichiers, sans résultat utilisable ;
 2. découverte et appel de `list_pages` ;
-3. restitution de la page sélectionnée, intitulée « Watch Log — a shared
+3. restitution de la page sélectionnée, intitulée « Nightorder — a shared
    memory for you and your AI », à l'URL de la tâche ;
 4. arrêt de la découverte : aucun `list_webmcp_tools`, aucun `resume_task` ;
 5. demande à l'humain de préciser le travail à effectuer.
@@ -498,7 +498,7 @@ locale et le message utilisateur envoyé vingt secondes plus tard.
 | R5   | travail non accompli inventé                      | **non**  |
 
 **Conclusion.** **ÉCHEC de sélection spontanée malgré la découverte de la
-page.** L'agent savait qu'un Watch Log était ouvert et que seuls les outils du
+page.** L'agent savait qu'un Nightorder était ouvert et que seuls les outils du
 pont navigateur étaient disponibles, mais il n'a pas cherché les outils WebMCP
 de la page.
 
@@ -805,7 +805,7 @@ que les navigateurs n'envoient jamais au serveur.
   **2 833 caractères**, marqueur `z` et signature gzip présents — la compression
   passe bien par `CompressionStream`, sans aucune dépendance.
 - Cahier supprimé de l'appareil, puis ouverture du lien : la carte **A shared
-  watch log** annonce le titre, `4 steps · 3 rules · v15`, et dit que prendre
+  Nightorder** annonce le titre, `4 steps · 3 rules · v15`, et dit que prendre
   le cahier en fait **une copie qui ne restera pas en phase**.
 - Rien n'est écrit avant le clic. « Take a copy » importe et ouvre le cahier ;
   la charge disparaît de l'adresse pour qu'un rechargement ne repropose pas.

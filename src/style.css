@@ -1,5 +1,5 @@
 /*
- * Watch Log — couche de composants Material 3.
+ * Keydler — couche de composants Material 3.
  *
  * Les couleurs, types, formes, élévations et mouvements consomment directement
  * les rôles générés dans tokens.css. Les quelques dimensions déclarées ici
@@ -144,18 +144,19 @@ pre {
 .top-app-bar {
   position: sticky;
   z-index: 10;
-  top: 0;
-  min-height: 64px;
-  margin: 0;
-  padding: 0 var(--sp-5);
+  top: var(--sp-3);
+  width: min(calc(100% - 48px), 1440px);
+  min-height: 56px;
+  margin: var(--sp-3) auto 0;
+  padding: 0 var(--sp-4);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
   border: 0;
-  border-radius: var(--md-sys-shape-corner-none);
-  background: var(--md-sys-color-surface);
-  box-shadow: var(--md-sys-elevation-level0);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-lowest);
+  box-shadow: var(--md-sys-elevation-level2);
 }
 
 .top-app-bar__brand,
@@ -166,28 +167,30 @@ pre {
 }
 
 .top-app-bar__brand {
-  font-family: var(--md-sys-typescale-title-medium-font);
+  font-family: var(--md-ref-typeface-brand);
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: var(--md-sys-typescale-title-medium-weight);
+  font-weight: 600;
   letter-spacing: var(--md-sys-typescale-title-medium-tracking);
+}
+
+.brand-name {
+  color: #c5ed78;
 }
 
 .brand-mark {
   width: 40px;
   height: 40px;
-  display: grid;
-  place-items: center;
+  flex: none;
+  display: block;
+  object-fit: contain;
   border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
-  font-family: var(--md-sys-typescale-title-large-font);
-  font-size: var(--md-sys-typescale-title-large-size);
-  font-weight: 700;
+  mix-blend-mode: screen;
 }
 
 .status-pill,
 .version-pill,
-.count-badge {
+.count-badge,
+.preview-flag {
   min-height: 32px;
   padding: var(--sp-1) var(--sp-3);
   display: inline-flex;
@@ -244,6 +247,18 @@ pre {
 .status-pill--pending {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
+}
+
+/*
+ * `.preview-flag` marque un morceau d'écran comme une maquette — la landing,
+ * l'espace de travail et les aperçus « Connections/Security/Settings »
+ * partagent tous ce même repère, d'où sa place ici plutôt que dans une seule
+ * des feuilles par page. La teinte tertiary la distingue des pastilles
+ * d'état (verified/pending) qui parlent, elles, de la mémoire réelle.
+ */
+.preview-flag {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
 }
 
 .status-dot {
@@ -316,20 +331,6 @@ pre {
   gap: var(--sp-3);
 }
 
-.btn--quiet {
-  padding: var(--sp-1) var(--sp-2);
-  min-height: 0;
-  border-color: transparent;
-  background: transparent;
-  color: var(--c-text-muted);
-  font-size: 0.8125rem;
-}
-
-.btn--quiet:hover {
-  background: var(--c-surface);
-  color: var(--c-text);
-}
-
 .page-head__meta {
   margin: 0;
   color: var(--md-sys-color-on-surface-variant);
@@ -355,7 +356,7 @@ pre {
 
 .dashboard-secondary {
   position: sticky;
-  top: 92px;
+  top: 80px;
 }
 
 .dashboard-operations {
@@ -378,21 +379,21 @@ pre {
 /* Cards and dominant next action -----------------------------------------
  *
  * Hiérarchie par NIVEAU DE SURFACE, pas par la couleur : le fond de page est
- * `surface`, une carte est `surface-container-low`, un élément imbriqué dans
+ * `surface`, une carte est `surface-container`, un élément imbriqué dans
  * une carte reste transparent (voir « Rows, steps and decisions » plus bas).
- * `primary-container` est réservé au bloc « Next » ci-dessous : c'est la
- * seule chose que l'écran a le droit de faire crier avant tout le reste.
+ * `--brand-gradient` est réservé au bloc « Next » et à l'overview : ce sont
+ * les seules surfaces que l'écran a le droit de faire crier avant le reste.
  */
 
 .card,
 .technical {
-  border: 0;
-  border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-surface-container-low);
-  /* Base du state layer pour tout élément transparent imbriqué ici — les
-     <summary> de repli, plus les boutons depuis que .btn a son propre
-     dégradé en relief et ne consomme plus --state-layer-base. */
-  --state-layer-base: var(--md-sys-color-surface-container-low);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 80%, transparent);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 5%),
+    var(--md-sys-elevation-level1);
+  --state-layer-base: var(--md-sys-color-surface-container);
 }
 
 .card {
@@ -414,13 +415,39 @@ pre {
 }
 
 .hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   padding: var(--sp-5);
   border: 0;
-  border-radius: var(--md-sys-shape-corner-large);
-  border-color: transparent;
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  --state-layer-base: var(--md-sys-color-primary-container);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--brand-gradient);
+  color: #fff;
+  --state-layer-base: var(--md-sys-color-scrim);
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    137deg,
+    color-mix(in srgb, var(--md-sys-color-scrim) 42%, transparent) 0%,
+    color-mix(in srgb, var(--md-sys-color-scrim) 24%, transparent) 48%,
+    transparent 86%
+  );
+}
+
+.hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero .hero__label {
+  color: rgb(255 255 255 / 88%);
 }
 
 /* .hero__label partage sa règle avec .landing__eyebrow, .page-head__eyebrow
@@ -438,6 +465,15 @@ pre {
 .hero--done {
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
+  --state-layer-base: var(--md-sys-color-primary-container);
+}
+
+.hero--done::before {
+  display: none;
+}
+
+.hero--done .hero__label {
+  color: inherit;
 }
 
 .hero--done .hero__value {
@@ -445,6 +481,41 @@ pre {
   font-family: var(--md-sys-typescale-title-medium-font);
   font-size: var(--md-sys-typescale-title-medium-size);
   line-height: var(--md-sys-typescale-title-medium-line-height);
+}
+
+.hero:not(.hero--done) .muted {
+  color: rgb(255 255 255 / 82%);
+}
+
+.hero:not(.hero--done) .field label {
+  color: rgb(255 255 255 / 82%);
+}
+
+.hero:not(.hero--done) .field:focus-within label {
+  color: #fff;
+}
+
+.hero:not(.hero--done) .field input,
+.hero:not(.hero--done) .field textarea {
+  background: rgb(12 15 9 / 42%);
+  color: #fff;
+  box-shadow: inset 0 -1px 0 0 rgb(255 255 255 / 35%);
+}
+
+.hero__goal {
+  margin: var(--sp-3) 0 0;
+  padding-top: var(--sp-3);
+  border-top: 1px solid rgb(255 255 255 / 22%);
+  font-size: var(--md-sys-typescale-body-large-size);
+}
+
+.hero--done .hero__goal {
+  border-top-color: color-mix(in srgb, currentColor 28%, transparent);
+}
+
+.hero--done .muted {
+  color: inherit;
+  opacity: 0.86;
 }
 
 .section-heading {
@@ -473,12 +544,12 @@ pre {
   min-width: 32px;
   justify-content: center;
   padding-inline: var(--sp-2);
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 /*
- * card--guide, card--proposals et card--live n'ont plus de fond distinct :
+ * .card--guide, .card--proposals et .card--live n'ont plus de fond distinct :
  * ce sont des cartes comme les autres (surface-container-low, voir plus
  * haut). Rien dans ce produit ne justifie de les faire crier plus fort que
  * le reste de la colonne — seul le bloc « Next » a ce droit.
@@ -507,10 +578,10 @@ pre {
   display: flex;
   align-items: flex-start;
   gap: var(--sp-3);
-  border: 1px solid var(--md-sys-color-secondary);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-primary) 40%, transparent);
   border-radius: var(--md-sys-shape-corner-large);
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .demo-notice__icon {
@@ -520,8 +591,8 @@ pre {
   display: grid;
   place-items: center;
   border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-secondary);
-  color: var(--md-sys-color-on-secondary);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   font-weight: 700;
 }
 
@@ -830,6 +901,48 @@ pre {
   --btn-fg: var(--md-sys-color-on-error-container);
 }
 
+.btn.btn--quiet {
+  --btn-base: var(--md-sys-color-surface);
+  --btn-fg: var(--md-sys-color-primary);
+  min-height: 32px;
+  min-width: auto;
+  padding: var(--sp-1) var(--sp-3);
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--md-sys-typescale-label-medium-size);
+}
+
+.btn.btn--quiet:hover,
+.btn.btn--quiet:focus-visible {
+  filter: none;
+  box-shadow: none;
+  background: color-mix(
+    in srgb,
+    var(--md-sys-color-primary) calc(var(--md-sys-state-hover-state-layer-opacity) * 100%),
+    var(--state-layer-base)
+  );
+}
+
+.btn.btn--quiet:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.btn.btn--quiet[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 16%, var(--state-layer-base));
+  color: var(--md-sys-color-primary);
+}
+
+.hero:not(.hero--done) .btn.btn--quiet {
+  color: rgb(255 255 255 / 82%);
+}
+
+.hero:not(.hero--done) .btn.btn--quiet:hover,
+.hero:not(.hero--done) .btn.btn--quiet:focus-visible {
+  background: rgb(255 255 255 / 12%);
+  color: #fff;
+}
+
 .form {
   margin-top: var(--sp-3);
   display: flex;
@@ -873,7 +986,8 @@ pre {
  * contenu : la largeur du bord reste 2dp en permanence, et c'est un
  * box-shadow interne de 1dp qui simule l'épaisseur au repos.
  */
-.field input {
+.field input,
+.field textarea {
   min-height: 56px;
   padding: var(--sp-2) var(--sp-4);
   border: 0;
@@ -890,13 +1004,21 @@ pre {
     background-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-easing-standard);
 }
 
-.field input:hover {
+.field textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.field input:hover,
+.field textarea:hover {
   background: var(--md-sys-color-surface-container-high);
 }
 
-.field input:focus {
+.field input:focus,
+.field textarea:focus {
   border-bottom-color: var(--md-sys-color-primary);
   box-shadow: none;
+  outline: none;
 }
 
 /* Review ------------------------------------------------------------------ */
@@ -1141,14 +1263,7 @@ pre {
 }
 
 @media (max-width: 560px) {
-  body {
-    padding: var(--sp-2) var(--sp-3) var(--sp-6);
-  }
-
   .top-app-bar {
-    position: static;
-    margin-bottom: var(--sp-5);
-    align-items: flex-start;
     border-radius: var(--md-sys-shape-corner-large);
   }
 
@@ -1245,24 +1360,30 @@ pre {
 
 .switcher > summary {
   display: inline-block;
-  padding: var(--sp-1) var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
   cursor: pointer;
-  font-size: 0.8125rem;
-  color: var(--c-text-muted);
-  border-radius: var(--radius-sm);
+  color: var(--md-sys-color-primary);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  border-radius: var(--md-sys-shape-corner-full);
 }
 
 .switcher > summary:hover {
-  color: var(--c-text);
-  background: var(--c-surface);
+  background: color-mix(
+    in srgb,
+    var(--md-sys-color-primary) calc(var(--md-sys-state-hover-state-layer-opacity) * 100%),
+    var(--state-layer-base)
+  );
 }
 
 .switcher__body {
   margin-top: var(--sp-2);
-  padding: var(--sp-3);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-md);
-  background: var(--c-bg);
+  padding: var(--sp-4);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 80%, transparent);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container);
+  --state-layer-base: var(--md-sys-color-surface-container);
 }
 
 .handoff {
@@ -1274,8 +1395,8 @@ pre {
 }
 
 .notice--ok {
-  background: var(--c-ok-bg);
-  color: var(--c-ok-text);
+  background: var(--md-custom-color-verified-container);
+  color: var(--md-custom-color-on-verified-container);
 }
 
 .search {
@@ -1288,23 +1409,32 @@ pre {
 .search input {
   flex: 1 1 auto;
   min-width: 0;
-  min-height: 40px;
-  padding: var(--sp-2) var(--sp-3);
-  background: var(--c-bg);
-  color: var(--c-text);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-sm);
+  min-height: 56px;
+  padding: var(--sp-2) var(--sp-4);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--md-sys-shape-corner-extra-small) var(--md-sys-shape-corner-extra-small) 0 0;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
   font: inherit;
+  caret-color: var(--md-sys-color-primary);
+  box-shadow: inset 0 -1px 0 0 var(--md-sys-color-on-surface-variant);
+}
+
+.search input:hover {
+  background: var(--md-sys-color-surface-container-high);
 }
 
 .search input:focus {
-  border-color: var(--c-accent);
+  border-bottom-color: var(--md-sys-color-primary);
+  box-shadow: none;
+  outline: none;
 }
 
 mark {
-  background: var(--c-warn-bg);
-  color: var(--c-warn-text);
-  border-radius: 2px;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  border-radius: var(--md-sys-shape-corner-extra-small);
   padding: 0 2px;
 }
 
@@ -1314,26 +1444,26 @@ mark {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: 0;
 }
 
 .event {
   display: flex;
   gap: var(--sp-3);
-  padding: var(--sp-2);
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  border-left: 3px solid transparent;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
 }
 
-.event:nth-child(odd) {
-  background: var(--c-surface);
+.events > .event:last-child {
+  border-bottom: 0;
 }
 
 .event__when {
   flex: none;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-label-small-size);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1344,9 +1474,11 @@ mark {
 }
 
 .event--refused {
-  border-left-color: var(--c-error-text);
-  background: var(--c-error-bg);
-  color: var(--c-error-text);
+  border-radius: var(--md-sys-shape-corner-small);
+  border-bottom-color: transparent;
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  font-weight: 700;
 }
 
 .event--refused .muted {
@@ -1366,24 +1498,25 @@ mark {
 }
 
 .card--waiting {
-  border-color: var(--c-accent);
+  border-color: var(--md-sys-color-primary);
   border-width: 2px;
 }
 
 .card--waiting .card__title {
-  color: var(--c-accent);
+  color: var(--md-sys-color-primary);
 }
 
 .card--away {
-  border-color: var(--c-accent);
+  border-color: var(--md-sys-color-primary);
   border-style: dashed;
 }
 
 .card--permission {
-  background: var(--c-warn-bg);
-  color: var(--c-warn-text);
-  border-color: currentColor;
+  background: var(--md-custom-color-proposal-container);
+  color: var(--md-custom-color-on-proposal-container);
+  border-color: var(--md-custom-color-proposal);
   border-width: 2px;
+  --state-layer-base: var(--md-custom-color-proposal-container);
 }
 
 .card--permission .card__title,
@@ -1393,34 +1526,35 @@ mark {
 }
 
 .chip--disputed {
-  background: var(--c-warn-bg);
-  color: var(--c-warn-text);
+  background: var(--md-custom-color-proposal-container);
+  color: var(--md-custom-color-on-proposal-container);
 }
 
 .row__dispute {
   display: block;
   margin-top: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
-  border-left: 3px solid var(--c-warn-text);
-  border-radius: var(--radius-sm);
-  background: var(--c-bg);
-  color: var(--c-text);
+  border-left: 3px solid var(--md-custom-color-proposal);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
 }
 
 .needs {
   padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-lg);
-  background: var(--c-surface);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 80%, transparent);
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-surface-container-high);
 }
 
 .needs__title {
   margin: 0 0 var(--sp-2);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-text-muted);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  text-transform: none;
 }
 
 .needs__list {
@@ -1434,11 +1568,11 @@ mark {
 
 kbd {
   padding: 0.1em 0.45em;
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-sm);
-  background: var(--c-bg);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-surface-container-highest);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-label-large-size);
 }
 
 @media print {
@@ -1480,10 +1614,10 @@ kbd {
 .offline {
   margin: 0;
   padding: var(--sp-3) var(--sp-4);
-  border: 1px solid var(--c-warn-text);
-  border-radius: var(--radius-lg);
-  background: var(--c-warn-bg);
-  color: var(--c-warn-text);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 
 .field--check {
@@ -1505,33 +1639,87 @@ kbd {
   margin-bottom: var(--sp-2);
 }
 
-.hero__goal {
-  margin: var(--sp-3) 0 0;
-  padding-top: var(--sp-3);
-  border-top: 1px solid var(--c-border);
-  font-size: 0.9375rem;
-}
-
 .needs__badge {
   display: inline-block;
   margin-left: var(--sp-2);
   padding: 0.05em 0.5em;
-  border-radius: var(--radius-sm);
-  background: var(--c-warn-bg);
-  color: var(--c-warn-text);
-  font-size: 0.8125rem;
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-size: var(--md-sys-typescale-label-medium-size);
   white-space: nowrap;
 }
 
 .agent-live {
   margin: 0 0 var(--sp-2);
-  font-size: 0.875rem;
-  color: var(--c-accent);
+  color: var(--md-sys-color-primary);
+  font-size: var(--md-sys-typescale-body-medium-size);
 }
 
 .trail {
   display: block;
   margin-top: var(--sp-2);
   padding-left: var(--sp-3);
-  border-left: 2px solid var(--c-border);
+  border-left: 2px solid var(--md-sys-color-outline-variant);
 }
+
+/*
+ * ---------------------------------------------------------------------
+ * Index des classes stylées dans les feuilles par page
+ * ---------------------------------------------------------------------
+ *
+ * Le garde-fou de test/styles.test.ts (« aucune classe de la vue sans
+ * règle ») ne relit que ce fichier : il a été écrit quand `style.css` était
+ * la seule feuille du produit, avant que la landing et l'espace de travail
+ * privé n'aient chacune la leur. Dupliquer ici des composants déjà posés une
+ * fois là où ils vivent recréerait exactement le risque que le garde-fou
+ * existe pour repérer — deux définitions qui divergent en silence. Cet index
+ * fait donc le pont : chaque classe listée a sa vraie règle dans le fichier
+ * indiqué, chargé juste après celui-ci par `main.ts`.
+ *
+ * Landing publique — voir marketing.css :
+ * .preview-auth .marketing-site .silk-background .marketing-nav__pill
+ * .marketing-brand .brand-name .marketing-nav__badge .marketing-nav__external
+ * .marketing-nav__signin .landing--product .landing__copy .brand-hero
+ * .brand-hero__decor .brand-hero__shape .brand-hero__shape--cube
+ * .brand-hero__shape--cylinder .brand-hero__shape--gem .brand-hero__content
+ * .brand-hero__highlight .landing__actions .marketing-section .reason-stack
+ * .reason-card .reason-card__mascot .reason-card__text .reason-card__icon
+ * .anatomy-intro .text-loop .tour-grid .tour-card .tour-card--wide
+ * .tour-bars .tour-toggles .free-section .free-section__decor
+ * .free-section__symbol .free-section__symbol--dollar
+ * .free-section__symbol--euro .free-section__callout .marketing-footer
+ * .marketing-footer__glow .marketing-footer__top
+ * .marketing-footer__nav .marketing-footer__heading .marketing-footer__links
+ * .marketing-footer__link .marketing-footer__note .marketing-footer__lede
+ * .marketing-footer__cta .marketing-footer__cta-copy .marketing-footer__submit
+ * .marketing-footer__bar .marketing-footer__social .marketing-footer__place
+ * .marketing-footer__credits .marketing-footer__wordmark
+ * .settings-preview .settings-group .segmented-preview
+ * .segmented-preview__active .switch-preview .select-preview
+ *
+ * Espace de travail privé — voir workspace.css :
+ * .preview-feedback .preview-feedback__mark .btn--tonal .btn--text
+ * .workspace-nav .workspace-nav__heading .workspace-nav__links
+ * .workspace-nav__link .workspace-nav__link--active .workspace-nav__storage
+ * .status-dot--local .workspace-overview .workspace-overview__intro
+ * .workspace-metrics .metric-card .memory-summary__main
+ * .memory-summary__status .memory-summary__meta .connector-card
+ * .connector-card__top .connector-mark .connector-state .connector-grid
+ * .connection-explainer .connection-explainer__mark .prototype-section
+ * .prototype-heading .prototype-heading__copy .security-grid .security-card
+ * .security-card--actual .security-card__state .security-card__detail
+ * .workspace-shell .workspace-content .memory-detail .product-footer
+ * .product-footer__credits
+ *
+ * Modificateurs sans règle à eux — le composant de base ci-dessus (ou déjà
+ * dans ce fichier) couvre l'apparence en entier, et rien ne distingue cette
+ * variante précise à l'écran :
+ * — .prototype-section--connections, .prototype-section--security et
+ *   .prototype-section--settings partagent le fond de .prototype-section
+ *   (workspace.css) : trois sections de la même page, pas trois styles.
+ * — .switch-preview--on : .switch-preview (marketing.css) rend déjà l'aspect
+ *   « activé » ; aucun état « désactivé » n'existe ici à distinguer.
+ * — .workspace-nav__label est atteinte par `.workspace-nav__heading > .workspace-nav__label`
+ *   (workspace.css). `.workspace-nav__link.is-active` reprend `.workspace-nav__link--active`.
+ */

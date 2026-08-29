@@ -4,16 +4,36 @@ import type { TaskState } from '../domain/types'
 export class NothingToImportError extends Error {
   constructor() {
     super(
-      'No watch log found in that file. Use a file produced by “Export this task” ' +
+      'No nightorder found in that file. Use a file produced by “Export this task” ' +
         'or “Export all tasks”.',
     )
     this.name = 'NothingToImportError'
   }
 }
 
+/**
+ * A markdown export is read fully in memory before its fenced JSON records can
+ * be inspected. Keep that allocation bounded at both the UI and parser
+ * boundaries; two megabytes is already far beyond a normal local nightorder.
+ */
+export const MAX_IMPORT_BYTES = 2_000_000
+
+export class ImportTooLargeError extends Error {
+  constructor(size: number) {
+    super(
+      `That file is ${size.toLocaleString('en-US')} bytes. Imports are limited to ` +
+        `${MAX_IMPORT_BYTES.toLocaleString('en-US')} bytes. Export or import smaller task files instead.`,
+    )
+    this.name = 'ImportTooLargeError'
+  }
+}
+
 const FENCE = /^(`{3,})json\s*$/
 
 export function parseExport(markdown: string): TaskState[] {
+  const bytes = new TextEncoder().encode(markdown).byteLength
+  if (bytes > MAX_IMPORT_BYTES) throw new ImportTooLargeError(bytes)
+
   const lines = markdown.split(/\r?\n/)
   const found: TaskState[] = []
 

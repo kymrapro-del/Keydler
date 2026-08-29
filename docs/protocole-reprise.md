@@ -28,21 +28,21 @@ continue
 
 Un dossier temporaire ne suffit pas : un agent muni de `Bash`, `Read`, `Glob`
 ou `Grep` peut remonter jusqu'au dépôt. Pour un essai local avec le pont CDP,
-ne rendre disponible que la recherche d'outils et n'injecter que le serveur du
-Watch Log :
+ne rendre disponible que la recherche d'outils et n'injecter que le serveur de
+Nightorder :
 
 ```bash
-fresh_agent_dir=$(mktemp -d /tmp/watch-log-agent.XXXXXX)
+fresh_agent_dir=$(mktemp -d /tmp/nightorder-agent.XXXXXX)
 cd "$fresh_agent_dir"
 
 claude \
   --no-chrome \
   --strict-mcp-config \
-  --mcp-config '{"mcpServers":{"chrome-watch-log":{"type":"stdio","command":"npx","args":["chrome-devtools-mcp@latest","--browserUrl","http://127.0.0.1:9223","--categoryExperimentalWebmcp"]}}}' \
+  --mcp-config '{"mcpServers":{"chrome-nightorder":{"type":"stdio","command":"npx","args":["chrome-devtools-mcp@latest","--browserUrl","http://127.0.0.1:9223","--categoryExperimentalWebmcp"]}}}' \
   --tools "ToolSearch"
 ```
 
-Avant la consigne, `/mcp` doit indiquer que `chrome-watch-log` est connecté.
+Avant la consigne, `/mcp` doit indiquer que `chrome-nightorder` est connecté.
 Cette vérification de transport ne révèle ni la tâche ni le nom de
 `resume_task`. Ne pas utiliser `--continue`, `--resume` ou une conversation
 Claude Desktop ayant accès à un dossier local.

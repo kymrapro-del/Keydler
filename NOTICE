@@ -1,0 +1,74 @@
+Copyright (c) 2026 Moon1pact.
+
+Keydler software is released under the MIT License. See LICENSE.
+
+This NOTICE states who owns the Keydler assets, and which third-party
+works the interface credits. Licence texts that must travel with the
+served bundle are in THIRD-PARTY-NOTICES.md and public/licenses/.
+
+------------------------------------------------------------------------------
+Keydler assets
+------------------------------------------------------------------------------
+
+All original Keydler brand and product assets are Copyright (c) 2026
+Moon1pact. That includes, without limitation:
+
+  - assets-src/brand/          source illustrations, mark and wordmark
+  - public/assets/brand/       the same works as served (WebP, JPEG, WebM)
+  - public/icons/              application icons (SVG and PNG)
+
+Sidecar COPYRIGHT.txt files sit next to those folders. The SVG icon also
+carries an XML copyright comment.
+
+These assets ship with this repository under the same MIT License as the
+software, except where a third-party licence below applies to a bundled
+file that Moon1pact did not author.
+
+------------------------------------------------------------------------------
+Google Fonts — Google Sans Flex
+------------------------------------------------------------------------------
+
+The interface typeface is Google Sans Flex, designed by Google LLC and
+obtained through Google Fonts / Fontsource. The font files are self-hosted
+and licensed under the SIL Open Font License 1.1. The complete OFL text
+ships at:
+
+  public/licenses/google-sans-flex-OFL-1.1.txt
+
+Reserved Font Name: Google Sans Flex. Do not use that name for a modified
+version of the font.
+
+------------------------------------------------------------------------------
+Material Design 3
+------------------------------------------------------------------------------
+
+The colour roles, type scale, shapes, motion and component anatomy follow
+Material Design 3, created by Google LLC. Material Design 3 is licensed
+under the Apache License 2.0:
+
+  https://www.apache.org/licenses/LICENSE-2.0
+  https://m3.material.io/
+
+Theme tokens in src/tokens.css are generated from a Keydler source colour
+with @material/material-color-utilities (build-time only; not served).
+
+------------------------------------------------------------------------------
+Google Icons — Material Symbols
+------------------------------------------------------------------------------
+
+The icon language of this Material 3 interface is Material Symbols
+(Google Icons), designed by Google LLC and licensed under Apache 2.0:
+
+  https://fonts.google.com/icons
+  https://github.com/google/material-design-icons
+
+Keydler does not redistribute the Material Symbols font. Marks, numerals
+and illustrations drawn on the page are original Keydler assets. The
+Google Icons name is credited because the design follows that system.
+
+------------------------------------------------------------------------------
+Other bundled code
+------------------------------------------------------------------------------
+
+See THIRD-PARTY-NOTICES.md for idb (ISC), @supabase/supabase-js (MIT) and
+the Google Sans Flex font package notice.

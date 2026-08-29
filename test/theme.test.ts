@@ -1,88 +1,41 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import indexRaw from '../index.html?raw'
-import { applyTheme, nextTheme, readTheme, themeLabel } from '../src/ui/theme'
+import tokensRaw from '../src/tokens.css?raw'
+import vercelRaw from '../vercel.json?raw'
 import { buildDemoTask } from '../src/demo/seed'
 import * as store from '../src/store/taskStore'
 import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase } from './helpers'
 
-beforeEach(() => {
-  localStorage.clear()
-  delete document.documentElement.dataset.theme
-})
-
-describe('choix du thème', () => {
-  it('part du système, et tourne en trois états', () => {
-    expect(readTheme()).toBe('system')
-    expect(nextTheme('system')).toBe('light')
-    expect(nextTheme('light')).toBe('dark')
-    expect(nextTheme('dark')).toBe('system')
-  })
-
-  it('marque la racine seulement quand le choix est explicite', () => {
-    applyTheme('dark')
-    expect(document.documentElement.dataset.theme).toBe('dark')
-
-    applyTheme('light')
-    expect(document.documentElement.dataset.theme).toBe('light')
-
-    applyTheme('system')
-    expect(document.documentElement.dataset.theme).toBeUndefined()
-  })
-
-  it('se souvient du choix, et oublie le retour au système', () => {
-    applyTheme('dark')
-    expect(readTheme()).toBe('dark')
-
-    applyTheme('system')
-    expect(readTheme()).toBe('system')
-    expect(localStorage.getItem('watch-log.theme')).toBeNull()
-  })
-
-  it('survit à un stockage refusé sans casser la page', () => {
-    const real = Storage.prototype.setItem
-    Storage.prototype.setItem = () => {
-      throw new Error('denied')
-    }
-
-    // Navigation privée, données de site bloquées : le choix vaut pour cette
-    // page, et rien ne doit tomber.
-    expect(() => applyTheme('dark')).not.toThrow()
-    expect(document.documentElement.dataset.theme).toBe('dark')
-
-    Storage.prototype.setItem = real
-  })
-
-  it('tient la couleur de la barre du navigateur à jour', () => {
-    applyTheme('dark')
-    const dark = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-    expect(dark!.content).toBe('#131316')
-
-    applyTheme('light')
-    const metas = document.querySelectorAll('meta[name="theme-color"]')
-    // Une seule : empiler les balises laisserait le navigateur choisir.
-    expect(metas).toHaveLength(1)
-    expect((metas[0] as HTMLMetaElement).content).toBe('#ffffff')
-  })
-
-  it('nomme l’état en clair', () => {
-    expect(themeLabel('system')).toBe('Theme: system')
-    expect(themeLabel('dark')).toBe('Theme: dark')
-  })
-})
-
-describe('sans flash au chargement', () => {
-  it('lit le choix avant la première peinture, dans le document lui-même', () => {
-    // Le lire depuis le module s'exécuterait après le premier rendu : la page
-    // s'afficherait une fraction de seconde dans le thème du système.
+describe('thème unique', () => {
+  it('déclare le sombre dans le document, avant tout script', () => {
     const head = indexRaw.slice(0, indexRaw.indexOf('</head>'))
-    expect(head).toContain("localStorage.getItem('watch-log.theme')")
-    expect(head).toContain('document.documentElement.dataset.theme')
-    expect(head.indexOf('watch-log.theme')).toBeLessThan(indexRaw.indexOf('src/main.ts'))
+    expect(indexRaw).toMatch(/<html[^>]*data-theme="dark"/)
+    expect(head).toContain('<meta name="theme-color" content="#131316" />')
+    expect(head).not.toContain('prefers-color-scheme')
+    expect(head).not.toContain('theme-init')
+    expect(indexRaw.indexOf('data-theme="dark"')).toBeLessThan(indexRaw.indexOf('src/main.ts'))
+  })
+
+  it('ne sert plus de script d’amorçage de thème', () => {
+    expect(indexRaw).not.toContain('theme-init.js')
+  })
+
+  it('reste compatible avec une CSP qui refuse les scripts inline', () => {
+    expect(vercelRaw).toContain("script-src 'self'")
+    expect(vercelRaw).not.toContain("'unsafe-inline'")
+    expect(indexRaw).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/)
+  })
+
+  it('n’émet qu’un jeu de jetons sombres', () => {
+    expect(tokensRaw).toContain('color-scheme: dark')
+    expect(tokensRaw).not.toContain('@media (prefers-color-scheme')
+    expect(tokensRaw).not.toContain("[data-theme='light']")
+    expect(tokensRaw).not.toContain("[data-theme='dark']")
   })
 })
 
-describe('la bascule à l’écran', () => {
+describe('aucun sélecteur à l’écran', () => {
   let root: HTMLElement
   let unmount: () => void
 
@@ -102,31 +55,18 @@ describe('la bascule à l’écran', () => {
 
   afterEach(() => {
     unmount()
-    localStorage.clear()
-    delete document.documentElement.dataset.theme
   })
 
-  it('est joignable dès le premier écran', async () => {
+  it('est absent de l’écran d’accueil', async () => {
     await settled()
-    const button = root.querySelector<HTMLButtonElement>('#toggle-theme')!
-    expect(button.textContent).toContain('Theme: system')
+    expect(root.querySelector('#toggle-theme')).toBeNull()
+    expect(root.textContent).not.toMatch(/Theme:\s(system|light|dark)/)
   })
 
-  it('bascule au clic, et l’annonce', async () => {
-    await settled()
-    root.querySelector<HTMLButtonElement>('#toggle-theme')!.click()
-    await settled()
-
-    expect(document.documentElement.dataset.theme).toBe('light')
-    const button = root.querySelector<HTMLButtonElement>('#toggle-theme')!
-    expect(button.textContent).toContain('Theme: light')
-    expect(button.getAttribute('aria-label')).toContain('Click to switch')
-    expect(document.activeElement).toBe(button)
-  })
-
-  it('reste joignable depuis un cahier ouvert', async () => {
+  it('est absent d’un cahier ouvert', async () => {
     await store.openPreparedTask(buildDemoTask())
     await settled()
-    expect(root.querySelector('#toggle-theme')).not.toBeNull()
+    expect(root.querySelector('#toggle-theme')).toBeNull()
+    expect(root.textContent).not.toMatch(/Theme:\s(system|light|dark)/)
   })
 })

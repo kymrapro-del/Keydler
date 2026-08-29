@@ -53,7 +53,7 @@ describe('mise en mots du journal', () => {
       expect(line.what, operation).not.toMatch(/tried to \w+ed\b/)
     }
     expect(describeEntry(entry({ operation: 'log_step', outcome: 'refused' })).what).toBe(
-      'tried to record a step — refused',
+      'tried to record a step · refused',
     )
   })
 
@@ -249,12 +249,13 @@ describe('installable', () => {
     }
   })
 
-  it('est référencé par la page, avec une couleur de thème par mode', () => {
+  it('est référencé par la page, avec la couleur de thème sombre', () => {
     const html = indexRaw
     expect(html).toContain('rel="manifest"')
     expect(html).toContain('/manifest.webmanifest')
-    expect(html).toContain('prefers-color-scheme: light')
-    expect(html).toContain('prefers-color-scheme: dark')
+    expect(html).toContain('theme-color')
+    expect(html).toContain('#131316')
+    expect(html).not.toContain('prefers-color-scheme')
   })
 
   it('ne sert le service worker qu’en production', () => {

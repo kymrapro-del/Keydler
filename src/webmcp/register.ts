@@ -7,6 +7,7 @@ import {
 } from './adapter'
 import { READ_TOOLS, WRITE_TOOLS } from './tools'
 import { detectLifecycle, type ToolLifecycle } from './lifecycle'
+import { enabledToolNames, onToolPermissionsChange } from '../security/toolPermissions'
 
 export { detectLifecycle, DYNAMIC_UNREGISTER_MIN_CHROMIUM } from './lifecycle'
 export type { LifecycleMode, ToolLifecycle } from './lifecycle'
@@ -24,7 +25,7 @@ export type RegistrationState = {
   observedTools: string[] | null
 }
 
-const GUARD = Symbol.for('cahier-de-quart.webmcp.registered')
+const GUARD = Symbol.for('nightorder.webmcp.registered')
 type GuardedGlobal = typeof globalThis & { [GUARD]?: boolean }
 
 let state: RegistrationState = {
@@ -58,7 +59,10 @@ export function onRegistrationChange(listener: () => void): () => void {
 export function toolsForCurrentState(): ModelContextTool[] {
   const { status, task } = store.getSnapshot()
   const écrivable = status === 'ready' && task !== null && task.status === 'active'
-  return écrivable ? [...READ_TOOLS, ...WRITE_TOOLS] : [...READ_TOOLS]
+  const enabled = new Set(enabledToolNames())
+  return (écrivable ? [...READ_TOOLS, ...WRITE_TOOLS] : [...READ_TOOLS]).filter((tool) =>
+    enabled.has(tool.name),
+  )
 }
 
 const registered = new Map<string, AbortController>()
@@ -147,6 +151,11 @@ function unregisterAll(): void {
 }
 
 let détacher: (() => void) | null = null
+let activeModelContext: ModelContextLike | null = null
+
+export function refreshToolRegistration(): Promise<void> {
+  return activeModelContext ? syncQueued(activeModelContext) : Promise.resolve()
+}
 
 export async function registerTools(): Promise<RegistrationState> {
   const guarded = globalThis as GuardedGlobal
@@ -170,13 +179,17 @@ export async function registerTools(): Promise<RegistrationState> {
     return state
   }
 
+  activeModelContext = modelContext
+
   const surToolChange = () => void observeRegisteredTools(modelContext)
   modelContext.addEventListener?.('toolchange', surToolChange)
 
   const désabonner = store.subscribe(() => void syncQueued(modelContext))
+  const désabonnerPermissions = onToolPermissionsChange(() => void syncQueued(modelContext))
 
   détacher = () => {
     désabonner()
+    désabonnerPermissions()
     modelContext.removeEventListener?.('toolchange', surToolChange)
     unregisterAll()
   }
@@ -193,6 +206,7 @@ export function __resetRegistration(): void {
   delete guarded[GUARD]
   détacher?.()
   détacher = null
+  activeModelContext = null
   file = Promise.resolve()
   unregisterAll()
   listeners.clear()

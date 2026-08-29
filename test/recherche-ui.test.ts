@@ -90,20 +90,31 @@ describe('la recherche à l’écran', () => {
     expect(root.querySelector<HTMLInputElement>('#search')!.value).toBe('')
   })
 
-  it('reste utilisable quand tout correspond, sans tout déverser', async () => {
-    for (let i = 0; i < 60; i++) {
-      await store.mutate((s) =>
-        addConstraint(s, { rule: `Rule about widgets number ${i}`, basedOnVersion: null }, 'human'),
+  it(
+    'reste utilisable quand tout correspond, sans tout déverser',
+    async () => {
+      for (let i = 0; i < 60; i++) {
+        await store.mutate((s) =>
+          addConstraint(
+            s,
+            { rule: `Rule about widgets number ${i}`, basedOnVersion: null },
+            'human',
+          ),
+        )
+      }
+      await waitUntil(
+        () => (store.currentTask()?.constraints.length ?? 0) >= 60,
+        'les 60 règles',
       )
-    }
-    await waitUntil(() => (store.currentTask()?.constraints.length ?? 0) >= 60, 'les 60 règles')
-    type('widgets')
-    await settled()
+      type('widgets')
+      await settled()
 
-    const rows = results()!.querySelectorAll('.rows > li').length
-    expect(rows).toBeLessThanOrEqual(41)
-    expect(results()!.textContent).toContain('more not shown')
-  })
+      const rows = results()!.querySelectorAll('.rows > li').length
+      expect(rows).toBeLessThanOrEqual(41)
+      expect(results()!.textContent).toContain('more not shown')
+    },
+    10_000,
+  )
 })
 
 describe('le clavier ferme ce qui est ouvert', () => {

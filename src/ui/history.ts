@@ -118,7 +118,7 @@ export function describeEntry(entry: AuditEntry): HistoryLine {
     return {
       at: entry.at,
       who,
-      what: `tried to ${ATTEMPTED[entry.operation] ?? entry.operation} — refused`,
+      what: `tried to ${ATTEMPTED[entry.operation] ?? entry.operation} · refused`,
       detail: refusalReason(entry.detail),
       refused: true,
       repeated,

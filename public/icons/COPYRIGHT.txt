@@ -1,0 +1,7 @@
+Copyright (c) 2026 Moon1pact.
+
+These application icons (SVG and PNG) are original Keydler assets. They
+ship with the Keydler repository under the MIT License in LICENSE.
+
+Google Sans Flex, Material Design 3 and Material Symbols (Google Icons)
+are works of Google LLC and are not claimed as Keydler trademarks.

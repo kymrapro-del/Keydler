@@ -28,7 +28,7 @@ describe('la mémoire de ce que vous avez déjà vu', () => {
   })
 
   it('survit à une valeur abîmée sans faire tomber la page', () => {
-    localStorage.setItem('watch-log:seen:t1', 'not a number')
+    localStorage.setItem('nightorder:seen:t1', 'not a number')
     expect(seenVersion('t1')).toBeNull()
   })
 })

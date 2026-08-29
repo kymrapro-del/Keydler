@@ -83,7 +83,7 @@ describe('recevoir un cahier par un lien', () => {
 
   const offer = () =>
     [...root.querySelectorAll('.card')].find((c) =>
-      c.querySelector('h2')?.textContent?.includes('A shared watch log'),
+      c.querySelector('h2')?.textContent?.includes('A shared Keydler'),
     )
 
   it('propose, et n’importe rien tout seul', async () => {

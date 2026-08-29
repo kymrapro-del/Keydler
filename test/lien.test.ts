@@ -3,7 +3,9 @@ import { buildDemoTask } from '../src/demo/seed'
 import { addConstraint, logStep } from '../src/domain/task'
 import {
   MAX_LINK_LENGTH,
+  MAX_UNPACKED_LINK_BYTES,
   TooLargeForLinkError,
+  UnreadableLinkError,
   packTask,
   readLinkFragment,
   unpackTask,
@@ -61,6 +63,45 @@ describe('un cahier qui tient dans un lien', () => {
   it('refuse un fragment abîmé, sans faire tomber la page', async () => {
     await expect(unpackTask('pas-du-tout-un-cahier')).rejects.toThrow()
     await expect(unpackTask('')).rejects.toThrow()
+  })
+
+  it('borne aussi la taille décompressée d’un fragment hostile', async () => {
+    if (typeof globalThis.CompressionStream !== 'function') return
+
+    const oversized = {
+      ...buildDemoTask(),
+      summary: 'x'.repeat(MAX_UNPACKED_LINK_BYTES + 1),
+    }
+    const compressor = new CompressionStream('gzip')
+    const reader = compressor.readable.getReader()
+    const reading = (async () => {
+      const chunks: Uint8Array[] = []
+      let size = 0
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        chunks.push(value)
+        size += value.byteLength
+      }
+      const joined = new Uint8Array(size)
+      let offset = 0
+      for (const chunk of chunks) {
+        joined.set(chunk, offset)
+        offset += chunk.byteLength
+      }
+      return joined
+    })()
+    const writer = compressor.writable.getWriter()
+    await writer.write(new TextEncoder().encode(JSON.stringify(oversized)))
+    await writer.close()
+    const bytes = await reading
+    let binary = ''
+    for (const byte of bytes) binary += String.fromCharCode(byte)
+    const packed = `z${btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`
+
+    expect(packed.length).toBeLessThan(MAX_LINK_LENGTH)
+    await expect(unpackTask(packed)).rejects.toBeInstanceOf(UnreadableLinkError)
+    await expect(packTask(oversized)).rejects.toBeInstanceOf(TooLargeForLinkError)
   })
 
   it('refuse un fragment qui décode vers autre chose qu’un cahier', async () => {
@@ -132,6 +173,11 @@ describe('lire le fragment d’une adresse', () => {
 
   it('refuse une charge aux caractères douteux plutôt que de la décoder', () => {
     history.replaceState(null, '', '/t/abc#log=<script>')
+    expect(readLinkFragment()).toBeNull()
+  })
+
+  it('ignore un fragment qui dépasse la taille annoncée', () => {
+    history.replaceState(null, '', `/t/abc#log=p${'a'.repeat(MAX_LINK_LENGTH)}`)
     expect(readLinkFragment()).toBeNull()
   })
 })

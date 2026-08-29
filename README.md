@@ -1,4 +1,4 @@
-# Watch Log
+# Keydler
 
 **A shared memory for you and your AI. It keeps completed work, rules to
 follow, and mistakes not to repeat — even when the conversation changes.**
@@ -18,7 +18,7 @@ conversation summary keeps the highlights and sacrifices exactly what
 constrains — because a constraint reads like a detail right up until someone
 breaks it.
 
-The Watch Log takes that constraint out of the conversation and puts it on a web
+Keydler takes that constraint out of the conversation and puts it on a web
 page: rules in force, work done with its evidence, approaches ruled out with the
 reason why, and the next action. A new conversation reads it and continues from
 the right place. You correct it while the agent works.
@@ -40,18 +40,20 @@ Step 3 is the whole product.
 
 ## Why WebMCP is the point
 
-The Watch Log is not a notes app with an API bolted on. **The page is the tool
+Keydler is not a notes app with an API bolted on. **The page is the tool
 surface**, and that is only possible because of WebMCP:
 
 - The task memory lives where the human can see and correct it — a page, not a
   server-side store the human never looks at.
 - The agent reads and writes **the same state the human is editing**, in the
-  same instant, with no synchronisation layer between them.
+  same instant. IndexedDB remains the live local source; authenticated users can
+  optionally mirror versioned snapshots to their private workspace.
 - Tool descriptions travel with the page, so the agent learns _when_ to call
   `resume_task` from the page itself rather than from a system prompt someone
   had to write in advance.
-- There is no backend to run, no account to create, and nothing leaves the
-  device.
+- Local mode needs no backend or account and sends no task data away. Cloud
+  mode is explicit: it adds passwordless authentication and private,
+  row-level-secured synchronisation through Supabase.
 
 Take WebMCP away and the agent has to infer state from the interface and
 manipulate it indirectly. With WebMCP, it receives typed operations and a
@@ -86,7 +88,7 @@ and the whole history
 fragment, which browsers never transmit. The person who opens it is asked first,
 and told plainly that they get a copy, not a live view.
 
-![A shared watch log](docs/assets/shared-link.png)
+![A shared nightorder](docs/assets/shared-link.png)
 
 **The agent asks permission, and waits.** `request_approval` blocks until a human
 clicks. This is the one thing a page can do that a server cannot: there is
@@ -170,7 +172,7 @@ agent must read in order to choose, so each has to pay for itself.
 An agent often needs to know that a secret _exists_ — which one, and what it is
 for — without ever seeing it. Any secret, not just an API key: tokens,
 passwords, connection strings, webhook URLs, private keys, certificates. The
-Watch Log holds the reference:
+Keydler holds the reference:
 
 ```
 CREDENTIALS — names only, values sealed (2)
@@ -386,6 +388,12 @@ adds the coverage report.
 The page works without WebMCP: the state is real and persistent, only the agent
 connection is missing.
 
+It also works without cloud configuration. To enable real accounts, private
+workspaces, multi-device sync and encrypted provider connectors, follow
+[`docs/cloud-production.md`](docs/cloud-production.md). The browser receives
+only the Supabase publishable key; privileged keys and provider credentials
+never belong in a `VITE_` variable.
+
 ### Enabling WebMCP
 
 In origin trial since Chrome 149. Locally, no token is needed:
@@ -447,7 +455,7 @@ so the combined evidence is now **11 PASS, 1 MIXED, and 1 NOT VERIFIED**:
   sessions with no filesystem or shell tools received only “Continue this
   task.” Two discovered the open page, called `resume_task` before working,
   cited the binding rule and rejected approach with its reason, completed the
-  next action, and wrote the result back. One found the Watch Log page but
+  next action, and wrote the result back. One found the Keydler page but
   stopped before discovering its WebMCP tools and asked the human what to do.
 
 An earlier Claude Desktop trial with filesystem access failed to choose the
@@ -495,11 +503,21 @@ refuses a rejection without a reason.**
 
 ## Privacy and limits
 
-Everything is in the browser. No account, no server, no data leaving the device.
-That also sets the boundaries, and they are real:
+The product has two honest operating modes:
 
-- **Local to one browser profile and one origin.** A task does not follow you to
-  another device or another browser. There is no sync, by design.
+- **Local** is the default when Supabase is not configured. No account is
+  required and task data remains in this browser profile.
+- **Cloud** is opt-in. After passwordless sign-in, task snapshots, workspace
+  settings and metadata are stored in Supabase behind Row Level Security.
+  Local IndexedDB remains the working copy. Provider API keys are verified and
+  AES-GCM encrypted in the Edge Function; they are never returned to the
+  browser after submission.
+
+Those choices still set real boundaries:
+
+- **Local data is tied to one browser profile and origin.** It follows the user
+  to another device only after cloud sync is enabled on an authenticated
+  workspace.
 - **The page has to stay reachable.** An agent reads the log through the open
   page; close it and the memory is still on disk, but nothing can read it.
 - **Clearing site data deletes the tasks — and the sealed credentials.** Export
@@ -512,6 +530,9 @@ That also sets the boundaries, and they are real:
   works with the model tested. It is not a protocol-level guarantee.
 - **ChatGPT’s built-in browser has not been tested.** Verification was done in
   Brave, through an MCP client.
+- **The application is free; model-provider usage may not be.** Connecting an
+  OpenAI, Anthropic or Gemini API key uses that provider account and its own
+  billing terms.
 
 ## Project layout
 
@@ -520,12 +541,33 @@ That also sets the boundaries, and they are real:
 | `src/domain`      | Pure task model and mutations — no DOM, no storage, no WebMCP              |
 | `src/store`       | The single in-memory source of truth, and the write queue                  |
 | `src/persistence` | IndexedDB, with defensive reads and schema migration                       |
+| `src/cloud`       | Optional Supabase auth, private workspace repository and realtime sync     |
+| `src/security`    | Per-tool agent permissions                                                 |
 | `src/webmcp`      | API adapter, schemas, descriptions, thirteen tools, registration lifecycle |
 | `src/ui`          | The dashboard                                                              |
+| `supabase`        | RLS migration and credential-encryption Edge Function                      |
 | `docs`            | Protocols, test journal, measurement, demo script                          |
 
 Internal documents and code comments are in French; the product is in English.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[![License](https://img.shields.io/badge/license-MIT-3d4ec8)](LICENSE)
+
+MIT — see [LICENSE](LICENSE). Copyright (c) 2026 Moon1pact.
+
+Every Keydler brand file carries its own copyright notice:
+
+- [NOTICE](NOTICE) — software, assets, and design credits
+- [assets-src/brand/COPYRIGHT.txt](assets-src/brand/COPYRIGHT.txt)
+- [public/assets/brand/COPYRIGHT.txt](public/assets/brand/COPYRIGHT.txt)
+- [public/icons/COPYRIGHT.txt](public/icons/COPYRIGHT.txt)
+- [public/licenses/NOTICE.txt](public/licenses/NOTICE.txt)
+
+The interface uses **Google Sans Flex** from [Google Fonts](https://fonts.google.com/specimen/Google+Sans+Flex)
+(SIL OFL 1.1, self-hosted), **[Material Design 3](https://m3.material.io/)** and
+**[Google Icons](https://fonts.google.com/icons)** (Material Symbols). Those
+works belong to Google LLC. The OFL text ships at
+[public/licenses/google-sans-flex-OFL-1.1.txt](public/licenses/google-sans-flex-OFL-1.1.txt).
+Third-party code that reaches the browser is listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

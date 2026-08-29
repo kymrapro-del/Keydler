@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createTask } from '../src/domain/task'
-import { MAX_MUTATION_RECORDS, SCHEMA_VERSION } from '../src/domain/types'
+import { MAX_AUDIT_ENTRIES, MAX_MUTATION_RECORDS, SCHEMA_VERSION } from '../src/domain/types'
+import { MAX_EVIDENCE_LENGTH, MAX_FIELD_LENGTH } from '../src/domain/validate'
 import { getDb } from '../src/persistence/db'
-import { FutureSchemaError, normalizeTask } from '../src/persistence/normalize'
+import {
+  FutureSchemaError,
+  MAX_NORMALIZED_ID_LENGTH,
+  MAX_NORMALIZED_ITEMS,
+  normalizeTask,
+} from '../src/persistence/normalize'
 import { escapeHtml } from '../src/ui/escape'
 import { listTasks, loadTask, saveTask } from '../src/persistence/taskRepository'
 
@@ -137,6 +143,39 @@ describe('normalisation à la lecture', () => {
       status: 'active',
     })
     expect(relu!.audit).toHaveLength(original.audit.length)
+  })
+
+  it('borne les tableaux et textes venus d’un import hostile', () => {
+    const task = normalizeTask({
+      id: 'i'.repeat(MAX_NORMALIZED_ID_LENGTH + 20),
+      title: 't'.repeat(300),
+      version: 1,
+      constraints: Array.from({ length: MAX_NORMALIZED_ITEMS + 5 }, (_, i) => ({
+        id: `c${i}`,
+        rule: 'r'.repeat(MAX_FIELD_LENGTH + 10),
+      })),
+      steps: [
+        {
+          id: 's1',
+          action: 'a'.repeat(MAX_FIELD_LENGTH + 10),
+          result: 'ok',
+          evidence: {
+            kind: 'command_output',
+            content: 'e'.repeat(MAX_EVIDENCE_LENGTH + 10),
+          },
+        },
+      ],
+      audit: Array.from({ length: MAX_AUDIT_ENTRIES + 5 }, (_, i) => ({ id: `a${i}` })),
+    } as never)!
+
+    expect(task.id).toHaveLength(MAX_NORMALIZED_ID_LENGTH)
+    expect(task.title).toHaveLength(200)
+    expect(task.constraints).toHaveLength(MAX_NORMALIZED_ITEMS)
+    expect(task.constraints[0].id).toBe('c5')
+    expect(task.constraints[0].rule).toHaveLength(MAX_FIELD_LENGTH)
+    expect(task.steps[0].action).toHaveLength(MAX_FIELD_LENGTH)
+    expect(task.steps[0].evidence?.content).toHaveLength(MAX_EVIDENCE_LENGTH)
+    expect(task.audit).toHaveLength(MAX_AUDIT_ENTRIES)
   })
 })
 

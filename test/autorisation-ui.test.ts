@@ -7,7 +7,7 @@ import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase, waitUntil } from './helpers'
 
 describe('le titre de l’onglet appelle quand il le faut', () => {
-  const BASE = 'Watch Log — a shared memory for you and your AI'
+  const BASE = 'Keydler \\\\ shared AI memory for WebMCP agents'
 
   it('ne change rien quand rien n’attend', () => {
     expect(attentionTitle(BASE, 0, true)).toBe(BASE)
@@ -78,7 +78,7 @@ describe('une demande d’autorisation à l’écran', () => {
 
   afterEach(() => {
     unmount()
-    document.title = 'Watch Log'
+    document.title = 'Keydler'
     history.replaceState(null, '', '/')
   })
 

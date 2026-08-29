@@ -1,4 +1,4 @@
-const CACHE = 'watch-log-v1'
+const CACHE = 'nightorder-v1'
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png']
 
 self.addEventListener('install', (event) => {

@@ -1,0 +1,25 @@
+# Keydler
+
+> Free, local-first supervised task memory for you and your AI.
+
+Keydler keeps decisions, rules, evidence and failed approaches on a web page so the next conversation continues from the right place.
+
+## Product
+
+- MIT-licensed local workspace in the browser. No account required.
+- WebMCP tools so compatible agents (ChatGPT, Claude, Gemini) read and update the same log.
+- Humans supervise writes: stale writes are refused, retries do not duplicate, the audit stays readable.
+
+## Source
+
+https://github.com/kymrapro-del/ChatGPT-WebMCP
+
+## License and credits
+
+Copyright (c) 2026 Moon1pact. MIT — see LICENSE and /licenses/NOTICE.txt.
+
+Brand assets (wordmark, mark, illustrations, icons) are original Keydler works.
+
+The interface uses Google Sans Flex from Google Fonts (SIL OFL 1.1, self-hosted),
+Material Design 3, and Google Icons (Material Symbols). Those works belong to
+Google LLC.

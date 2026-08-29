@@ -24,7 +24,7 @@ import type { TaskState } from '../domain/types'
  * produits sur la machine de la personne. Un identifiant stable permet à la
  * vue de le dire pendant toute la session, y compris après un rechargement.
  */
-export const DEMO_TASK_ID = 'watch-log-demo'
+export const DEMO_TASK_ID = 'nightorder-demo'
 
 /**
  * Le socle : règles, rejets, décisions, travail avec preuves. Sans question,
@@ -105,7 +105,7 @@ export function buildCoreTask(): TaskState {
   task = addDecision(
     task,
     {
-      choice: 'Approach C — session-bound refresh tokens',
+      choice: 'Approach C \\\\ session-bound refresh tokens',
       rationale: 'keeps rotation intact without touching the schema, unlike approach B',
       basedOnVersion: task.version,
     },
@@ -117,7 +117,7 @@ export function buildCoreTask(): TaskState {
     {
       action: 'Ran the authentication test suite',
       result: '183 passed, 0 failed',
-      evidence: { kind: 'test_report', content: 'auth suite — 183 passed, 0 failed, 0 skipped' },
+      evidence: { kind: 'test_report', content: 'auth suite \\\\ 183 passed, 0 failed, 0 skipped' },
       basedOnVersion: task.version,
     },
     'agent',
@@ -135,7 +135,7 @@ export function buildCoreTask(): TaskState {
         kind: 'command_output',
         content: 'bench --auth-refresh\np50 12ms  p95 41ms  (baseline p95 43ms)',
       },
-      next: 'Implement approach C — session-bound refresh tokens',
+      next: 'Implement approach C \\\\ session-bound refresh tokens',
       basedOnVersion: task.version,
     },
     'agent',
@@ -202,7 +202,7 @@ export function buildDemoTask(): TaskState {
   task = answerQuestion(
     task,
     openQuestions(task)[0].id,
-    'No — mobile keeps 24 hours. Only web moves to 15 minutes.',
+    'No \\\\ mobile keeps 24 hours. Only web moves to 15 minutes.',
   )
 
   task = requestApproval(
@@ -220,7 +220,7 @@ export function buildDemoTask(): TaskState {
   task = disputeStep(
     task,
     douteuse.id,
-    'That run came from the other branch — the issuer had not been extracted yet.',
+    'That run came from the other branch \\\\ the issuer had not been extracted yet.',
   )
 
   // Le cahier se termine sur une écriture d'AGENT : à l'ouverture, « Undo that »
@@ -232,7 +232,7 @@ export function buildDemoTask(): TaskState {
     {
       action: 'Re-ran the benchmark on the extracted issuer',
       result: 'p95 39ms, still under the 43ms baseline',
-      next: 'Implement approach C — session-bound refresh tokens',
+      next: 'Implement approach C \\\\ session-bound refresh tokens',
       basedOnVersion: task.version,
     },
     'agent',

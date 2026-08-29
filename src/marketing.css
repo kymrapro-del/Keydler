@@ -118,10 +118,10 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-3);
-  color: var(--md-sys-color-on-surface);
-  font-family: var(--md-sys-typescale-title-medium-font);
+  color: #c5ed78;
+  font-family: var(--md-ref-typeface-brand);
   font-size: var(--md-sys-typescale-title-medium-size);
-  font-weight: var(--md-sys-typescale-title-medium-weight);
+  font-weight: 600;
   line-height: var(--md-sys-typescale-title-medium-line-height);
   letter-spacing: var(--md-sys-typescale-title-medium-tracking);
   text-decoration: none;
@@ -665,26 +665,10 @@
 
 /*
  * -----------------------------------------------------------------------
- * L'anatomie d'un outil — d'où vient l'idée originale : Uiverse.io par
- * barisdogansutcu, un bouton dont le survol révèle sa propre boîte CSS
- * (padding, background, border-radius). Ici les cinq annotations ne décrivent
- * plus le CSS du bouton, mais les cinq champs réels d'un enregistrement
- * WebMCP — `document.modelContext.registerTool({ name, description,
- * inputSchema, execute, annotations })`, exactement la forme que
- * `src/webmcp/tools.ts` construit pour de vrai.
+ * L'anatomie d'un outil — les cinq champs d'un enregistrement WebMCP
+ * (`name`, `description`, `inputSchema`, `execute`, `annotations`),
+ * exactement la forme que `src/webmcp/tools.ts` construit.
  * -----------------------------------------------------------------------
- *
- * Reconstruit plutôt que recopié : l'original positionne chaque étiquette en
- * pixels absolus et en rotations calibrées sur SA largeur de bouton précise
- * (« Anatomy », 7 caractères). Avec « resume_task() », plus long, ces
- * offsets auraient exigé un recalibrage entier ET seraient repartis à zéro au
- * moindre changement de libellé. Une grille CSS ancre les cinq étiquettes
- * aux coins d'une zone autour du bouton : aucune ne dépend de la largeur du
- * texte qu'elle annote.
- *
- * Couleur : `tertiary`, le rôle M3 conçu pour un accent qui CONTRASTE avec le
- * primary sans porter de signification propre — ni `proposal`, ni `verified`,
- * ni `error`. L'exact opposé du rose choisi librement dans l'original.
  */
 .anatomy-intro {
   max-width: 62ch;
@@ -694,153 +678,53 @@
 
 .anatomy-intro code {
   font-family: var(--md-ref-typeface-mono);
-}
-
-.tool-anatomy {
-  position: relative;
-  margin: clamp(40px, 6vw, 88px) auto 0;
-  padding: clamp(56px, 9vw, 120px) clamp(16px, 6vw, 64px);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
-  grid-template-areas:
-    'name    .        schema'
-    '.       button   .'
-    'desc    execute  annot';
-  align-items: center;
-  justify-items: center;
-  column-gap: clamp(12px, 3vw, 40px);
-  row-gap: clamp(20px, 4vw, 44px);
+  padding: 0.1em 0.4em;
+  border-radius: var(--md-sys-shape-corner-extra-small);
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 28%, transparent);
 }
 
 /*
- * La vidéo est un fond décoratif à l'intérieur de la même boîte : `position:
- * relative` sur `.tool-anatomy` en fait le référentiel de `inset: 0`. Le
- * bouton et les étiquettes restent des items de grille normaux (`position:
- * static`) — sans `z-index` explicite ici, les descendants POSITIONNÉS
- * (la vidéo, absolue) peindraient toujours par-dessus le contenu statique,
- * quel que soit l'ordre dans le document. `position: relative` + `z-index: 1`
- * les fait participer au même contexte d'empilement, au-dessus.
+ * Anatomie d'outil et visite du workspace reprennent `.brand-hero` : même
+ * dégradé, même voile, même texte blanc que la bannière et « Free by design ».
  */
-.tool-anatomy__video {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
+.marketing-section.brand-hero h2,
+.marketing-section.brand-hero .section-heading__eyebrow {
+  color: inherit;
 }
 
-.tool-anatomy__button {
-  position: relative;
-  z-index: 1;
-  grid-area: button;
-  min-height: 56px;
-  padding: var(--sp-3) var(--sp-5);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  border: 0;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
-  box-shadow: var(--md-sys-elevation-level1);
-  cursor: default;
+#tool-anatomy .anatomy-intro {
+  color: rgb(255 255 255 / 88%);
 }
 
-.tool-anatomy__label {
-  font-family: var(--md-ref-typeface-mono);
-  font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: 600;
-  letter-spacing: 0;
+#tool-anatomy .anatomy-intro strong {
+  color: #fff;
 }
 
-/*
- * Les cinq étiquettes, invisibles au repos. `~` cible tout ce qui suit le
- * bouton dans le DOM — leur ordre visuel vient de `grid-area`, pas de l'ordre
- * du document, donc le bouton peut rester le premier enfant sans contraindre
- * où chaque étiquette apparaît à l'écran.
- */
-.tool-anatomy__callout {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  color: var(--md-sys-color-tertiary);
-  font-family: var(--md-ref-typeface-mono);
-  font-size: var(--md-sys-typescale-label-medium-size);
-  font-weight: 600;
-  white-space: nowrap;
-  opacity: 0;
-  transform: scale(0.85);
-  transition:
-    opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard),
-    transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+#tool-anatomy .anatomy-intro code {
+  color: inherit;
 }
 
-.tool-anatomy__button:hover ~ .tool-anatomy__callout {
-  opacity: 1;
-  transform: none;
+#dashboard-tour .brand-hero__content > .prototype-heading,
+#dashboard-tour .brand-hero__content > .tour-grid {
+  max-width: none;
 }
 
-.tool-anatomy__dot {
-  width: 6px;
-  height: 6px;
-  flex: none;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: currentColor;
+#dashboard-tour .tour-card {
+  background: color-mix(in srgb, var(--md-sys-color-scrim) 22%, transparent);
+  color: #fff;
+  border-radius: var(--md-sys-shape-corner-large);
 }
 
-.tool-anatomy__callout--name {
-  grid-area: name;
-  justify-self: end;
+#dashboard-tour .tour-card > span {
+  color: var(--brand-highlight);
 }
 
-.tool-anatomy__callout--schema {
-  grid-area: schema;
-  justify-self: start;
+#dashboard-tour .tour-card h3 {
+  color: inherit;
 }
 
-.tool-anatomy__callout--desc {
-  grid-area: desc;
-  justify-self: end;
-}
-
-.tool-anatomy__callout--execute {
-  grid-area: execute;
-}
-
-.tool-anatomy__callout--annot {
-  grid-area: annot;
-  justify-self: start;
-}
-
-/*
- * Le survol n'existe que là où survoler existe. Sur un écran tactile, ce
- * geste n'a pas d'équivalent — masquer le bouton et les étiquettes ne retire
- * aucune information : `.anatomy-intro`, toujours visible, porte les cinq
- * mêmes mots en prose. C'est aussi pourquoi tout `.tool-anatomy` porte
- * `aria-hidden` et son bouton `tabindex="-1"` dans le marquage : décoratif
- * pour la souris, silencieux pour tout le reste.
- *
- * `.tool-anatomy__video`, elle, reste affichée : le geste qui la pilote est
- * le scroll, pas le survol — il a un équivalent tactile évident, et masquer
- * la boîte entière l'aurait emportée avec le bouton.
- */
-@media (hover: none) {
-  .tool-anatomy__button,
-  .tool-anatomy__callout {
-    display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tool-anatomy__callout {
-    transition: opacity var(--md-sys-motion-duration-short1) linear;
-    transform: none;
-  }
+#dashboard-tour .tour-card p {
+  color: rgb(255 255 255 / 82%);
 }
 
 /*
@@ -851,10 +735,8 @@
  * -----------------------------------------------------------------------
  *
  * Couleur : `primary-container` / `on-primary-container` — le vert de marque,
- * pas l'accent `tertiary` (un ton bleu-sarcelle dérivé de ce seed) utilisé par
- * `.tool-anatomy` juste au-dessus. Un ruban qui défile en pleine largeur doit
- * se lire comme la couleur du site ; un accent réservé aux annotations
- * discrètes ne portait pas assez pour ce rôle.
+ * pas un accent secondaire. Un ruban qui défile en pleine largeur doit se
+ * lire comme la couleur du site.
  */
 .text-loop {
   width: 100%;
@@ -1000,10 +882,6 @@
  * La hiérarchie passe par les niveaux de surface, la forme et le type.
  */
 
-#dashboard-tour {
-  background: var(--md-sys-color-surface-container);
-}
-
 .marketing-steps article > span,
 .tour-card > span {
   color: var(--md-sys-color-primary);
@@ -1040,6 +918,17 @@
 
 .tour-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/*
+ * Sur la grille à deux colonnes ci-dessus, « Overview » et « Configuration »
+ * sont censées se détacher des deux cartes étroites — c'est tout le sens de
+ * `tour-card--wide` dans le marquage. Sans cette règle, elle occupait une
+ * seule colonne comme les autres et le mot « wide » ne voulait plus rien dire
+ * à l'écran.
+ */
+.tour-card--wide {
+  grid-column: 1 / -1;
 }
 
 .tour-bars,
@@ -1157,17 +1046,249 @@
   line-height: var(--md-sys-typescale-headline-small-line-height);
 }
 
+.account-panel {
+  position: relative;
+  z-index: 9;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-5);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.account-panel p {
+  max-width: 720px;
+  color: inherit;
+}
+
+.account-panel__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+/*
+ * Pied de page public — même coque que les cartes de la landing
+ * (`--brand-gradient`, voile directionnel, texte blanc). Les colonnes d'une
+ * boutique (livraison, retours, newsletter) sont remplacées par les vrais
+ * liens de cette landing : le dessin reste, le contenu ne ment pas.
+ */
 .marketing-footer {
-  min-height: 88px;
-  padding: var(--sp-5) max(24px, calc((100vw - 1200px) / 2));
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  /*
+   * Plus large que les cartes à 1200px — les quatre colonnes ont de l'air —
+   * mais pas collé aux bords : 48px de soie de chaque côté, comme le reste
+   * de la landing. C'est ça qui le distingue d'un pied pleine largeur.
+   */
+  width: min(calc(100% - 48px), 1520px);
+  margin: var(--sp-5) auto var(--sp-5);
+  padding: clamp(28px, 3.5vw, 48px) clamp(32px, 4vw, 56px) 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: clamp(2rem, 4vw, 3rem);
+  background: var(--brand-gradient);
+  color: #fff;
+  --state-layer-base: var(--md-sys-color-scrim);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 14%),
+    0 24px 80px rgb(0 0 0 / 28%);
+}
+
+.marketing-footer__glow {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    137deg,
+    color-mix(in srgb, var(--md-sys-color-scrim) 45%, transparent) 0%,
+    color-mix(in srgb, var(--md-sys-color-scrim) 30%, transparent) 45%,
+    transparent 85%
+  );
+}
+
+.marketing-footer__top,
+.marketing-footer__bar,
+.marketing-footer__wordmark {
+  position: relative;
+  z-index: 1;
+}
+
+.marketing-footer__top {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: clamp(28px, 4vw, 80px);
+  row-gap: clamp(28px, 4vw, 40px);
+  padding-bottom: clamp(28px, 4vw, 36px);
+  border-bottom: 1px solid rgb(255 255 255 / 15%);
+}
+
+.marketing-footer__note {
+  min-width: 0;
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .marketing-footer__top {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 960px) {
+  .marketing-footer__top {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(20rem, 1.4fr);
+  }
+
+  .marketing-footer__note {
+    grid-column: auto;
+  }
+}
+
+.marketing-footer__nav {
+  min-width: 0;
+}
+
+.marketing-footer__heading {
+  margin: 0 0 var(--sp-4);
+  color: inherit;
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+}
+
+.marketing-footer__links {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.marketing-footer__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  line-height: 1.4;
+  text-align: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 160ms var(--md-sys-motion-easing-standard);
+}
+
+.marketing-footer__link:hover,
+.marketing-footer__link:focus-visible {
+  color: rgb(255 255 255 / 80%);
+}
+
+.marketing-footer__lede {
+  margin: 0;
+  max-width: 46ch;
+  color: rgb(255 255 255 / 85%);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: 1.5;
+}
+
+.marketing-footer__cta {
+  margin-top: var(--sp-5);
+  width: 100%;
+  max-width: none;
+  padding: 4px 4px 4px var(--sp-4);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  border-top: 1px solid var(--md-sys-color-outline-variant);
-  color: var(--md-sys-color-on-surface-variant);
-  font-family: var(--md-sys-typescale-body-small-font);
+  gap: var(--sp-3);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: #edf5e8;
+  box-shadow: 0 8px 24px rgb(7 25 9 / 20%);
+}
+
+.marketing-footer__cta-copy {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+  color: #527155;
   font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.marketing-footer__submit {
+  flex: none;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-on-primary);
+  color: var(--md-sys-color-primary);
+  font-family: inherit;
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 160ms var(--md-sys-motion-easing-standard);
+}
+
+.marketing-footer__submit:hover,
+.marketing-footer__submit:focus-visible {
+  background: color-mix(in srgb, black 18%, var(--md-sys-color-on-primary));
+}
+
+.marketing-footer__submit:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.marketing-footer__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4) var(--sp-5);
+  padding: var(--sp-5) 0;
+  color: rgb(255 255 255 / 80%);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.marketing-footer__bar p {
+  margin: 0;
+}
+
+.marketing-footer__social {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.marketing-footer__place {
+  font-weight: 500;
+}
+
+.marketing-footer__credits {
+  flex: 1 1 100%;
+  margin: 0;
+  color: rgb(255 255 255 / 70%);
+}
+
+.marketing-footer__wordmark {
+  display: block;
+  overflow: hidden;
+  margin: var(--sp-3) 0 var(--sp-2);
+  padding-bottom: 0.1em;
+  color: #fff;
+  font-family: var(--md-ref-typeface-brand);
+  font-size: clamp(3.75rem, 12vw, 10.5rem);
+  font-weight: 650;
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
 }
 
 .settings-preview {
@@ -1184,8 +1305,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-4);
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-surface-container-highest);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 70%, transparent);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-surface-container);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 5%),
+    var(--md-sys-elevation-level1);
+  --state-layer-base: var(--md-sys-color-surface-container);
 }
 
 .settings-group h3 {
@@ -1199,6 +1325,52 @@
   margin: 0;
   color: var(--md-sys-color-on-surface-variant);
   font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+.settings-group--tools {
+  grid-column: 1 / -1;
+}
+
+.settings-group__status {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.tool-permissions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+
+.tool-permission {
+  min-height: 64px;
+  padding: var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container-low);
+  cursor: pointer;
+}
+
+.tool-permission input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--md-sys-color-primary);
+}
+
+.tool-permission span {
+  display: grid;
+  gap: var(--sp-1);
+}
+
+.tool-permission small {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.field--compact {
+  min-width: 0;
 }
 
 .segmented-preview {
@@ -1227,8 +1399,8 @@
 }
 
 .segmented-preview__active {
-  background: var(--md-sys-color-secondary-container) !important;
-  color: var(--md-sys-color-on-secondary-container) !important;
+  background: var(--md-sys-color-primary-container) !important;
+  color: var(--md-sys-color-on-primary-container) !important;
 }
 
 .switch-preview {
@@ -1258,6 +1430,10 @@
 }
 
 @media (max-width: 840px) {
+  .marketing-nav__links {
+    display: none;
+  }
+
   .landing--product,
   .marketing-section--split {
     grid-template-columns: 1fr;
@@ -1277,7 +1453,7 @@
      n'ont pas la place de coexister avec le bouton flèche et « Sign in » sur
      un écran étroit — « How it works »/« Dashboard »/« Free » restent à une
      ancre de défilement près, jamais à plus d'un geste. */
-  .marketing-nav__links {
+  .marketing-nav__external {
     display: none;
   }
 
@@ -1285,7 +1461,8 @@
   .marketing-section,
   .free-section,
   .marketing-site > .form,
-  .preview-auth {
+  .preview-auth,
+  .marketing-footer {
     width: calc(100% - 32px);
   }
 
@@ -1316,8 +1493,12 @@
     grid-template-columns: 1fr;
   }
 
-  .prototype-heading,
-  .marketing-footer {
+  .account-panel,
+  .tool-permissions {
+    grid-template-columns: 1fr;
+  }
+
+  .prototype-heading {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -1329,6 +1510,18 @@
   .free-section {
     margin-bottom: var(--sp-7);
     padding: var(--sp-5);
+  }
+
+  .marketing-footer {
+    padding: var(--sp-6) var(--sp-5) 0;
+  }
+
+  .marketing-footer__place {
+    display: none;
+  }
+
+  .marketing-footer__cta {
+    padding-left: var(--sp-3);
   }
 }
 

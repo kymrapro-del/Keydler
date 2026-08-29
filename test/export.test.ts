@@ -8,7 +8,7 @@ describe('export d’un cahier', () => {
   it('montre le contenu des preuves, que la restitution compacte cache', () => {
     const sortie = buildTaskExport(buildDemoTask())
     expect(sortie).toContain('## Attached evidence')
-    expect(sortie).toContain('auth suite — 183 passed, 0 failed, 0 skipped')
+    expect(sortie).toContain('auth suite \\\\ 183 passed, 0 failed, 0 skipped')
     expect(sortie).toContain('bench --auth-refresh')
   })
 
@@ -51,12 +51,12 @@ describe('export d’un cahier', () => {
   it('récolte tous les cahiers d’un appareil en un fichier', () => {
     const tasks = [buildMeasureTask(1), buildMeasureTask(2), buildMeasureTask(3)]
     const sortie = buildFullExport(tasks)
-    expect(sortie).toContain('# 3 watch logs')
+    expect(sortie).toContain('# 3 nightorders')
     for (const t of tasks) expect(sortie).toContain(t.title)
   })
 
   it('dit clairement qu’il n’y a rien à récolter', () => {
-    expect(buildFullExport([])).toContain('No watch log')
+    expect(buildFullExport([])).toContain('No nightorder')
   })
 
   it('ne laisse pas une preuve refermer le bloc qui la contient', () => {
@@ -86,7 +86,7 @@ describe('export d’un cahier', () => {
   it('donne un nom de fichier stable et sans caractère hasardeux', () => {
     const task = buildMeasureTask(5)
     const nom = exportFilename(task)
-    expect(nom).toMatch(/^watch-log-[a-z0-9-]+-v\d+\.md$/)
+    expect(nom).toMatch(/^nightorder-[a-z0-9-]+-v\d+\.md$/)
     expect(exportFilename(task)).toBe(nom)
   })
 })

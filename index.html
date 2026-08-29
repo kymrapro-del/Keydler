@@ -1,27 +1,48 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Watch Log — a shared memory for you and your AI</title>
+    <title>Keydler \\ shared AI memory for WebMCP agents</title>
     <meta
       name="description"
-      content="A shared, supervised task memory for you and your AI, exposed to agents through WebMCP."
+      content="Keydler is free, local-first task memory for you and your AI. Supervised WebMCP tools keep decisions, rules, evidence and failed approaches on the page so the next conversation continues from the right place."
     />
+    <meta
+      name="keywords"
+      content="Keydler, WebMCP, AI memory, task memory, ChatGPT tools, Claude tools, Gemini tools, local-first, open source, MIT"
+    />
+    <meta name="author" content="Keydler" />
+    <meta name="application-name" content="Keydler" />
+    <meta name="apple-mobile-web-app-title" content="Keydler" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:site_name" content="Keydler" />
+    <meta property="og:title" content="Keydler \\ shared AI memory for WebMCP agents" />
+    <meta
+      property="og:description"
+      content="Free, local-first supervised task memory for you and your AI, exposed to agents through WebMCP."
+    />
+    <meta property="og:image" content="/assets/brand/wordmark.jpg" />
+    <meta property="og:image:alt" content="Keydler" />
+    <meta property="og:image:width" content="1024" />
+    <meta property="og:image:height" content="434" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Keydler \\ shared AI memory for WebMCP agents" />
+    <meta
+      name="twitter:description"
+      content="Free, local-first supervised task memory for you and your AI, exposed to agents through WebMCP."
+    />
+    <meta name="twitter:image" content="/assets/brand/wordmark.jpg" />
+    <meta name="twitter:image:alt" content="Keydler" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icons/icon-32.png" type="image/png" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#131316" media="(prefers-color-scheme: dark)" />
-    <script>
-      // Avant la première peinture : lu ici et non dans le module, faute de
-      // quoi la page s'afficherait une fraction de seconde dans le thème du
-      // système avant de basculer.
-      try {
-        var t = localStorage.getItem('watch-log.theme')
-        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t
-      } catch (e) {}
-    </script>
+    <meta name="theme-color" content="#131316" />
+    <script type="application/ld+json" src="/ld.json"></script>
   </head>
   <body>
     <div

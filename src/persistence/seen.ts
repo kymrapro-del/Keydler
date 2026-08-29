@@ -1,4 +1,4 @@
-const PREFIX = 'watch-log:seen:'
+const PREFIX = 'nightorder:seen:'
 
 function key(taskId: string): string {
   return `${PREFIX}${taskId}`

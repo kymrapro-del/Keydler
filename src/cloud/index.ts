@@ -1,0 +1,5 @@
+export { initializeCloud, sendMagicLink, signOut } from './auth'
+export { connectProvider, disconnectProvider, loadConnectors, saveSettings } from './repository'
+export { getCloudState, onCloudStateChange, updateCloudState } from './state'
+export { requestCloudSync, startCloudSync, stopCloudSync, syncNow } from './sync'
+export type { CloudSettings, CloudState, Connector, ConnectorProvider } from './types'

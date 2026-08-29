@@ -32,7 +32,7 @@ export function detectLifecycle(): ToolLifecycle {
       mode: 'static',
       chromiumMajor: null,
       reason:
-        'Chromium version unknown — tools stay registered for the life of the document (safe default).',
+        'Chromium version unknown · tools stay registered for the life of the document (safe default).',
     }
   }
 
@@ -40,13 +40,13 @@ export function detectLifecycle(): ToolLifecycle {
     return {
       mode: 'dynamic',
       chromiumMajor,
-      reason: `Chromium ${chromiumMajor} — unregistering a tool is safe while an execution is in flight (since ${DYNAMIC_UNREGISTER_MIN_CHROMIUM}).`,
+      reason: `Chromium ${chromiumMajor} · unregistering a tool is safe while an execution is in flight (since ${DYNAMIC_UNREGISTER_MIN_CHROMIUM}).`,
     }
   }
 
   return {
     mode: 'static',
     chromiumMajor,
-    reason: `Chromium ${chromiumMajor} — below ${DYNAMIC_UNREGISTER_MIN_CHROMIUM}, where unregistering may drop an in-flight reply; tools stay registered.`,
+    reason: `Chromium ${chromiumMajor} · below ${DYNAMIC_UNREGISTER_MIN_CHROMIUM}, where unregistering may drop an in-flight reply; tools stay registered.`,
   }
 }

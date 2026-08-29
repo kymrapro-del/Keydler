@@ -63,7 +63,7 @@ looking complete; fall back to resume_task then.
 
 Read-only: this never changes the task.`
 
-export const LOG_STEP_DESCRIPTION = `Record one completed step in the task's watch log, with its evidence.
+export const LOG_STEP_DESCRIPTION = `Record one completed step in the task, with its evidence.
 
 Call this immediately AFTER finishing a unit of work — a file
 changed, a command run, a test suite executed. Do not batch several

@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import benchSource from '../src/ui/bench.ts?raw'
 
+/*
+ * Toutes les feuilles du produit, pas seulement `style.css`.
+ *
+ * Ce garde-fou a été écrit quand `style.css` était la seule feuille. Depuis,
+ * la landing publique et l'espace de travail privé ont chacune la leur, et le
+ * glob d'origine ne les relisait pas : une classe correctement stylée dans
+ * `marketing.css` y était comptée comme non stylée, ce qui poussait à
+ * contourner le test plutôt qu'à le satisfaire. Élargir le glob rend au
+ * garde-fou sa portée réelle — il couvre maintenant tout ce que `main.ts`
+ * charge, donc plus rien ne peut être livré sans style en passant entre les
+ * feuilles.
+ */
 const css = Object.values(
-  import.meta.glob('../src/style.css', { eager: true, query: '?raw', import: 'default' }),
-)[0] as string
+  import.meta.glob('../src/*.css', { eager: true, query: '?raw', import: 'default' }),
+).join('\n')
 
 /**
  * Chaque classe de structure que la vue émet doit exister dans la feuille.

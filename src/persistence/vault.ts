@@ -110,8 +110,24 @@ export async function seal(value: string, passphrase: string): Promise<SealedVal
   }
 }
 
-export async function unseal(sealed: SealedValue, passphrase: string): Promise<string> {
-  const key = await deriveKey(passphrase, fromBase64(sealed.salt), sealed.iterations)
+/**
+ * Dérive la clé propre à UN secret scellé, sans le déchiffrer.
+ *
+ * Isolée d'`unseal` pour que `vaultSession.ts` puisse garder cette `CryptoKey`
+ * (non extractable) en mémoire et la réutiliser sur les révélations suivantes,
+ * sans jamais retenir la passphrase elle-même. Le sel étant propre à chaque
+ * secret, cette clé n'ouvre que celui-ci — il n'existe pas de clé « du coffre ».
+ */
+export async function deriveKeyFor(sealed: SealedValue, passphrase: string): Promise<CryptoKey> {
+  return deriveKey(passphrase, fromBase64(sealed.salt), sealed.iterations)
+}
+
+/**
+ * Déchiffre avec une clé déjà dérivée. Séparée de `deriveKeyFor` pour le même
+ * motif : c'est le seul point qui touche l'AES-GCM, que la clé vienne d'une
+ * passphrase fraîche ou du cache de session.
+ */
+export async function decryptWithKey(sealed: SealedValue, key: CryptoKey): Promise<string> {
   try {
     const plain = await subtle().decrypt(
       { name: 'AES-GCM', iv: fromBase64(sealed.iv) as BufferSource },
@@ -122,6 +138,11 @@ export async function unseal(sealed: SealedValue, passphrase: string): Promise<s
   } catch {
     throw new WrongPassphraseError()
   }
+}
+
+export async function unseal(sealed: SealedValue, passphrase: string): Promise<string> {
+  const key = await deriveKeyFor(sealed, passphrase)
+  return decryptWithKey(sealed, key)
 }
 
 let counter = 0

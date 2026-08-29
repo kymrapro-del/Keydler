@@ -1,26 +1,30 @@
 /* Private workspace scaffold — Material Design 3 only. */
 
+main:has(.workspace-shell) {
+  isolation: isolate;
+}
+
 .workspace-shell {
   width: min(calc(100% - 48px), 1440px);
-  margin: var(--sp-5) auto var(--sp-7);
+  margin: var(--sp-4) auto var(--sp-7);
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   gap: var(--sp-5);
   align-items: start;
 }
 
 .workspace-nav {
   position: sticky;
-  top: 88px;
-  min-height: calc(100dvh - 112px);
+  top: 80px;
+  min-height: calc(100dvh - 104px);
   padding: var(--sp-5) var(--sp-3);
   display: flex;
   flex-direction: column;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 80%, transparent);
   border-radius: var(--md-sys-shape-corner-extra-large);
-  /* Navigation rail M3 : conteneur surface-container, indicateur actif
-     secondary-container (m3.material.io/components/navigation-rail/specs). */
-  background: var(--md-sys-color-surface-container);
-  --state-layer-base: var(--md-sys-color-surface-container);
+  background: var(--md-sys-color-surface-container-lowest);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
+  --state-layer-base: var(--md-sys-color-surface-container-lowest);
 }
 
 .workspace-nav__heading {
@@ -41,9 +45,14 @@
 .workspace-nav__heading strong {
   display: block;
   margin: var(--sp-1) 0 var(--sp-3);
+  color: var(--md-sys-color-on-surface);
   font-family: var(--md-sys-typescale-title-medium-font);
   font-size: var(--md-sys-typescale-title-medium-size);
   font-weight: var(--md-sys-typescale-title-medium-weight);
+}
+
+.workspace-nav__heading > .workspace-nav__label {
+  color: var(--md-sys-color-primary);
 }
 
 .workspace-nav__links {
@@ -85,10 +94,16 @@
   );
 }
 
-.workspace-nav__link--active {
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
-  --state-layer-base: var(--md-sys-color-secondary-container);
+.workspace-nav__link--active,
+.workspace-nav__link.is-active {
+  background: color-mix(in srgb, var(--md-sys-color-primary) 16%, var(--md-sys-color-surface-container-lowest));
+  color: var(--md-sys-color-primary);
+  box-shadow: inset 3px 0 0 var(--md-sys-color-primary);
+  --state-layer-base: color-mix(
+    in srgb,
+    var(--md-sys-color-primary) 16%,
+    var(--md-sys-color-surface-container-lowest)
+  );
 }
 
 .workspace-nav__storage {
@@ -127,19 +142,69 @@
 }
 
 .workspace-overview {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   margin-bottom: var(--sp-6);
   padding: clamp(24px, 4vw, 48px);
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
   gap: var(--sp-5);
   border-radius: var(--md-sys-shape-corner-extra-large);
-  background: var(--md-sys-color-surface-container-low);
-  --state-layer-base: var(--md-sys-color-surface-container-low);
+  background: var(--brand-gradient);
+  color: #fff;
+  --state-layer-base: var(--md-sys-color-scrim);
 }
 
-.workspace-overview__intro h1 {
+.workspace-overview.prototype-section {
+  margin-bottom: var(--sp-6);
+  padding: clamp(24px, 4vw, 48px);
+  border: 0;
+  box-shadow: none;
+  background: var(--brand-gradient);
+  color: #fff;
+}
+
+.workspace-overview::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    137deg,
+    color-mix(in srgb, var(--md-sys-color-scrim) 42%, transparent) 0%,
+    color-mix(in srgb, var(--md-sys-color-scrim) 24%, transparent) 48%,
+    transparent 86%
+  );
+}
+
+.workspace-overview > * {
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-overview .section-heading__eyebrow,
+.workspace-overview .memory-summary__kicker {
+  color: rgb(255 255 255 / 88%);
+}
+
+.workspace-overview .btn:not(.btn--primary) {
+  --btn-base: rgb(12 15 9 / 42%);
+  --btn-fg: #fff;
+}
+
+.workspace-nav .preview-flag,
+.workspace-content .preview-flag {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.workspace-overview__intro h2 {
   max-width: 700px;
   margin: 0 0 var(--sp-3);
+  color: inherit;
   font-family: var(--md-sys-typescale-display-small-font);
   font-size: var(--md-sys-typescale-display-small-size);
   font-weight: var(--md-sys-typescale-display-small-weight);
@@ -149,7 +214,7 @@
 
 .workspace-overview__intro > p:not(.section-heading__eyebrow) {
   max-width: 620px;
-  color: var(--md-sys-color-on-surface-variant);
+  color: rgb(255 255 255 / 88%);
 }
 
 .workspace-overview__intro .actions {
@@ -168,15 +233,16 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  border-radius: var(--md-sys-shape-corner-medium);
-  /* Imbriqué dans .workspace-overview (surface-container-low) : le niveau
-     suivant de la hiérarchie de surface, pas une couleur de marque. */
-  background: var(--md-sys-color-surface-container);
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: var(--md-sys-shape-corner-large);
+  background: rgb(12 15 9 / 28%);
+  color: inherit;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%);
 }
 
 .metric-card > span,
 .metric-card small {
-  color: var(--md-sys-color-on-surface-variant);
+  color: rgb(255 255 255 / 78%);
   font-family: var(--md-sys-typescale-body-small-font);
   font-size: var(--md-sys-typescale-body-small-size);
   line-height: var(--md-sys-typescale-body-small-line-height);
@@ -197,25 +263,26 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--sp-4);
-  border-radius: var(--md-sys-shape-corner-medium);
-  /* Le seul primary-container de cet écran est le bloc « Next » du cahier
-     ouvert plus bas sur la même page (voir .hero dans style.css). Ce résumé
-     reste au niveau de surface imbriqué. */
-  background: var(--md-sys-color-surface-container);
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: var(--md-sys-shape-corner-large);
+  background: rgb(12 15 9 / 32%);
+  color: inherit;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 10%);
 }
 
 .memory-summary__main {
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
 }
 
-.memory-summary__status,
-.connector-state,
-.security-card__state {
+.memory-summary__status {
   min-height: 32px;
   padding: 6px var(--sp-3);
-  border-radius: var(--md-sys-shape-corner-small);
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   font-family: var(--md-sys-typescale-label-medium-font);
   font-size: var(--md-sys-typescale-label-medium-size);
   font-weight: var(--md-sys-typescale-label-medium-weight);
@@ -224,8 +291,29 @@
   text-transform: none;
 }
 
+.connector-state,
+.security-card__state {
+  min-height: 32px;
+  padding: 6px var(--sp-3);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-label-medium-tracking);
+  text-transform: none;
+}
+
+.connector-state--on {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
 .memory-summary h2 {
   margin: 0 0 var(--sp-1);
+  color: inherit;
   font-family: var(--md-sys-typescale-title-medium-font);
   font-size: var(--md-sys-typescale-title-medium-size);
   font-weight: var(--md-sys-typescale-title-medium-weight);
@@ -234,39 +322,61 @@
 
 .memory-summary p {
   margin: 0;
-  color: var(--md-sys-color-on-surface-variant);
+  color: rgb(255 255 255 / 82%);
 }
 
 .memory-summary__meta {
   display: grid;
   justify-items: end;
   gap: var(--sp-1);
-  color: var(--md-sys-color-on-surface-variant);
+  color: rgb(255 255 255 / 78%);
   font-size: var(--md-sys-typescale-body-small-size);
 }
 
 .memory-summary__meta a,
 .connection-explainer a {
-  color: var(--md-sys-color-primary);
+  color: inherit;
   font-family: var(--md-sys-typescale-label-large-font);
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
   text-decoration: none;
 }
 
+.memory-summary__meta a {
+  color: #fff;
+}
+
 .memory-detail {
   margin-bottom: var(--sp-7);
-  padding: clamp(24px, 4vw, 40px);
+  padding: clamp(8px, 1.5vw, 16px) 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.memory-detail .page-head {
+  margin-bottom: var(--sp-5);
+  padding: var(--sp-5);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 80%, transparent);
   border-radius: var(--md-sys-shape-corner-extra-large);
   background: var(--md-sys-color-surface-container-low);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
   --state-layer-base: var(--md-sys-color-surface-container-low);
+}
+
+.memory-detail .page-head h1 {
+  font-family: var(--md-sys-typescale-headline-medium-font);
+  font-size: var(--md-sys-typescale-headline-medium-size);
+  font-weight: var(--md-sys-typescale-headline-medium-weight);
+  line-height: var(--md-sys-typescale-headline-medium-line-height);
 }
 
 .prototype-section {
   margin-bottom: var(--sp-7);
   padding: clamp(24px, 4vw, 40px);
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 80%, transparent);
   border-radius: var(--md-sys-shape-corner-extra-large);
   background: var(--md-sys-color-surface-container-low);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
   --state-layer-base: var(--md-sys-color-surface-container-low);
 }
 
@@ -305,11 +415,12 @@
   padding: var(--sp-5);
   display: flex;
   flex-direction: column;
-  border-radius: var(--md-sys-shape-corner-medium);
-  /* Imbriquées dans .prototype-section (surface-container-low) : le niveau
-     suivant de la hiérarchie de surface. Aucune de ces cartes ne porte plus
-     primary-container — cette teinte reste réservée au bloc « Next ». */
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-outline-variant) 70%, transparent);
+  border-radius: var(--md-sys-shape-corner-extra-large);
   background: var(--md-sys-color-surface-container);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 5%),
+    var(--md-sys-elevation-level1);
   --state-layer-base: var(--md-sys-color-surface-container);
 }
 
@@ -333,8 +444,8 @@
   display: grid;
   place-items: center;
   border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
   font-family: var(--md-sys-typescale-title-medium-font);
   font-size: var(--md-sys-typescale-title-medium-size);
   font-weight: var(--md-sys-typescale-title-medium-weight);
@@ -358,6 +469,20 @@
 .security-card .btn {
   margin-top: auto;
   align-self: flex-start;
+}
+
+.connector-form {
+  margin-top: auto;
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.connector-card__error {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--md-sys-shape-corner-small);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container) !important;
+  font-size: var(--md-sys-typescale-body-small-size);
 }
 
 .btn--tonal {
@@ -392,9 +517,9 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--sp-4);
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .connection-explainer p {
@@ -433,9 +558,9 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-secondary-container);
-  color: var(--md-sys-color-on-secondary-container);
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
 }
 
 .preview-feedback__mark {
@@ -445,8 +570,8 @@
   flex: none;
   place-items: center;
   border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-secondary);
-  color: var(--md-sys-color-on-secondary);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   font-weight: 500;
 }
 
@@ -456,14 +581,21 @@
 }
 
 .product-footer {
-  min-height: 72px;
-  padding-top: var(--sp-5);
+  min-height: 64px;
+  margin-top: var(--sp-4);
+  padding: var(--sp-4) 0 0;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--sp-4);
   border-top: 1px solid var(--md-sys-color-outline-variant);
   color: var(--md-sys-color-on-surface-variant);
   font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.product-footer__credits {
+  flex: 1 1 100%;
+  margin: 0;
 }
 
 @media (max-width: 1040px) {
@@ -485,7 +617,7 @@
   .workspace-nav {
     position: sticky;
     z-index: 8;
-    top: 64px;
+    top: 72px;
     min-height: 64px;
     padding: var(--sp-2);
     display: block;
@@ -507,6 +639,11 @@
     min-height: 48px;
   }
 
+  .workspace-nav__link--active,
+  .workspace-nav__link.is-active {
+    box-shadow: inset 0 -3px 0 var(--md-sys-color-primary);
+  }
+
   .connector-grid {
     grid-template-columns: 1fr;
   }
@@ -514,6 +651,7 @@
 
 @media (max-width: 600px) {
   .top-app-bar {
+    width: calc(100% - 32px);
     padding-inline: var(--sp-4);
   }
 

@@ -93,22 +93,16 @@ describe('première visite', () => {
     expect(button('Try the demo')).toBeTruthy()
   })
 
-  it('présente la connexion comme une maquette sans créer de faux compte', async () => {
+  it('reste honnête quand le backend de compte n’est pas configuré', async () => {
     await settled()
     button('Sign in').click()
     await settled()
 
-    const form = root.querySelector<HTMLFormElement>('#preview-auth')
-    expect(form?.textContent).toContain('Design preview')
-    expect(form?.textContent).toContain('No account will be created')
-
-    form?.requestSubmit()
-    await settled(8)
-
-    expect(store.currentTask()?.id).toBe(DEMO_TASK_ID)
-    expect(root.querySelector('[data-preview-feedback]')?.textContent).toContain(
-      'No account was created',
-    )
+    const panel = root.querySelector<HTMLElement>('.account-panel')
+    expect(panel?.textContent).toContain('Cloud accounts are not configured')
+    expect(panel?.textContent).toContain('fully usable on this device')
+    expect(root.querySelector('#cloud-auth')).toBeNull()
+    expect(store.currentTask()).toBeNull()
   })
 })
 
@@ -254,9 +248,9 @@ describe('tableau de bord', () => {
     expect(hero.textContent).toContain('Implement approach C')
   })
 
-  it('ne présente jamais les connecteurs de maquette comme actifs', async () => {
+  it('ne présente jamais un connecteur non authentifié comme actif', async () => {
     const connections = root.querySelector('#connections-preview')!
-    expect(connections.textContent).toContain('Sample interface')
+    expect(connections.textContent).toContain('Encrypted connections')
     expect(connections.querySelectorAll('.connector-card')).toHaveLength(3)
     expect(connections.querySelectorAll('.connector-state')).toHaveLength(3)
     expect(connections.textContent).not.toContain('Connected')
@@ -266,8 +260,8 @@ describe('tableau de bord', () => {
     await settled()
 
     expect(store.currentTask()!.version).toBe(version)
-    expect(root.querySelector('[data-preview-feedback]')?.textContent).toContain(
-      'No provider account, API key or conversation was connected',
+    expect(root.querySelector('.account-panel')?.textContent).toContain(
+      'Cloud accounts are not configured',
     )
   })
 

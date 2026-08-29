@@ -161,6 +161,32 @@ export async function importTasks(incoming: readonly TaskState[]): Promise<Impor
   })
 }
 
+/**
+ * Fusionne un instantané authentifié venu du cloud.
+ *
+ * Une version distante plus récente remplace la copie locale. Une version
+ * identique ou plus ancienne est ignorée : le moteur de domaine utilise déjà
+ * la version comme verrou optimiste, donc une synchronisation ne doit jamais
+ * faire reculer un cahier ni créer une seconde vérité silencieuse.
+ */
+export async function mergeCloudTask(
+  incoming: TaskState,
+): Promise<'inserted' | 'updated' | 'ignored'> {
+  return enqueue(async () => {
+    const existing = await loadTask(incoming.id)
+    if (existing && existing.version >= incoming.version) return 'ignored'
+
+    await putTask(incoming)
+    tasksChanged()
+    if (!existing) return 'inserted'
+
+    if (snapshot.boundId === incoming.id) {
+      setSnapshot({ status: 'ready', task: incoming, error: null, boundId: incoming.id })
+    }
+    return 'updated'
+  })
+}
+
 export async function updateTask(
   id: string,
   fn: (state: TaskState) => TaskState,
@@ -201,11 +227,13 @@ export async function deleteCurrentTask(): Promise<void> {
   if (!current) return
 
   await enqueue(async () => {
-    await deleteTask(current.id)
     // Les identifiants scellés vivent hors de l'état de la tâche : sans cet
     // appel, ils survivaient à la suppression, hors d'atteinte de l'écran mais
-    // bien présents sur le disque.
-    await deleteSecretsForTask(current.id).catch(() => undefined)
+    // bien présents sur le disque. On les supprime en premier et on laisse
+    // remonter toute erreur : la tâche reste alors visible et l'écran peut dire
+    // honnêtement que la suppression n'a pas abouti.
+    await deleteSecretsForTask(current.id)
+    await deleteTask(current.id)
     forgetSeen(current.id)
     tasksChanged()
     const suivant = await loadLastTask()
@@ -248,7 +276,7 @@ function enqueue<T>(work: () => Promise<T>): Promise<T> {
 async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskState> {
   const current = snapshot.task
   if (!current) {
-    throw new Error('NO ACTIVE TASK\nNo watch log is open on this device.')
+    throw new Error('NO ACTIVE TASK\nNo nightorder is open on this device.')
   }
   const next = fn(current)
 
@@ -299,7 +327,7 @@ export async function mutateAsAgent(
   return enqueue(async () => {
     const ouvert = snapshot.task
     if (!ouvert) {
-      throw new Error('NO ACTIVE TASK\nNo watch log is open on this device.')
+      throw new Error('NO ACTIVE TASK\nNo nightorder is open on this device.')
     }
 
     let rendu = ''

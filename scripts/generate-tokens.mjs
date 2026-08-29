@@ -156,7 +156,6 @@ const sourceArgb = argbFromHex(SOURCE)
 const sourceHct = Hct.fromInt(sourceArgb)
 const mdc = new MaterialDynamicColors()
 
-const schemeLight = new SchemeTonalSpot(sourceHct, false, CONTRAST_LEVEL)
 const schemeDark = new SchemeTonalSpot(sourceHct, true, CONTRAST_LEVEL)
 
 function buildColors(scheme) {
@@ -167,7 +166,6 @@ function buildColors(scheme) {
   return out
 }
 
-const colorsLight = buildColors(schemeLight)
 const colorsDark = buildColors(schemeDark)
 
 function buildCustom(name, seedHex) {
@@ -193,8 +191,7 @@ function buildCustom(name, seedHex) {
 }
 
 for (const [name, seed] of Object.entries(CUSTOM_SEEDS)) {
-  const { light, dark } = buildCustom(name, seed)
-  Object.assign(colorsLight, light)
+  const { dark } = buildCustom(name, seed)
   Object.assign(colorsDark, dark)
 }
 
@@ -355,9 +352,8 @@ function checkPairs(colors, themeName) {
   return results
 }
 
-const resultsLight = checkPairs(colorsLight, 'clair')
 const resultsDark = checkPairs(colorsDark, 'sombre')
-const allResults = [...resultsLight, ...resultsDark]
+const allResults = resultsDark
 
 const failures = allResults.filter((r) => !r.pass)
 
@@ -602,37 +598,15 @@ const HEADER = `/*
  * reste entièrement régénérable — y compris ces deux valeurs — sans qu'aucune
  * couleur n'ait jamais à être tapée à la main dans le CSS.
  *
- * Trois voies de bascule clair/sombre cohabitent ici, sans se marcher dessus :
- *   1. \`:root\` — valeurs par défaut (clair).
- *   2. \`@media (prefers-color-scheme: dark)\` scopé à \`:root:not([data-theme])\`
- *      — respecte la préférence système tant qu'aucun choix explicite n'a été fait.
- *   3. \`[data-theme='dark'|'light']\` — choix explicite fourni par un hôte ;
- *      gagne toujours sur la préférence système.
+ * Le produit n'a qu'un thème : sombre. \`:root\` porte ces valeurs. Il n'y a
+ * plus de bascule clair, ni de suivi de \`prefers-color-scheme\`.
  */
 
 :root {
-  color-scheme: light dark;
-
-${colorVars(colorsLight)}
-${STATIC_BLOCK}
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-${colorVars(colorsDark)}
-  }
-}
-
-:root[data-theme='dark'] {
   color-scheme: dark;
 
 ${colorVars(colorsDark)}
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
-
-${colorVars(colorsLight)}
+${STATIC_BLOCK}
 }
 `
 

@@ -17,7 +17,7 @@ export const MEASURES: readonly MeasureSpec[] = [
     next: 'Choose and implement the storage mechanism',
     condemned: 'HttpOnly cookie',
     reason:
-      'the API is on a different apex domain and the mobile web view drops third-party cookies — we tried it, sessions were lost on every reload',
+      'the API is on a different apex domain and the mobile web view drops third-party cookies \\\\ we tried it, sessions were lost on every reload',
     constraint: 'Do not add any new dependency',
   },
   {
@@ -51,7 +51,7 @@ export const MEASURES: readonly MeasureSpec[] = [
     next: 'Choose and implement the retry mechanism',
     condemned: 'Exponential backoff with jitter',
     reason:
-      "the provider's idempotency window is 30 seconds, and backoff pushed retries past it — we double-charged 41 customers",
+      "the provider's idempotency window is 30 seconds, and backoff pushed retries past it \\\\ we double-charged 41 customers",
     constraint: 'Do not add a queue',
   },
   {

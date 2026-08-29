@@ -121,7 +121,7 @@ async function requireTask(): Promise<TaskState> {
   const task = store.currentTask()
   if (!task) {
     throw new Error(
-      'NO ACTIVE TASK\nNo watch log is open on this device. Ask the human to start a task in the dashboard.',
+      'NO ACTIVE TASK\nNo nightorder is open on this device. Ask the human to start a task in the dashboard.',
     )
   }
   return task

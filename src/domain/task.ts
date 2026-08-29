@@ -897,7 +897,7 @@ export function answerQuestion(
       operation: 'answer_question',
       actor: 'human',
       basedOnVersion: null,
-      detail: `${found.question} — ${text}`,
+      detail: `${found.question} \\\\ ${text}`,
       patch: {
         questions: state.questions.map((q) =>
           q.id === id ? { ...q, answer: text, answeredAt: now } : q,
@@ -1200,7 +1200,7 @@ export function disputeStep(
       operation: 'dispute_step',
       actor: 'human',
       basedOnVersion: null,
-      detail: `${step.action} — ${text}`,
+      detail: `${step.action} \\\\ ${text}`,
       targetId: id,
       patch: {
         steps: state.steps.map((s) =>

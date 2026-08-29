@@ -1,0 +1,18 @@
+Copyright (c) 2026 Moon1pact.
+
+Keydler software is MIT-licensed. The complete notices for this site are:
+
+  /licenses/google-sans-flex-OFL-1.1.txt   Google Sans Flex (Google Fonts)
+  NOTICE and THIRD-PARTY-NOTICES.md        in the source repository
+
+Keydler brand assets (wordmark, mark, illustrations, application icons)
+are Copyright (c) 2026 Moon1pact.
+
+This interface uses:
+
+  - Google Sans Flex, from Google Fonts, SIL Open Font License 1.1
+  - Material Design 3, by Google LLC, Apache License 2.0
+  - Material Symbols (Google Icons), by Google LLC, Apache License 2.0
+
+The Material Symbols font is not redistributed. Marks drawn on the page
+are original Keydler assets.

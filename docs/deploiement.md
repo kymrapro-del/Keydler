@@ -1,7 +1,7 @@
 # Déploiement sur Vercel
 
 Ce document donne à Kymra la suite de gestes qui reste à sa charge pour mettre
-le Cahier de quart en ligne sur une URL stable, avec WebMCP actif. Rien n'est
+Nightorder en ligne sur une URL stable, avec WebMCP actif. Rien n'est
 supposé : chaque étape dit où cliquer et ce qu'on doit voir en retour.
 
 L'ordre est contraignant. Inverser 2 et 3 — demander le jeton avant d'avoir
@@ -63,10 +63,10 @@ Sur [developer.chrome.com/origintrials](https://developer.chrome.com/origintrial
    **Register**.
 2. **Web Origin** : coller l'origine choisie à l'étape 2, exactement —
    schéma `https://`, hôte, sans chemin ni slash final. Exemple :
-   `https://cahier-de-quart.vercel.app`.
+   `https://nightorder.vercel.app`.
 3. **Third-party matching** : **ne pas cocher**. Cette case autorise le jeton à
-   valider une origine _embarquée_ dans une autre (iframe tiers) ; le Cahier de
-   quart est servi en top-level, jamais en iframe, et cocher la case
+   valider une origine _embarquée_ dans une autre (iframe tiers) ; Nightorder
+   est servi en top-level, jamais en iframe, et cocher la case
    n'apporterait rien tout en élargissant inutilement la portée du jeton
    accordé.
 4. **Expected usage** : usage normal (pas de « third-party origin trial »
@@ -136,10 +136,11 @@ sans jeton valide. La seule vérification qui compte se fait dans DevTools.
    gauche, sous « Background services » ou proche de « Frames » selon la
    version de Chrome).
 3. Ce qu'on doit voir si tout fonctionne :
-   - La section liste des outils enregistrés — au minimum `resume_task` et
-     `read_task_detail` sur la page sans tâche ouverte, sept outils une fois
-     une tâche active (voir `docs/protocole-webmcp-manuel.md`, vérifications 1
-     et 2, pour le détail exact).
+   - La section liste les outils autorisés dans **Settings → Agent tool
+     permissions** — quatre outils de lecture par défaut sans tâche active,
+     treize outils au total avec une tâche active (voir
+     `docs/protocole-webmcp-manuel.md`, vérifications 1 et 2, pour le détail
+     exact).
    - Aucune mention d'erreur d'origin trial dans l'onglet **Console**.
 4. **DevTools → Console**, exécuter :
    ```js
@@ -166,6 +167,15 @@ sans jeton valide. La seule vérification qui compte se fait dans DevTools.
    et 2 de `docs/protocole-webmcp-manuel.md` sur l'URL déployée — le protocole
    a été écrit pour `localhost`, mais s'applique identiquement à une origine
    de production.
+
+## 6. Activer les comptes et la synchronisation privée
+
+Le déploiement Vercel reste pleinement utilisable en mode local. Pour activer
+les comptes passwordless, les workspaces privés, la synchronisation et les
+connecteurs chiffrés, suivre ensuite
+[`docs/cloud-production.md`](cloud-production.md). Cette procédure est séparée
+du jeton d'origin trial : Supabase sécurise les données du compte, tandis que le
+jeton Chrome active l'interface WebMCP dans le navigateur.
 
 ---
 

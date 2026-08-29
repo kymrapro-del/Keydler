@@ -1,4 +1,4 @@
-# Plan de développement — Cahier de quart
+# Plan de développement — Nightorder
 
 > Échéance : **3 septembre 2026, 13 h PDT** (22 h Paris).
 > Cible de dépôt : **2 septembre au soir**. Le 3 n'est qu'un filet.

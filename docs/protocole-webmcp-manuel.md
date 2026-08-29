@@ -65,32 +65,34 @@ ou profil neuf.
 
 ---
 
-## 1. Page sans tâche : deux outils
+## 1. Page sans tâche : quatre outils de lecture
 
 État : aucun cahier ouvert.
 
 Depuis le client MCP, lister les outils de la page.
 
-- [ ] **Exactement deux** : `resume_task`, `read_task_detail`.
+- [ ] **Exactement quatre** avec les permissions par défaut : `resume_task`,
+      `read_task_detail`, `search_task`, `what_changed`.
 - [ ] Aucun outil d'écriture n'apparaît.
 - [ ] `resume_task` rend `NO ACTIVE TASK`.
 
 > Un outil d'écriture exposé ici ne pourrait que refuser. Il allongerait la
 > liste que l'agent doit lire pour choisir, sans jamais pouvoir aboutir.
 
-## 2. Tâche active : sept outils
+## 2. Tâche active : treize outils
 
 Ouvrir un cahier (bouton **Ouvrir un cahier de démonstration**, ou `?mesure=1`).
 
-- [ ] La liste passe à **sept** sans rechargement de la page. _(Vrai dans les
+- [ ] La liste passe à **treize** sans rechargement de la page. _(Vrai dans les
       deux modes : POSER un outil n'avorte rien, seul le retrait est risqué.)_
-- [ ] Les cinq écritures sont présentes : `log_step`, `add_constraint`,
-      `reject_approach`, `add_decision`, `complete_task`.
+- [ ] Les neuf écritures sont présentes : `log_step`, `add_constraint`,
+      `reject_approach`, `add_decision`, `ask_human`, `attach_evidence`,
+      `set_next_action`, `request_approval`, `complete_task`.
 - [ ] `resume_task` rend un `TASK ID` et une `URL` en `/t/:id`, et l'adresse de
       la barre correspond.
 
 > C'est ici que se voit ce qu'un faux ne peut pas garantir : que le client MCP
-> **rafraîchit réellement** sa liste sur `toolchange`. Si les sept outils
+> **rafraîchit réellement** sa liste sur `toolchange`. Si les treize outils
 > n'apparaissent qu'après un rechargement, le cycle de vie dynamique n'a
 > d'existence que dans la page.
 
@@ -104,9 +106,9 @@ Demander à l'agent de clore la tâche.
 
 Puis, selon le mode relevé :
 
-- **statique** — [ ] la liste reste à **sept** ; un `log_step` refuse avec
+- **statique** — [ ] la liste reste à **treize** ; un `log_step` refuse avec
   `task … is already completed` et l'invitation à faire rouvrir par l'humain.
-- **dynamique** — [ ] la liste retombe à **deux** outils.
+- **dynamique** — [ ] la liste retombe à **quatre** outils.
 
 > **La vérification la plus importante du lot.** C'est le déroulé où le produit
 > peut perdre une réponse : l'écriture de `complete_task` provoque son propre
@@ -127,8 +129,8 @@ Puis, selon le mode relevé :
 Cliquer **Rouvrir la tâche**, donner un motif.
 
 - [ ] `log_step` aboutit de nouveau, avec la version rendue par `resume_task`.
-- **dynamique** — [ ] la liste remonte à **sept** sans rechargement.
-- **statique** — [ ] la liste est restée à sept ; rien ne bouge, et c'est
+- **dynamique** — [ ] la liste remonte à **treize** sans rechargement.
+- **statique** — [ ] la liste est restée à treize ; rien ne bouge, et c'est
   attendu.
 
 ## 5. Annulation pendant une file d'attente
@@ -173,15 +175,15 @@ différente.
 
 ## Fiche de relevé
 
-| #   | Vérification                                 | Navigateur / version | Mode relevé | Résultat | Notes |
-| --- | -------------------------------------------- | -------------------- | ----------- | -------- | ----- |
-| 0   | Mode affiché dans le panneau d'état          |                      |             |          |       |
-| 1   | 2 outils sans tâche                          |                      |             |          |       |
-| 2   | 7 outils sur tâche active, sans rechargement |                      |             |          |       |
-| 3   | `complete_task` rend bien sa réponse         |                      |             |          |       |
-| 4   | Réouverture : écritures fonctionnelles       |                      |             |          |       |
-| 5   | Annulation : aucune mutation, refus audité   |                      |             |          |       |
-| 6   | Rejeu exact / collision d'arguments          |                      |             |          |       |
+| #   | Vérification                                  | Navigateur / version | Mode relevé | Résultat | Notes |
+| --- | --------------------------------------------- | -------------------- | ----------- | -------- | ----- |
+| 0   | Mode affiché dans le panneau d'état           |                      |             |          |       |
+| 1   | 4 outils sans tâche                           |                      |             |          |       |
+| 2   | 13 outils sur tâche active, sans rechargement |                      |             |          |       |
+| 3   | `complete_task` rend bien sa réponse          |                      |             |          |       |
+| 4   | Réouverture : écritures fonctionnelles        |                      |             |          |       |
+| 5   | Annulation : aucune mutation, refus audité    |                      |             |          |       |
+| 6   | Rejeu exact / collision d'arguments           |                      |             |          |       |
 
 Reporter les relevés dans `docs/journal-tests.md`, avec la version exacte du
 navigateur. **Un point non relevé se note « non vérifié », jamais « supposé

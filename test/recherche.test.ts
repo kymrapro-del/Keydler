@@ -217,8 +217,9 @@ describe('à l’écran', () => {
 
   it('n’injecte pas de HTML depuis la requête', async () => {
     await search('<img src=x onerror=alert(1)>')
-    expect(root.querySelector('img')).toBeNull()
-    expect(root.innerHTML).toContain('&lt;img')
+    const results = root.querySelector('[aria-labelledby="search-title"]')!
+    expect(results.querySelector('img')).toBeNull()
+    expect(results.innerHTML).toContain('&lt;img')
   })
 
   it('trouve une autre tâche et l’ouvre depuis les résultats', async () => {

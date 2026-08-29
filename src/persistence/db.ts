@@ -2,11 +2,11 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type { TaskState } from '../domain/types'
 import type { SecretRef } from '../domain/secret'
 
-const DB_NAME = 'cahier-de-quart'
+const DB_NAME = 'nightorder'
 
 const DB_VERSION = 2
 
-interface WatchLogDB extends DBSchema {
+interface NightorderDB extends DBSchema {
   tasks: {
     key: string
     value: TaskState
@@ -23,11 +23,11 @@ interface WatchLogDB extends DBSchema {
   }
 }
 
-let dbPromise: Promise<IDBPDatabase<WatchLogDB>> | null = null
+let dbPromise: Promise<IDBPDatabase<NightorderDB>> | null = null
 
-export function getDb(): Promise<IDBPDatabase<WatchLogDB>> {
+export function getDb(): Promise<IDBPDatabase<NightorderDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<WatchLogDB>(DB_NAME, DB_VERSION, {
+    dbPromise = openDB<NightorderDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const tasks = db.createObjectStore('tasks', { keyPath: 'id' })
@@ -42,7 +42,7 @@ export function getDb(): Promise<IDBPDatabase<WatchLogDB>> {
 
       blocked() {
         console.warn(
-          '[watch-log] Storage upgrade blocked: another tab still holds the older version. Close it, then reload.',
+          '[nightorder] Storage upgrade blocked: another tab still holds the older version. Close it, then reload.',
         )
       },
 
@@ -59,4 +59,4 @@ export function getDb(): Promise<IDBPDatabase<WatchLogDB>> {
   return dbPromise
 }
 
-export type { WatchLogDB }
+export type { NightorderDB }
