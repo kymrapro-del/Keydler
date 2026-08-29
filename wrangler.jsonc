@@ -1,0 +1,58 @@
+// Pourquoi ce fichier existe.
+//
+// PRÉPARÉ, PAS RECOMMANDÉ. Lisez la fin de ce commentaire avant de déployer.
+//
+// Le site est déployé sur Cloudflare Pages et fonctionne à
+// https://keydler.pages.dev. Pour le servir sur keydler.com, il faudrait que
+// l'enregistrement DNS de la zone pointe vers le projet Pages. Le jeton de
+// déploiement n'a pas le droit d'écriture DNS — la lecture même des
+// enregistrements est refusée (403). Il a en revanche `workers_routes` en
+// écriture, d'où ce contournement.
+//
+// CE QUE SERT keydler.com AUJOURD'HUI, mesuré et non supposé :
+//
+//   https://keydler.com  → 521
+//   http://keydler.com   → 302 → http://www.keydler.com → 200,
+//                          « Site en construction », en-têtes `x-iplb-*` (OVH)
+//
+// L'origine n'est donc PAS morte : Cloudflare la joint sans peine en clair.
+// Le 521 est un défaut TLS entre Cloudflare et OVH, rien d'autre. Deux
+// conséquences que la première rédaction de ce fichier avait manquées :
+//
+//   1. l'enregistrement DNS pointe vers une installation OVH vivante. La
+//      remplacer est une décision, pas un nettoyage ;
+//   2. un motif de route sans schéma intercepte AUSSI le http. Le jeton
+//      d'origin trial étant lié à `https://keydler.com`, une page servie en
+//      clair fonctionnerait parfaitement et n'exposerait AUCUN outil WebMCP.
+//      Un juge lirait « WebMCP is not available » sur un site d'apparence
+//      saine. C'est pourquoi les routes ci-dessous portent leur schéma, et
+//      pourquoi « Always Use HTTPS » doit être activé sur la zone — il est
+//      actuellement désactivé, sans quoi le http n'atteindrait pas l'origine.
+//
+// POURQUOI CE MONTAGE N'EST PAS RECOMMANDÉ : il rendrait l'enregistrement OVH
+// porteur du site — la première personne qui le nettoierait détruirait la
+// production — et il survivrait à la correction du DNS en la masquant. La
+// bonne correction reste de faire pointer keydler.com vers le projet Pages,
+// ce qui demande un droit que cette session n'a pas.
+//
+// Si vous déployez quand même : supprimez les routes et ces fichiers dès que
+// le DNS sera corrigé, sans quoi le domaine personnalisé Pages restera
+// masqué par le Worker.
+//
+// Ce Worker-ci ne porte AUCUN script. Il sert les fichiers de `dist/` et rien
+// d'autre, exactement comme Pages, `_headers` compris — vérifié. Un script
+// obligerait à servir les assets au travers d'une liaison, et rien ne
+// garantirait alors que la politique de sécurité survive au passage. La
+// redirection de www est donc confiée à un second Worker, séparé, qui ne
+// sert aucun fichier : chacun fait une seule chose.
+{
+  "name": "keydler-site",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./dist",
+    // Les liens profonds `/t/:id` doivent rendre l'application, pas un 404.
+    "not_found_handling": "single-page-application",
+  },
+  "workers_dev": false,
+  "routes": [{ "pattern": "https://keydler.com/*", "zone_name": "keydler.com" }],
+}

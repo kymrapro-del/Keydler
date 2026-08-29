@@ -1883,3 +1883,63 @@ encore enregistré. La vérification ci-dessus s'appuie donc sur Brave lancé av
 `--enable-features=WebMCP,WebMCPTesting`, comme toutes les précédentes, et **ne
 démontre pas** que WebMCP s'activera pour un juge sur un navigateur ordinaire.
 C'est ce que le jeton apportera, et il reste à poser.
+
+### 29 août 2026, plus tard — « l'origine est morte » était faux
+
+J'ai affirmé, ici et dans un message de commit, que l'enregistrement DNS de
+`keydler.com` pointait vers une origine morte, et j'en ai tiré qu'un
+contournement par route Worker ne risquait rien puisqu'il n'y avait « rien à
+casser ». Une relecture adverse a contredit la prémisse. Mesuré :
+
+```
+https://keydler.com  → 521
+http://keydler.com   → 302 → http://www.keydler.com → 200
+                       « Site en construction », en-têtes x-iplb-* (OVH)
+```
+
+Cloudflare joint l'origine sans peine en clair. Le 521 est un **défaut TLS**
+entre Cloudflare et OVH, pas une machine éteinte. Trois conséquences :
+
+1. l'enregistrement pointe vers une installation OVH vivante. La remplacer est
+   une décision à prendre, pas un nettoyage à faire ;
+2. « Always Use HTTPS » est **désactivé** sur la zone — sinon le http n'aurait
+   jamais atteint l'origine ;
+3. un motif de route sans schéma intercepte aussi le http. Le jeton d'origin
+   trial étant lié à `https://keydler.com`, une page servie en clair
+   fonctionnerait parfaitement et n'exposerait **aucun** outil WebMCP. Un juge
+   lirait « WebMCP is not available » sur un site d'apparence saine.
+
+C'est le troisième point qui compte : le contournement transformait un échec
+bruyant — un 521 que personne ne peut manquer — en échec silencieux, pendant
+la période de jugement. Les routes portent désormais leur schéma, mais le
+montage reste **préparé et non recommandé**, pour une raison que la relecture
+a mieux formulée que moi : il ferait de l'enregistrement OVH le pilier porteur
+du site, et survivrait à la correction du DNS en la masquant.
+
+**Ce qui a rendu l'erreur possible.** J'ai sondé `https://` et conclu sur
+`keydler.com`. Une seule requête en clair suffisait à me détromper, et je ne
+l'ai pas faite avant d'écrire une conclusion dans le dépôt.
+
+### Un refus utile, découvert en déployant
+
+Le déploiement a échoué avant tout cela, pour une raison sans rapport et
+instructive : le validateur d'assets de Workers **refuse** la réécriture SPA
+`/*  /index.html  200` de `_redirects`, qu'il tient pour une boucle infinie —
+là où Pages l'accepte. Deux validateurs, deux avis, sur le même fichier.
+
+Le Worker n'en a pas l'usage : `not_found_handling` fait le même travail.
+`public/.assetsignore` retire donc `_redirects` de cette livraison-là, sans
+toucher à celle de Pages, qui n'envoie pas les fichiers commençant par un
+point. Vérifié en local : `/t/abc123` rend 200 et porte la CSP.
+
+Rien n'a été attaché à la zone : zéro route, aucun déploiement, `keydler.com`
+inchangé.
+
+### Un harnais de mutation qui mentait
+
+Les premières mutations du Worker de redirection ont rapporté quatre
+survivants. Les quatre portaient des apostrophes, qui refermaient la chaîne du
+shell : les commandes n'ont jamais tourné, et le harnais a compté leur absence
+d'effet comme une survie. Un harnais qui ne vérifie pas que la mutation s'est
+appliquée mesure sa propre plomberie. Corrigé — il compare le fichier avant et
+après, et refuse de conclure si rien n'a changé. Neuf mutants, neuf tués.

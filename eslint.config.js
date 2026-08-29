@@ -31,6 +31,16 @@ export default tseslint.config(
     rules: { 'no-console': 'off' },
   },
   {
+    // Workers Cloudflare : ni navigateur ni Node. Ils ne disposent que des
+    // interfaces web standard (Request, Response, URL), sans DOM ni `document`.
+    files: ['workers/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { Request: 'readonly', Response: 'readonly', URL: 'readonly' },
+    },
+  },
+  {
     // Scripts de construction : Node, pas navigateur.
     files: ['scripts/**/*.mjs'],
     languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } },
