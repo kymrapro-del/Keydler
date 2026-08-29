@@ -450,8 +450,10 @@ npm run check
 
 ### Deploying it
 
-The site is meant for **keydler.com**, the apex, and `www.keydler.com` must
-redirect to it. They are two origins, and everything here is origin-scoped: the
+It is live at **https://keydler.com**, served by Cloudflare Pages, with
+`www.keydler.com` redirecting to it. The apex is the canonical origin and the
+www address must never serve anything: they are two origins, and everything
+here is origin-scoped — the
 IndexedDB database, the theme preference, "while you were away", the cross-tab
 channel, the service worker cache. A log created on one is invisible from the
 other, and a `/t/:id` link minted here opens an empty page there. The
@@ -472,9 +474,15 @@ needs the equivalent. This is invisible locally — `vite preview` rewrites by
 itself, a bare static server does not.
 
 `npm run build` and `npm run build:trial` both run `scripts/precache.mjs`, which
-writes the built asset names into `dist/sw.js`. Without it the service worker
-precached nothing the app is made of, and offline served a blank page after the
-first visit.
+writes the built asset names into `dist/sw.js`, and `scripts/headers.mjs`, which
+seals the CSP on the hash of the inline theme script. **`vite build` alone
+produces a folder that looks complete and cannot be served**: the policy still
+carries `'__CSP_SCRIPT_HASH__'`, which is not a valid source expression, so the
+inline script is blocked; and the service worker precaches nothing under a fixed
+cache name that never invalidates. Neither is visible in `dist/`.
+
+`npm run artefact` refuses such a folder and names the consequence of each
+fault. `check` runs it, so a half-built `dist/` cannot survive a green check.
 
 `dev` serves on `http://localhost:5173`. `check` runs typecheck, lint,
 formatting, the full test suite and the production build; `npm run coverage`

@@ -1943,3 +1943,37 @@ shell : les commandes n'ont jamais tourné, et le harnais a compté leur absence
 d'effet comme une survie. Un harnais qui ne vérifie pas que la mutation s'est
 appliquée mesure sa propre plomberie. Corrigé — il compare le fichier avant et
 après, et refuse de conclure si rien n'a changé. Neuf mutants, neuf tués.
+
+### 29 août 2026, fin de journée — keydler.com sert le site
+
+L'enregistrement DNS a été corrigé à la main : `keydler.com` est un CNAME
+proxifié vers le projet Pages. Le contournement par route Worker n'a donc pas
+lieu d'être, et rien n'a jamais été attaché à la zone. Vérifié à froid dans
+Brave, contre le domaine réel :
+
+| Vérification                                | Résultat                             |
+| ------------------------------------------- | ------------------------------------ |
+| `https://keydler.com`                       | **200**, les neuf en-têtes servis    |
+| `/t/abc123`, jamais visité                  | **200** — repli SPA                  |
+| `http://keydler.com`                        | **301** vers https                   |
+| `https://www.keydler.com/t/abc?source=chat` | 301, **chemin et requête préservés** |
+| En-têtes `x-iplb-*` (OVH)                   | **absents** — sorti du chemin        |
+| Domaine côté Pages                          | `active`, certificat `active`        |
+| Outils WebMCP, cahier ouvert                | **13**                               |
+| Rechargement réseau coupé                   | 13 outils, page servie du cache      |
+| Messages de console, session entière        | **aucun**                            |
+
+L'URL rendue par `resume_task` porte l'origine canonique — c'est elle que
+transportera un lien partagé.
+
+**La correction du jour, visible sur le domaine.** Un `set_next_action` sur une
+version périmée est refusé (`stale write on v2, current v3`), et l'interface
+l'annonce à l'humain sous le nom de l'outil : « An agent called
+`set_next_action` just now — and it was refused ». Ce matin, la même action
+réussie apparaissait sous `set_next`, signée `human`.
+
+**Ce qui reste, et qui est bloquant.** Le jeton d'origin trial n'est pas
+enregistré. Toute la vérification ci-dessus s'appuie sur Brave lancé avec
+`--enable-features=WebMCP,WebMCPTesting`. Elle **ne démontre pas** qu'un juge
+sur un navigateur ordinaire verrait le moindre outil. C'est le seul point qui
+sépare encore ce déploiement d'une candidature défendable.
