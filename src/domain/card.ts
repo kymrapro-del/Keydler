@@ -4,7 +4,7 @@ import type { TaskState, TaskStatus } from './types'
 /**
  * Ce que le sélecteur a besoin de savoir d'un cahier fermé. Il les gardait ENTIERS en
  * mémoire : mesuré, un cahier de 1000 étapes pèse 1,5 Mo en tas, un de 20 000 en pèse 29,6.
- * La fiche se calcule à partir du cahier normalisé, jamais de l'enregistrement brut — une
+ * La fiche se calcule à partir du cahier normalisé, jamais de l'enregistrement brut. Une
  * seconde lecture, plus rapide mais distincte, finirait par répondre autre chose.
  */
 export type TaskCard = {

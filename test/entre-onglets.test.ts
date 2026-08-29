@@ -44,7 +44,7 @@ describe('ce qu’un onglet apprend de l’autre', () => {
 
   it('écoute même sans avoir jamais écrit', async () => {
     // Le piège : le canal était ouvert à la première ANNONCE. Un onglet qui ne
-    // fait que lire n'annonce rien, restait donc sourd — et c'est justement
+    // fait que lire n'annonce rien, restait donc sourd, et c'est justement
     // celui qu'il fallait réveiller. Ici, le magasin n'écrit pas une fois.
     const posé = await store.createAndOpenTask('Écrite ailleurs', undefined)
     const id = posé.id

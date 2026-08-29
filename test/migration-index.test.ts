@@ -6,7 +6,7 @@ import { getDb } from '../src/persistence/db'
 import type { TaskState } from '../src/domain/types'
 
 // Le contrôle de concurrence passe par l'index `by-id-version` plutôt que par une
-// relecture complète du cahier — 2 ms pour 800 ko dans Chrome, contre 0,1 ms pour une
+// relecture complète du cahier : 2 ms pour 800 ko dans Chrome, contre 0,1 ms pour une
 // clé. Ce fichier ouvre la base à l'ANCIENNE version avant que quoi que ce soit
 // d'autre n'y touche, pour que la migration ait vraiment lieu : `getDb()` mémorise sa
 // promesse, et un seul appel plus tôt rendrait l'épreuve creuse.

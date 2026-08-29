@@ -53,7 +53,7 @@ describe('mise en mots du journal', () => {
       expect(line.what, operation).not.toMatch(/tried to \w+ed\b/)
     }
     expect(describeEntry(entry({ operation: 'log_step', outcome: 'refused' })).what).toBe(
-      'tried to record a step — refused',
+      'tried to record a step (refused)',
     )
   })
 
@@ -212,7 +212,7 @@ describe('l’historique à l’écran', () => {
 
 describe('installable', () => {
   const manifest = JSON.parse(manifestRaw)
-  // Les fichiers réellement présents, vus par le graphe de modules — pas une
+  // Les fichiers réellement présents, vus par le graphe de modules, pas une
   // liste écrite à la main qui resterait vraie après la suppression d'un
   // fichier.
   const shipped = new Set(
@@ -267,7 +267,7 @@ describe('installable', () => {
 
   it('enregistre le service worker sans passer par le cache HTTP', () => {
     // Mesuré en production : `_headers` demande `no-cache` sur `/sw.js` et
-    // Cloudflare sert quand même `max-age=14400` — un visiteur qui revient
+    // Cloudflare sert quand même `max-age=14400`, et un visiteur qui revient
     // gardait l'ancien worker, et l'ancienne application, jusqu'à quatre
     // heures. `updateViaCache: 'none'` tient quel que soit l'hébergeur.
     expect(mainRaw).toContain("updateViaCache: 'none'")

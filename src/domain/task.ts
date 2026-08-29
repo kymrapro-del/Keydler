@@ -218,7 +218,7 @@ function assertActive(state: TaskState, operation: string): void {
     throw new ValidationError(
       'status',
       `task "${state.title}" is already completed; ${operation} is no longer accepted. ` +
-        'Retrying will not help — ask the human to reopen the task if work remains.',
+        'Retrying will not help, so ask the human to reopen the task if work remains.',
       { code: 'already-completed', retryable: false },
     )
   }
@@ -448,8 +448,8 @@ export function attachEvidence(
   if (step.evidence) {
     throw new ValidationError(
       'stepId',
-      'this step already carries evidence. Replacing it would destroy the record — ' +
-        'log a new step instead.',
+      'this step already carries evidence. Replacing it would destroy the record. ' +
+        'Log a new step instead.',
       { code: 'already-has-evidence', retryable: false },
     )
   }
@@ -835,7 +835,7 @@ function wordsOf(value: string): string {
 
 /**
  * La garde compare la nouveauté à TOUT ce qui est déjà posé ; la replier une fois par
- * comparaison la repliait autant de fois qu'il y a d'entrées — mesuré, ajouter une règle
+ * comparaison la repliait autant de fois qu'il y a d'entrées. Mesuré, ajouter une règle
  * passait de 0,051 ms à 100 règles à 1,789 ms à 2000. Le balayage reste linéaire, c'est
  * la question posée.
  */
@@ -930,7 +930,7 @@ export function answerQuestion(
       operation: 'answer_question',
       actor: 'human',
       basedOnVersion: null,
-      detail: `${found.question} — ${text}`,
+      detail: `Q: ${found.question} A: ${text}`,
       patch: {
         questions: state.questions.map((q) =>
           q.id === id ? { ...q, answer: text, answeredAt: now } : q,
@@ -1244,7 +1244,7 @@ export function disputeStep(
       operation: 'dispute_step',
       actor: 'human',
       basedOnVersion: null,
-      detail: `${step.action} — ${text}`,
+      detail: `${step.action}. ${text}`,
       targetId: id,
       patch: {
         steps: state.steps.map((s) =>
@@ -1319,7 +1319,7 @@ export function answeredQuestions(state: TaskState): OpenQuestion[] {
 /**
  * Les règles en vigueur d'un autre cahier, reprises comme des règles humaines :
  * quelqu'un a choisi de les porter ici, elles engagent donc d'emblée. Rien
- * d'autre ne suit — ni le travail, ni les rejets, ni le journal.
+ * d'autre ne suit : ni le travail, ni les rejets, ni le journal.
  */
 export function copyRulesInto(
   target: TaskState,

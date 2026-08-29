@@ -40,7 +40,7 @@ function tasksChanged(): void {
   tasksRevisionCounter += 1
 }
 
-/** Le nombre de cahiers a changé — les autres onglets doivent relire la liste. */
+/** Le nombre de cahiers a changé, et les autres onglets doivent relire la liste. */
 function tasksChangedEverywhere(): void {
   tasksChanged()
   announce(null, 0)
@@ -71,7 +71,7 @@ export async function init(taskId?: string): Promise<void> {
   // Ouvrir le canal ICI, et pas à la première annonce. Un onglet qui ne fait
   // que lire n'annonce jamais rien : créé paresseusement, il restait sourd, et
   // c'était précisément l'onglet à réveiller. Trouvé en navigateur, avec deux
-  // onglets — la suite ne l'a pas vu, parce que chacun de ses magasins avait
+  // onglets. La suite ne l'a pas vu, parce que chacun de ses magasins avait
   // écrit avant d'écouter.
   bus()
 
@@ -199,7 +199,7 @@ export async function deleteCurrentTask(): Promise<void> {
     tasksChanged()
     // Nommer le cahier supprimé, et pas seulement « la liste a changé » : sans
     // cela l'autre onglet gardait un cahier disparu à l'écran, et sa prochaine
-    // écriture le ressuscitait — amputé de ses identifiants scellés, eux bien
+    // écriture le ressuscitait, amputé de ses identifiants scellés, eux bien
     // effacés.
     announce(current.id, 0, true)
     const suivant = await loadLastTask()
@@ -316,7 +316,7 @@ function announce(id: string | null, version: number, gone = false): void {
 
 // Une rafale d'annonces ne doit pas produire une rafale de relectures : mesuré
 // sur un cahier de 20 000 étapes, 50 annonces coûtaient 1702 ms dont 1668 jetés
-// — la désérialisation de l'enregistrement, pas la normalisation — et retardaient
+// (la désérialisation de l'enregistrement, pas la normalisation) et retardaient
 // d'un facteur 51 les écritures locales, qui partagent la file. Une relecture par
 // cahier suffit : la version la plus haute annoncée décide s'il faut relire.
 const relecturesAttendues = new Map<string, number>()
@@ -341,7 +341,7 @@ async function resyncFromDisk(id: string): Promise<void> {
     const fresh = await loadTask(id)
     // Revérifier la liaison APRÈS l'attente : la garde posée à la réception du
     // message ne dit rien de ce qui s'est passé pendant la lecture, et écrire
-    // ici sans la refaire rebasculait l'écran — et `boundId` — sur le cahier
+    // ici sans la refaire rebasculait l'écran (et `boundId`) sur le cahier
     // précédent, juste après que l'utilisateur en a ouvert un autre.
     if (id !== snapshot.boundId) return
     if (fresh) setSnapshot({ status: 'ready', task: fresh, error: null, boundId: fresh.id })

@@ -136,7 +136,7 @@ describe('request_approval', () => {
     expect(textOf(await first)).toContain('ALLOWED')
 
     // Seconde demande, identique mot pour mot, mais NOUVELLE. Rendre le « allowed »
-    // d'hier autoriserait une action que personne n'a validée — c'est la pire
+    // d'hier autoriserait une action que personne n'a validée. C'est la pire
     // défaillance possible pour cet outil.
     __setApprovalTimeout(60)
     const second = await call(requestApprovalTool, writeArgs(currentTask(), même))

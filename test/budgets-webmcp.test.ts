@@ -8,17 +8,17 @@ import { ALL_TOOLS } from '../src/webmcp/tools'
 
 // Budgets de caractères recommandés par Chrome pour WebMCP : 30 par nom, 500 par
 // description d'outil, 150 par description de paramètre, 1,5 k par sortie. Ce ne sont
-// pas des limites dures — au-delà, on tombe sur les garde-fous des agents.
+// pas des limites dures : au-delà, on tombe sur les garde-fous des agents.
 // https://developer.chrome.com/docs/ai/webmcp/secure-tools
 
 const MAX_NAME = 30
 const MAX_TOOL_DESCRIPTION = 500
 const MAX_PARAM_DESCRIPTION = 150
 // Chrome recommande 1,5 k caractères par sortie ; `TOKEN_BUDGET` vaut 400 tokens, soit
-// 1600 caractères à sa mesure — 6,7 % au-dessus. Descendre à 375 gagnait dix-sept
+// 1600 caractères à sa mesure : 6,7 % au-dessus. Descendre à 375 gagnait dix-sept
 // caractères sur une restitution ordinaire et coûtait un nom d'identifiant à l'écran.
 // On mesure AVEC l'adresse de la tâche, que l'outil passe toujours : sans elle, 1484
-// caractères pour une sortie qui en fait 1528 — relevé dans Brave 151, 1,9 % au-dessus.
+// caractères pour une sortie qui en fait 1528, relevé dans Brave 151, 1,9 % au-dessus.
 const MAX_OUTPUT = 1_600
 
 type Schema = {
@@ -95,7 +95,7 @@ describe('les budgets de caractères que Chrome recommande', () => {
     // Et rien n'est caché : l'en-tête compte ce qui est montré sur ce qui a été
     // trouvé, et dit quoi faire du reste.
     expect(texte).toMatch(/MATCHES {5}\d+ shown of 30 found/)
-    expect(texte).toContain('more not shown — narrow the query')
+    expect(texte).toContain('more not shown: narrow the query')
   })
 
   it('rend au moins une correspondance, même démesurée', () => {

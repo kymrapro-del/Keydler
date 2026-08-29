@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Deux adresses seulement, et c'est voulu : `/t/:id` désigne un cahier qui
-  n'existe que dans le navigateur d'une personne. Les lister n'aurait aucun
-  sens — ils ne sont pas les mêmes d'un visiteur à l'autre, et un robot n'y
-  trouverait que la coquille de l'application.
+  Une seule adresse, et c'est voulu.
+
+  `/t/:id` désigne un cahier qui n'existe que dans le navigateur d'une
+  personne : ces adresses ne sont pas les mêmes d'un visiteur à l'autre, et un
+  robot n'y trouverait que la coquille de l'application.
+
+  `/workspace` en a été retiré : les trois routes servent le même HTML, qui
+  déclare `canonical` vers `/`. Demander l'indexation d'une page qui dit
+  elle-même de ne pas l'indexer ne produit qu'un avertissement de doublon.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://keydler.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://keydler.com/workspace</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
   </url>
 </urlset>

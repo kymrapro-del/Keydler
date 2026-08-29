@@ -118,7 +118,7 @@ afterEach(() => {
 })
 
 // Mesuré avant ces bornes : 2000 règles portaient un aller-retour de rendu de 17 ms à
-// 501 ms, pour 1,2 Mo de HTML et 10 000 nœuds — et la page se redessine à chaque
+// 501 ms, pour 1,2 Mo de HTML et 10 000 nœuds, et la page se redessine à chaque
 // frappe dans la recherche.
 describe('la page ne grandit pas avec les données', () => {
   it('garde le même ordre de grandeur avec cent fois plus de tout', async () => {
@@ -234,7 +234,7 @@ describe('ne redessine pas ce qui n’a pas changé', () => {
 
   it('peint une racine neuve, même si l’état est resté le même', async () => {
     // Le piège de l'optimisation : se souvenir du HTML déjà peint sans
-    // remarquer que la racine, elle, a été remplacée — et laisser une page
+    // remarquer que la racine, elle, a été remplacée, et laisser une page
     // blanche.
     await open({ constraints: rules(3) })
     const attendu = root.innerHTML
@@ -299,7 +299,7 @@ describe('le poste entier ne fait pas grandir la page non plus', () => {
 })
 
 /**
- * Le sélecteur gardait les cahiers ENTIERS en mémoire — tout le poste, en
+ * Le sélecteur gardait les cahiers ENTIERS en mémoire : tout le poste, en
  * permanence, pour une liste déroulante repliée. Mesuré : 1,5 Mo en tas pour
  * un cahier de 1000 étapes, 29,6 Mo pour 20 000.
  */
@@ -328,7 +328,7 @@ describe('la liste des cahiers ne retient pas les cahiers', () => {
   })
 })
 
-// Le panneau technique montre ce que `resume_task` rendrait — 5 ms sur un cahier de
+// Le panneau technique montre ce que `resume_task` rendrait : 5 ms sur un cahier de
 // 20 000 étapes, recalculé à chaque frappe, donc mémorisé. Une mémorisation qui rate
 // son invalidation montre un état périmé, pire que lent dans un produit dont c'est
 // le sujet.
@@ -370,7 +370,7 @@ describe('l’aperçu de ce que lit l’agent reste à jour', () => {
 
 /**
  * L'export emporte les preuves telles quelles. Le README le disait ; l'écran,
- * non — et c'est l'écran qu'on lit avant de cliquer.
+ * non, et c'est l'écran qu'on lit avant de cliquer.
  */
 describe('l’export dit ce qu’il emporte', () => {
   it('nomme les preuves, et ce qui ne peut pas partir', async () => {

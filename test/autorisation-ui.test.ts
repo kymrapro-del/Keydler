@@ -7,7 +7,7 @@ import { __renderNow, mount } from '../src/ui/bench'
 import { clearDatabase, waitUntil } from './helpers'
 
 describe('le titre de l’onglet appelle quand il le faut', () => {
-  const BASE = 'Keydler — a shared memory for you and your AI'
+  const BASE = 'Keydler: a shared memory for you and your AI'
 
   it('ne change rien quand rien n’attend', () => {
     expect(attentionTitle(BASE, 0, true)).toBe(BASE)

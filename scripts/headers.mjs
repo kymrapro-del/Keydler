@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-// Le seul script en ligne — l'amorce de thème, exécutée avant la première
-// peinture pour éviter un clignotement — est autorisé par son empreinte, pas
+// Le seul script en ligne (l'amorce de thème, exécutée avant la première
+// peinture pour éviter un clignotement) est autorisé par son empreinte, pas
 // par `'unsafe-inline'` qui viderait la politique de son intérêt. `vercel.json`
 // est lu depuis le dépôt au déploiement et ne peut rien recevoir de calculé :
 // il porte l'empreinte en dur et ce script vérifie qu'elle correspond encore,

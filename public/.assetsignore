@@ -8,7 +8,7 @@
 #
 # Le Worker n'en a pas l'usage : `not_found_handling: "single-page-application"`
 # dans `wrangler.jsonc` fait exactement la même chose. On retire donc le fichier
-# de cette livraison-là, sans toucher à celle de Pages — qui n'envoie pas les
+# de cette livraison-là, sans toucher à celle de Pages, qui n'envoie pas les
 # fichiers commençant par un point, et ne verra donc jamais celui-ci.
 #
 # `_headers` n'est PAS exclu : Workers l'applique, vérifié.

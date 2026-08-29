@@ -3,7 +3,7 @@ import { addConstraint } from '../src/domain/task'
 
 // Une rafale d'annonces ne doit pas produire une rafale de relectures : mesuré sur un
 // cahier de 20 000 étapes, cinquante annonces coûtaient cinquante lectures et 1702 ms,
-// dont 1668 ms jetés, et retardaient les écritures de cet onglet d'un facteur 51 — la
+// dont 1668 ms jetés, et retardaient les écritures de cet onglet d'un facteur 51 : la
 // file d'écriture est partagée. Le compteur passe par `vi.mock` plutôt que par un
 // chronomètre : ce qui compte est un NOMBRE de lectures, et un nombre ne clignote pas.
 const lectures = { loadTask: 0 }
@@ -40,7 +40,7 @@ describe('une rafale d’annonces ne coûte qu’une relecture', () => {
   it('regroupe cinquante annonces en une seule lecture', async () => {
     const task = await store.createAndOpenTask('Sous la rafale', undefined)
 
-    // L'autre onglet écrit une fois, puis annonce cinquante fois — ce qui est
+    // L'autre onglet écrit une fois, puis annonce cinquante fois, ce qui est
     // exactement ce que produit un agent qui écrit en rafale.
     const surLeDisque = await loadTask(task.id)
     await saveTask(

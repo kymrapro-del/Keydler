@@ -23,6 +23,30 @@ describe('l’adresse de l’espace de travail', () => {
   })
 })
 
+describe('la porte d’entrée depuis l’accueil', () => {
+  it('est un lien, pas un bouton', async () => {
+    // Un contrôle qui change l'adresse doit être un <a href> : clic-milieu,
+    // Ctrl+clic et lecteurs d'écran en dépendent. C'est aussi le seul chemin
+    // d'exploration qu'un moteur trouve sur ce site, qui n'a aucune autre ancre.
+    localStorage.clear()
+    store.__resetStore()
+    await clearDatabase()
+    document.body.innerHTML = '<div id="app"></div>'
+    const racine = document.querySelector<HTMLElement>('#app')!
+    history.replaceState(null, '', '/')
+
+    const démonter = mount(racine)
+    await store.init()
+    for (let i = 0; i < 8; i++) await new Promise((r) => setTimeout(r, 0))
+    __renderNow()
+
+    const porte = racine.querySelector('#go-workspace')
+    expect(porte?.tagName).toBe('A')
+    expect(porte?.getAttribute('href')).toBe(WORKSPACE_PATH)
+    démonter()
+  })
+})
+
 describe('la page de l’espace de travail', () => {
   let root: HTMLElement
   let démonter: () => void
@@ -135,7 +159,7 @@ describe('la page de l’espace de travail', () => {
   })
 
   it('ne promet la confidentialité que par ce qui est vérifiable', async () => {
-    // Une première rédaction disait « nobody else can read it — not even us ».
+    // Une première rédaction disait « nobody else can read it, not even us ».
     // C'est une promesse sur la confiance : nous servons le code, donc nous
     // pourrions le changer. Ce qui est démontrable, c'est qu'il n'y a aucune
     // destination et que la politique de sécurité bloque les autres origines.

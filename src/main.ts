@@ -27,7 +27,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     // `updateViaCache: 'none'` fait ignorer le cache HTTP à la vérification de
     // mise à jour, sans dépendre d'un en-tête qu'on ne contrôle pas. Mesuré en
     // production : `public/_headers` demande `no-cache` sur `/sw.js` et Cloudflare
-    // sert `max-age=14400` — quatre heures, le worker étant seul mis en cache de
+    // sert `max-age=14400` (quatre heures), le worker étant seul mis en cache de
     // bord (`cf-cache-status: REVALIDATED` contre `DYNAMIC`). Un visiteur qui
     // revenait gardait l'ancien worker, et avec lui l'ancienne application.
     void navigator.serviceWorker

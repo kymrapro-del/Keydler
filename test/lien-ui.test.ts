@@ -140,7 +140,7 @@ describe('recevoir un cahier par un lien', () => {
   it('ne contredit pas l’offre par un bandeau « cette tâche n’existe pas »', async () => {
     await arriveWith(await packTask(buildDemoTask()))
 
-    // L'adresse pointe bien vers une tâche absente — mais le lien porte
+    // L'adresse pointe bien vers une tâche absente, mais le lien porte
     // justement de quoi la créer. Dire les deux à la fois affole pour rien.
     expect(root.textContent).not.toContain('does not exist on this device')
     expect(offer()).toBeDefined()
@@ -231,7 +231,7 @@ describe('le lien protégé, depuis l’écran', () => {
   })
 
   it('n’annonce pas ce qu’il ne fait pas', async () => {
-    // La phrase ne vérifie pas une identité — elle vérifie la connaissance
+    // La phrase ne vérifie pas une identité : elle vérifie la connaissance
     // d'un secret. L'écran doit le dire, et dire pourquoi.
     const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
     expect(zone).toContain('Nobody can tell who opens a link')

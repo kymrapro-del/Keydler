@@ -77,7 +77,7 @@ export async function loadLastTask(): Promise<TaskState | undefined> {
     if (task) return task
   }
 
-  // Le repli — plus de dernier cahier connu — rapatriait TOUS les cahiers du
+  // Le repli (plus de dernier cahier connu) rapatriait TOUS les cahiers du
   // poste pour n'en garder qu'un : 22 ms pour trente. L'index est déjà trié
   // par date d'écriture ; on n'a besoin que de ses clés, et l'on ne descend
   // vers le suivant que si le plus récent est illisible, comme avant.

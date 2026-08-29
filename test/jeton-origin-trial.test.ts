@@ -3,7 +3,7 @@ import { lireJeton, tokensDe } from '../scripts/jeton.mjs'
 
 // Sans jeton d'origin trial, `document.modelContext` n'existe pas et un juge lit « WebMCP is not
 // available in this browser ». Chrome le vérifie HORS LIGNE, sur l'appareil : ni alerte, ni
-// rattrapage après le gel des déploiements. La charge utile est du JSON en clair, donc lisible —
+// rattrapage après le gel des déploiements. La charge utile est du JSON en clair, donc lisible :
 // les jetons ci-dessous sont fabriqués, une origine fausse ne s'obtenant pas autrement.
 
 // API web plutôt que `Buffer` : le dépôt n'a pas `@types/node`, et n'en veut
@@ -44,14 +44,14 @@ describe('la lecture d’un jeton', () => {
   it('tient `isSubdomain` absent pour faux', () => {
     // La couverture des sous-domaines est à demander explicitement à
     // l'inscription. La supposer acquise ferait croire qu'un jeton pour
-    // keydler.com couvre www.keydler.com — il ne le couvre pas.
+    // keydler.com couvre www.keydler.com. Il ne le couvre pas.
     expect(lireJeton(fabriquer(VALIDE)).sousDomaines).toBe(false)
     expect(lireJeton(fabriquer({ ...VALIDE, isSubdomain: true })).sousDomaines).toBe(true)
   })
 
   it('signale un jeton « third-party »', () => {
     // Ceux-là ne valent qu'injectés depuis un script tiers. Dans le HTML
-    // d'une page, ils n'activent rien — sans rien dire.
+    // d'une page, ils n'activent rien, sans rien dire.
     expect(lireJeton(fabriquer({ ...VALIDE, isThirdParty: true })).tiers).toBe(true)
   })
 })

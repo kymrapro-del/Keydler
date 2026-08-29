@@ -141,7 +141,7 @@ describe('outils de bout en bout', () => {
       writeArgs(task, { action: 'Lu le module', result: 'trois entrées' }),
     )
     expect(ok.isError).toBeUndefined()
-    expect(textOf(ok)).toContain('OK — log_step recorded.')
+    expect(textOf(ok)).toContain('OK: log_step recorded.')
 
     const stale = await call(logStep, writeArgs(task, { action: 'Encore', result: 'raté' }))
     expect(stale.isError).toBe(true)
@@ -251,7 +251,7 @@ describe('cycle de vie des outils', () => {
     expect(getRegistrationState().lifecycle.mode).toBe('static')
     expect(fake.names()).toHaveLength(ALL_TOOLS.length)
 
-    expect(textOf(résultat)).toContain('OK — complete_task recorded.')
+    expect(textOf(résultat)).toContain('OK: complete_task recorded.')
     expect(textOf(await call(resumeTaskTool))).toContain('TASK CLOSED')
   })
 

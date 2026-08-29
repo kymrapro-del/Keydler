@@ -22,7 +22,7 @@ describe('cahier de démonstration', () => {
     expect(enAttente[0].source).toBe('agent')
 
     const output = renderTaskState(task)
-    expect(output).toContain('PROPOSED BY AN AGENT — NOT binding')
+    expect(output).toContain('PROPOSED BY AN AGENT: NOT binding')
     expect(output).toContain(enAttente[0].approach)
     const condamnations = output.slice(output.indexOf('REJECTED'), output.indexOf('PROPOSED BY'))
     expect(condamnations).not.toContain(enAttente[0].approach)

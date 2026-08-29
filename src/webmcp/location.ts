@@ -1,8 +1,8 @@
 const PREFIX = '/t/'
 
 /**
- * Il n'y a pas de compte : cette page répond à ce que cherche un bouton « Sign in » — où
- * sont mes affaires, comment les emmener ailleurs. Elle existe comme ADRESSE parce que qui
+ * Il n'y a pas de compte : cette page répond à ce que cherche un bouton « Sign in »,
+ * c'est-à-dire où sont mes affaires et comment les emmener ailleurs. Elle existe comme ADRESSE parce que qui
  * vient de l'extérieur n'a aucun cahier ouvert, donc ne voyait ni liste, ni export, ni import.
  */
 export const WORKSPACE_PATH = '/workspace'

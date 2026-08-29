@@ -5,7 +5,7 @@ const css = Object.values(
   import.meta.glob('../src/style.css', { eager: true, query: '?raw', import: 'default' }),
 )[0] as string
 
-// Trois sections — sélecteur de tâches, historique, recherche — ont été livrées
+// Trois sections (sélecteur de tâches, historique, recherche) ont été livrées
 // SANS AUCUN STYLE : les insertions s'ancraient sur des commentaires supprimés
 // entre-temps. Rien ne l'a signalé, les cas de vue cherchant du texte et des
 // identifiants, jamais une règle CSS.
@@ -55,7 +55,7 @@ describe('la feuille de style couvre ce que la vue émet', () => {
     // sont purement sémantiques ou fournies par les jetons.
     // Un attribut qui contient une interpolation était ignoré en entier, si
     // bien qu'une classe écrite juste à côté d'un `${...}` échappait au
-    // garde-fou — c'est exactement comme ça que `card--waiting` est passée.
+    // garde-fou : c'est exactement comme ça que `card--waiting` est passée.
     const emitted = new Set<string>()
     for (const m of benchSource.matchAll(/class="([^"]*)"/g)) {
       const litteral = m[1].replace(/\$\{[^}]*\}/g, ' ')

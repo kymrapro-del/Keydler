@@ -40,7 +40,7 @@ export function getDb(): Promise<IDBPDatabase<KeydlerDB>> {
         }
         if (oldVersion < 3) {
           // Le contrôle de concurrence n'a besoin QUE de la version, et la
-          // lisait en relisant tout le cahier — 2 ms pour 800 ko dans Chrome,
+          // lisait en relisant tout le cahier, 2 ms pour 800 ko dans Chrome,
           // contre 0,1 ms pour une clé. L'index porte les deux champs du
           // cahier lui-même : aucun miroir à tenir à jour, donc rien qui
           // puisse dériver de ce qu'il garde.

@@ -86,15 +86,15 @@ function indent(value: string, prefix = '    '): string {
 }
 
 function evidenceLines(step: Step, full: boolean): string[] {
-  if (!step.evidence) return ['  evidence: none — this step is a claim, nothing was attached.']
+  if (!step.evidence) return ['  evidence: none. This step is a claim, nothing was attached.']
   const { kind, content, verifiedAt } = step.evidence
   const tronqué = !full && content.length > EVIDENCE_PREVIEW
   const shown = tronqué ? `${content.slice(0, EVIDENCE_PREVIEW)}…` : content
   return [
     `  evidence kind: ${kind}`,
-    `  human-checked: ${verifiedAt === null ? 'no — supplied by its author, not verified' : 'yes'}`,
+    `  human-checked: ${verifiedAt === null ? 'no, supplied by its author, not verified' : 'yes'}`,
     tronqué
-      ? `  evidence (first ${EVIDENCE_PREVIEW} of ${content.length} chars — request id "${step.id}" for all of it):`
+      ? `  evidence (first ${EVIDENCE_PREVIEW} of ${content.length} chars, request id "${step.id}" for all of it):`
       : '  evidence:',
     indent(shown),
   ]
@@ -107,7 +107,7 @@ function renderStep(step: Step, full: boolean): string[] {
     `  action: ${step.action}`,
     `  result: ${step.result}`,
     ...(step.dispute
-      ? [`  DISPUTED by the human — treat this as wrong: ${step.dispute.reason}`]
+      ? [`  DISPUTED by the human, treat this as wrong: ${step.dispute.reason}`]
       : []),
     ...evidenceLines(step, full),
   ]
@@ -142,7 +142,7 @@ function renderConstraint(c: Constraint): string[] {
 function renderQuestion(q: OpenQuestion): string[] {
   return [
     `- id: ${q.id}`,
-    `  standing: ${q.answer === null ? 'open — nobody has answered' : 'answered'} · asked by ${q.source} at v${q.addedAtVersion}`,
+    `  standing: ${q.answer === null ? 'open, nobody has answered' : 'answered'} · asked by ${q.source} at v${q.addedAtVersion}`,
     `  question: ${q.question}`,
     `  why it matters: ${q.why}`,
     ...(q.answer === null ? [] : [`  answer: ${q.answer}`]),
@@ -152,7 +152,7 @@ function renderQuestion(q: OpenQuestion): string[] {
 function renderApproval(a: ApprovalRequest): string[] {
   return [
     `- id: ${a.id}`,
-    `  standing: ${a.decision === null ? 'waiting — nobody has decided' : a.decision} · asked by ${a.source} at v${a.addedAtVersion}`,
+    `  standing: ${a.decision === null ? 'waiting, nobody has decided' : a.decision} · asked by ${a.source} at v${a.addedAtVersion}`,
     `  action: ${a.action}`,
     `  why it needs a human: ${a.why}`,
   ]
@@ -244,11 +244,11 @@ export function renderDetail(
     `TASK ID     ${state.id}`,
     `VERSION     ${state.version}`,
     entries.length === 0
-      ? 'PAGE        empty — this section holds nothing'
+      ? 'PAGE        empty, this section holds nothing'
       : `PAGE        ${query.offset + 1}–${last} of ${entries.length}`,
     remaining > 0
-      ? `MORE        ${remaining} left — call again with offset: ${last}`
-      : 'MORE        none — this is the end of the section',
+      ? `MORE        ${remaining} left, call again with offset: ${last}`
+      : 'MORE        none, this is the end of the section',
     '',
   ]
 

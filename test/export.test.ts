@@ -8,7 +8,7 @@ describe('export d’un cahier', () => {
   it('montre le contenu des preuves, que la restitution compacte cache', () => {
     const sortie = buildTaskExport(buildDemoTask())
     expect(sortie).toContain('## Attached evidence')
-    expect(sortie).toContain('auth suite — 183 passed, 0 failed, 0 skipped')
+    expect(sortie).toContain('auth suite: 183 passed, 0 failed, 0 skipped')
     expect(sortie).toContain('bench --auth-refresh')
   })
 

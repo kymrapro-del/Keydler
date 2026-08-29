@@ -18,7 +18,7 @@ export class TooLargeForLinkError extends Error {
   constructor(length: number) {
     super(
       `This log needs ${length} characters and a link holds ${MAX_LINK_LENGTH}. ` +
-        'Use “Export this task” and send the file instead — it has no limit.',
+        'Use “Export this task” and send the file instead, which has no limit.',
     )
     this.name = 'TooLargeForLinkError'
   }
@@ -122,9 +122,9 @@ async function expand(bytes: Uint8Array): Promise<Uint8Array> {
 
 /**
  * Un fragment d'URL est une capacité au porteur : sans serveur, on ne peut qu'exiger
- * un secret, pas authentifier — un lien oublié dans un fil devient un bloc de chiffré
+ * un secret, pas authentifier. Un lien oublié dans un fil devient un bloc de chiffré
  * inutile. Chiffrement du coffre, sans crypto nouvelle : AES-GCM 256, PBKDF2-SHA256 à
- * 600 000 itérations, APRÈS compression — un chiffré ne se compresse pas.
+ * 600 000 itérations, APRÈS compression, car un chiffré ne se compresse pas.
  */
 export const SEALED_MARKER = 's'
 

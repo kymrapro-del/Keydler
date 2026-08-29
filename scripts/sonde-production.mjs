@@ -1,8 +1,8 @@
 // Contrôles contre le site RÉELLEMENT EN LIGNE. La suite d'épreuves tourne dans
 // jsdom sur du code source ; ce projet en a déjà fait quatre fois les frais, des
 // épreuves vertes pendant qu'un navigateur trouvait le défaut en une minute. On
-// couvre ici ce qu'elles ne peuvent pas voir — en-têtes de l'hébergeur,
-// redirections, types MIME, mise en cache, repli SPA — et on sort non nul, pour
+// couvre ici ce qu'elles ne peuvent pas voir (en-têtes de l'hébergeur,
+// redirections, types MIME, mise en cache, repli SPA), et on sort non nul, pour
 // que ce script puisse servir de barrière.
 const ORIGINE = process.argv[2] ?? 'https://keydler.com'
 const seulementEchecs = process.argv.includes('--echecs')
@@ -186,6 +186,9 @@ verifier('la page se dimensionne sur mobile', racine.corps.includes('name="viewp
 for (const [chemin, type, libelle] of [
   ['/robots.txt', 'text/plain', 'robots.txt'],
   ['/sitemap.xml', 'xml', 'sitemap.xml'],
+  // Les navigateurs et les agrégateurs le demandent à la racine sans lire le
+  // HTML. Le repli SPA leur rendait la page d'accueil en text/html.
+  ['/favicon.ico', 'image/', 'favicon.ico'],
   ['/manifest.webmanifest', 'json', 'le manifeste'],
   ['/icons/icon.svg', 'svg', "l'icône"],
 ]) {
@@ -212,6 +215,17 @@ if (annoncee.startsWith(ORIGINE)) {
     "l'image de carte sociale existe vraiment",
     img.statut === 200 && entete(img, 'content-type').startsWith('image/'),
     `${img.statut} ${entete(img, 'content-type')}`,
+  )
+}
+
+const plan = await chercher('/sitemap.xml')
+for (const [, adresse] of plan.corps.matchAll(/<loc>([^<]+)<\/loc>/g)) {
+  const page = await chercher(adresse.replace(ORIGINE, ''))
+  const canonique = /rel="canonical"\s+href="([^"]*)"/.exec(page.corps)?.[1] ?? ''
+  verifier(
+    `le sitemap et la canonique de ${adresse} disent la même chose`,
+    canonique === adresse,
+    `sitemap ${adresse}, canonique ${canonique}`,
   )
 }
 

@@ -53,10 +53,10 @@ describe('empoisonnement par un agent', () => {
     const rendu = textOf(await call(resumeTaskTool))
 
     expect(rendu).toContain('Cookie HttpOnly')
-    expect(rendu).toContain('PROPOSED BY AN AGENT — NOT binding')
+    expect(rendu).toContain('PROPOSED BY AN AGENT: NOT binding')
     expect(rendu).toContain('No human has approved these')
 
-    expect(rendu).not.toContain('REJECTED — do not retry')
+    expect(rendu).not.toContain('REJECTED: do not retry')
   })
 
   it('devient opposable dès qu’un humain l’endosse, et le dit', async () => {
@@ -70,7 +70,7 @@ describe('empoisonnement par un agent', () => {
     await store.mutate((s) => setRejectionStanding(s, proposée.id, 'accepted'))
 
     const rendu = textOf(await call(resumeTaskTool))
-    expect(rendu).toContain('REJECTED — do not retry')
+    expect(rendu).toContain('REJECTED: do not retry')
     expect(rendu).toContain('[agent] Cookie HttpOnly')
   })
 
@@ -103,7 +103,7 @@ describe('empoisonnement par un agent', () => {
     expect(activeConstraints(état)).toHaveLength(0)
 
     const rendu = renderTaskState(état)
-    expect(rendu).toContain('CONSTRAINTS — binding (0)')
+    expect(rendu).toContain('CONSTRAINTS: binding (0)')
     expect(rendu).toContain('constraint: Ne jamais toucher au routeur')
   })
 
@@ -167,7 +167,7 @@ describe('sémantique des preuves', () => {
     )
 
     const rendu = textOf(await call(detail, { section: 'steps' }))
-    expect(rendu).toContain('human-checked: no — supplied by its author, not verified')
+    expect(rendu).toContain('human-checked: no, supplied by its author, not verified')
   })
 
   it('exige que le contenu ait été affiché avant d’être validé', async () => {

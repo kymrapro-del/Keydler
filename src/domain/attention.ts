@@ -15,7 +15,7 @@ function plural(n: number, one: string, many: string): string {
 }
 
 // Le pendant humain de `resume_task` : ce que personne n'a encore tranché, dans l'ordre où
-// cela coûte de ne pas le voir — une autorisation bloque un agent en ce moment même, une
+// cela coûte de ne pas le voir. Une autorisation bloque un agent en ce moment même, une
 // étape affirmée sans preuve attendra.
 
 /**

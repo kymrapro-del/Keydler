@@ -17,7 +17,7 @@ export function historyOf(state: TaskState, targetId: string): Trail {
 
   return {
     entries: state.audit.filter((e) => e.targetId === targetId && e.outcome === 'applied'),
-    // On ne sait pas ce qui a été écarté pour CET élément — le marqueur
+    // On ne sait pas ce qui a été écarté pour CET élément. Le marqueur
     // d'élagage compte des entrées, pas des cibles. D'où « peut être », et non
     // un nombre que l'on n'a pas.
     mayBeIncomplete: trimmed,

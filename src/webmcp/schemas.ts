@@ -26,7 +26,7 @@ export const mutationIdProperty = {
 const evidenceSchema = {
   type: 'object',
   description:
-    'Proof of the result. Omit only if you genuinely have none — the step is then ' +
+    'Proof of the result. Omit only if you genuinely have none: the step is then ' +
     'recorded as claimed. Attaching does NOT mark it verified.',
   properties: {
     kind: {
@@ -38,7 +38,7 @@ const evidenceSchema = {
       type: 'string',
       minLength: 1,
       maxLength: MAX_EVIDENCE_LENGTH,
-      description: 'The evidence itself, verbatim. Do not summarise it — a summary proves nothing.',
+      description: 'The evidence itself, verbatim. Do not summarise it: a summary proves nothing.',
     },
   },
   required: ['kind', 'content'],
@@ -163,7 +163,7 @@ export const REQUEST_APPROVAL_SCHEMA = writeSchema(
       'Exactly what you are about to do, stated so a human can judge it in one line.',
       600,
     ),
-    why: boundedText('Why it needs a human decision — what it changes, and what it costs.', 600),
+    why: boundedText('Why it needs a human decision: what it changes, and what it costs.', 600),
   },
   ['action', 'why'],
 )
@@ -207,7 +207,7 @@ export const READ_DETAIL_SCHEMA = {
       minLength: 1,
       maxLength: 64,
       description:
-        'One entry, returned in full and unpaginated — including whole evidence, which pages truncate. Take the id from a page.',
+        'One entry, returned in full and unpaginated, including whole evidence, which pages truncate. Take the id from a page.',
     },
   },
   required: ['section'],

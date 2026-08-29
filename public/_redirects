@@ -9,4 +9,4 @@
 # se pose en règle de redirection (Rules → Redirect Rules), et elle demande un
 # droit d'écriture sur la zone que la session de déploiement n'a pas.
 # `vercel.json` la porte pour Vercel, et `src/main.ts` la tient de toute façon
-# côté navigateur — voir le commentaire là-bas.
+# côté navigateur ; voir le commentaire là-bas.

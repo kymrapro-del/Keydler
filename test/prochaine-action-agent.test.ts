@@ -38,7 +38,7 @@ describe('set_next_action, écrit par un agent', () => {
 
   it('garde la version invoquée dans le registre', () => {
     // Sans elle, on ne peut pas relire après coup sur quel état l'agent
-    // s'appuyait — c'est-à-dire savoir s'il travaillait à l'aveugle.
+    // s'appuyait, c'est-à-dire savoir s'il travaillait à l'aveugle.
     const après = setNext(cahier, { next: 'Autre chose', basedOnVersion: cahier.version }, 'agent')
     expect(après.audit[après.audit.length - 1].basedOnVersion).toBe(cahier.version)
   })

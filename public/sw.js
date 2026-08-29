@@ -1,5 +1,5 @@
 // Réécrit à la construction par `scripts/precache.mjs`, qui y met les noms
-// réels des fichiers produits — ils portent une empreinte, donc ils ne peuvent
+// réels des fichiers produits : ils portent une empreinte, donc ils ne peuvent
 // pas être écrits à la main. Le nom du cache porte la même empreinte : sans
 // cela, `activate` ne supprimait jamais rien et une entrée fautive survivait à
 // tous les déploiements.

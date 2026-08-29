@@ -3,14 +3,14 @@
  * jusqu'au budget et non jusqu'au compte, douze extraits de 240 caractères en faisant 6296.
  * Deux exemptions : `read_task_detail`, qui borné à 1,5 k ne rendait qu'une ou deux entrées
  * par page dès qu'une preuve était jointe, et `resume_task`, qui a son propre budget en
- * tokens — 1600 caractères, 1528 rendus en pratique.
+ * tokens, soit 1600 caractères, 1528 rendus en pratique.
  * https://developer.chrome.com/docs/ai/webmcp/secure-tools
  */
 export const MAX_TOOL_OUTPUT = 1_500
 
 /**
  * De la place tenue d'avance pour l'en-tête et le pied, qui dépendent du
- * nombre d'entrées finalement retenues — donc du résultat de la boucle qui les
+ * nombre d'entrées finalement retenues, donc du résultat de la boucle qui les
  * choisit. Réserver large lève la circularité sans compliquer le calcul.
  */
 export const OUTPUT_FRAME = 300

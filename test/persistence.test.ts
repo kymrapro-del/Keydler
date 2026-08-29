@@ -41,7 +41,7 @@ describe('persistance', () => {
     expect((await loadLastTask())?.id).toBe(second.id)
   })
 
-  // Le repli — plus de dernier cahier connu — rapatriait TOUS les cahiers du
+  // Le repli (plus de dernier cahier connu) rapatriait TOUS les cahiers du
   // poste pour n'en garder qu'un ; il descend maintenant l'index par date.
   // Les dates sont posées à la main : deux cahiers créés dans la même
   // milliseconde n'ont pas de « plus récent », et le produit n'en promet pas.

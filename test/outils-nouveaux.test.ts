@@ -39,7 +39,7 @@ describe('ask_human', () => {
     )
 
     expect(result.isError).toBeFalsy()
-    expect(textOf(result)).toContain('OK — ask_human recorded.')
+    expect(textOf(result)).toContain('OK: ask_human recorded.')
     expect(openQuestions(currentTask())).toHaveLength(1)
   })
 

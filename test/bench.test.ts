@@ -309,7 +309,7 @@ describe('tableau de bord', () => {
   it('montre exactement ce que resume_task renvoie, pas une version voisine', async () => {
     // Le panneau s'intitule « What resume_task returns ». S'il rendait l'état
     // sans l'URL ni les identifiants, il montrerait autre chose que ce que
-    // l'agent reçoit — dans un produit dont toute la valeur est l'honnêteté.
+    // l'agent reçoit, dans un produit dont toute la valeur est l'honnêteté.
     const resume = ALL_TOOLS.find((t) => t.name === 'resume_task')!
     const attendu = textOf(await resume.execute({}, { signal: new AbortController().signal }))
     await settled()

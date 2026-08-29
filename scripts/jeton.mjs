@@ -1,7 +1,7 @@
 // La charge utile d'un jeton d'origin trial est du JSON en clair, seulement
 // signée : on peut donc vérifier ce qu'elle autorise (structure : Chromium,
-// `origin_trials_token_structure.md`). L'origine y inclut schéma et port —
-// `https://keydler.com:443` — et Chrome vérifie HORS LIGNE, sans rien signaler :
+// `origin_trials_token_structure.md`). L'origine y inclut schéma et port
+// (`https://keydler.com:443`), et Chrome vérifie HORS LIGNE, sans rien signaler :
 // un jeton pris pour `www.` ou `http://` échoue en silence. La signature n'est
 // pas vérifiée, faute de clé publique ; le risque est la mauvaise origine.
 

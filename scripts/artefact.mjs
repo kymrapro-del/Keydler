@@ -74,7 +74,7 @@ if (sw !== null) {
 }
 
 // L'empreinte doit correspondre au HTML réellement construit, et `vercel.json`
-// la porte en dur — il est lu depuis le dépôt au déploiement, pas depuis dist.
+// la porte en dur : il est lu depuis le dépôt au déploiement, pas depuis dist.
 if (html !== null && headers !== null) {
   const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
   if (scripts.length !== 1) {
@@ -94,7 +94,7 @@ if (html !== null && headers !== null) {
     if (!vercel.includes(attendue)) {
       grief(
         'vercel.json a dérivé de l’empreinte du script en ligne.',
-        `Reportez ${attendue} dans vercel.json — une politique périmée rassure sans protéger.`,
+        `Reportez ${attendue} dans vercel.json. Une politique périmée rassure sans protéger.`,
       )
     }
   }
@@ -103,7 +103,7 @@ if (html !== null && headers !== null) {
 // Tout le reste peut être parfait et le produit rester invisible : sans jeton
 // d'origin trial valide pour l'origine servie, `document.modelContext` n'existe
 // pas et un juge lit « WebMCP is not available in this browser ».
-// `ALLOW_NO_ORIGIN_TRIAL=1` lève l'exigence — c'est ce que fait `npm run check`,
+// `ALLOW_NO_ORIGIN_TRIAL=1` lève l'exigence : c'est ce que fait `npm run check`,
 // qui construit pour vérifier, pas pour publier.
 const ORIGINES_SERVIES = ['https://keydler.com', 'https://keydler.pages.dev']
 const FONCTIONNALITE = 'WebMCP'

@@ -1,7 +1,7 @@
-# Plan de développement — Cahier de quart
+# Plan de développement : Cahier de quart
 
-> Échéance : **3 septembre 2026, 13 h PDT** (22 h Paris).
-> Cible de dépôt : **2 septembre au soir**. Le 3 n'est qu'un filet.
+> Échéance : 3 septembre 2026, 13 h PDT (22 h Paris).
+> Cible de dépôt : 2 septembre au soir. Le 3 n'est qu'un filet.
 > Dépôt remis à zéro le 26 août.
 
 ---
@@ -11,17 +11,17 @@
 C'est le seul point à verrouiller avant d'écrire une ligne. Tant qu'il est
 flou, chaque tâche risque de tomber entre les deux.
 
-| Voie              | Qui   | Contenu                                                                                               |
-| ----------------- | ----- | ----------------------------------------------------------------------------------------------------- |
-| **Design**        | Kymra | Charte, couleurs, typographie, formes, apparence de chaque écran                                      |
-| **Network**       | Kymra | Hébergement, URL publique, dépôt public, description de soumission, dépôt de la candidature           |
-| **Tout le reste** | Moon  | Architecture, domaine, WebMCP, persistance, **code de l'interface**, tests, CI, documentation, mesure |
+| Voie          | Qui   | Contenu                                                                                           |
+| ------------- | ----- | ------------------------------------------------------------------------------------------------- |
+| Design        | Kymra | Charte, couleurs, typographie, formes, apparence de chaque écran                                  |
+| Network       | Kymra | Hébergement, URL publique, dépôt public, description de soumission, dépôt de la candidature       |
+| Tout le reste | Moon  | Architecture, domaine, WebMCP, persistance, code de l'interface, tests, CI, documentation, mesure |
 
 Autrement dit : le _comportement_ de l'interface est dans la voie de Moon, son
 _apparence_ dans celle de Kymra. Un écran existe, s'affiche et réagit parce que
 Moon l'a codé ; il est beau parce que Kymra l'a habillé.
 
-**La vidéo est une vidéo de présentation**, produite à la fin. Elle explique ce
+La vidéo est une vidéo de présentation, produite à la fin. Elle explique ce
 qui a été construit et l'usage fait de WebMCP ; elle ne dépend donc pas d'un
 refus d'écriture capté en direct. Décidé le 26 août.
 
@@ -40,7 +40,7 @@ jamais attendre la charte :
   proposition de design.
 - **Kymra réécrit ce fichier**, et rien d'autre. Le reste du code ne bouge pas,
   les tests continuent de passer.
-- **Le balisage est sémantique** — titres, listes, formulaires, régions — pour
+- **Le balisage est sémantique** (titres, listes, formulaires, régions) pour
   que restyler ne demande jamais de restructurer.
 
 Ce contrat est ce qui permet aux deux voies d'avancer en parallèle au lieu de
@@ -59,14 +59,14 @@ se bloquer l'une l'autre.
 - **Refus d'écriture périmée** : toute écriture d'agent porte la version sur
   laquelle il croit travailler ; une divergence est refusée, jamais fusionnée.
 - **Écriture humaine autoritaire** : sans version, jamais refusée. C'est elle
-  qui périme celle de l'agent — toute la supervision tient dans cette asymétrie.
+  qui périme celle de l'agent. Toute la supervision tient dans cette asymétrie.
 - **Persistance locale** IndexedDB. Ni compte, ni serveur : cela supprime
   l'authentification et rend la démonstration reproductible immédiatement.
 - **Degrés de preuve** distinguant travail prouvé et travail affirmé.
 
 ### Correction technique par rapport au plan initial
 
-`navigator.modelContext` est **déprécié depuis Chrome 150** : la spécification a
+`navigator.modelContext` est déprécié depuis Chrome 150 : la spécification a
 déplacé le getter vers `Document` dans le brouillon du 27 mai 2026. Le code doit
 cibler `document.modelContext` avec repli sur l'ancienne forme, et cette
 instabilité doit rester enfermée dans un seul adaptateur.
@@ -87,25 +87,25 @@ _comportement_ est dans la voie de Moon, leur _apparence_ dans celle de Kymra.
 Chaque journée porte un critère de sortie vérifiable. Une journée sans critère
 atteint se rattrape le soir même, pas le lendemain.
 
-### J1 — 26 août · **VERROU**
+### J1 : 26 août · VERROU
 
 Prouver la reprise, et rien d'autre. Aucune interface, aucun style, aucun
 modèle de données définitif.
 
 - Projet Vite + TypeScript nu.
 - Un seul outil `resume_task` renvoyant une chaîne fixe, enregistré au
-  chargement dans un module singleton — **jamais depuis un `useEffect`**.
+  chargement dans un module singleton, et jamais depuis un `useEffect`.
 - Détection de l'absence de `document.modelContext` avec message d'aide.
 
 Le critère se scinde en deux tests distincts, qu'il ne faut pas confondre.
 
-**Test A — l'enregistrement.** Chrome avec `chrome://flags/#enable-webmcp-testing`,
-puis DevTools → onglet **Application** → section **WebMCP**. Les outils
+**Test A : l'enregistrement.** Chrome avec `chrome://flags/#enable-webmcp-testing`,
+puis DevTools → onglet Application → section WebMCP. Les outils
 enregistrés y apparaissent et s'invoquent à la main. Aucun agent nécessaire,
 aucun déploiement : `localhost` est un contexte sécurisé.
 
-**Test B — la découverte par un agent.** Un pont MCP
-(`@mcp-b/chrome-devtools-mcp`) expose les outils de la page à un client MCP —
+**Test B : la découverte par un agent.** Un pont MCP
+(`@mcp-b/chrome-devtools-mcp`) expose les outils de la page à un client MCP :
 Claude Code ou Codex CLI, tous deux exécutables sous Linux. Conversation neuve,
 onglet ouvert, consigne « continue ».
 
@@ -115,17 +115,17 @@ onglet ouvert, consigne « continue ».
 > description : la reprendre jusqu'à ce que ça marche.
 
 **Ce que le Test B n'est pas.** Via le pont, l'agent voit deux outils
-génériques — `list_webmcp_tools` et `call_webmcp_tool` — et non les outils de la
+génériques (`list_webmcp_tools` et `call_webmcp_tool`) et non les outils de la
 page directement. C'est un chemin de découverte différent de celui du navigateur
 intégré de ChatGPT. Réel, mais différent : à ne pas présenter pour autre chose
 qu'il n'est.
 
 **Contrainte de poste.** ChatGPT desktop n'existe pas sous Linux. Ce n'est pas
 bloquant : les règles du concours demandent une URL accessible « via le
-navigateur intégré de ChatGPT **ou** Google Chrome avec WebMCP activé », et
+navigateur intégré de ChatGPT ou Google Chrome avec WebMCP activé », et
 n'imposent aucun client IA pour la démonstration.
 
-### J2 — 27 août · Le noyau
+### J2 : 27 août · Le noyau
 
 Modèle de domaine, magasin IndexedDB, six outils. Vérification par le panneau
 WebMCP des outils de développement, pas par une interface.
@@ -140,7 +140,7 @@ WebMCP des outils de développement, pas par une interface.
 > cohérent qui survit à un rechargement. Un appel volontairement périmé est
 > refusé.
 
-### J3 — 28 août · Le contrat de reprise
+### J3 : 28 août · Le contrat de reprise
 
 La journée la plus sous-estimée : il ne s'agit plus de code mais de
 formulation.
@@ -152,9 +152,9 @@ formulation.
 
 > **Critère de sortie.** Sur une tâche réelle, conversation fermée puis
 > rouverte : l'agent cite spontanément une contrainte et refuse une approche
-> rejetée. C'est le scénario de la vidéo — reproductible avant qu'on filme.
+> rejetée. C'est le scénario de la vidéo, reproductible avant qu'on filme.
 
-### J4 — 29 août · Interface, comportement
+### J4 : 29 août · Interface, comportement
 
 Rendre visible ce qui existe. Balisage sémantique, câblage au magasin, états
 vides, chargement et erreur. Valeurs visuelles neutres, toutes en variables.
@@ -167,7 +167,7 @@ vides, chargement et erreur. Valeurs visuelles neutres, toutes en variables.
 > **Critère de sortie.** Un observateur comprend l'état de la tâche sans
 > explication. Et Kymra peut commencer.
 
-### J5 — 30 août · Supervision humaine
+### J5 : 30 août · Supervision humaine
 
 Le moment où le produit cesse d'afficher pour superviser.
 
@@ -180,9 +180,9 @@ Le moment où le produit cesse d'afficher pour superviser.
 > l'agent réfléchit, voir l'écriture suivante refusée, puis l'agent rappeler le
 > pointeur et respecter la nouvelle règle.
 
-### J6 — 31 août · La mesure
+### J6 : 31 août · La mesure
 
-Périmètre volontairement resserré : **huit tâches, une seule métrique**.
+Périmètre volontairement resserré : huit tâches, une seule métrique.
 
 - Chaque tâche a une contrainte explicite et une approche condamnée.
 - Condition témoin sans cahier, condition avec cahier, mêmes tâches, même
@@ -194,7 +194,7 @@ Périmètre volontairement resserré : **huit tâches, une seule métrique**.
 > est faible, le dire quand même : un résultat honnête et modeste vaut mieux
 > qu'un chiffre invérifiable. Quatre tâches au minimum, jamais zéro.
 
-### J7 — 1er septembre · Intégration et dossier
+### J7 : 1er septembre · Intégration et dossier
 
 - Reprise des jetons de Kymra, vérification que rien n'a cassé.
 - README : architecture, lancement local, comportement sans WebMCP, scénario de
@@ -204,7 +204,7 @@ Périmètre volontairement resserré : **huit tâches, une seule métrique**.
 > **Critère de sortie.** Le dépôt est lisible par quelqu'un qui n'a jamais vu le
 > projet, et `npm run check` passe.
 
-### J8 — 2 septembre · **MARGE**
+### J8 : 2 septembre · MARGE
 
 Journée volontairement sous-chargée : elle absorbe les retards des sept
 précédentes.
@@ -231,7 +231,7 @@ si elle glisse.
 | Vidéo                     | 1er septembre | La recevabilité                       |
 | Description de soumission | 2 septembre   | La recevabilité                       |
 
-Le dépôt est **privé** à ce jour, alors que le concours exige un dépôt public.
+Le dépôt est privé à ce jour, alors que le concours exige un dépôt public.
 C'est le point le plus simple à régler et le plus coûteux à oublier.
 
 ---
@@ -241,12 +241,12 @@ C'est le point le plus simple à régler et le plus coûteux à oublier.
 Décidées à froid maintenant pour ne pas les improviser le 1er septembre. On
 coupe d'abord ce qui ne se voit pas à l'écran, et jamais le mécanisme central.
 
-1. **L'export du cahier** — utile en vrai, invisible en démonstration.
-2. **Le degré `machine_verified`** — trois degrés au lieu de quatre.
-3. **Les décisions et leur justification** — le triptyque contraintes / rejets /
+1. **L'export du cahier** : utile en vrai, invisible en démonstration.
+2. **Le degré `machine_verified`** : trois degrés au lieu de quatre.
+3. **Les décisions et leur justification** : le triptyque contraintes / rejets /
    étapes suffit ; `add_decision` peut disparaître.
-4. **La mesure ramenée à quatre tâches** — jamais supprimée entièrement.
-5. **Le multi-tâches** — un seul cahier actif, identifiant fixe.
+4. **La mesure ramenée à quatre tâches** : jamais supprimée entièrement.
+5. **Le multi-tâches** : un seul cahier actif, identifiant fixe.
 
 ---
 
@@ -293,4 +293,4 @@ ferait découvrir le vrai problème le 1er septembre.
 - [ ] La vidéo dure moins de trois minutes, est publique, avec audio
 - [ ] La description explique quel usage de WebMCP est fait, et pourquoi il est nécessaire
 - [ ] Le protocole de mesure et ses journaux sont au dépôt, reproductibles
-- [ ] Aucun chiffre invérifiable nulle part — ni vidéo, ni description, ni README
+- [ ] Aucun chiffre invérifiable nulle part, ni vidéo, ni description, ni README

@@ -17,7 +17,7 @@ const actifs = (await readdir(join(dist, 'assets')))
   .sort()
 
 if (actifs.length === 0) {
-  console.error('precache: aucun fichier dans dist/assets — la construction a-t-elle eu lieu ?')
+  console.error('precache: aucun fichier dans dist/assets. La construction a-t-elle eu lieu ?')
   process.exit(1)
 }
 
