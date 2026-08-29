@@ -1,17 +1,7 @@
 /**
- * Chrome recommande 500 caractères par description d'outil et 150 par
- * description de paramètre, « pour ne pas tomber sur les garde-fous des
- * agents ». Ce ne sont pas des limites dures, mais une description qui
- * déborde est lue moins bien, et il y en a treize à lire d'un coup.
- *
- * La règle éditoriale qui a permis de tenir : **une description d'outil
- * instruit, le README explique**. Ce qui a été coupé, ce sont les
- * justifications — pourquoi la règle existe — et les rappels de protocole qui
- * figuraient déjà dans le schéma, dans le bloc WRITE PROTOCOL de `resume_task`
- * et dans les refus. Aucune instruction n'a été retirée.
- *
- * `test/budgets-webmcp.test.ts` tient ces bornes, pour qu'elles ne dérivent
- * pas à la prochaine rédaction.
+ * Chrome recommande 500 caractères par description d'outil et 150 par description de
+ * paramètre : pas des limites dures, mais il y en a treize à lire d'un coup. Une
+ * description instruit, le README explique ; `test/budgets-webmcp.test.ts` tient ces bornes.
  */
 
 export const RESUME_TASK_DESCRIPTION = `Persistent, human-supervised checkpoint for the current task. It holds:
@@ -153,10 +143,8 @@ Write the summary for someone who was not present: what was done, what
 was decided, and what remains out of scope.`
 
 /**
- * Le protocole complet — pourquoi une version périmée est refusée, comment
- * rejouer une écriture sans la dupliquer — est enseigné là où il sert : dans
- * le bloc WRITE PROTOCOL de `resume_task`, et dans le texte des refus quand on
- * s'y prend mal. Ici, on dit quoi mettre.
+ * Le protocole complet est enseigné là où il sert : le bloc WRITE PROTOCOL de
+ * `resume_task`, et le texte des refus. Ici, on dit seulement quoi mettre.
  */
 export const BASED_ON_VERSION_DESCRIPTION =
   'The version from your most recent resume_task. If the task has moved since, ' +

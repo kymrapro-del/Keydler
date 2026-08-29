@@ -4,23 +4,12 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { lireJeton } from './jeton.mjs'
 
-/**
- * `dist/` peut avoir l'air complet et n'être pas déployable.
- *
- * `vite build` seul produit les onze bons fichiers, aux bons noms. Mais deux
- * substitutions se font APRÈS lui — `precache.mjs` écrit les noms réellement
- * construits dans le service worker, `headers.mjs` scelle la politique sur
- * l'empreinte du script en ligne. Sans elles :
- *
- *   - la CSP porte `'__CSP_SCRIPT_HASH__'`, qui n'est pas une source valide.
- *     Le script d'amorce du thème est alors BLOQUÉ par le navigateur ;
- *   - le service worker ne précharge rien et s'appelle `keydler-dev`, un nom
- *     fixe qui ne s'invalide jamais d'un déploiement à l'autre.
- *
- * Rien de tout cela ne se voit en regardant le dossier. Ce script refuse
- * l'artefact plutôt que de compter sur la vigilance de qui déploie — le jour
- * où l'on déploie vite est précisément celui où l'on ne vérifie pas.
- */
+// `dist/` peut avoir l'air complet et n'être pas déployable : deux
+// substitutions se font APRÈS `vite build`. Sans elles, la CSP porte
+// `'__CSP_SCRIPT_HASH__'`, qui n'est pas une source valide et fait BLOQUER le
+// script d'amorce du thème, et le service worker ne précharge rien sous le nom
+// de cache fixe `keydler-dev`, qui ne s'invalide jamais. Rien de cela ne se
+// voit en regardant le dossier.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 const racine = fileURLToPath(new URL('../', import.meta.url))
 

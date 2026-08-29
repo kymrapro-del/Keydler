@@ -266,15 +266,10 @@ describe('installable', () => {
   })
 
   it('enregistre le service worker sans passer par le cache HTTP', () => {
-    // Mesuré en production : `public/_headers` demande `no-cache` sur
-    // `/sw.js`, et Cloudflare sert `max-age=14400`. La même règle s'applique
-    // pourtant à `index.html` et au manifeste — le service worker, lui, est
-    // mis en cache de bord par son extension. Un visiteur qui revient gardait
-    // donc l'ancien worker jusqu'à quatre heures, et avec lui l'ancienne
-    // application servie depuis son cache.
-    //
-    // `updateViaCache: 'none'` est de notre côté : il tient quel que soit
-    // l'hébergeur, et ne demande aucun droit sur la zone.
+    // Mesuré en production : `_headers` demande `no-cache` sur `/sw.js` et
+    // Cloudflare sert quand même `max-age=14400` — un visiteur qui revient
+    // gardait l'ancien worker, et l'ancienne application, jusqu'à quatre
+    // heures. `updateViaCache: 'none'` tient quel que soit l'hébergeur.
     expect(mainRaw).toContain("updateViaCache: 'none'")
   })
 

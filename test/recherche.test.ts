@@ -24,12 +24,8 @@ describe('recherche dans un cahier', () => {
     expect(matches('Refactor', 'zzz')).toBe(false)
   })
 
-  /**
-   * `normalise` prend un raccourci quand la chaîne est en ASCII : elle n'a
-   * alors rien à replier. Le raccourci ne vaut que s'il rend EXACTEMENT la
-   * même réponse, y compris quand une seule des deux chaînes est accentuée —
-   * c'est là qu'un repli sauté se verrait.
-   */
+  // `normalise` saute le repli sur une chaîne ASCII : le raccourci ne vaut que
+  // s'il rend la même réponse quand une seule des deux chaînes est accentuée.
   it('replie les accents dans les deux sens, quel que soit le côté accentué', () => {
     expect(matches('déjà migré', 'deja')).toBe(true)
     expect(matches('deja migre', 'déjà')).toBe(true)

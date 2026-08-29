@@ -269,17 +269,10 @@ async function applyLocked(fn: (state: TaskState) => TaskState): Promise<TaskSta
   return next
 }
 
-/**
- * Deux onglets sur la même tâche : l'un écrivait, l'autre gardait son écran
- * d'avant. Mesuré, un second onglet a rouvert la tâche et écrit jusqu'à v31
- * pendant que le premier affichait encore v29 et « Task closed ». Il ne
- * l'apprenait qu'en tentant d'écrire — la sûreté tenait, l'écran mentait.
- *
- * `BroadcastChannel` ne livre pas au contexte qui poste : personne ne réagit
- * donc à sa propre annonce, et il n'y a pas d'écho à filtrer. La relecture
- * passe par la file d'écriture, sinon elle pourrait s'intercaler au milieu
- * d'une écriture en cours et remettre en place un état déjà dépassé.
- */
+// Deux onglets sur la même tâche : mesuré, le second a écrit jusqu'à v31 pendant
+// que le premier affichait encore v29 et « Task closed ». `BroadcastChannel` ne
+// livre pas au contexte qui poste, donc pas d'écho à filtrer. La relecture passe
+// par la file d'écriture, sinon elle s'intercalerait dans une écriture en cours.
 const CHANNEL = 'cahier-de-quart'
 
 type Announcement = { id: string | null; version: number; gone?: boolean }
@@ -321,18 +314,11 @@ function announce(id: string | null, version: number, gone = false): void {
   }
 }
 
-/**
- * Une rafale d'annonces ne doit pas produire une rafale de relectures. Mesuré
- * sur un cahier de 20 000 étapes : 50 annonces coûtaient 50 lectures et
- * 1702 ms, dont 1668 ms jetés — la désérialisation de l'enregistrement est le
- * coût, pas la normalisation. Et comme la file d'écriture est partagée avec
- * les écritures locales, ces relectures retardaient les écritures de cet
- * onglet d'un facteur 51.
- *
- * On ne retient donc qu'une relecture par cahier : la version la plus haute
- * annoncée suffit à décider s'il faut relire, et le disque rendra de toute
- * façon ce qu'il porte au moment où l'on y va.
- */
+// Une rafale d'annonces ne doit pas produire une rafale de relectures : mesuré
+// sur un cahier de 20 000 étapes, 50 annonces coûtaient 1702 ms dont 1668 jetés
+// — la désérialisation de l'enregistrement, pas la normalisation — et retardaient
+// d'un facteur 51 les écritures locales, qui partagent la file. Une relecture par
+// cahier suffit : la version la plus haute annoncée décide s'il faut relire.
 const relecturesAttendues = new Map<string, number>()
 
 function planifierRelecture(id: string, version: number): void {

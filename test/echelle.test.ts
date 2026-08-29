@@ -117,12 +117,9 @@ afterEach(() => {
   history.replaceState(null, '', '/')
 })
 
-/**
- * Mesuré avant ces bornes : 2000 règles portaient un aller-retour de rendu de
- * 17 ms à 501 ms, pour 1,2 Mo de HTML et 10 000 nœuds — et la page se
- * redessine à chaque frappe dans la recherche. Le tableau de bord devenait
- * injouable sur un cahier qu'aucune règle n'interdisait de construire.
- */
+// Mesuré avant ces bornes : 2000 règles portaient un aller-retour de rendu de 17 ms à
+// 501 ms, pour 1,2 Mo de HTML et 10 000 nœuds — et la page se redessine à chaque
+// frappe dans la recherche.
 describe('la page ne grandit pas avec les données', () => {
   it('garde le même ordre de grandeur avec cent fois plus de tout', async () => {
     await open({
@@ -331,12 +328,10 @@ describe('la liste des cahiers ne retient pas les cahiers', () => {
   })
 })
 
-/**
- * Le panneau technique montre exactement ce que `resume_task` rendrait —
- * 5 ms sur un cahier de 20 000 étapes, recalculé à chaque frappe. Il est
- * maintenant mémorisé ; une mémorisation qui rate son invalidation montre un
- * état périmé, ce qui est pire que lent dans un produit dont c'est le sujet.
- */
+// Le panneau technique montre ce que `resume_task` rendrait — 5 ms sur un cahier de
+// 20 000 étapes, recalculé à chaque frappe, donc mémorisé. Une mémorisation qui rate
+// son invalidation montre un état périmé, pire que lent dans un produit dont c'est
+// le sujet.
 describe('l’aperçu de ce que lit l’agent reste à jour', () => {
   function apercu(): string {
     const pre = [...root.querySelectorAll('pre')].find((p) => p.textContent?.includes('TASK ID'))

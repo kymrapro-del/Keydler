@@ -1,18 +1,9 @@
-/**
- * Campagne de contrôles contre le site RÉELLEMENT EN LIGNE.
- *
- * La suite d'épreuves tourne dans jsdom sur du code source ; elle ne dit rien
- * de ce qu'un hébergeur sert vraiment. Ce projet en a déjà fait quatre fois les
- * frais : des épreuves vertes pendant qu'un navigateur trouvait le défaut en
- * une minute. Ce script interroge l'origine servie et ne suppose rien.
- *
- * Il ne remplace pas les épreuves : il couvre ce qu'elles ne peuvent pas voir —
- * en-têtes posés par l'hébergeur, redirections, types MIME, mise en cache,
- * repli SPA, et tout ce qui se décide entre le dépôt et le navigateur.
- *
- * Sortie : un compte de réussites et d'échecs, et un code de sortie non nul si
- * quoi que ce soit échoue, pour qu'il puisse servir de barrière.
- */
+// Contrôles contre le site RÉELLEMENT EN LIGNE. La suite d'épreuves tourne dans
+// jsdom sur du code source ; ce projet en a déjà fait quatre fois les frais, des
+// épreuves vertes pendant qu'un navigateur trouvait le défaut en une minute. On
+// couvre ici ce qu'elles ne peuvent pas voir — en-têtes de l'hébergeur,
+// redirections, types MIME, mise en cache, repli SPA — et on sort non nul, pour
+// que ce script puisse servir de barrière.
 const ORIGINE = process.argv[2] ?? 'https://keydler.com'
 const seulementEchecs = process.argv.includes('--echecs')
 
@@ -277,13 +268,10 @@ const sw = await chercher('/sw.js')
 verifier('le service worker répond 200', sw.statut === 200, sw.statut)
 // `public/_headers` demande `no-cache` sur `/sw.js` et Cloudflare sert
 // `max-age=14400` : il met le fichier en cache de bord par son extension
-// (`cf-cache-status: REVALIDATED`, contre `DYNAMIC` pour `index.html` et le
-// manifeste, auxquels la même règle s'applique bien). Le corriger demande un
-// droit sur la zone que le jeton de déploiement n'a pas.
-//
-// Ce qui protège réellement est dans notre code, et c'est cela qu'on vérifie :
-// l'enregistrement passe `updateViaCache: 'none'`, donc le navigateur ignore
-// son cache HTTP pour ce script quel que soit l'en-tête reçu.
+// (`cf-cache-status: REVALIDATED`, contre `DYNAMIC` pour `index.html`, à qui la
+// même règle s'applique bien). Le corriger demande un droit sur la zone que le
+// jeton de déploiement n'a pas ; l'enregistrement passe donc
+// `updateViaCache: 'none'` et le navigateur ignore son cache HTTP pour ce script.
 constater(
   "l'hébergeur garde le service worker en cache",
   entete(sw, 'cache-control'),

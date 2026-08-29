@@ -3,22 +3,12 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-/**
- * L'image que montrent X, LinkedIn, Slack, Discord et les fils de discussion
- * quand quelqu'un partage le lien. Elle était ANNONCÉE par `og:image` et
- * n'existait pas : le repli SPA rendait la page d'accueil en HTML à sa place,
- * donc toute carte partagée était cassée — vérifié en production, 200 avec
- * `content-type: text/html`.
- *
- * 1200×630 est le format que réclament les principales plateformes, et le
- * rapport 1,91:1 celui qu'elles recadrent le moins. Le fichier est produit
- * ici plutôt que dessiné à la main pour qu'il suive la palette du produit :
- * une image qui dérive des couleurs réelles se voit tout de suite.
- *
- * Pas de dépendance ajoutée : on écrit du SVG et on le rend avec un outil du
- * système. Le PNG produit est versionné, pour que la construction n'exige pas
- * cet outil.
- */
+// L'image annoncée par `og:image` n'existait pas : le repli SPA rendait la page
+// d'accueil à sa place et toute carte partagée était cassée — vérifié en
+// production, 200 avec `content-type: text/html`. 1200×630, soit le 1,91:1 que
+// les plateformes recadrent le moins. Du SVG rendu par un outil du système
+// plutôt qu'une dépendance de plus ; le PNG versionné, pour que la construction
+// n'exige pas cet outil.
 const racine = fileURLToPath(new URL('../', import.meta.url))
 
 // Palette sombre de `src/tokens.css`, recopiée à dessein : l'image est

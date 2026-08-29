@@ -135,13 +135,9 @@ function resetDrafts(): void {
 
 let creating = false
 
-/**
- * La vue « espace de travail », atteinte par `/workspace`. Elle existe parce
- * qu'une page d'accueil a besoin d'un endroit où envoyer quelqu'un qui cherche
- * son compte : jusqu'ici, la liste des cahiers, l'export et l'import vivaient
- * dans des panneaux repliés À L'INTÉRIEUR d'un cahier ouvert, donc invisibles
- * pour qui arrive de l'extérieur sans en avoir un.
- */
+// La vue `/workspace` : jusqu'ici la liste des cahiers, l'export et l'import
+// vivaient dans des panneaux repliés à l'intérieur d'un cahier ouvert, donc
+// invisibles pour qui arrive de l'extérieur sans en avoir un.
 let atWorkspace = false
 
 let credentials: SecretName[] = []
@@ -500,16 +496,10 @@ function remainder(total: number): string {
     : ''
 }
 
-/**
- * Une liste que rien ne borne finit par rendre la page injouable. Mesuré :
- * 2000 règles portaient un aller-retour de rendu de 17 ms à 501 ms, pour
- * 1,2 Mo de HTML et 10 000 nœuds — et la page se redessine à chaque frappe
- * dans la recherche. Les étapes étaient déjà bornées ; les règles, les
- * approches écartées, les questions et les autorisations ne l'étaient pas.
- *
- * On borne donc l'affichage, jamais en silence : le nombre caché est écrit,
- * et un bouton ouvre la liste entière. C'est le même marché que l'historique.
- */
+// 2000 règles portaient un aller-retour de rendu de 17 ms à 501 ms, pour 1,2 Mo
+// de HTML et 10 000 nœuds — et la page se redessine à chaque frappe dans la
+// recherche. On borne donc l'affichage, jamais en silence : le nombre caché est
+// écrit, et un bouton ouvre la liste entière.
 const expanded = new Set<string>()
 
 function capped<T>(id: string, items: readonly T[], limit = MAX_ROWS): T[] {
@@ -1245,17 +1235,11 @@ function renderWaiting(task: TaskState): string {
     </section>`
 }
 
-/**
- * Le panneau technique montre EXACTEMENT ce que `resume_task` rendrait. Ce
- * texte coûte 5 ms sur un cahier de 20 000 étapes, et il était recalculé à
- * chaque rendu — donc à chaque frappe dans la recherche, pour un panneau replié
- * la plupart du temps.
- *
- * Le cahier est immuable et remplacé en entier à chaque écriture : comparer les
- * identités suffit. La minute entre dans la clé parce que la restitution porte
- * une ligne qui dépend de l'heure (« LAST WRITE … ») ; sans elle, l'aperçu
- * finirait par mentir sur l'âge du cahier.
- */
+// Le texte de `resume_task` coûte 5 ms sur un cahier de 20 000 étapes, et il
+// était recalculé à chaque rendu — donc à chaque frappe dans la recherche, pour
+// un panneau replié la plupart du temps. Le cahier étant immuable et remplacé
+// en entier, comparer les identités suffit ; la minute entre dans la clé parce
+// que la restitution porte une ligne qui dépend de l'heure (« LAST WRITE … »).
 let briefing: {
   task: TaskState
   credentials: readonly SecretName[]
@@ -1755,15 +1739,10 @@ function renderDashboard(task: TaskState): string {
     ${renderTechnical(task)}`
 }
 
-/**
- * Ce que remplace un bouton « Sign in » sur un produit qui n'a ni compte, ni
- * serveur, ni session. Un compte rend deux services : retrouver ses affaires,
- * et les avoir sur un autre appareil. Le premier est déjà vrai ici — le
- * navigateur EST le compte — mais rien ne le disait. Le second se fait par un
- * fichier, et la page dit pourquoi ce n'est pas un lien : un cahier réellement
- * utilisé n'y tient pas. Mesuré : 60 pas font 17 349 caractères scellés, la
- * limite d'une URL est 16 000, le même cahier en fichier fait 85 657.
- */
+// Ce que remplace un bouton « Sign in » ici : le navigateur EST le compte, mais
+// rien ne le disait. Le second appareil se sert par un fichier et non par un
+// lien, parce qu'un cahier réellement utilisé n'y tient pas — 60 pas font
+// 17 349 caractères scellés contre 16 000 pour une URL, et 85 657 en fichier.
 function renderWorkspace(): string {
   const n = allTasks.length
   // `TaskCard` ne porte ni le nombre de pas ni la version, à dessein : les y
@@ -2954,14 +2933,9 @@ function render(): void {
 
   const html = `<main id="content">${renderBody()}</main>`
 
-  // Trois sources réveillent le rendu — le magasin, les appels d'outil, les
-  // (dés)enregistrements — et beaucoup ne changent rien à l'écran. Mesuré sur
-  // la suite d'interface : 30 % des rendus produisaient un HTML identique au
-  // précédent, et payaient quand même la reconstruction du DOM, le
-  // rattachement de tous les écouteurs et la valse du focus.
-  //
-  // La comparaison coûte un parcours de chaîne ; ce qu'elle évite coûte bien
-  // davantage. Et elle épargne au passage la sélection en cours.
+  // 30 % des rendus produisaient un HTML identique au précédent et payaient
+  // quand même la reconstruction du DOM, le rattachement de tous les écouteurs
+  // et la valse du focus. La comparaison épargne aussi la sélection en cours.
   if (html === painted) {
     announce()
     reflectAddress()

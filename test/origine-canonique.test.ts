@@ -1,13 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { redirectToCanonical } from '../src/canonical'
 
-/**
- * Deux origines pour un seul produit, c'est deux bases de données, deux
- * préférences de thème, deux caches — et un jeton d'origin trial qui ne vaut
- * que pour l'une des deux. La règle se pose normalement chez l'hébergeur, mais
- * une règle oubliée ne se voit pas : les deux adresses répondent, chacune avec
- * ses données. Ceci est le garde-fou que le dépôt contrôle.
- */
+// Deux origines pour un seul produit, c'est deux bases de données, deux caches
+// et un jeton d'origin trial qui ne vaut que pour l'une. La règle se pose chez
+// l'hébergeur, où une règle oubliée ne se voit pas : voici le garde-fou du dépôt.
 function faussseLocation(href: string) {
   const u = new URL(href)
   return {

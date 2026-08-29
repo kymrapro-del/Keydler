@@ -1,26 +1,9 @@
 /**
- * Chrome recommande 1,5 k caractères par sortie d'outil : au-delà, on « tombe
- * sur les garde-fous des agents ». Ce ne sont pas des limites dures.
- *
- * Le compte de correspondances ne suffit pas à s'y tenir : douze extraits de
- * 240 caractères chacun font 6296 caractères, mesurés. Une recherche se
- * remplit donc jusqu'au budget, pas jusqu'au compte — elle sert à TROUVER, et
- * son en-tête annonce déjà « N shown of M found », donc rien n'est caché.
- *
- * Deux exemptions, écrites plutôt que contournées :
- *
- * - **`read_task_detail` tout entier.** J'ai commencé par le borner aussi, et
- *   une épreuve existante l'a refusé — à raison. Le partage des rôles est
- *   délibéré : `resume_task` est le pointeur court, `read_task_detail` est là
- *   où l'on va CHERCHER du volume, preuve comprise jusqu'à
- *   `MAX_EVIDENCE_LENGTH`. Le borner à 1,5 k rendait une à deux entrées par
- *   page dès qu'une preuve était jointe, et détruisait la raison d'être du
- *   chemin. Sa page reste bornée par un nombre d'entrées, et son en-tête dit
- *   toujours combien il en reste et à quel décalage reprendre.
- * - `resume_task` a son propre budget en tokens (`TOKEN_BUDGET`), qui vaut
- *   1600 caractères. Il rend 1528 en pratique, soit 1,9 % de plus que la
- *   recommandation ; l'aligner coûtait plus qu'il ne rapportait.
- *
+ * Chrome recommande 1,5 k caractères par sortie d'outil, sans limite dure : on remplit donc
+ * jusqu'au budget et non jusqu'au compte, douze extraits de 240 caractères en faisant 6296.
+ * Deux exemptions : `read_task_detail`, qui borné à 1,5 k ne rendait qu'une ou deux entrées
+ * par page dès qu'une preuve était jointe, et `resume_task`, qui a son propre budget en
+ * tokens — 1600 caractères, 1528 rendus en pratique.
  * https://developer.chrome.com/docs/ai/webmcp/secure-tools
  */
 export const MAX_TOOL_OUTPUT = 1_500

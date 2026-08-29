@@ -13,13 +13,9 @@ import { WrongPassphraseError } from '../src/persistence/vault'
 
 const PHRASE = 'la phrase que je t’ai dite au téléphone'
 
-/**
- * Un lien porte le cahier entier, et personne ne peut savoir qui l'ouvre : un
- * fragment d'URL est une capacité au porteur. Vérifier une identité
- * demanderait un serveur. Ce qui est possible sans serveur, c'est d'exiger la
- * connaissance d'un secret — ce qui n'est PAS la même chose, et ces épreuves
- * disent laquelle des deux est tenue.
- */
+// Un fragment d'URL est une capacité au porteur : vérifier une identité
+// demanderait un serveur, exiger la connaissance d'un secret non. Ce n'est PAS
+// la même chose, et ces épreuves disent laquelle des deux est tenue.
 describe('un lien qu’une phrase de passe protège', () => {
   it('se rouvre avec la bonne phrase, et rend le cahier intact', async () => {
     const task = buildDemoTask()

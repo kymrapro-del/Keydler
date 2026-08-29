@@ -59,13 +59,9 @@ describe('offrir le cahier dans un lien', () => {
     expect(copied!.split('#')[0]).toContain('/t/')
   })
 
-  /**
-   * Le lien emporte les preuves telles qu'elles ont été collées, et une sortie
-   * de commande peut porter un jeton ou le nom d'une machine interne. Le
-   * produit se donne pour règle de dire ce qu'il fait ; il ne le disait pas
-   * ici, et pas au bon moment : une fois l'adresse dans le presse-papier, la
-   * décision est déjà prise.
-   */
+  // Le lien emporte les preuves telles quelles, et une sortie de commande peut
+  // porter un jeton ou le nom d'une machine interne. Le dire après le clic ne
+  // sert à rien : l'adresse est déjà dans le presse-papier.
   it('prévient de ce qui voyage AVANT le clic, pas après', async () => {
     const zone = root.querySelector('.handoff')!.textContent!.replace(/\s+/g, ' ')
 

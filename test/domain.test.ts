@@ -324,15 +324,9 @@ describe('budget de restitution sous pression', () => {
     )
   })
 
-  /**
-   * L'ancienne promesse était de ne JAMAIS retirer une obligation. Mesurée,
-   * elle rendait 37 800 tokens pour deux mille règles — 94 fois le budget
-   * annoncé. Une restitution pareille n'est pas lue : elle est tronquée par
-   * la fenêtre de contexte du modèle, en silence et hors de notre portée.
-   *
-   * Le choix n'est donc pas « tout garder ou couper », mais « couper ici en
-   * le disant, ou laisser couper ailleurs sans que personne le sache ».
-   */
+  // Ne JAMAIS retirer une obligation rendait 37 800 tokens pour deux mille
+  // règles — 94 fois le budget, et une restitution que la fenêtre de contexte
+  // tronque en silence. Couper ici en le disant, ou laisser couper ailleurs.
   it('en dernier recours retire des obligations, et le dit sans détour', () => {
     const output = renderTaskState(chargé(30, 10))
 

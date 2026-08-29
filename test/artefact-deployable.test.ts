@@ -3,23 +3,10 @@ import paquetBrut from '../package.json?raw'
 import gabaritSw from '../public/sw.js?raw'
 import gabaritHeaders from '../public/_headers?raw'
 
-/**
- * `vite build` produit les bons fichiers aux bons noms — et un dossier qui
- * n'est pas déployable. Deux substitutions se font après lui :
- * `precache.mjs` écrit les noms empreintés réellement construits dans le
- * service worker, `headers.mjs` scelle la CSP sur l'empreinte du script en
- * ligne.
- *
- * Sans elles, la CSP servie porte `'__CSP_SCRIPT_HASH__'` — pas une source
- * valide, donc le script d'amorce est bloqué — et le service worker ne
- * précharge rien sous un nom de cache fixe qui ne s'invalide jamais. Rien de
- * cela ne se voit en regardant `dist/`.
- *
- * C'est arrivé : `npm run check` se terminait par un `vite build` nu et
- * laissait exactement ce dossier-là derrière lui, prêt à être déployé par
- * quelqu'un de pressé. Ces épreuves tiennent l'invariant du côté du dépôt ;
- * `scripts/artefact.mjs` le tient du côté de l'artefact.
- */
+// `vite build` seul laisse un `dist/` non déployable : sans `precache.mjs` (les noms empreintés
+// dans le service worker) ni `headers.mjs` (la CSP scellée sur l'empreinte du script en ligne),
+// la CSP servie porte `'__CSP_SCRIPT_HASH__'` et bloque le script d'amorce. Rien de cela ne se
+// voit dans `dist/` ; `npm run check` a déjà laissé ce dossier-là derrière lui.
 const paquet = JSON.parse(paquetBrut) as { scripts: Record<string, string> }
 const scripts = paquet.scripts
 

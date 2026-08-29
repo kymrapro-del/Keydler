@@ -3,20 +3,12 @@ import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-/**
- * La politique de sécurité du contenu doit autoriser le seul script en ligne
- * de la page — l'amorce de thème, qui s'exécute avant la première peinture
- * pour éviter un clignotement. On l'autorise par son empreinte et non par
- * `'unsafe-inline'`, qui ouvrirait la porte à n'importe quel script injecté et
- * viderait la politique de son intérêt.
- *
- * L'empreinte est calculée ici sur le HTML RÉELLEMENT construit, puis écrite
- * dans `dist/_headers`. `vercel.json`, lui, est lu depuis le dépôt au moment
- * du déploiement et ne peut donc pas recevoir une valeur calculée : il porte
- * l'empreinte en dur, et ce script VÉRIFIE qu'elle correspond encore. Une
- * politique qui a dérivé est pire qu'une politique absente — elle rassure sans
- * protéger.
- */
+// Le seul script en ligne — l'amorce de thème, exécutée avant la première
+// peinture pour éviter un clignotement — est autorisé par son empreinte, pas
+// par `'unsafe-inline'` qui viderait la politique de son intérêt. `vercel.json`
+// est lu depuis le dépôt au déploiement et ne peut rien recevoir de calculé :
+// il porte l'empreinte en dur et ce script vérifie qu'elle correspond encore,
+// une politique qui a dérivé rassurant sans protéger.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 const racine = fileURLToPath(new URL('../', import.meta.url))
 

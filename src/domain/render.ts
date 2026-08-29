@@ -16,14 +16,10 @@ import { referenceSyntax, type SecretName } from './secret'
 import { sinceThen } from './elapsed'
 
 /**
- * Chrome recommande 1,5 k caractères par sortie d'outil. À quatre caractères
- * par token — la mesure qu'utilise `estimateTokens` — cela ferait 375, et le
- * budget vise 400. Descendre à 375 a été essayé, puis retiré : mesuré, cela
- * faisait passer une restitution ordinaire de 1506 à 1489 caractères, dix-sept
- * de gagnés, et cela coûtait un nom d'identifiant à l'écran sur un cahier
- * chargé. Les restitutions réelles tiennent déjà sous 1,5 k ; celles qui
- * débordent portent un nombre anormal de règles, où le plancher de douze
- * obligations est un choix assumé et documenté.
+ * Chrome recommande 1,5 k caractères par sortie d'outil, soit 375 tokens à quatre caractères
+ * par token — la mesure d'`estimateTokens`. Descendre de 400 à 375 a été essayé puis retiré :
+ * une restitution ordinaire passait de 1506 à 1489 caractères, dix-sept de gagnés, contre un
+ * nom d'identifiant perdu à l'écran sur un cahier chargé.
  */
 export const TOKEN_BUDGET = 400
 
@@ -62,14 +58,10 @@ export type RenderOptions = {
 const CLIP_FLOOR = 0.4
 
 /**
- * Les règles et les approches écartées n'étaient bornées par rien. Mesuré :
- * dix règles suffisaient à dépasser le budget (487 tokens), et deux mille le
- * portaient à 37 800 — 94 fois ce qui est annoncé. L'échelle de dégradation
- * ne pouvait rien y faire : elle ne coupait que l'histoire.
- *
- * On les coupe donc en dernier, jamais en dessous de ce plancher, et jamais
- * sans le dire : une obligation hors du cadre reste une obligation, et
- * l'agent doit savoir qu'il lui en manque plutôt que de croire avoir tout lu.
+ * Rien ne bornait les règles ni les approches écartées : dix règles suffisaient à dépasser
+ * le budget (487 tokens), deux mille le portaient à 37 800 — 94 fois l'annoncé — et
+ * l'échelle de dégradation ne coupait que l'histoire. On les coupe donc en dernier, jamais
+ * sous ce plancher et jamais sans le dire : l'agent doit savoir qu'il lui en manque.
  */
 const MIN_BINDING_SHOWN = 12
 

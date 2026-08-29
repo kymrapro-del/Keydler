@@ -5,17 +5,11 @@ import { loadTask, saveTask } from '../src/persistence/taskRepository'
 import { getDb } from '../src/persistence/db'
 import type { TaskState } from '../src/domain/types'
 
-/**
- * Le contrôle de concurrence est la garantie centrale du produit : deux pages
- * ouvertes ne doivent pas pouvoir s'écraser. Il passe maintenant par l'index
- * `by-id-version` plutôt que par une relecture complète du cahier — 2 ms pour
- * 800 ko dans Chrome, contre 0,1 ms pour une clé.
- *
- * Ce fichier est SEUL de son espèce : il ouvre la base à l'ANCIENNE version
- * avant que quoi que ce soit d'autre n'y touche, pour que la migration ait
- * vraiment lieu. `getDb()` mémorise sa promesse, et un seul appel ailleurs
- * dans le fichier rendrait l'épreuve creuse.
- */
+// Le contrôle de concurrence passe par l'index `by-id-version` plutôt que par une
+// relecture complète du cahier — 2 ms pour 800 ko dans Chrome, contre 0,1 ms pour une
+// clé. Ce fichier ouvre la base à l'ANCIENNE version avant que quoi que ce soit
+// d'autre n'y touche, pour que la migration ait vraiment lieu : `getDb()` mémorise sa
+// promesse, et un seul appel plus tôt rendrait l'épreuve creuse.
 function ancienneBase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const requête = indexedDB.open('cahier-de-quart', 2)
@@ -69,20 +63,10 @@ describe('un cahier écrit avant l’index reste protégé', () => {
     expect((await loadTask('ancien'))?.version).toBe(8)
   })
 
-  /**
-   * J'avais écrit ici l'assertion inverse — « laisse passer la toute première
-   * écriture d'un cahier qui n'existe pas » — en croyant qu'une clé absente
-   * recouvrait deux cas légitimes. C'était faux, et coûteux : une écriture qui
-   * PORTE une version attendue est par définition une mise à jour. Les
-   * créations passent par le chemin sans version, et aucun appelant du produit
-   * ne fait autrement.
-   *
-   * Le cas que je prenais pour une création était en réalité un cahier
-   * SUPPRIMÉ ailleurs. Le laisser passer le ressuscitait avec toutes ses
-   * étapes et toutes ses preuves collées, mais sans ses identifiants scellés,
-   * eux réellement effacés : l'humain croyait la donnée partie, elle revenait
-   * amputée, et chaque référence `${name}` pendait dans le vide.
-   */
+  // Une écriture qui PORTE une version attendue est par définition une mise à jour :
+  // les créations passent par le chemin sans version. Une clé absente est donc un
+  // cahier supprimé ailleurs, et le laisser passer le ressuscitait avec toutes ses
+  // étapes et ses preuves, mais sans ses identifiants scellés, eux réellement effacés.
   it('refuse de ressusciter un cahier supprimé, et ne le recrée pas', async () => {
     const posé: TaskState = { ...buildCoreTask(), id: 'supprime', version: 3 }
     await saveTask(posé)

@@ -24,20 +24,12 @@ mount(root)
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // `updateViaCache: 'none'` force le navigateur à IGNORER son cache HTTP
-    // pour ce script lors de la vérification de mise à jour.
-    //
-    // Sans cela, la fraîcheur du service worker dépend d'un en-tête qu'on ne
-    // contrôle pas. Mesuré en production : `public/_headers` demande
-    // `no-cache` sur `/sw.js`, et Cloudflare sert `max-age=14400` — quatre
-    // heures. La même règle s'applique pourtant bien à `index.html` et au
-    // manifeste ; le service worker, lui, est mis en cache de bord par son
-    // extension (`cf-cache-status: REVALIDATED` contre `DYNAMIC` pour les
-    // autres). Un visiteur qui revient pouvait donc garder l'ancien worker,
-    // et avec lui l'ancienne application servie depuis son cache.
-    //
-    // Cette option-ci est dans notre code : elle tient quel que soit
-    // l'hébergeur, et ne demande aucun droit sur la zone.
+    // `updateViaCache: 'none'` fait ignorer le cache HTTP à la vérification de
+    // mise à jour, sans dépendre d'un en-tête qu'on ne contrôle pas. Mesuré en
+    // production : `public/_headers` demande `no-cache` sur `/sw.js` et Cloudflare
+    // sert `max-age=14400` — quatre heures, le worker étant seul mis en cache de
+    // bord (`cf-cache-status: REVALIDATED` contre `DYNAMIC`). Un visiteur qui
+    // revenait gardait l'ancien worker, et avec lui l'ancienne application.
     void navigator.serviceWorker
       .register('/sw.js', { updateViaCache: 'none' })
       .catch(() => undefined)

@@ -3,18 +3,12 @@ import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-/**
- * Le service worker ne peut pas connaître à l'avance les noms des fichiers
- * produits : ils portent une empreinte. Sa liste de précache ne contenait donc
- * aucun des deux fichiers dont l'application est faite, et l'enregistrement se
- * fait sur `load`, donc la première visite ne passe pas non plus par lui.
- * Mesuré par un audit : après une seule visite, hors ligne rendait une page
- * blanche — alors que le README annonce le contraire.
- *
- * Ce script écrit les vrais noms dans `dist/sw.js`, et donne au cache un nom
- * qui change avec eux : sans cela `activate` ne supprimait jamais rien, et une
- * entrée fautive survivait à tous les déploiements suivants.
- */
+// Le service worker ne peut pas connaître à l'avance des noms empreintés : sa
+// liste de précache ne citait aucun des deux fichiers dont l'application est
+// faite, et un audit a trouvé une page blanche hors ligne après une seule
+// visite, là où le README annonce le contraire. Le nom de cache change avec la
+// liste : sans cela `activate` ne supprimait jamais rien et une entrée fautive
+// survivait à tous les déploiements suivants.
 const dist = fileURLToPath(new URL('../dist/', import.meta.url))
 
 const actifs = (await readdir(join(dist, 'assets')))

@@ -5,15 +5,10 @@ const css = Object.values(
   import.meta.glob('../src/style.css', { eager: true, query: '?raw', import: 'default' }),
 )[0] as string
 
-/**
- * Chaque classe de structure que la vue émet doit exister dans la feuille.
- *
- * Trois sections ont été livrées SANS AUCUN STYLE — sélecteur de tâches,
- * historique, recherche — parce que les insertions s'ancraient sur des
- * commentaires supprimés entre-temps et échouaient en silence. Rien ne l'a
- * signalé : les cas de vue cherchent du texte et des identifiants, jamais une
- * règle CSS, et le rendu restait passable grâce aux styles de base.
- */
+// Trois sections — sélecteur de tâches, historique, recherche — ont été livrées
+// SANS AUCUN STYLE : les insertions s'ancraient sur des commentaires supprimés
+// entre-temps. Rien ne l'a signalé, les cas de vue cherchant du texte et des
+// identifiants, jamais une règle CSS.
 const STRUCTURAL = [
   'switcher',
   'switcher__body',

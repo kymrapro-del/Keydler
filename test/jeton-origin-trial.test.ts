@@ -1,22 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { lireJeton, tokensDe } from '../scripts/jeton.mjs'
 
-/**
- * Le jeton d'origin trial décide seul de tout : sans lui,
- * `document.modelContext` n'existe pas et un juge lit « WebMCP is not
- * available in this browser » sur un site par ailleurs impeccable. Chrome le
- * vérifie HORS LIGNE, sur l'appareil : il n'y a ni alerte, ni rattrapage, et
- * rien ne pourra être corrigé après le gel des déploiements.
- *
- * Sa charge utile est du JSON en clair, seulement signée. On peut donc la lire
- * et refuser l'artefact, au lieu de faire confiance à un copier-coller depuis
- * un tableau de bord.
- *
- * Les jetons ci-dessous sont fabriqués : les cas qui comptent — origine
- * fausse, jeton expiré, mauvaise fonctionnalité — ne s'obtiennent pas
- * autrement, et ce sont précisément ceux qu'on ne veut pas découvrir en
- * production.
- */
+// Sans jeton d'origin trial, `document.modelContext` n'existe pas et un juge lit « WebMCP is not
+// available in this browser ». Chrome le vérifie HORS LIGNE, sur l'appareil : ni alerte, ni
+// rattrapage après le gel des déploiements. La charge utile est du JSON en clair, donc lisible —
+// les jetons ci-dessous sont fabriqués, une origine fausse ne s'obtenant pas autrement.
+
 // API web plutôt que `Buffer` : le dépôt n'a pas `@types/node`, et n'en veut
 // pas pour trois lignes d'épreuve.
 const enBase64 = (octets: Uint8Array) => btoa(String.fromCharCode(...octets))
