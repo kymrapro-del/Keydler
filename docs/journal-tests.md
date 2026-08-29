@@ -1735,3 +1735,68 @@ reprendre.
   n'importe quel chemin : sans canonique, chaque URL inventée est un doublon
   indexable. Ajoutées, avec `keydler.com` comme origine — le seul endroit du
   dépôt où une URL absolue est juste plutôt qu'une supposition d'hôte.
+
+## 29 août 2026 — verrouiller le site pour de bon
+
+Une page qui tient un coffre d'identifiants chiffrés et expose treize outils
+appelables par un agent mérite mieux qu'une politique de principe.
+
+**Ce que l'inventaire a montré.** Le produit est un cas rare : **zéro requête
+réseau sortante**, aucune police externe, aucune image `data:`, et **pas un seul
+attribut `style=`**. Un seul script en ligne — l'amorce de thème, qui doit
+s'exécuter avant la première peinture. La politique peut donc partir de
+`default-src 'none'` et n'ouvrir que cette origine.
+
+```
+default-src 'none'; script-src 'self' 'sha256-…'; style-src 'self';
+img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self';
+form-action 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none';
+upgrade-insecure-requests
+```
+
+Le script en ligne passe par son **empreinte**, jamais par `unsafe-inline` —
+qui viderait la politique de tout son intérêt d'un seul mot.
+`scripts/headers.mjs` calcule l'empreinte sur le HTML réellement construit, la
+substitue dans `dist/_headers`, et **refuse la construction** si `vercel.json`
+n'en porte pas la même : une politique qui a dérivé entre deux hébergeurs
+rassure sans protéger.
+
+S'y ajoutent HSTS, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy:
+no-referrer` — les adresses portent des identifiants de tâche —, les deux
+politiques `Cross-Origin-*`, et un `Permissions-Policy` qui refuse les dix-sept
+capacités que le produit n'utilise pas.
+
+### L'épreuve : la politique refuse-t-elle vraiment ?
+
+`dist/` servi par un serveur qui applique réellement `_headers` — un serveur
+statique ordinaire ne les lit pas, et l'on vérifierait alors une politique que
+le navigateur ne reçoit jamais.
+
+| Attaque                                        | Résultat    |
+| ---------------------------------------------- | ----------- |
+| Script en ligne injecté (le vecteur d'une XSS) | **refusé**  |
+| Script chargé depuis un CDN                    | **refusé**  |
+| `fetch` sortant vers une autre origine         | **refusé**  |
+| Image-balise emportant le titre de la page     | **refusée** |
+| Cadrage de la page (clickjacking)              | **refusé**  |
+
+Chacune avec le message de refus du navigateur en preuve. Et l'application,
+elle, fonctionne entièrement sous cette politique : cahier créé, règle écrite et
+affichée, recherche, thème, service worker actif — **aucune erreur ni aucun
+avertissement de console** avant les attaques délibérées.
+
+### Ce qui n'a pas été fait, et pourquoi
+
+**Trusted Types** (`require-trusted-types-for 'script'`) serait le cran
+au-dessus. Le rendu repose entièrement sur `innerHTML` ; l'activer casserait
+tout. À faire le jour où le rendu changera, pas six jours avant une échéance.
+
+**`preload` sur HSTS** n'est pas posé : l'inscription à la liste de préchargement
+est difficile à défaire, et ce n'est pas une décision à prendre à la place de
+quelqu'un.
+
+**Erreur de sonde, consignée.** Un mutant sur `default-src` a d'abord survécu.
+Il avait frappé le **commentaire** qui cite la directive, pas la directive.
+Visé sur la bonne ligne, il meurt. Et une de mes épreuves était creuse —
+`empreintes.length + 1 === 1 + empreintes.length` est vrai de tout nombre ;
+réécrite pour comparer la directive entière.

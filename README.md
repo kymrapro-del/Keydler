@@ -412,6 +412,18 @@ the same length, what is known and left alone.
   back through `getTools()` in Brave 151: 16, 499 and 146 against limits of 30,
   500 and 150. The briefing is the one that does not fit — 1528 characters,
   1.9% over — and that overage is written down rather than shaved off.
+- **The page is locked down at the edge.** `public/_headers` (Cloudflare Pages,
+  Netlify) and `vercel.json` carry the same policy, and a test keeps them from
+  drifting apart. The content policy starts at `default-src 'none'` and opens
+  only this origin — the app makes no outbound request, loads no font, uses no
+  `data:` image and sets no `style=` attribute, so nothing has to be opened for
+  it. The one inline script, the theme bootstrap, is allowed by its hash;
+  `unsafe-inline` never appears. Framing is refused outright, which is what
+  stops a hidden frame making someone click **Allow** on an approval they
+  cannot see. Verified in Brave against the built site: an injected inline
+  script, a CDN script, an outbound `fetch`, a beacon image carrying the page
+  title, and framing the page were all refused by the browser, with no console
+  error from the app itself.
 - **Two tabs stay in step.** A write announces itself on a `BroadcastChannel`;
   any other tab holding that task re-reads it from IndexedDB and redraws. The
   refusal machinery was already correct — a stale write is refused, and the
