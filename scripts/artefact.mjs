@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
+import { lireJeton } from './jeton.mjs'
 
 /**
  * `dist/` peut avoir l'air complet et n'être pas déployable.
@@ -107,6 +108,87 @@ if (html !== null && headers !== null) {
         `Reportez ${attendue} dans vercel.json — une politique périmée rassure sans protéger.`,
       )
     }
+  }
+}
+
+// Tout le reste peut être parfait et le produit rester invisible : sans jeton
+// d'origin trial valide pour l'origine servie, `document.modelContext` n'existe
+// pas et un juge lit « WebMCP is not available in this browser ».
+// `ALLOW_NO_ORIGIN_TRIAL=1` lève l'exigence — c'est ce que fait `npm run check`,
+// qui construit pour vérifier, pas pour publier.
+const ORIGINES_SERVIES = ['https://keydler.com', 'https://keydler.pages.dev']
+const FONCTIONNALITE = 'WebMCP'
+
+if (html !== null && process.env.ALLOW_NO_ORIGIN_TRIAL !== '1') {
+  const balises = [...html.matchAll(/<meta\s+http-equiv="origin-trial"\s+content="([^"]*)"/g)].map(
+    (m) =>
+      m[1]
+        .replace(/&quot;/g, '"')
+        .replace(/&lt;/g, '<')
+        .replace(/&amp;/g, '&'),
+  )
+
+  if (balises.length === 0) {
+    grief(
+      'dist/index.html ne porte aucune balise origin-trial.',
+      'WebMCP ne s’activerait que derrière chrome://flags, et rien ne le dirait.',
+    )
+  }
+
+  const couvertes = new Set()
+  for (const brut of balises) {
+    const jeton = lireJeton(brut)
+    if (jeton.erreur) {
+      grief(`Un jeton origin-trial est illisible : ${jeton.erreur}.`, 'Recopiez-le tel qu’émis.')
+      continue
+    }
+    if (jeton.fonctionnalite !== FONCTIONNALITE) {
+      grief(
+        `Un jeton porte la fonctionnalité « ${jeton.fonctionnalite} », pas « ${FONCTIONNALITE} ».`,
+        'Il n’activera pas WebMCP.',
+      )
+      continue
+    }
+    if (jeton.tiers) {
+      grief(
+        `Le jeton pour ${jeton.origine} est un jeton « third-party ».`,
+        'Ceux-là ne valent qu’injectés depuis un script tiers, jamais dans le HTML d’une page.',
+      )
+      continue
+    }
+    // L'origine du jeton inclut le port (`https://keydler.com:443`) alors que
+    // l'origine servie ne l'écrit pas. On compare sur le préfixe d'origine.
+    const origine = String(jeton.origine ?? '').replace(/:443$/, '')
+    if (!ORIGINES_SERVIES.includes(origine)) {
+      grief(
+        `Un jeton est émis pour « ${jeton.origine} », qui n’est pas une origine servie.`,
+        `Attendu l’une de : ${ORIGINES_SERVIES.join(', ')}. Une origine qui ne correspond pas échoue en silence.`,
+      )
+      continue
+    }
+    if (jeton.expire === null) {
+      grief(
+        `Le jeton pour ${origine} n’a pas de date d’expiration lisible.`,
+        'Charge utile douteuse.',
+      )
+      continue
+    }
+    if (jeton.expire.getTime() <= Date.now()) {
+      grief(
+        `Le jeton pour ${origine} a expiré le ${jeton.expire.toISOString().slice(0, 10)}.`,
+        'Chrome vérifie le jeton hors ligne : aucun rattrapage n’est possible après le déploiement.',
+      )
+      continue
+    }
+    couvertes.add(origine)
+  }
+
+  const canonique = ORIGINES_SERVIES[0]
+  if (balises.length > 0 && !couvertes.has(canonique)) {
+    grief(
+      `Aucun jeton valide ne couvre ${canonique}, l’origine canonique.`,
+      'C’est celle que verront les juges.',
+    )
   }
 }
 
