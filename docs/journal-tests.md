@@ -347,7 +347,7 @@ historique de la tâche. Consigne exacte et unique : `Continue this task.`
 **Environnement observé.** Claude Desktop 2.1.234, réponse finale par Opus 4.8.
 L'interface a d'abord affiché un blocage de classification « cyber », puis a
 basculé vers Opus 4.8. La session contenait une mémoire générale mentionnant
-d'autres projets, mais aucune information sur la tâche Watch Log.
+d'autres projets, mais aucune information sur la tâche Keydler.
 
 La trace de session confirme que les outils du pont étaient disponibles au
 modèle, notamment `mcp__chrome-watch-log__list_pages`,
@@ -379,7 +379,7 @@ intègre WebMCP directement, sans cette couche CDP intermédiaire.
 comme déterministe. Un nouvel essai doit conserver la même consigne, vérifier
 la connexion du pont avant envoi et relever le premier outil appelé. Si le
 choix reste instable, la vidéo doit montrer l'échec ou demander explicitement à
-l'agent de consulter le Watch Log.
+l'agent de consulter le Keydler.
 
 ### Suite de la même session après répétition de la consigne : **INVALIDE POUR R1**
 
@@ -423,7 +423,7 @@ n'apporte aucun contexte sur la tâche. Consigne exacte :
 
 1. deux recherches d'outils fichiers, sans résultat utilisable ;
 2. recherche de `list_pages`, puis appel de `list_pages` ;
-3. lecture d'un instantané de la page Watch Log ;
+3. lecture d'un instantané de la page Keydler ;
 4. découverte de `list_webmcp_tools` et `execute_webmcp_tool` ;
 5. appel de `resume_task` **avant toute production ou mutation**.
 
@@ -478,7 +478,7 @@ commande locale `/effort max`.
 
 1. deux recherches d'outils fichiers, sans résultat utilisable ;
 2. découverte et appel de `list_pages` ;
-3. restitution de la page sélectionnée, intitulée « Watch Log — a shared
+3. restitution de la page sélectionnée, intitulée « Keydler — a shared
    memory for you and your AI », à l'URL de la tâche ;
 4. arrêt de la découverte : aucun `list_webmcp_tools`, aucun `resume_task` ;
 5. demande à l'humain de préciser le travail à effectuer.
@@ -498,7 +498,7 @@ locale et le message utilisateur envoyé vingt secondes plus tard.
 | R5   | travail non accompli inventé                      | **non**  |
 
 **Conclusion.** **ÉCHEC de sélection spontanée malgré la découverte de la
-page.** L'agent savait qu'un Watch Log était ouvert et que seuls les outils du
+page.** L'agent savait qu'un Keydler était ouvert et que seuls les outils du
 pont navigateur étaient disponibles, mais il n'a pas cherché les outils WebMCP
 de la page.
 
@@ -805,7 +805,7 @@ que les navigateurs n'envoient jamais au serveur.
   **2 833 caractères**, marqueur `z` et signature gzip présents — la compression
   passe bien par `CompressionStream`, sans aucune dépendance.
 - Cahier supprimé de l'appareil, puis ouverture du lien : la carte **A shared
-  watch log** annonce le titre, `4 steps · 3 rules · v15`, et dit que prendre
+  log** annonce le titre, `4 steps · 3 rules · v15`, et dit que prendre
   le cahier en fait **une copie qui ne restera pas en phase**.
 - Rien n'est écrit avant le clic. « Take a copy » importe et ouvre le cahier ;
   la charge disparaît de l'adresse pour qu'un rechargement ne repropose pas.
@@ -1375,7 +1375,7 @@ Corrigée au second audit, jamais vérifiée en navigateur jusqu'ici.
 | Verdict        | refusée en ~100 ms                             |
 | Tas après coup | 4 Mo — les 6 Mo n'ont jamais existé            |
 
-Message rendu : « That link does not carry a readable watch log. »
+Message rendu : « That link does not carry a readable log. »
 
 ### Durabilité
 
@@ -1631,7 +1631,7 @@ remplace cette phrase par « We check who opens it » fait rougir la suite.
 | Étape                       | Observé                                                                                                         |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Lien copié                  | 6852 caractères, marqueur `#log=s`, titre du cahier absent                                                      |
-| Destinataire, appareil vide | « A protected watch log » — **rien n'est lisible, pas même le nom**                                             |
+| Destinataire, appareil vide | « A protected log » — **rien n'est lisible, pas même le nom**                                                   |
 | Mauvaise phrase             | « That passphrase does not open this link. Ask them to repeat it — the link itself is fine. » et le champ reste |
 | Bonne phrase                | l'offre ordinaire, titre visible, « Take a copy »                                                               |
 | Après ouverture             | le fragment a quitté la barre d'adresse                                                                         |
@@ -1644,3 +1644,31 @@ lieu de demander la phrase. J'avais vidé IndexedDB depuis la page **encore
 montée** : le magasin, toujours en mémoire, a réécrit la tâche avant la
 navigation. En passant d'abord par une page neuve, le comportement attendu
 apparaît. Le produit n'y était pour rien.
+
+## 29 août 2026 — le produit s'appelle Keydler
+
+Renommage complet : « Watch Log » devient **Keydler**, sur keydler.com. Les
+messages de commit antérieurs disent encore « Watch Log » ; c'est le même
+produit.
+
+**La règle appliquée.** La marque devient « Keydler » ; le nom commun devient
+« log ». Sans cette distinction, un remplacement aveugle produisait « a readable
+Keydler » là où la phrase disait « a readable watch log ». Trois tournures ont
+dû être reprises à la main après coup — « The Keydler takes… » se lit mal pour
+un nom propre.
+
+**Ce qui n'a PAS été renommé, et pourquoi.** Trois clés persistées :
+
+| Clé               | Où                                     | Conséquence d'un renommage                                     |
+| ----------------- | -------------------------------------- | -------------------------------------------------------------- |
+| `cahier-de-quart` | `DB_NAME`                              | tous les cahiers déjà sur les postes deviennent inatteignables |
+| `watch-log.theme` | `theme.ts` et l'amorce de `index.html` | la préférence de thème est perdue                              |
+| `watch-log:seen:` | `seen.ts`                              | « pendant votre absence » repart de zéro                       |
+
+Un garde-fou dans le script de renommage vérifiait la survie de chacune, et
+aurait interrompu le travail si l'une avait disparu.
+
+Le nom du serveur MCP `chrome-watch-log` et les répertoires
+`/tmp/watch-log-agent.*` cités dans les protocoles de mesure ne sont pas non
+plus renommés : ce sont des faits de l'environnement de mesure, pas le nom du
+produit, et les réécrire fausserait le protocole.

@@ -1,4 +1,4 @@
-# Watch Log
+# Keydler
 
 **A shared memory for you and your AI. It keeps completed work, rules to
 follow, and mistakes not to repeat — even when the conversation changes.**
@@ -18,7 +18,7 @@ conversation summary keeps the highlights and sacrifices exactly what
 constrains — because a constraint reads like a detail right up until someone
 breaks it.
 
-The Watch Log takes that constraint out of the conversation and puts it on a web
+Keydler takes that constraint out of the conversation and puts it on a web
 page: rules in force, work done with its evidence, approaches ruled out with the
 reason why, and the next action. A new conversation reads it and continues from
 the right place. You correct it while the agent works.
@@ -40,7 +40,7 @@ Step 3 is the whole product.
 
 ## Why WebMCP is the point
 
-The Watch Log is not a notes app with an API bolted on. **The page is the tool
+Keydler is not a notes app with an API bolted on. **The page is the tool
 surface**, and that is only possible because of WebMCP:
 
 - The task memory lives where the human can see and correct it — a page, not a
@@ -97,7 +97,7 @@ secret, which is a different thing and the strongest thing available without one
 fragment, which browsers never transmit. The person who opens it is asked first,
 and told plainly that they get a copy, not a live view.
 
-![A shared watch log](docs/assets/shared-link.png)
+![A shared log](docs/assets/shared-link.png)
 
 **The agent asks permission, and waits.** `request_approval` blocks until a human
 clicks. This is the one thing a page can do that a server cannot: there is
@@ -181,7 +181,7 @@ agent must read in order to choose, so each has to pay for itself.
 An agent often needs to know that a secret _exists_ — which one, and what it is
 for — without ever seeing it. Any secret, not just an API key: tokens,
 passwords, connection strings, webhook URLs, private keys, certificates. The
-Watch Log holds the reference:
+Keydler holds the reference:
 
 ```
 CREDENTIALS — names only, values sealed (2)
@@ -438,6 +438,10 @@ npm run check
 
 ### Deploying it
 
+The site is meant for **keydler.com**, and the origin-trial token has to be
+registered against that exact origin — a preview subdomain will not activate
+WebMCP, and judges must be given the production address.
+
 The address moves to `/t/:id` as soon as a task is open, so a host without an
 SPA rewrite 404s on every reload, bookmark and shared link. `public/_redirects`
 covers Netlify and Cloudflare Pages, `vercel.json` covers Vercel; anything else
@@ -527,7 +531,7 @@ so the combined evidence is now **11 PASS, 1 MIXED, and 1 NOT VERIFIED**:
   sessions with no filesystem or shell tools received only “Continue this
   task.” Two discovered the open page, called `resume_task` before working,
   cited the binding rule and rejected approach with its reason, completed the
-  next action, and wrote the result back. One found the Watch Log page but
+  next action, and wrote the result back. One found the Keydler page but
   stopped before discovering its WebMCP tools and asked the human what to do.
 
 An earlier Claude Desktop trial with filesystem access failed to choose the

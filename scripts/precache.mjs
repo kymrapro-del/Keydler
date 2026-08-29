@@ -33,7 +33,7 @@ const shell = ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png', ..
 const version = createHash('sha256').update(shell.join('|')).digest('hex').slice(0, 12)
 
 const écrit = source
-  .replace(/^const CACHE = .*$/m, `const CACHE = 'watch-log-${version}'`)
+  .replace(/^const CACHE = .*$/m, `const CACHE = 'keydler-${version}'`)
   .replace(/^const SHELL = .*$/m, `const SHELL = ${JSON.stringify(shell)}`)
 
 if (écrit === source) {
@@ -42,4 +42,4 @@ if (écrit === source) {
 }
 
 await writeFile(chemin, écrit)
-console.log(`precache: ${shell.length} entrées, cache watch-log-${version}`)
+console.log(`precache: ${shell.length} entrées, cache keydler-${version}`)

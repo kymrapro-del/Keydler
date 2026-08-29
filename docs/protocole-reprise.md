@@ -29,7 +29,7 @@ continue
 Un dossier temporaire ne suffit pas : un agent muni de `Bash`, `Read`, `Glob`
 ou `Grep` peut remonter jusqu'au dépôt. Pour un essai local avec le pont CDP,
 ne rendre disponible que la recherche d'outils et n'injecter que le serveur du
-Watch Log :
+Keydler :
 
 ```bash
 fresh_agent_dir=$(mktemp -d /tmp/watch-log-agent.XXXXXX)

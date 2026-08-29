@@ -128,7 +128,7 @@ describe('recevoir un cahier par un lien', () => {
 
   const offer = () =>
     [...root.querySelectorAll('.card')].find((c) =>
-      c.querySelector('h2')?.textContent?.includes('A shared watch log'),
+      c.querySelector('h2')?.textContent?.includes('A shared log'),
     )
 
   it('propose, et n’importe rien tout seul', async () => {
@@ -248,7 +248,7 @@ describe('le lien protégé, depuis l’écran', () => {
     await arriveWith(packed)
 
     const texte = root.textContent!.replace(/\s+/g, ' ')
-    expect(texte).toContain('A protected watch log')
+    expect(texte).toContain('A protected log')
     expect(texte).not.toContain(titre)
     expect(root.querySelector('#sealed-passphrase')).not.toBeNull()
   })
@@ -260,7 +260,7 @@ describe('le lien protégé, depuis l’écran', () => {
 
     type('sealed-passphrase', 'la phrase du téléphone')
     root.querySelector<HTMLFormElement>('#form-sealed')!.requestSubmit()
-    await waitUntil(() => root.textContent!.includes('A shared watch log'), 'l’offre')
+    await waitUntil(() => root.textContent!.includes('A shared log'), 'l’offre')
     __renderNow()
 
     expect(root.textContent).toContain(titre)
