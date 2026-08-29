@@ -441,7 +441,7 @@ export function renderNoTask(): string {
   return [
     'NO ACTIVE TASK',
     '',
-    'This device holds no log yet, so there is nothing to resume.',
+    'This device holds no task yet, so there is nothing to resume.',
     'Every write tool on this page will refuse until one exists.',
     'Ask the human to open a task in the dashboard, then call resume_task again.',
   ].join('\n')
@@ -452,7 +452,7 @@ export function renderMissingTask(taskId: string): string {
     'TASK NOT FOUND',
     '',
     `This page is bound to task ${taskId}, which no longer exists on this device.`,
-    'Another log may be open elsewhere, but it is NOT this task and has not',
+    'Another task may be open elsewhere, but it is NOT this one and has not',
     'been substituted for it. Do not resume work from memory.',
     'Ask the human which task to open, then call resume_task again.',
   ].join('\n')

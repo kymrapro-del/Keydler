@@ -947,7 +947,7 @@ function renderSwitcher(task: TaskState): string {
               : ''
           }
           <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown"
-                 aria-label="Choose a log file to import" hidden />
+                 aria-label="Choose an exported task file to import" hidden />
         </div>
       </div>
     </details>`

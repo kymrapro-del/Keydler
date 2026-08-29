@@ -180,7 +180,7 @@ agent must read in order to choose, so each has to pay for itself.
 
 An agent often needs to know that a secret _exists_ — which one, and what it is
 for — without ever seeing it. Any secret, not just an API key: tokens,
-passwords, connection strings, webhook URLs, private keys, certificates. The
+passwords, connection strings, webhook URLs, private keys, certificates.
 Keydler holds the reference:
 
 ```

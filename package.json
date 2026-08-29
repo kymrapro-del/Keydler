@@ -4,14 +4,14 @@
   "version": "0.0.1",
   "type": "module",
   "license": "MIT",
-  "description": "Cahier de quart — mémoire de tâche persistante pour agents WebMCP",
+  "description": "Keydler — a browser-local, human-supervised task memory that agents read and write over WebMCP",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && node scripts/precache.mjs",
     "preview": "vite preview --host",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "tsc --noEmit && npm run lint && npm run format:check && npm test && vite build",
+    "check": "tsc --noEmit && npm run lint && npm run format:check && npm test && ALLOW_NO_ORIGIN_TRIAL=1 vite build",
     "build:trial": "TRIAL=1 tsc --noEmit && TRIAL=1 vite build && node scripts/precache.mjs",
     "trial": "npm run build:trial && vite preview --port 5174",
     "lint": "eslint .",
@@ -35,5 +35,6 @@
   },
   "dependencies": {
     "idb": "^8.0.3"
-  }
+  },
+  "homepage": "https://keydler.com"
 }

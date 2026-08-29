@@ -347,7 +347,7 @@ historique de la tâche. Consigne exacte et unique : `Continue this task.`
 **Environnement observé.** Claude Desktop 2.1.234, réponse finale par Opus 4.8.
 L'interface a d'abord affiché un blocage de classification « cyber », puis a
 basculé vers Opus 4.8. La session contenait une mémoire générale mentionnant
-d'autres projets, mais aucune information sur la tâche Keydler.
+d'autres projets, mais aucune information sur la tâche en cours.
 
 La trace de session confirme que les outils du pont étaient disponibles au
 modèle, notamment `mcp__chrome-watch-log__list_pages`,
@@ -379,7 +379,7 @@ intègre WebMCP directement, sans cette couche CDP intermédiaire.
 comme déterministe. Un nouvel essai doit conserver la même consigne, vérifier
 la connexion du pont avant envoi et relever le premier outil appelé. Si le
 choix reste instable, la vidéo doit montrer l'échec ou demander explicitement à
-l'agent de consulter le Keydler.
+l'agent de consulter la page.
 
 ### Suite de la même session après répétition de la consigne : **INVALIDE POUR R1**
 
@@ -423,7 +423,7 @@ n'apporte aucun contexte sur la tâche. Consigne exacte :
 
 1. deux recherches d'outils fichiers, sans résultat utilisable ;
 2. recherche de `list_pages`, puis appel de `list_pages` ;
-3. lecture d'un instantané de la page Keydler ;
+3. lecture d'un instantané de la page ;
 4. découverte de `list_webmcp_tools` et `execute_webmcp_tool` ;
 5. appel de `resume_task` **avant toute production ou mutation**.
 
@@ -478,8 +478,9 @@ commande locale `/effort max`.
 
 1. deux recherches d'outils fichiers, sans résultat utilisable ;
 2. découverte et appel de `list_pages` ;
-3. restitution de la page sélectionnée, intitulée « Keydler — a shared
-   memory for you and your AI », à l'URL de la tâche ;
+3. restitution de la page sélectionnée, intitulée « Watch Log — a shared
+   memory for you and your AI » — le produit portait encore ce nom à la date
+   de ce relevé —, à l'URL de la tâche ;
 4. arrêt de la découverte : aucun `list_webmcp_tools`, aucun `resume_task` ;
 5. demande à l'humain de préciser le travail à effectuer.
 
@@ -498,7 +499,7 @@ locale et le message utilisateur envoyé vingt secondes plus tard.
 | R5   | travail non accompli inventé                      | **non**  |
 
 **Conclusion.** **ÉCHEC de sélection spontanée malgré la découverte de la
-page.** L'agent savait qu'un Keydler était ouvert et que seuls les outils du
+page.** L'agent savait qu'une page de cahier était ouverte et que seuls les outils du
 pont navigateur étaient disponibles, mais il n'a pas cherché les outils WebMCP
 de la page.
 
@@ -1657,6 +1658,13 @@ Keydler » là où la phrase disait « a readable watch log ». Trois tournures 
 dû être reprises à la main après coup — « The Keydler takes… » se lit mal pour
 un nom propre.
 
+**Une falsification, corrigée.** Le renommage a d'abord réécrit des
+OBSERVATIONS antérieures : une entrée du 28 août faisait dire à une page
+qu'elle s'intitulait « Keydler — … », alors qu'elle portait encore l'ancien
+nom. Un audit l'a relevé. Les relevés antérieurs au 29 août citent de nouveau
+les chaînes réellement observées ; c'est la même règle que pour
+`chrome-watch-log`, et je l'avais appliquée là et pas ici.
+
 **Ce qui n'a PAS été renommé, et pourquoi.** Trois clés persistées :
 
 | Clé               | Où                                     | Conséquence d'un renommage                                     |
@@ -1672,3 +1680,58 @@ Le nom du serveur MCP `chrome-watch-log` et les répertoires
 `/tmp/watch-log-agent.*` cités dans les protocoles de mesure ne sont pas non
 plus renommés : ce sont des faits de l'environnement de mesure, pas le nom du
 produit, et les réécrire fausserait le protocole.
+
+## 29 août 2026 — l'audit du renommage, et ce qu'il m'a repris
+
+Quatre agents en parallèle sur le renommage. Deux de leurs reproches visaient
+mon propre travail, et les deux étaient fondés.
+
+### J'avais falsifié le journal
+
+Le remplacement aveugle a réécrit des **observations** : une entrée du 28 août
+faisait dire à une page qu'elle s'intitulait « Keydler — a shared memory… »,
+alors qu'elle portait encore l'ancien nom ce jour-là. Quatre autres tournures
+françaises étaient devenues « le Keydler », « un Keydler ».
+
+C'est exactement la règle que j'avais appliquée pour `chrome-watch-log` et les
+répertoires `/tmp/watch-log-agent` — ne pas réécrire un fait d'observation — et
+que je n'avais pas appliquée ici. Les relevés antérieurs au 29 août citent de
+nouveau les chaînes réellement observées, avec une incise qui date le nom.
+
+### Neuf captures d'écran montraient encore l'ancien nom
+
+Vérifié en ouvrant `docs/assets/shared-link.png` : « WATCH LOG » en exergue,
+« The Watch Log keeps… » dans l'accroche, « A SHARED WATCH LOG » en titre de
+carte — trois fois dans une seule image, sous une légende qui dit désormais
+« A shared log ». Le commit de renommage n'avait touché aucun fichier image.
+
+Les neuf ont été reprises dans Brave, à 1180 × 900 comme les originales
+(`active-task` en pleine page). Les quatre autres — `activity`, `credentials`,
+`disputed-step`, `human-intervention` — sont des recadrages de carte sans
+exergue ; vérifié en ouvrant `human-intervention.png`, elles n'avaient rien à
+reprendre.
+
+### Cinq autres correctifs
+
+- **La construction de production se taisait sans jeton d'origin trial.** Une
+  variable mal orthographiée chez l'hébergeur produisait un site d'apparence
+  saine où `document.modelContext` n'existe jamais, et toutes les vérifications
+  restaient vertes. Elle échoue désormais, avec `ALLOW_NO_ORIGIN_TRIAL=1` comme
+  échappatoire pour la vérification locale et l'intégration continue — c'est la
+  construction de déploiement qui doit prouver que le jeton est arrivé.
+- **`durability.ts` annonçait « This log takes … »** pour un chiffre qui vient
+  de `navigator.storage.estimate()`, donc de TOUTE l'origine : tous les
+  cahiers, le coffre, le cache du service worker. Le renommage avait transformé
+  une phrase vague en phrase fausse. Corrigé en « Everything this site stores
+  here takes … ».
+- **`package.json`** portait encore une description en français avec l'ancien
+  nom — invisible à une recherche sur « watch », et le dépôt part public.
+- **Deux chaînes lues par un agent** disaient « log » là où « task » portait le
+  sens : « This device holds no log yet » sous un en-tête `NO ACTIVE TASK`, et
+  « Another log may be open elsewhere, but it is NOT this task » qui compare un
+  journal à une tâche dans le message dont le seul rôle est d'empêcher un agent
+  de reprendre le mauvais travail.
+- **Aucune balise sociale ni canonique.** La réécriture SPA rend 200 sur
+  n'importe quel chemin : sans canonique, chaque URL inventée est un doublon
+  indexable. Ajoutées, avec `keydler.com` comme origine — le seul endroit du
+  dépôt où une URL absolue est juste plutôt qu'une supposition d'hôte.
