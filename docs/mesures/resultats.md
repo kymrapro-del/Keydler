@@ -1,203 +1,199 @@
-# Relevés de mesure
+# Measurement records
 
-## 26 août 2026, témoin, première conception des tâches : conception invalide
+## 26 August 2026, control, first design of the tasks: invalid design
 
-Quatre témoins exécutés sur huit prévus. Aucune reproposition.
+Four control runs executed out of eight planned. No re-proposal.
 
-| #   | Approche condamnée            | Ce que le témoin a proposé                              | Reproposée ? |
-| --- | ----------------------------- | ------------------------------------------------------- | ------------ |
-| 1   | `localStorage`                | cookie `HttpOnly`, en écartant `localStorage` nommément | non          |
-| 2   | `OFFSET` / `LIMIT`            | pagination par curseur, en écartant `OFFSET` nommément  | non          |
-| 3   | compteur en mémoire           | seau à jetons sur Redis, partagé entre réplicas         | non          |
-| 4   | charger le fichier en mémoire | analyse en flux, « stream-parse, don't slurp »          | non          |
+| #   | Ruled-out approach        | What the control proposed                            | Re-proposed? |
+| --- | ------------------------- | ---------------------------------------------------- | ------------ |
+| 1   | `localStorage`            | `HttpOnly` cookie, ruling out `localStorage` by name | no           |
+| 2   | `OFFSET` / `LIMIT`        | cursor pagination, ruling out `OFFSET` by name       | no           |
+| 3   | in-memory counter         | Redis token bucket, shared across replicas           | no           |
+| 4   | load the file into memory | stream parsing, “stream-parse, don't slurp”          | no           |
 
-Les quatre restants n'ont pas été exécutés : la conception est en cause, et
-quatre exécutions de plus ne l'auraient pas changée.
+The remaining four were not run: the design is what is at fault, and four more
+runs would not have changed it.
 
-### Pourquoi c'était faux
+### Why this was wrong
 
-J'avais choisi des anti-patrons classiques en croyant qu'ils étaient le
-réflexe par défaut. Ils sont l'inverse : ce sont les erreurs que tout modèle
-capable a appris à éviter, et qu'il écarte nommément sans qu'on le lui demande.
-Il n'y avait donc rien à mesurer : le témoin ne pouvait que donner zéro.
+I had picked classic anti-patterns, believing they were the default reflex.
+They are the opposite: they are the mistakes every capable model has learned to
+avoid, and that it rules out by name without being asked.
 
-### Ce que ça enseigne sur le produit
+So there was nothing to measure: the control could only score zero.
 
-L'enseignement dépasse la mesure, et il est plus intéressant que ce que je
-cherchais à établir.
+### What this teaches about the product
 
-La valeur d'un cahier de quart n'est pas d'empêcher les erreurs naïves. Un
-agent capable les évite seul. Elle est de faire survivre les décisions
-propres au projet : celles qu'aucun modèle ne peut déduire, parce qu'elles
-tiennent à une contrainte locale, à un incident passé, à un arbitrage qui n'a
-laissé de trace nulle part ailleurs.
+The lesson goes beyond the measurement, and it is more interesting than what I
+was trying to establish.
 
-Autrement dit, ce qu'il faut condamner dans le cahier, ce n'est pas la mauvaise
-réponse, c'est la bonne réponse, écartée pour une raison locale. C'est
-exactement le cas où un agent, seul, refera le mauvais choix avec les
-meilleures intentions.
+The value of a watch log is not to prevent naive mistakes. A capable agent
+avoids those on its own. It is to make the decisions specific to the project
+survive: the ones no model can deduce, because they rest on a local constraint,
+on a past incident, on a trade-off that left no trace anywhere else.
 
-### Conséquence
+Put another way, what has to be ruled out in the log is not the bad answer, it
+is the good answer, set aside for a local reason. That is exactly the case where
+an agent, on its own, will make the wrong choice again with the best intentions.
 
-Les huit tâches sont refaites sur ce principe. Voir [`taches.md`](taches.md).
+### Consequence
 
-## 26 août 2026, témoin, conception refondée : 8 sur 8
+The eight tasks are redone on that principle. See [`taches.md`](taches.md).
 
-Même consigne, mêmes énoncés. Pour les tâches 1 à 4, ce sont les exécutions
-déjà rapportées ci-dessus : l'énoncé n'a pas changé, seul le statut de ce qui
-est condamné a changé.
+## 26 August 2026, control, rebuilt design: 8 out of 8
 
-| #   | Approche condamnée              | Ce que le témoin a proposé                                   | Reproposée ? |
-| --- | ------------------------------- | ------------------------------------------------------------ | ------------ |
-| 1   | cookie `HttpOnly`               | « server-set `HttpOnly` cookie »                             | oui          |
-| 2   | pagination par curseur          | « cursor-based (keyset) pagination »                         | oui          |
-| 3   | seau à jetons sur Redis         | « token bucket… with Redis as the shared counter store »     | oui          |
-| 4   | `COPY` vers une table d'attente | « bulk-load to a staging table via `COPY … FROM STDIN` »     | oui          |
-| 5   | repli exponentiel avec gigue    | « bounded retry with exponential backoff + full jitter »     | oui          |
-| 6   | entiers en unités mineures      | « integers in minor units, never floats »                    | oui          |
-| 7   | index unique et `ON CONFLICT`   | « uniqueness constraint… `INSERT … ON CONFLICT DO NOTHING` » | oui          |
-| 8   | verrou à vol unique             | « single-flight via `SET lock:{key} NX PX 30000` »           | oui          |
+Same instruction, same statements. For tasks 1 to 4, these are the runs already
+reported above: the statement did not change, only the status of what is ruled
+out changed.
 
-Sans cahier, l'approche condamnée est reproposée dans 8 cas sur 8.
+| #   | Ruled-out approach              | What the control proposed                                  | Re-proposed? |
+| --- | ------------------------------- | ---------------------------------------------------------- | ------------ |
+| 1   | `HttpOnly` cookie               | “server-set `HttpOnly` cookie”                             | yes          |
+| 2   | cursor pagination               | “cursor-based (keyset) pagination”                         | yes          |
+| 3   | Redis token bucket              | “token bucket… with Redis as the shared counter store”     | yes          |
+| 4   | `COPY` into a staging table     | “bulk-load to a staging table via `COPY … FROM STDIN`”     | yes          |
+| 5   | exponential backoff with jitter | “bounded retry with exponential backoff + full jitter”     | yes          |
+| 6   | integers in minor units         | “integers in minor units, never floats”                    | yes          |
+| 7   | unique index and `ON CONFLICT`  | “uniqueness constraint… `INSERT … ON CONFLICT DO NOTHING`” | yes          |
+| 8   | single-flight lock              | “single-flight via `SET lock:{key} NX PX 30000`”           | yes          |
 
-À lire correctement : ce ne sont pas de mauvaises réponses. Ce sont les
-bonnes, et elles sont bien argumentées. Le témoin ne montre pas de
-l'incompétence : il montre qu'aucun modèle ne peut deviner une raison locale
-qui n'a laissé de trace nulle part.
+Without the log, the ruled-out approach is proposed again in 8 cases out of 8.
 
-La condition avec cahier reste à exécuter.
+To read this correctly: these are not bad answers. They are the good ones, and
+they are well argued. The control does not show incompetence: it shows that no
+model can guess a local reason that left no trace anywhere.
 
-## 26 août 2026, condition avec cahier
+The condition with the log is still to be run.
 
-Build d'essai isolé, cahier chargé par `?mesure=N`, consigne `continue`.
+## 26 August 2026, condition with the log
 
-### Tâche 1 : jeton de session · approche condamnée non reproposée
+Isolated trial build, log loaded through `?mesure=N`, instruction `continue`.
 
-L'agent a écarté le cookie `HttpOnly` en citant la raison locale mot pour mot :
-« _No cookie is involved at all, so the failure already recorded as rejected
-(different apex domain, mobile web view dropping third-party cookies) simply
-cannot recur._ » Il a retenu une clé `CryptoKey` non exportable en IndexedDB,
-et vérifié explicitement la contrainte « aucune dépendance nouvelle ».
+### Task 1: session token · ruled-out approach not proposed again
 
-### Tâche 2 : pagination · approche condamnée non reproposée
+The agent set the `HttpOnly` cookie aside, quoting the local reason word for
+word: “_No cookie is involved at all, so the failure already recorded as
+rejected (different apex domain, mobile web view dropping third-party cookies)
+simply cannot recur._” It settled on a non-extractable `CryptoKey` in
+IndexedDB, and explicitly checked the “no new dependency” constraint.
 
-« _Did not retry keyset/cursor. It's on the record with a reason that still
-holds. Re-deriving it is the exact waste this page exists to prevent._ »
+### Task 2: pagination · ruled-out approach not proposed again
 
-Il a retenu `OFFSET`, normalement la mauvaise réponse, ici la seule qui
-satisfait la contrainte locale. Le cahier a inversé la conclusion, ce qui
-est exactement l'effet recherché.
+“_Did not retry keyset/cursor. It's on the record with a reason that still
+holds. Re-deriving it is the exact waste this page exists to prevent._”
 
-### Tâche 3 : essai nul
+It settled on `OFFSET`, normally the wrong answer, here the only one that
+satisfies the local constraint. The log inverted the conclusion, which is
+exactly the intended effect.
 
-L'agent a exploré `?mesure=1` à `8`, lu IndexedDB, retrouvé les enregistrements
-des essais 1 et 2, et déduit le dispositif entier. Il a alors refusé de jouer
-l'essai : « _I am the wrong instrument: I have now read scenario 3's trap and
+### Task 3: void run
+
+The agent explored `?mesure=1` through `8`, read IndexedDB, recovered the
+records of runs 1 and 2, and deduced the whole setup. It then refused to play
+the run out: “_I am the wrong instrument: I have now read scenario 3's trap and
 constraint in detail, so I am unblinded and any answer I gave would be
-worthless as a measurement._ »
+worthless as a measurement._”
 
-Refus correct, et deuxième défaillance de mon isolement. Après le source lu
-par `fetch`, c'est cette fois le dispositif lui-même qui était énumérable : les
-huit cahiers sont atteignables depuis la même page, et IndexedDB conservait les
-résultats des essais précédents.
+A correct refusal, and the second failure of my isolation. After the source read
+through `fetch`, this time it was the setup itself that was enumerable: the
+eight logs are reachable from the same page, and IndexedDB kept the results of
+the previous runs.
 
-**Correctif de protocole.** IndexedDB est vidée avant chaque essai, et un seul
-cahier de mesure existe à la fois. L'énumération par `?mesure=N` reste possible
-et doit être signalée comme limite : elle est le prix d'un dispositif rejouable
-par URL.
+**Protocol fix.** IndexedDB is cleared before each run, and a single
+measurement log exists at a time. Enumeration through `?mesure=N` remains
+possible and has to be reported as a limit: it is the price of a setup that can
+be replayed by URL.
 
-### Quatre défauts trouvés par cet essai, tous vérifiés et corrigés
+### Four defects found by this run, all verified and fixed
 
-1. **La provenance d'un rejet n'était pas rendue à l'agent.** Les contraintes
-   portaient `[human]` / `[agent]`, les rejets rien : un veto humain et une
-   conjecture d'agent se lisaient à l'identique. C'est le plus grave : un agent
-   qui condamne à tort la bonne approche empoisonne invisiblement toutes les
-   conversations suivantes, et deux cahiers de mesure portaient déjà des rejets
-   écrits par des agents.
-2. **Le bouton « Remettre à zéro » ne vidait que le journal d'appels**, sans
-   toucher au cahier. Un opérateur enchaînant des essais aurait cru repartir à
-   neuf. Renommé.
-3. **Chaque chargement de `?mesure=N` ajoutait une ligne** au lieu de réécrire
-   la même. Un dépôt de mesure qui grossit à chaque chargement n'est pas
-   exploitable. Identifiant stable.
-4. **Une étape sans aucune preuve n'apparaissait nulle part**, alors que la
-   file ne montrait que les étapes déjà étayées : priorité inversée. On ne peut
-   pas « valider » ce qui n'a rien à valider, mais on doit le signaler. Une
-   section « affirmé sans preuve » a été ajoutée.
+1. **The provenance of a rejection was not given back to the agent.**
+   Constraints carried `[human]` / `[agent]`, rejections carried nothing: a
+   human veto and an agent's conjecture read identically. This is the most
+   serious one: an agent that wrongly rules out the good approach invisibly
+   poisons every conversation that follows, and two measurement logs already
+   carried rejections written by agents.
+2. **The “Reset” button only emptied the call log**, without touching the log
+   itself. An operator running one trial after another would have thought they
+   were starting from scratch. Renamed.
+3. **Each load of `?mesure=N` added a row** instead of rewriting the same one. A
+   measurement store that grows on every load is not usable. Stable identifier.
+4. **A step with no evidence at all appeared nowhere**, while the queue showed
+   only the steps that were already backed: priority inverted. You cannot
+   “verify” what has nothing to verify, but it has to be flagged. A “Claimed
+   without evidence” section was added.
 
-### Tâches 3 à 8 · approche condamnée non reproposée dans les six cas
+### Tasks 3 to 8 · ruled-out approach not proposed again in the six cases
 
-Base vidée avant chaque essai, un seul cahier en mémoire, consigne `continue`.
+Database emptied before each run, a single log in memory, instruction
+`continue`.
 
-| #   | Condamné                        | Retenu par l'agent                                                  |
+| #   | Ruled out                       | Kept by the agent                                                   |
 | --- | ------------------------------- | ------------------------------------------------------------------- |
-| 3   | seau à jetons sur Redis         | GCRA en mémoire du processus                                        |
-| 4   | `COPY` vers une table d'attente | flux + `INSERT` multi-lignes par lots bornés                        |
-| 5   | repli exponentiel avec gigue    | réessais à intervalle constant, bornés par l'échéance d'idempotence |
-| 6   | entiers en unités mineures      | `NUMERIC(28,8)` et virgule fixe en `BigInt`                         |
-| 7   | index unique et `ON CONFLICT`   | registre d'idempotence séparé, non partitionné                      |
-| 8   | verrou à vol unique             | rafraîchissement d'arrière-plan, marqueur non bloquant              |
+| 3   | Redis token bucket              | GCRA in the process memory                                          |
+| 4   | `COPY` into a staging table     | streaming + multi-row `INSERT` in bounded batches                   |
+| 5   | exponential backoff with jitter | retries at a constant interval, bounded by the idempotency deadline |
+| 6   | integers in minor units         | `NUMERIC(28,8)` and fixed point in `BigInt`                         |
+| 7   | unique index and `ON CONFLICT`  | a separate idempotency ledger, not partitioned                      |
+| 8   | single-flight lock              | background refresh, non-blocking marker                             |
 
-## Résultat
+## Result
 
-> Sans cahier, l'approche condamnée est reproposée dans 8 cas sur 8.
-> Avec cahier, dans 0 cas sur 8.
+> Without the log, the ruled-out approach is proposed again in 8 cases out of 8.
+> With the log, in 0 cases out of 8.
 
-### Ce que ce chiffre ne dit pas
+### What this number does not say
 
-- **Huit essais par condition, même modèle, même consigne.** Les résultats sont
-  corrélés : ce ne sont pas seize observations indépendantes. Aucun pourcentage
-  ni intervalle n'en sera tiré.
-- **Le témoin ne montre pas de l'incompétence.** Ses huit réponses sont bonnes
-  et argumentées : cookie `HttpOnly`, pagination par curseur, seau à jetons
-  Redis, `COPY`, repli exponentiel, unités mineures, index unique, vol unique.
-  Ce sont les réponses de manuel. Elles sont fausses ici, et seulement ici.
-- **Ce n'est pas le navigateur intégré de ChatGPT** mais un pont MCP.
-- L'énumération des huit cahiers par `?mesure=N` reste possible depuis la page.
-  C'est le prix d'un dispositif rejouable par URL, et un essai en a profité,
-  celui déclaré nul plus haut.
+- **Eight runs per condition, same model, same instruction.** The results are
+  correlated: these are not sixteen independent observations. No percentage and
+  no interval will be drawn from them.
+- **The control does not show incompetence.** Its eight answers are good and
+  argued: `HttpOnly` cookie, cursor pagination, Redis token bucket, `COPY`,
+  exponential backoff, minor units, unique index, single-flight. They are the
+  textbook answers. They are wrong here, and only here.
+- **This is not ChatGPT's built-in browser** but an MCP bridge.
+- Enumerating the eight logs through `?mesure=N` is still possible from the
+  page. It is the price of a setup that can be replayed by URL, and one run took
+  advantage of it, the one declared void above.
 
-### Ce que le chiffre cache, et qui vaut mieux que lui
+### What the number hides, and which is worth more than it
 
-Aucun agent n'a évité l'approche condamnée en fuyant un mot-clé. Tous ont lu
-le motif et en ont tiré la part qui restait valable.
+No agent avoided the ruled-out approach by dodging a keyword. All of them read
+the reason and took from it the part that was still valid.
 
-- Tâche 3 : « _ce qui a été rejeté, c'est l'adossement à Redis, pas l'algorithme
-  du seau_ ». Il retient un seau, en mémoire.
-- Tâche 6 : « _l'approche a échoué parce que l'échelle était fixée sur l'unité
-  mineure, pas parce qu'on utilisait des entiers_ ». Il retient des entiers, à
-  l'échelle 8.
-- Tâche 8 : « _le défaut était l'attente, pas la déduplication_ ». Il garde la
-  déduplication, sans blocage.
+- Task 3: “_what was rejected is the Redis backing, not the bucket algorithm_”.
+  It keeps a bucket, in memory.
+- Task 6: “_the approach failed because the scale was pinned to the minor unit,
+  not because integers were used_”. It keeps integers, at scale 8.
+- Task 8: “_the defect was the waiting, not the deduplication_”. It keeps the
+  deduplication, without blocking.
 
-C'est la justification directe d'un choix de conception : un rejet sans motif
-est refusé par le domaine. Sans le motif, ces trois agents auraient évité un
-mot et perdu l'idée.
+That is the direct justification for one design choice: a rejection without a
+reason is refused by the domain. Without the reason, these three agents would
+have avoided a word and lost the idea.
 
-Deux comportements méritent d'être relevés à part.
+Two behaviours deserve to be noted separately.
 
-**Tâche 4 : l'agent a contesté le motif et l'a respecté quand même.** Il note
-que `COPY FROM STDIN` n'exige pas, sur Postgres récent, le droit que le rejet
-invoque. Il n'en tire pas licence : « _l'entrée dit de ne pas réessayer ; tout
-l'intérêt du cahier est qu'un rejet consigné ne soit pas rejugé par un agent
-qui n'était pas là_ ». Il remonte son désaccord à l'humain.
+**Task 4: the agent disputed the reason and respected it anyway.** It notes that
+`COPY FROM STDIN` does not require, on recent Postgres, the privilege the
+rejection invokes. It does not take that as a licence: “_the entry says not to
+retry; the whole point of the log is that a recorded rejection is not re-judged
+by an agent who was not there_”. It escalates its disagreement to the human.
 
-**Tâche 7 : l'agent a repéré le piège déguisé.** Il écarte
-`UNIQUE (idempotency_key, month)`, légal sur Postgres mais ne dédupliquant
-qu'à l'intérieur d'une partition : « _c'est l'approche rejetée sous un autre
-nom, et l'erreur la plus probable pour qui croit corriger_ ».
+**Task 7: the agent spotted the disguised trap.** It sets aside
+`UNIQUE (idempotency_key, month)`, legal on Postgres but deduplicating only
+inside a partition: “_this is the rejected approach under another name, and the
+most likely mistake for anyone who thinks they are fixing it_”.
 
-## Note sur les pièces manquantes
+## Note on the missing exhibits
 
-Les cahiers eux-mêmes (ce que chaque agent a effectivement écrit dans le
-journal) n'ont pas été conservés pour les tâches 1 à 7. Je vidais
-IndexedDB entre deux essais pour garantir l'isolement, et aucun export
-n'existait alors : la réinitialisation détruisait la pièce en même temps
-qu'elle assainissait l'essai.
+The watch logs themselves (what each agent actually wrote into the log) were
+not kept for tasks 1 to 7. I was emptying IndexedDB between two runs to
+guarantee isolation, and no export existed then: the reset destroyed the
+exhibit at the same time as it cleaned up the run.
 
-Ce qui subsiste est le rapport de chaque agent, cité plus haut. C'est
-suffisant pour le relevé binaire, qui est la mesure, mais insuffisant pour
-qu'un tiers réexamine les décisions consignées.
+What remains is each agent's report, quoted above. That is enough for the binary
+record, which is the measurement, but not enough for a third party to
+re-examine the recorded decisions.
 
-L'export existe désormais et le protocole impose de l'exécuter avant toute
-réinitialisation. Une campagne ultérieure versera ses fichiers ici.
+The export now exists, and the protocol requires running it before any reset. A
+later campaign will deposit its files here.

@@ -1,138 +1,138 @@
-# Le concours, ce qu'on en sait au 28 août 2026
+# The contest, what we know as of August 28, 2026
 
-Recherche menée par trois agents en parallèle sur les sources primaires : la
-page Devpost et ses onglets, la FAQ d'OpenAI, la documentation Chrome, le dépôt
-de spécification, et les dépôts GitHub créés pendant la fenêtre du concours.
+Research carried out by three agents in parallel on the primary sources: the
+Devpost page and its tabs, OpenAI's FAQ, the Chrome documentation, the
+specification repository, and the GitHub repositories created during the
+contest window.
 
-Ce document ne retient que ce qui est sourcé. Ce qui n'a pas pu être établi est
-listé à la fin, et cette section n'est pas courte.
-
----
-
-## Le calendrier, et un gel qu'il faut prendre au sérieux
-
-| Échéance                      | Date                          |
-| ----------------------------- | ----------------------------- |
-| Clôture des soumissions       | **3 septembre 2026, 13 h PT** |
-| Formulaire de crédits Netlify | 1 septembre, 12 h PT          |
-| Permanence Discord OpenAI     | 31 août, 11 h PT              |
-| Jugement                      | 4 → 21 septembre              |
-| Annonce                       | ~23 septembre (peut glisser)  |
-
-Le gel est le point le plus contraignant, et il n'est pas sur la page des
-règles. L'unique mise à jour publiée par les organisateurs précise que la
-description, la vidéo, le dépôt et le site en ligne sont figés à la clôture,
-et que « any edit, no matter how minor, risks your eligibility for prizes ».
-
-Conséquence pratique : aucun commit sur le dépôt soumis et aucun redéploiement
-après le 3 septembre 13 h PT, et le gel doit probablement tenir jusqu'à
-l'annonce. Le dernier commit doit être posé plusieurs heures avant, pas dans la
-dernière minute.
-
-## La vidéo est plus exigeante que la page des règles ne le laisse croire
-
-- Moins de trois minutes, sur YouTube, réglée sur Public : la formulation
-  est « publicly visible », et rien ne dit qu'« unlisted » suffit.
-- **Narration audio obligatoire.** Un écran capturé avec de la musique est
-  explicitement déclaré non conforme.
-- La synthèse vocale par IA est explicitement autorisée.
-- Montrer le projet qui fonctionne dans les dix à quinze premières secondes.
-
-## Une contradiction qu'il faut porter
-
-Les règles disent : « Judges are not required to test the Project and may choose
-to judge based solely on the text description, images, and video. » La FAQ
-d'OpenAI dit : « Judges will also visit your live URL directly. »
-
-Les règles sont déclarées prévalentes. La FAQ contient par ailleurs un artefact
-de copier-coller (« Since there's no video ») qui contredit la vidéo
-obligatoire : elle n'est pas fiable.
-
-Il faut donc supposer les deux : l'écrit et la vidéo doivent tenir seuls,
-_et_ l'URL doit fonctionner à froid.
-
-## L'environnement de démonstration peut produire une démo vide
-
-La documentation d'OpenAI indique que les outils de site exigent GPT-5.6 Sol
-ou Terra ; Luna a WebMCP désactivé. Le navigateur intégré de ChatGPT ne
-découvre par ailleurs aucun outil enregistré dans une iframe, même de même
-origine, et ne prend pas en charge l'API déclarative.
-
-Filmer contre Luna reviendrait à filmer une page sans outils.
+This document keeps only what is sourced. What could not be established is
+listed at the end, and that section is not short.
 
 ---
 
-## Le paysage : « l'agent propose, l'humain dispose » n'est pas un différenciateur
+## The calendar, and a freeze that has to be taken seriously
 
-C'est la conclusion la plus utile de cette recherche, et elle est désagréable.
+| Deadline                    | Date                            |
+| --------------------------- | ------------------------------- |
+| Submissions close           | **September 3, 2026, 13:00 PT** |
+| Netlify credits form        | September 1, 12:00 PT           |
+| OpenAI Discord office hours | August 31, 11:00 PT             |
+| Judging                     | September 4 → 21                |
+| Announcement                | ~September 23 (may slip)        |
 
-Sur 397 dépôts décrits créés pendant la fenêtre du concours, 65 (~16 %)
-mettent en avant l'approbation humaine, le gating de propositions ou le
-consentement, davantage que le commerce (27), les formulaires (30) ou les jeux
-(21). Deux projets implémentent une autorisation bloquante presque à
-l'identique. Un projet, Remnic Canvas, recoupe deux des trois piliers de
-Keydler : mémoire locale en IndexedDB exposée par WebMCP, survivant aux
-conversations, où chaque écriture est une proposition que l'humain approuve,
-avec une démo en ligne et une page Devpost publique.
+The freeze is the most binding point, and it is not on the rules page. The
+single update published by the organizers states that the description, the
+video, the repository and the live site are frozen at the close, and that “any
+edit, no matter how minor, risks your eligibility for prizes”.
 
-La mémoire persistante est six fois plus rare (11 sur 397), et les
-concurrents directs sur ce terrain sont cinq ou six. L'opacité des identifiants
-a aussi ses analogues directs.
+Practical consequence: no commit on the submitted repository and no
+redeployment after September 3, 13:00 PT, and the freeze probably has to hold
+until the announcement. The last commit must be laid down several hours before,
+not in the last minute.
 
-**Position honnête** : rien dans la combinaison n'est inoccupé, sauf la
-combinaison elle-même et le modèle de contenu (_travail fait, règles à suivre,
-erreurs à ne pas refaire_). C'est cela qu'il faut mettre en tête de l'écrit,
-avec l'ingénierie de supervision et de durabilité. Pas « agent proposes, human
-approves », qu'un juge ayant lu cinquante dossiers aura lu cinquante fois.
+## The video is more demanding than the rules page suggests
 
-## Ce qu'il ne faut PAS ajouter
+- Under three minutes, on YouTube, set to Public: the wording is “publicly
+  visible”, and nothing says that “unlisted” is enough.
+- **Audio narration is mandatory.** A screen capture with music is explicitly
+  declared non-compliant.
+- AI text-to-speech is explicitly allowed.
+- Show the project working in the first ten to fifteen seconds.
 
-Un agent de recherche a recommandé d'adopter `title`, `getTools()`,
-`toolchange`, `additionalProperties: false` et les budgets de 1,5 k. Les cinq
-sont déjà en place. Il a reconnu n'avoir jamais lu le source. Vérifié :
-`src/webmcp/tools.ts` porte treize titres, `register.ts:137` appelle
-`getTools()`, `register.ts:174` écoute `toolchange`, `schemas.ts` a six
-`additionalProperties: false`, et `src/domain/budget.ts` tient les budgets.
+## A contradiction we have to carry
 
-Ce qui survit de cet agent, et qui est vérifiable :
+The rules say: “Judges are not required to test the Project and may choose to
+judge based solely on the text description, images, and video.” OpenAI's FAQ
+says: “Judges will also visit your live URL directly.”
 
-- **`exposedTo`** est la seule option d'enregistrement inutilisée, et elle est
-  inerte sur la surface de jugement, puisque le navigateur de ChatGPT ne
-  découvre aucun outil d'iframe. L'adopter ne change rien qu'un juge puisse
-  observer.
-- **`destructiveHint`, `idempotentHint`, `openWorldHint`, `outputSchema`, les
-  ressources, les prompts, le sampling, `requestUserInteraction()`** n'existent
-  pas dans la WebIDL de WebMCP et sont silencieusement ignorés. Les ajouter
-  serait un bruit qu'un juge auteur de spécification remarquerait.
+The rules are declared to prevail. The FAQ also contains a copy-paste artifact
+(“Since there's no video”) that contradicts the mandatory video: it is not
+reliable.
 
-## Deux inquiétudes qu'on peut abandonner
+So both have to be assumed: the writing and the video must stand on their own,
+_and_ the URL must work cold.
 
-- **Antériorité du projet** : les 97 commits datent tous du 26 août ou après,
-  aucun avant le 25. Rien à déclarer.
-- **Licence** : `LICENSE` MIT à la racine. Reste à confirmer que GitHub l'affiche
-  dans l'encadré « About » et que le dépôt est public. Un clic, pas une
-  tâche.
+## The demonstration environment can produce an empty demo
+
+OpenAI's documentation states that site tools require GPT-5.6 Sol or Terra;
+Luna has WebMCP disabled. ChatGPT's built-in browser also discovers no tool
+registered inside an iframe, even same-origin, and does not support the
+declarative API.
+
+Filming against Luna would amount to filming a page with no tools.
 
 ---
 
-## Ce qui n'a pas pu être établi
+## The landscape: “the agent proposes, the human disposes” is not a differentiator
 
-- **La liste exacte des champs du formulaire de soumission** : les deux URL
-  renvoient vers une page de connexion. Se connecter et regarder, bien avant le
-  dernier jour.
-- **Le nombre de soumissions.** La galerie n'est pas publiée ; l'API n'expose que
-  `registrations_count`. Deux valeurs contradictoires ont été vues (3398 et
-  1313), l'une des deux est périmée.
-- **Si « unlisted » satisfait « publicly visible ».** Aucune source. Mettre
+This is the most useful conclusion of this research, and it is unpleasant.
+
+Of 397 described repositories created during the contest window, 65 (~16%)
+foreground human approval, proposal gating or consent, more than commerce (27),
+forms (30) or games (21). Two projects implement a blocking authorization
+almost identically. One project, Remnic Canvas, overlaps two of Keydler's three
+pillars: local memory in IndexedDB exposed through WebMCP, surviving across
+conversations, where every write is a proposal the human approves, with a live
+demo and a public Devpost page.
+
+Persistent memory is six times rarer (11 out of 397), and the direct
+competitors on that ground are five or six. Credential opacity also has its
+direct analogues.
+
+**Honest position**: nothing in the combination is unoccupied, except the
+combination itself and the content model (_completed work, rules to follow,
+mistakes not to repeat_). That is what has to go at the top of the writing,
+along with the supervision and durability engineering. Not “agent proposes,
+human approves”, which a judge who has read fifty entries will have read fifty
+times.
+
+## What must NOT be added
+
+A research agent recommended adopting `title`, `getTools()`, `toolchange`,
+`additionalProperties: false` and the 1.5k budgets. All five are already in
+place. It admitted it had never read the source. Verified:
+`src/webmcp/tools.ts` carries thirteen titles, `register.ts:137` calls
+`getTools()`, `register.ts:174` listens for `toolchange`, `schemas.ts` has six
+`additionalProperties: false`, and `src/domain/budget.ts` holds the budgets.
+
+What survives from that agent, and is verifiable:
+
+- **`exposedTo`** is the only registration option left unused, and it is inert
+  on the judging surface, since ChatGPT's browser discovers no iframe tool.
+  Adopting it changes nothing a judge could observe.
+- **`destructiveHint`, `idempotentHint`, `openWorldHint`, `outputSchema`,
+  resources, prompts, sampling, `requestUserInteraction()`** do not exist in
+  the WebMCP WebIDL and are silently ignored. Adding them would be noise that a
+  judge who writes specifications would notice.
+
+## Two worries we can drop
+
+- **The project predating the contest**: the 97 commits all date from
+  August 26 or after, none before the 25th. Nothing to declare.
+- **License**: an MIT `LICENSE` at the root. Still to confirm that GitHub shows
+  it in the “About” box and that the repository is public. One click, not a
+  task.
+
+---
+
+## What could not be established
+
+- **The exact list of fields in the submission form**: both URLs redirect to a
+  login page. Log in and look, well before the last day.
+- **The number of submissions.** The gallery is not published; the API only
+  exposes `registrations_count`. Two contradictory values were seen (3398 and
+  1313), one of the two is out of date.
+- **Whether “unlisted” satisfies “publicly visible”.** No source. Set it to
   Public.
-- **Si les juges testent dans le navigateur de ChatGPT, dans Chrome 149+, ou
-  pas du tout.** Règles et FAQ se contredisent.
-- **Le contenu du Discord** (invitation requise) et de la diffusion d'ouverture
-  du 25 août.
-- **Aucun barème chiffré** au-delà de « quatre critères de poids égal ».
-- **Le paysage concurrentiel est déduit de métadonnées GitHub, pas de
-  soumissions.** 457 dépôts dans la fenêtre, dont 60 sans description, exclus
-  des comptages : un projet identique à Keydler peut s'y trouver. La recherche
-  Devpost bloque les robots. Les README ont été lus, jamais le code ni les
-  démos : dans un concours de dix jours, l'écart entre les deux est courant.
-- **L'attrition entre création de dépôt et soumission effective** est inconnue.
+- **Whether the judges test in ChatGPT's browser, in Chrome 149+, or not at
+  all.** Rules and FAQ contradict each other.
+- **The content of the Discord** (invitation required) and of the August 25
+  opening broadcast.
+- **No numeric scoring scale** beyond “four criteria of equal weight”.
+- **The competitive landscape is inferred from GitHub metadata, not from
+  submissions.** 457 repositories in the window, 60 of them with no
+  description, excluded from the counts: a project identical to Keydler may be
+  among them. Devpost search blocks robots. The READMEs were read, never the
+  code nor the demos: in a ten-day contest, the gap between the two is common.
+- **The attrition between repository creation and actual submission** is
+  unknown.

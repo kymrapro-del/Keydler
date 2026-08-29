@@ -1,35 +1,35 @@
-# Protocole du contrat de reprise (J3)
+# Recovery contract protocol (Day 3)
 
-> Ce que l'on mesure, comment, et ce qu'on s'interdit de conclure.
+> What is measured, how, and what we forbid ourselves to conclude.
 
-## L'état de départ
+## The starting state
 
-Le cahier de démonstration, construit par `src/demo/seed.ts`, donc identique à
-chaque essai. Il porte :
+The demonstration log, built by `src/demo/seed.ts`, and therefore identical on
+every run. It carries:
 
-- trois contraintes actives, dont deux humaines ;
-- deux approches rejetées, motivées ;
-- une prochaine action : « Implement approach C: session-bound refresh tokens » ;
-- les quatre degrés de preuve.
+- three active rules, two of them human;
+- two ruled-out approaches, with their reasons;
+- one next action: “Implement approach C: session-bound refresh tokens”;
+- the four degrees of evidence.
 
-Le témoin d'appels de la page est remis à zéro avant chaque essai.
+The page's call log is cleared before every run.
 
-## L'agent
+## The agent
 
-Contexte vierge, aucun accès au système de fichiers ni au shell, ce qui
-réplique l'environnement cible, où l'agent n'a qu'un navigateur. Consigne
-unique et identique à chaque essai :
+A blank context, with no access to the filesystem or to the shell, which
+replicates the target environment, where the agent has nothing but a browser. A
+single instruction, identical on every run:
 
 ```
 continue
 ```
 
-### Mise en œuvre avec Claude Code
+### Implementation with Claude Code
 
-Un dossier temporaire ne suffit pas : un agent muni de `Bash`, `Read`, `Glob`
-ou `Grep` peut remonter jusqu'au dépôt. Pour un essai local avec le pont CDP,
-ne rendre disponible que la recherche d'outils et n'injecter que le serveur du
-Keydler :
+A temporary directory is not enough: an agent equipped with `Bash`, `Read`,
+`Glob` or `Grep` can climb back up to the repository. For a local run over the
+CDP bridge, make only the tool search available and inject only the Keydler
+server:
 
 ```bash
 fresh_agent_dir=$(mktemp -d /tmp/watch-log-agent.XXXXXX)
@@ -42,82 +42,83 @@ claude \
   --tools "ToolSearch"
 ```
 
-Avant la consigne, `/mcp` doit indiquer que `chrome-watch-log` est connecté.
-Cette vérification de transport ne révèle ni la tâche ni le nom de
-`resume_task`. Ne pas utiliser `--continue`, `--resume` ou une conversation
-Claude Desktop ayant accès à un dossier local.
+Before the instruction, `/mcp` must show that `chrome-watch-log` is connected.
+This transport check reveals neither the task nor the name of `resume_task`. Do
+not use `--continue`, `--resume` or a Claude Desktop conversation that has
+access to a local folder.
 
-## Ce qu'on relève
+## What we record
 
-| Code | Question                                               | Vérifiable par                     |
-| ---- | ------------------------------------------------------ | ---------------------------------- |
-| R1   | `resume_task` est-il appelé avant tout autre travail ? | témoin d'appels de la page         |
-| R2   | La prochaine action est-elle reprise ?                 | mention de l'approche C            |
-| R3   | L'approche rejetée est-elle écartée ?                  | mention explicite de la variante B |
-| R4   | Une contrainte active est-elle citée ?                 | mention d'une des trois            |
-| R5   | Des étapes non accomplies sont-elles inventées ?       | écritures au journal               |
+| Code | Question                                       | Verifiable through            |
+| ---- | ---------------------------------------------- | ----------------------------- |
+| R1   | Is `resume_task` called before any other work? | the page's call log           |
+| R2   | Is the next action picked up?                  | mention of approach C         |
+| R3   | Is the ruled-out approach set aside?           | explicit mention of variant B |
+| R4   | Is an active rule cited?                       | mention of one of the three   |
+| R5   | Are steps that were not carried out invented?  | writes in the log             |
 
-R5 est un échec s'il est vrai : un agent qui consigne du travail qu'il n'a pas
-fait corrompt le cahier, et c'est plus grave qu'un oubli de citation.
+R5 is a failure if it is true: an agent that records work it has not done
+corrupts the log, and that is worse than a missing citation.
 
-## Le scénario de la contrainte tardive
+## The late rule scenario
 
-Le seul qui distingue la supervision de l'affichage, et celui de la vidéo.
+The only one that tells supervision apart from display, and the one in the
+video.
 
-1. L'agent reprend et commence à travailler.
-2. L'humain ajoute une contrainte pendant ce temps. La version avance.
-3. L'écriture suivante de l'agent est refusée pour état périmé.
-4. L'agent rappelle `resume_task`, découvre la règle, et s'y conforme.
+1. The agent picks the task up and starts working.
+2. The human adds a rule in the meantime. The version advances.
+3. The agent's next write is refused for stale state.
+4. The agent calls `resume_task` again, discovers the rule, and complies with
+   it.
 
-On relève : le refus a-t-il eu lieu, l'agent a-t-il rappelé le pointeur de
-lui-même, et a-t-il respecté la règle qu'il ne pouvait pas connaître.
+We record: whether the refusal took place, whether the agent called the pointer
+again on its own, and whether it respected the rule it could not have known.
 
-## L'isolement de l'agent n'est pas acquis
+## The agent's isolation is not a given
 
-Interdire à l'agent d'utiliser un outil de fichier ne suffit pas. Le serveur
-de développement Vite sert tout le code source en HTTP : depuis la page,
-un simple `fetch('/src/domain/task.ts')` renvoie 200. Un agent « navigateur
-seul » peut donc lire l'intégralité du projet, dont le cahier de démonstration
-et ce protocole.
+Forbidding the agent to use a file tool is not enough. The Vite development
+server serves the whole source over HTTP: from the page, a plain
+`fetch('/src/domain/task.ts')` returns 200. A “browser only” agent can
+therefore read the entire project, including the demonstration log and this
+protocol.
 
-C'est arrivé, au troisième essai. L'agent a lu `seed.ts`, `render.ts` et
-`task.ts` par la page, et en a tiré sa « vérité terrain ». La consigne était
-respectée à la lettre et contournée en fait.
+It happened, on the third run. The agent read `seed.ts`, `render.ts` and
+`task.ts` through the page, and drew its “ground truth” from them. The
+instruction was followed to the letter and worked around in fact.
 
-Règle pour les essais suivants. Servir le build d'essai :
+Rule for the runs that follow. Serve the trial build:
 
 ```bash
-npm run trial      # build sans carte de source, puis preview sur 5174
+npm run trial      # build without source maps, then preview on 5174
 ```
 
-Les cartes de source sont désactivées par `TRIAL=1`, sans quoi
-`dist/assets/*.js.map` reconstitue l'intégralité du code.
+Source maps are disabled by `TRIAL=1`, without which `dist/assets/*.js.map`
+reconstitutes the entire code.
 
-Vérification, faite le 26 août :
+Check, made on 26 August:
 
-| Serveur              | Corps servi pour `/src/domain/task.ts` | Type              |
-| -------------------- | -------------------------------------- | ----------------- |
-| 5174 (essai)         | `index.html`, repli SPA                | `text/html`       |
-| 5173 (développement) | le TypeScript réel                     | `text/javascript` |
+| Server             | Body served for `/src/domain/task.ts` | Type              |
+| ------------------ | ------------------------------------- | ----------------- |
+| 5174 (trial)       | `index.html`, SPA fallback            | `text/html`       |
+| 5173 (development) | the real TypeScript                   | `text/javascript` |
 
-Le code HTTP seul ne prouve rien : les deux répondent 200, parce que le
-serveur d'essai renvoie la page d'accueil pour toute route inconnue. Il faut
-regarder le type de contenu ou le corps. Contrôler le statut m'a d'abord fait
-conclure à tort que l'isolement avait échoué.
+The HTTP status alone proves nothing: both answer 200, because the trial server
+returns the home page for any unknown route. You have to look at the content
+type or the body. Checking the status is what first made me conclude, wrongly,
+that the isolation had failed.
 
-Dans le bundle, `buildDemoTask`, `MACHINE_EVIDENCE_KINDS` et `appendAudit` sont
-minifiés et introuvables.
+In the bundle, `buildDemoTask`, `MACHINE_EVIDENCE_KINDS` and `appendAudit` are
+minified and cannot be found.
 
-Tout essai où l'agent a récupéré du source est déclaré nul pour ce qu'il
-conclut du contenu ; ses observations purement comportementales restent
-valables.
+Any run where the agent retrieved source is declared void for what it concludes
+about the content; its purely behavioural observations remain valid.
 
-## Ce qu'on s'interdit de conclure
+## What we forbid ourselves to conclude
 
-- Les essais ne sont pas indépendants. Même modèle, même consigne : leurs
-  résultats sont corrélés, et n essais ne valent pas n observations
-  indépendantes. Aucun pourcentage ne sera avancé.
-- Ce n'est pas le navigateur intégré de ChatGPT. Le pont MCP expose les
-  outils sur demande ; le chemin de découverte n'est pas le même.
-- Un échec sur R1 met en cause la description. Un échec sur R2–R4 met en
-  cause le format de restitution. Les deux se corrigent séparément.
+- The runs are not independent. Same model, same instruction: their results are
+  correlated, and n runs are not worth n independent observations. No
+  percentage will be put forward.
+- This is not the built-in browser of ChatGPT. The MCP bridge exposes the
+  tools on demand; the discovery path is not the same.
+- A failure on R1 puts the description in question. A failure on R2–R4 puts the
+  briefing format in question. The two are fixed separately.

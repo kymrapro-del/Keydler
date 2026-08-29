@@ -11,16 +11,16 @@
 For tasks 1 to 4, the ruled-out approach is not an assumption: it is exactly
 what the control proposed during the 26 August run.
 
-| # | Task | Ruled-out approach | Recorded reason (local, not deducible) | Constraint |
-| --- | --- | --- | --- | --- |
-| 1 | Keep a session token | `HttpOnly` cookie | the API is on another apex domain, and the mobile web view rejects third-party cookies: tried it, sessions kept dropping | no new dependency |
-| 2 | Paginate a large endpoint | cursor pagination | the admin console has to jump to an arbitrary page, which the cursor makes impossible | do not change the shape of the public API |
-| 3 | Rate-limit an API | Redis token bucket | there is no Redis and operations refuses to add one | no new infrastructure |
-| 4 | Insert a large CSV | `COPY` into a staging table | the database user does not have the `COPY` privilege on this cluster | 512 MB memory ceiling |
-| 5 | Retry an upstream call | exponential backoff with jitter | the provider's idempotency window is 30 s; the backoff pushed retries past it, hence double charges | do not add a queue |
-| 6 | Represent monetary amounts | integers in minor units | we settle in a three-decimal currency with four-decimal rates: cents were losing precision at reconciliation | no new dependency |
-| 7 | Deduplicate jobs | unique index and `ON CONFLICT` | the table is partitioned by month, and a cross-partition unique index is not supported on this cluster | keep the existing table |
-| 8 | Cache an expensive computation | single-flight lock | the computation takes 90 s and the lock held request threads until the pool was exhausted | no new dependency |
+| #   | Task                           | Ruled-out approach              | Recorded reason (local, not deducible)                                                                                   | Constraint                                |
+| --- | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| 1   | Keep a session token           | `HttpOnly` cookie               | the API is on another apex domain, and the mobile web view rejects third-party cookies: tried it, sessions kept dropping | no new dependency                         |
+| 2   | Paginate a large endpoint      | cursor pagination               | the admin console has to jump to an arbitrary page, which the cursor makes impossible                                    | do not change the shape of the public API |
+| 3   | Rate-limit an API              | Redis token bucket              | there is no Redis and operations refuses to add one                                                                      | no new infrastructure                     |
+| 4   | Insert a large CSV             | `COPY` into a staging table     | the database user does not have the `COPY` privilege on this cluster                                                     | 512 MB memory ceiling                     |
+| 5   | Retry an upstream call         | exponential backoff with jitter | the provider's idempotency window is 30 s; the backoff pushed retries past it, hence double charges                      | do not add a queue                        |
+| 6   | Represent monetary amounts     | integers in minor units         | we settle in a three-decimal currency with four-decimal rates: cents were losing precision at reconciliation             | no new dependency                         |
+| 7   | Deduplicate jobs               | unique index and `ON CONFLICT`  | the table is partitioned by month, and a cross-partition unique index is not supported on this cluster                   | keep the existing table                   |
+| 8   | Cache an expensive computation | single-flight lock              | the computation takes 90 s and the lock held request threads until the pool was exhausted                                | no new dependency                         |
 
 ## Exact statements
 
