@@ -46,8 +46,8 @@ describe('the canonical origin', () => {
   })
 
   it('is not fooled by a lookalike host', () => {
-    // `keydler.com.exemple.net` and `wwwkeydler.com` are not us, and a
-    // redirect there would be useless at best, a forced hop at worst.
+    // `keydler.com.exemple.net` and `wwwkeydler.com` are not us, and a redirect
+    // there would be useless at best, a forced hop at worst.
     for (const href of [
       'https://keydler.com.exemple.net/',
       'https://wwwkeydler.com/',

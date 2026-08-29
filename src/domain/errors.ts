@@ -82,10 +82,11 @@ export class ConcurrentWriteError extends Error {
 }
 
 /**
- * A write carrying an expected version is an update; creations take the versionless
- * path. A missing record therefore means another page deleted the task, and rewriting
- * it would resurrect it without its sealed credentials, which really were erased,
- * every `${name}` reference left dangling in the void.
+ * A write carrying an expected version is an update; creations take the
+ * versionless path. A missing record therefore means another page deleted the
+ * task, and rewriting it would resurrect it without its sealed credentials,
+ * which really were erased, every `${name}` reference left dangling in the
+ * void.
  */
 export class TaskGoneError extends Error {
   readonly taskId: string

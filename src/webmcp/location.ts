@@ -1,9 +1,10 @@
 const PREFIX = '/t/'
 
 /**
- * There is no account: this page answers what a “Sign in” button is looked to for,
- * that is, where my things are and how to take them elsewhere. It exists as an ADDRESS
- * because someone arriving from outside has no log open, so saw no list, no export, no import.
+ * There is no account: this page answers what a “Sign in” button is looked to
+ * for, that is, where my things are and how to take them elsewhere. It exists
+ * as an ADDRESS because someone arriving from outside has no log open, so saw
+ * no list, no export, no import.
  */
 export const WORKSPACE_PATH = '/workspace'
 

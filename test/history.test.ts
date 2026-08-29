@@ -38,7 +38,8 @@ describe('the history put into words', () => {
     expect(describeEntry(entry({ actor: 'human', operation: 'add_constraint' })).what).toBe(
       'added a rule',
     )
-    // That is the whole asymmetry of the product, and it must be readable in the history.
+    // That is the whole asymmetry of the product, and it must be readable in
+    // the history.
     expect(describeEntry(entry({ actor: 'agent', operation: 'add_constraint' })).what).toBe(
       'proposed a rule',
     )
@@ -212,8 +213,8 @@ describe('the history on screen', () => {
 
 describe('installable', () => {
   const manifest = JSON.parse(manifestRaw)
-  // The files really present, seen through the module graph, not a hand
-  // written list that would stay true after a file has been deleted.
+  // The files really present, seen through the module graph, not a hand written
+  // list that would stay true after a file has been deleted.
   const shipped = new Set(
     Object.keys(import.meta.glob('../public/icons/*', { eager: true, query: '?url' })).map((p) =>
       p.replace('../public', ''),
@@ -242,8 +243,8 @@ describe('installable', () => {
   it('points at files that really exist', () => {
     for (const icon of manifest.icons as { src: string; type: string }[]) {
       expect(icon.type).toBe('image/png')
-      // An icon declared but missing breaks installation with nothing to
-      // report it before trying on a real browser.
+      // An icon declared but missing breaks installation with nothing to report
+      // it before trying on a real browser.
       expect(shipped, icon.src).toContain(icon.src)
     }
   })

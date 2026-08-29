@@ -42,8 +42,8 @@ describe('the witness knows whether the agent read before writing', () => {
 
   it('counts only the writes that went through', () => {
     // A refused write recorded nothing: flagging it as "check what it wrote"
-    // would send someone looking for something that does not exist. The
-    // refusal itself already shows in the list of calls.
+    // would send someone looking for something that does not exist. The refusal
+    // itself already shows in the list of calls.
     recordCall('log_step', true)
     expect(getWitness().blindWrites).toBe(0)
     expect(getWitness().refused).toBe(1)
@@ -126,7 +126,7 @@ describe('what the page says about it', () => {
   it('flags a write that arrived without a read, which contradicts the whole promise', async () => {
     const logStep = ALL_TOOLS.find((t) => t.name === 'log_step')!
     await call(logStep, writeArgs(store.currentTask()!, { action: 'a', result: 'b' }))
-    await waitUntil(() => activity().textContent!.includes('without reading'), 'le constat')
+    await waitUntil(() => activity().textContent!.includes('without reading'), 'the observation')
     __renderNow()
 
     const text = activity().textContent!

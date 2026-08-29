@@ -6,9 +6,10 @@ import type { TaskState } from '../domain/types'
 export const FRAGMENT_KEY = 'log='
 
 /**
- * An over-long address is silently truncated by mail clients and terminals: better to
- * refuse and send the reader to the file export, which has no limit. The bound lets an
- * ordinary log through even without CompressionStream, or the fallback would be useless.
+ * An over-long address is silently truncated by mail clients and terminals:
+ * better to refuse and send the reader to the file export, which has no limit.
+ * The bound lets an ordinary log through even without CompressionStream, or the
+ * fallback would be useless.
  */
 export const MAX_LINK_LENGTH = 16_000
 
@@ -67,7 +68,8 @@ async function collect(
     total += value.length
     if (total > limit) {
       // The stream may already be errored: cancelling must not produce an
-      // uncaught rejection on top of the refusal we are in the middle of returning.
+      // uncaught rejection on top of the refusal we are in the middle of
+      // returning.
       await reader.cancel().catch(() => undefined)
       throw new UnreadableLinkError()
     }
@@ -121,10 +123,11 @@ async function expand(bytes: Uint8Array): Promise<Uint8Array> {
 }
 
 /**
- * A URL fragment is a bearer capability: with no server, all we can do is demand a
- * secret, not authenticate. A link left behind in a thread becomes a useless block of
- * ciphertext. The vault's encryption, no new crypto: AES-GCM 256, PBKDF2-SHA256 at
- * 600,000 iterations, AFTER compression, because ciphertext does not compress.
+ * A URL fragment is a bearer capability: with no server, all we can do is
+ * demand a secret, not authenticate. A link left behind in a thread becomes a
+ * useless block of ciphertext. The vault's encryption, no new crypto: AES-GCM
+ * 256, PBKDF2-SHA256 at 600,000 iterations, AFTER compression, because
+ * ciphertext does not compress.
  */
 export const SEALED_MARKER = 's'
 
@@ -180,8 +183,7 @@ export async function packTask(task: TaskState, options?: { unbounded: boolean }
   const { bytes, gzipped } = await squeeze(raw)
   const packed = `${gzipped ? 'z' : 'p'}${toBase64Url(bytes)}`
   // A sealed link measures its own length AFTER encryption; bounding here as
-  // well would refuse logs that do fit, on a count that is not the right
-  // one.
+  // well would refuse logs that do fit, on a count that is not the right one.
   if (!options?.unbounded && packed.length > MAX_LINK_LENGTH) {
     throw new TooLargeForLinkError(packed.length)
   }
@@ -190,7 +192,8 @@ export async function packTask(task: TaskState, options?: { unbounded: boolean }
 
 export async function unpackTask(packed: string): Promise<TaskState> {
   // The bound was only checked when the link was PRODUCED. Nothing forces a
-  // received link to have gone through that: we accept only what we can produce.
+  // received link to have gone through that: we accept only what we can
+  // produce.
   if (packed.length > MAX_LINK_LENGTH) throw new UnreadableLinkError()
   if (!SAFE.test(packed) || packed.length < 2) throw new UnreadableLinkError()
 

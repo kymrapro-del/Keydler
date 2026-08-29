@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { lireJeton, tokensDe } from '../scripts/jeton.mjs'
 
-// Without an origin trial token, `document.modelContext` does not exist and a judge reads “WebMCP
-// is not available in this browser”. Chrome checks it OFFLINE, on the device: no alert, no
-// catching up after the deploy freeze. The payload is plain JSON, hence readable: the tokens
-// below are fabricated, a false origin not being obtainable any other way.
+// Without an origin trial token, `document.modelContext` does not exist and a
+// judge reads “WebMCP is not available in this browser”. Chrome checks it
+// OFFLINE, on the device: no alert, no catching up after the deploy freeze. The
+// payload is plain JSON, hence readable: the tokens below are fabricated, a
+// false origin not being obtainable any other way.
 
-// Web API rather than `Buffer`: the repo has no `@types/node`, and does not want
-// one for three lines of test.
+// Web API rather than `Buffer`: the repo has no `@types/node`, and does not
+// want one for three lines of test.
 const enBase64 = (octets: Uint8Array) => btoa(String.fromCharCode(...octets))
 const depuisBase64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0))
 
@@ -31,8 +32,8 @@ describe('reading a token', () => {
     expect(j.error).toBeUndefined()
     expect(j.origine).toBe('https://keydler.com:443')
     expect(j.fonctionnalite).toBe('WebMCP')
-    // `expire` is null on a payload with no date: asserting it first fails
-    // here rather than on the next line, with a better message.
+    // `expire` is null on a payload with no date: asserting it first fails here
+    // rather than on the next line, with a better message.
     expect(j.expire).toBeInstanceOf(Date)
     expect(j.expire?.getTime()).toBe(DANS_UN_AN * 1000)
   })
@@ -58,9 +59,9 @@ describe('reading a token', () => {
 
 describe('what reading refuses', () => {
   const mauvais: [string, string][] = [
-    ['du texte qui n’est pas un jeton', 'pas-un-jeton'],
-    ['une chaîne vide', ''],
-    ['un jeton tronqué', fabriquer(VALIDE).slice(0, 40)],
+    ['text that is not a token', 'not-a-token'],
+    ['an empty string', ''],
+    ['a truncated token', fabriquer(VALIDE).slice(0, 40)],
   ]
 
   it.each(mauvais)('refuses %s', (_nom, value) => {

@@ -1,0 +1,71 @@
+Copyright (c) 2026 Moon1pact.
+
+Keydler software is released under the MIT License. See LICENSE.
+
+This NOTICE states who owns the Keydler assets, which design systems the
+interface follows, and which people and models built it. Licence texts
+that must travel with the served bundle are in THIRD-PARTY-NOTICES.md.
+
+------------------------------------------------------------------------------
+Keydler assets
+------------------------------------------------------------------------------
+
+All original Keydler brand and product assets are Copyright (c) 2026
+Moon1pact. That includes, without limitation:
+
+  - docs/assets/               product screenshots used in the README
+  - public/icons/              application icons (SVG and PNG)
+  - public/og.png              Open Graph image
+  - public/favicon.ico         favicon
+
+Sidecar COPYRIGHT.txt files sit next to those folders. The SVG icon also
+carries an XML copyright comment.
+
+These assets ship with this repository under the same MIT License as the
+software.
+
+------------------------------------------------------------------------------
+Google Fonts, Material Design 3, Google Icons
+------------------------------------------------------------------------------
+
+The interface follows:
+
+  - Google Fonts               https://fonts.google.com/
+  - Material Design 3          https://m3.material.io/
+  - Google Icons               https://fonts.google.com/icons
+                               (Material Symbols)
+
+Those works belong to Google LLC. Material Design 3 and Material Symbols
+are licensed under the Apache License 2.0.
+
+The served Keydler page does not load a webfont, a CDN, or the Material
+Symbols font. The typeface is the reader's system UI font. The names
+above are design credits, not bundled files.
+
+------------------------------------------------------------------------------
+People
+------------------------------------------------------------------------------
+
+  kymrapro-del                 Design, prompt engineer, idea
+  moon1pact                    Lead developer, prompt engineer, core motor
+
+------------------------------------------------------------------------------
+Models
+------------------------------------------------------------------------------
+
+  Claude Opus 5 (Anthropic)    Planning, role assignment, role-play, security
+  Claude Sonnet 5 (Anthropic)  Code, systems, and networks
+  GPT-5.6 Sol (OpenAI)         Security, audit, and bug hunting
+                               (limited by the Cyber programme's restrictions)
+  Grok 4.6 Extra High Fast     Minor graphic corrections and adjustments
+    (Cursor)
+  GPT-5.6 Luna (Figma)         Fast production tasks already taught by the
+                               designer: background removal, layer merge,
+                               artboard management, and the footer only
+
+------------------------------------------------------------------------------
+Other bundled code
+------------------------------------------------------------------------------
+
+See THIRD-PARTY-NOTICES.md for idb (ISC), the only runtime dependency that
+reaches the browser.

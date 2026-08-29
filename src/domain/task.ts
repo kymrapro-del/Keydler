@@ -822,9 +822,9 @@ export function setNext(
 }
 
 /**
- * STRING comparison, not meaning: two different wordings of the same ban will both
- * get through. The message says so, so that nobody takes this guard rail for
- * understanding.
+ * STRING comparison, not meaning: two different wordings of the same ban will
+ * both get through. The message says so, so that nobody takes this guard rail
+ * for understanding.
  */
 function wordsOf(value: string): string {
   return fold(value)
@@ -834,10 +834,10 @@ function wordsOf(value: string): string {
 }
 
 /**
- * The guard compares the new entry to EVERYTHING already recorded; folding it once per
- * comparison folded it as many times as there are entries. Measured, adding a rule went
- * from 0.051 ms at 100 rules to 1.789 ms at 2000. The scan stays linear, which is the
- * question being asked.
+ * The guard compares the new entry to EVERYTHING already recorded; folding it
+ * once per comparison folded it as many times as there are entries. Measured,
+ * adding a rule went from 0.051 ms at 100 rules to 1.789 ms at 2000. The scan
+ * stays linear, which is the question being asked.
  */
 function repeats(existing: readonly string[], candidate: string): boolean {
   const words = wordsOf(candidate)
@@ -1064,9 +1064,9 @@ function invert(state: TaskState, entry: AuditEntry): Undoable | null {
 }
 
 /**
- * Only the tail of the log is walked back, stopping at the first write that is not an
- * undoable human decision: walking back over an agent's work would revoke a week-old
- * decision in one click.
+ * Only the tail of the log is walked back, stopping at the first write that is
+ * not an undoable human decision: walking back over an agent's work would
+ * revoke a week-old decision in one click.
  */
 const UNDOABLE_OPERATIONS = new Set([
   'deactivate_constraint',
@@ -1317,9 +1317,9 @@ export function answeredQuestions(state: TaskState): OpenQuestion[] {
 }
 
 /**
- * The rules in force on another log, taken over as human rules: someone chose to
- * carry them here, so they bind from the outset. Nothing else follows: not the
- * work, not the rejections, not the audit trail.
+ * The rules in force on another log, taken over as human rules: someone chose
+ * to carry them here, so they bind from the outset. Nothing else follows: not
+ * the work, not the rejections, not the audit trail.
  */
 export function copyRulesInto(
   target: TaskState,
@@ -1386,10 +1386,10 @@ export function evidenceCounts(state: TaskState): EvidenceCounts {
 }
 
 /**
- * What leaves with an export or a shareable link without anyone re-reading it: a command
- * output pasted whole can carry a token, an internal machine name, a customer name. Sealed
- * credentials, for their part, live outside `TaskState` and structurally cannot travel;
- * evidence can.
+ * What leaves with an export or a shareable link without anyone re-reading it:
+ * a command output pasted whole can carry a token, an internal machine name, a
+ * customer name. Sealed credentials, for their part, live outside `TaskState`
+ * and structurally cannot travel; evidence can.
  */
 export function attachedEvidenceCount(state: TaskState): number {
   return state.steps.filter((s) => s.evidence !== null).length

@@ -112,8 +112,8 @@ describe('printing', () => {
 
   it('takes off the printed page what does not print', () => {
     const bloc = css.slice(css.search(/@media\s+print/))
-    // Buttons on a sheet of paper are of use to nobody, and the dark
-    // background empties a cartridge.
+    // Buttons on a sheet of paper are of use to nobody, and the dark background
+    // empties a cartridge.
     expect(bloc).toContain('.btn')
     expect(bloc).toContain('display: none')
   })

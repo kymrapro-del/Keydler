@@ -86,7 +86,9 @@ describe('static mode: the contest target', () => {
     expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
   })
 
-  it('registers two tools when loading a task that is already closed', async () => {
+  // The French said two, and the assertion has always expected four. Naming
+  // what it checks rather than counting keeps the two from drifting again.
+  it('registers only the read tools when loading a task that is already closed', async () => {
     const task = await store.createAndOpenTask('Tâche', 'Continuer')
     await store.mutate((s) => completeTask(s, { summary: 'Clos.', basedOnVersion: null }, 'human'))
 

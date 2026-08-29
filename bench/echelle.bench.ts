@@ -20,15 +20,15 @@ import type {
 import { getDb } from '../src/persistence/db'
 
 /**
- * Le banc d'essai qui a produit les chiffres de `docs/echelle-2026-08-28.md`.
+ * The bench that produced the figures in `docs/echelle.md`.
  *
- *   npm run bench
+ * npm run bench
  *
- * Il tourne sous jsdom et fake-indexeddb, comme la suite de tests. Les durées
- * de RENDU y sont donc pessimistes — l'analyseur HTML de jsdom est bien plus
- * lent que celui d'un navigateur. Ce qui se transporte tel quel : les tailles
- * de HTML, les nombres de nœuds, les comptes de tokens, et les durées des
- * fonctions pures, qui tournent sur le même V8 ici et dans Chrome.
+ * It runs under jsdom and fake-indexeddb, like the test suite, so RENDER times
+ * here are pessimistic: the jsdom HTML parser is far slower than a browser's.
+ * What carries over unchanged is the HTML sizes, the node counts, the token
+ * counts, and the timings of pure functions, which run on the same V8 here and
+ * in Chrome.
  */
 
 const ctx = (n: number): MutationContext => ({
@@ -137,8 +137,8 @@ async function freshPage(task: TaskState): Promise<{ root: HTMLElement; unmount:
   return { root, unmount }
 }
 
-describe('échelle', () => {
-  it('ce que resume_task rend, face au budget annoncé', () => {
+describe('scale', () => {
+  it('what resume_task returns, against the advertised budget', () => {
     console.log(`\nbudget annoncé : ${TOKEN_BUDGET} tokens`)
     for (const n of [0, 10, 100, 1000, 2000]) {
       for (const [label, task] of [
@@ -153,7 +153,7 @@ describe('échelle', () => {
     }
   })
 
-  it('taille de la page selon ce que le cahier porte', async () => {
+  it('page size against what the task carries', async () => {
     console.log('')
     for (const [label, champ] of [
       ['règles', (n: number) => ({ constraints: rules(n) })],
@@ -175,7 +175,7 @@ describe('échelle', () => {
     }
   }, 300_000)
 
-  it('fonctions pures selon la taille du cahier', () => {
+  it('pure functions against task size', () => {
     for (const n of [1000, 20000]) {
       const task: TaskState = { ...buildCoreTask(), steps: steps(n) }
       console.log(`\n  --- ${n} étapes ---`)
@@ -188,7 +188,7 @@ describe('échelle', () => {
     }
   }, 300_000)
 
-  it('coût marginal d’une écriture selon ce qui est déjà posé', () => {
+  it('marginal cost of a write against what is already there', () => {
     console.log('')
     let task: TaskState = buildCoreTask()
     let lot = performance.now()
@@ -230,7 +230,7 @@ describe('échelle', () => {
     }
   }, 300_000)
 
-  it('débit réel à travers la file d’écriture et IndexedDB', async () => {
+  it('real throughput through the write queue and IndexedDB', async () => {
     console.log('')
     for (const départ of [0, 2000]) {
       await freshPage({ ...buildCoreTask(), steps: steps(départ) })
@@ -246,7 +246,7 @@ describe('échelle', () => {
     }
   }, 300_000)
 
-  it('lecture de tous les cahiers du poste', async () => {
+  it('reading every task on the device', async () => {
     console.log('')
     for (const [nombre, taille] of [
       [5, 200],

@@ -70,8 +70,8 @@ describe('a hostile link', () => {
 
 describe('an oversized payload is refused before it is even read', () => {
   it('refuses a link longer than anything it can produce, valid or not', async () => {
-    // A PERFECTLY valid task, simply too long. Without the input bound it
-    // would be accepted: that is what isolates this particular guard.
+    // A PERFECTLY valid task, simply too long. Without the input bound it would
+    // be accepted: that is what isolates this particular guard.
     const valide = JSON.stringify({
       ...buildCoreTask(),
       title: 'x'.repeat(20_000),

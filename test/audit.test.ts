@@ -43,8 +43,8 @@ describe('the audit trail', () => {
 
   it('never merges a success with what comes before it', () => {
     let t = task()
-    // Two DIFFERENT rules: a word-for-word repeat has been refused ever since
-    // a guard exists, and this case is about merging entries, not about
+    // Two DIFFERENT rules: a word-for-word repeat has been refused ever since a
+    // guard exists, and this case is about merging entries, not about
     // duplicates.
     t = addConstraint(t, { rule: 'R one', basedOnVersion: 1 }, 'human', ctx(10))
     t = addConstraint(t, { rule: 'R two', basedOnVersion: 2 }, 'human', ctx(20))

@@ -197,5 +197,5 @@ demonstrate, and nothing more is claimed.
 - **No test on a browser other than Brave/Chromium 151.** Firefox and Safari do
   not expose WebMCP; the rest of the page has not been exercised there.
 - **No third-party cryptographic review of the vault.** The README already says
-  that this is not an audited secret manager, and this audit changes nothing
-  about that sentence.
+  that this is not an audited secret manager, and this audit changes nothing about
+  that sentence.

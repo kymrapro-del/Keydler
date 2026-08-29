@@ -78,9 +78,8 @@ again on its own, and whether it respected the rule it could not have known.
 
 Forbidding the agent to use a file tool is not enough. The Vite development
 server serves the whole source over HTTP: from the page, a plain
-`fetch('/src/domain/task.ts')` returns 200. A “browser only” agent can
-therefore read the entire project, including the demonstration log and this
-protocol.
+`fetch('/src/domain/task.ts')` returns 200. A “browser only” agent can therefore
+read the entire project, including the demonstration log and this protocol.
 
 It happened, on the third run. The agent read `seed.ts`, `render.ts` and
 `task.ts` through the page, and drew its “ground truth” from them. The
@@ -116,8 +115,8 @@ about the content; its purely behavioural observations remain valid.
 ## What we forbid ourselves to conclude
 
 - The runs are not independent. Same model, same instruction: their results are
-  correlated, and n runs are not worth n independent observations. No
-  percentage will be put forward.
+  correlated, and n runs are not worth n independent observations. No percentage
+  will be put forward.
 - This is not the built-in browser of ChatGPT. The MCP bridge exposes the
   tools on demand; the discovery path is not the same.
 - A failure on R1 puts the description in question. A failure on R2–R4 puts the

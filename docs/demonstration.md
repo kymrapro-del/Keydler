@@ -96,9 +96,9 @@ What to point at as it happens:
 > “It did not guess. It read the log, and it read the _reason_, not just the
 > keyword. What was rejected is the Redis backing, not the bucket algorithm.”
 
-If the agent does not call `resume_task` on its own, say so on camera and
-ask it explicitly. The honest version of this demo is more convincing than a
-retake, and no claim in this repository says the call is guaranteed.
+If the agent does not call `resume_task` on its own, say so on camera and ask it
+explicitly. The honest version of this demo is more convincing than a retake,
+and no claim in this repository says the call is guaranteed.
 
 ---
 
@@ -123,8 +123,7 @@ Point at three things at once:
 
 **Activity** also states, from the calls it observed, whether every write so far
 arrived after a read. It is the product's central claim, reported as counted
-data rather than asserted, and it will say the opposite if the opposite
-happens.
+data rather than asserted, and it will say the opposite if the opposite happens.
 
 > “I did not stop the agent, and I did not restart the conversation. I changed
 > the rules underneath it, and its next write bounced.”
@@ -155,8 +154,8 @@ rather than retaking. Both paths work, and one is cheaper.
 
 Only if the run reaches something genuinely irreversible.
 
-The agent calls `request_approval` before acting. Its call blocks. On the
-page, **Permission to act** appears above everything, with the action and why it
+The agent calls `request_approval` before acting. Its call blocks. On the page,
+**Permission to act** appears above everything, with the action and why it
 cannot decide alone. Leave it there for a beat, so the room sees the agent is
 stopped.
 

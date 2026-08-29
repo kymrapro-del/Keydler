@@ -141,7 +141,7 @@ describe('from the page', () => {
     const before = store.currentTask()!.version
 
     root.querySelector<HTMLButtonElement>(`[data-toggle="${rules[0].id}"]`)!.click()
-    await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'la levée')
+    await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'the lift')
     __renderNow()
 
     root.querySelector<HTMLButtonElement>(`[data-trail="${rules[0].id}"]`)!.click()

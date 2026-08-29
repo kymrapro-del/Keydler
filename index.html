@@ -28,9 +28,9 @@
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#131316" media="(prefers-color-scheme: dark)" />
     <script>
-      // Avant la première peinture : lu ici et non dans le module, faute de
-      // quoi la page s'afficherait une fraction de seconde dans le thème du
-      // système avant de basculer.
+      // Before the first paint, read here and not in the module. Otherwise
+      // the page would show for a fraction of a second in the system theme
+      // before switching.
       try {
         var t = localStorage.getItem('watch-log.theme')
         if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t

@@ -4,8 +4,8 @@ const MAX_RETENUS = 20
 
 /**
  * The reads are named here rather than imported from `tools.ts`: the witness is
- * called FROM `tools.ts`, and importing it back would make a cycle. A test walks
- * READ_TOOLS and checks that this list does not drift.
+ * called FROM `tools.ts`, and importing it back would make a cycle. A test
+ * walks READ_TOOLS and checks that this list does not drift.
  */
 const READS = new Set(['resume_task', 'what_changed', 'read_task_detail', 'search_task'])
 

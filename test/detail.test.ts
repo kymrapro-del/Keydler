@@ -165,9 +165,9 @@ describe('the pointer stays short, and says where to find the rest', () => {
 
 describe('what resume_task announces about the detail', () => {
   it('points at the schema rather than copying out the list of sections', () => {
-    // A prose enumeration has already fallen behind twice, and every word
-    // added here costs an id name in a 400-token budget.
-    // The schema's own enumeration cannot drift.
+    // A prose enumeration has already fallen behind twice, and every word added
+    // here costs an id name in a 400-token budget. The schema's own enumeration
+    // cannot drift.
     const rendered = renderTaskState(buildDemoTask())
     expect(rendered).toContain('read_task_detail')
     expect(rendered).toContain('schema')

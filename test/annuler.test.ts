@@ -152,7 +152,7 @@ describe('undoing from the page', () => {
   }
 
   async function written(before: number) {
-    await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'l’écriture')
+    await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'the write')
     __renderNow()
   }
 

@@ -14,7 +14,7 @@ async function settled(turns = 8) {
 }
 
 async function written(before: number) {
-  await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'l’écriture')
+  await waitUntil(() => (store.currentTask()?.version ?? 0) > before, 'the write')
   __renderNow()
 }
 
@@ -210,7 +210,7 @@ describe('the vault takes every kind of secret', () => {
     type('new-secret-passphrase', 'correct horse battery')
     root.querySelector<HTMLFormElement>('#form-secret')!.requestSubmit()
 
-    await waitUntil(() => !!root.querySelector('[data-reveal]'), 'l’identifiant scellé', 3000)
+    await waitUntil(() => !!root.querySelector('[data-reveal]'), 'the sealed credential', 3000)
     __renderNow()
 
     const card = [...root.querySelectorAll('.card')].find((c) =>
@@ -234,7 +234,7 @@ describe('reclassifying a credential from the page', () => {
     type2('new-secret-value', 'value')
     type2('new-secret-passphrase', 'correct horse battery')
     root.querySelector<HTMLFormElement>('#form-secret')!.requestSubmit()
-    await waitUntil(() => !!root.querySelector('[data-edit-secret]'), 'l’identifiant', 3000)
+    await waitUntil(() => !!root.querySelector('[data-edit-secret]'), 'the credential', 3000)
     __renderNow()
 
     root.querySelector<HTMLButtonElement>('[data-edit-secret]')!.click()
@@ -249,13 +249,13 @@ describe('reclassifying a credential from the page', () => {
     type2('edit-reason', 'Signs the deploy bundle')
     root.querySelector<HTMLFormElement>('#edit-form')!.requestSubmit()
 
-    await waitUntil(() => !root.querySelector('#edit-form'), 'la correction enregistrée', 3000)
+    await waitUntil(() => !root.querySelector('#edit-form'), 'the correction to be recorded', 3000)
     await waitUntil(
       () =>
         [...root.querySelectorAll('li')].some((li) =>
           li.textContent!.includes('deploy-signing-key'),
         ),
-      'la ligne corrigée',
+      'the corrected line',
       3000,
     )
     __renderNow()

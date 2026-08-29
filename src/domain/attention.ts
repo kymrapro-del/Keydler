@@ -14,9 +14,9 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
-// The human counterpart of `resume_task`: what nobody has settled yet, in the order in
-// which not seeing it costs. An approval blocks an agent right now, a step claimed
-// without evidence can wait.
+// The human counterpart of `resume_task`: what nobody has settled yet, in the
+// order in which not seeing it costs. An approval blocks an agent right now, a
+// step claimed without evidence can wait.
 
 /**
  * A picker badge cannot be read if it lists everything: name what costs the

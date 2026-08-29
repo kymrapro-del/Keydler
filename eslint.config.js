@@ -26,13 +26,13 @@ export default tseslint.config(
     },
   },
   {
-    // Le banc d'essai n'existe que pour imprimer des mesures.
+    // The bench exists only to print measurements.
     files: ['bench/**/*.ts'],
     rules: { 'no-console': 'off' },
   },
   {
-    // Workers Cloudflare : ni navigateur ni Node. Ils ne disposent que des
-    // interfaces web standard (Request, Response, URL), sans DOM ni `document`.
+    // Cloudflare Workers: neither browser nor Node. They have the standard web
+    // interfaces (Request, Response, URL) and no DOM, no `document`.
     files: ['workers/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,

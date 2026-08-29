@@ -1,0 +1,11 @@
+Copyright (c) 2026 Moon1pact.
+
+The screenshots in this folder (empty state, active task, shared link,
+permission, needs-you, disputed step, waiting, human intervention, away,
+activity, search, light theme, credentials, workspace) are original
+Keydler product assets.
+
+They ship with the Keydler repository under the MIT License in LICENSE.
+
+Google Fonts, Material Design 3 and Google Icons (Material Symbols) are
+works of Google LLC and are not claimed as Keydler trademarks.

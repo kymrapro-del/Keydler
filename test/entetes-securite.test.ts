@@ -36,8 +36,8 @@ describe('the content security policy', () => {
   })
 
   it('never allows `unsafe-inline` or `unsafe-eval`', () => {
-    // The only inline script is allowed by its hash. `unsafe-inline` would empty
-    // the policy of its whole point in a single word.
+    // The only inline script is allowed by its hash. `unsafe-inline` would
+    // empty the policy of its whole point in a single word.
     for (const csp of [cspHeaders, cspVercel]) {
       expect(csp).not.toContain('unsafe-inline')
       expect(csp).not.toContain('unsafe-eval')
@@ -83,9 +83,9 @@ describe('the other headers', () => {
   })
 
   it('refuses every permission the product does not use', () => {
-    // None is used: the page asks for no camera, no microphone, no location,
-    // no payment. Refusing them costs zero and takes that much surface away
-    // from a script that would manage to run anyway.
+    // None is used: the page asks for no camera, no microphone, no location, no
+    // payment. Refusing them costs zero and takes that much surface away from a
+    // script that would manage to run anyway.
     for (const source of [headers, vercelHeader('Permissions-Policy')]) {
       for (const key of ['camera', 'microphone', 'geolocation', 'payment', 'usb', 'serial']) {
         expect(source, key).toContain(`${key}=()`)

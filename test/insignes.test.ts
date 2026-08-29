@@ -4,10 +4,16 @@ import paquetBrut from '../package.json?raw'
 import ci from '../.github/workflows/ci.yml?raw'
 import { ALL_TOOLS } from '../src/webmcp/tools'
 
-// A badge shows a number and nobody rereads it. The one in this repository
-// said "13 tools" and "1 dependency": if either changes without the badge
-// following, the README lies on its first line, where it is believed most.
-// These tests tie each badge to what it claims.
+// Every test file read as text. Counting declarations from inside the suite
+// itself is not possible, so they are counted from the source.
+const fichiersDEpreuve = Object.values(
+  import.meta.glob('./**/*.test.ts', { eager: true, query: '?raw', import: 'default' }),
+) as string[]
+
+// A badge shows a number and nobody rereads it. The one in this repository said
+// "13 tools" and "1 dependency": if either changes without the badge following,
+// the README lies on its first line, where it is believed most. These tests tie
+// each badge to what it claims.
 const paquet = JSON.parse(paquetBrut) as {
   dependencies: Record<string, string>
   scripts: Record<string, string>
@@ -28,13 +34,21 @@ describe('the README badges', () => {
     expect(badge('runtime%20dependencies')).toBe('1')
   })
 
-  it('announces no more tests than exist', () => {
-    // The exact count would drift with every addition; what has to stay true
-    // is that it is not inflated. It is compared against the number of test
-    // files, at one per file minimum.
+  it('announces a count the suite can actually reach', () => {
+    // The first version of this only checked the number was under twenty
+    // thousand, which is true of any badge and caught nothing: it sat at 918
+    // while the suite ran 928. The count is compared against the `it(`
+    // declarations instead. Every declaration is at least one test, and
+    // `it.each` turns one into several, so the badge belongs in that band. Add
+    // tests without touching the badge and the lower bound eventually fails.
     const annonce = Number(badge('tests'))
-    expect(annonce).toBeGreaterThan(0)
-    expect(annonce).toBeLessThanOrEqual(20_000)
+    const declarations = fichiersDEpreuve.reduce(
+      (n, t) => n + (t.match(/\bit(?:\.\w+)?\s*\(/g) ?? []).length,
+      0,
+    )
+    expect(declarations).toBeGreaterThan(0)
+    expect(annonce).toBeGreaterThanOrEqual(declarations)
+    expect(annonce).toBeLessThanOrEqual(Math.round(declarations * 1.3))
   })
 
   it('points the CI badge at a workflow that exists', () => {

@@ -36,7 +36,7 @@ describe('an approval wait while everything else moves', () => {
       requestApprovalTool,
       writeArgs(currentTask(), { action: 'Do it', why: 'risky' }),
     )
-    await waitUntil(() => currentTask().approvals.length > 0, 'la demande')
+    await waitUntil(() => currentTask().approvals.length > 0, 'the request')
     await store.deleteCurrentTask()
 
     const result = await pending
@@ -50,7 +50,7 @@ describe('an approval wait while everything else moves', () => {
       requestApprovalTool,
       writeArgs(currentTask(), { action: 'Do it', why: 'risky' }),
     )
-    await waitUntil(() => currentTask().approvals.length > 0, 'la demande')
+    await waitUntil(() => currentTask().approvals.length > 0, 'the request')
     await store.createAndOpenTask('Elsewhere', 'x')
 
     const result = await pending
@@ -104,7 +104,8 @@ describe('bounds of the recent surfaces', () => {
     const installed = setGoal(buildCoreTask(), 'Ship it')
     const clos = completeTask(installed, { summary: 'Done', basedOnVersion: null }, 'human')
     expect(clos.goal).toBe('Ship it')
-    // Setting a goal on a closed task stays possible: the human stays in charge.
+    // Setting a goal on a closed task stays possible: the human stays in
+    // charge.
     expect(() => setGoal(clos, 'Another goal')).not.toThrow()
   })
 

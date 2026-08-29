@@ -116,14 +116,14 @@ describe('a revealed value does not stay on screen', () => {
     fill('new-secret-passphrase', PASSPHRASE)
     root.querySelector<HTMLFormElement>('#form-secret')!.requestSubmit()
 
-    await waitUntil(() => !!root.querySelector('[data-reveal]'), 'l’identifiant à apparaître', 3000)
+    await waitUntil(() => !!root.querySelector('[data-reveal]'), 'the credential to appear', 3000)
 
     vi.stubGlobal(
       'prompt',
       vi.fn(() => PASSPHRASE),
     )
     root.querySelector<HTMLButtonElement>('[data-reveal]')!.click()
-    await waitUntil(() => !!root.querySelector('[data-revealed]'), 'la valeur à s’afficher', 3000)
+    await waitUntil(() => !!root.querySelector('[data-revealed]'), 'the value to show', 3000)
     expect(root.querySelector('[data-revealed]')!.textContent).toContain('AIzaSy-on-screen')
 
     await vi.advanceTimersByTimeAsync(REVEAL_TTL + 1000)
@@ -167,7 +167,7 @@ describe('fixing and deleting do not tread on each other', () => {
     root = document.querySelector<HTMLElement>('#app')!
     unmount = mount(root)
     await store.createAndOpenTask('Ship the issuer', 'Read the spec')
-    await waitUntil(() => !!root.querySelector('#form-secret'), 'le formulaire d’identifiant')
+    await waitUntil(() => !!root.querySelector('#form-secret'), 'the credential form')
     await seal('gemini-api-key', 'Gemini calls')
   })
 

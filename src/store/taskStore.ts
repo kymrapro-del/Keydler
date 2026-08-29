@@ -216,8 +216,8 @@ export async function allTasks(): Promise<TaskState[]> {
 
 /**
  * The same read, cut down to what the picker displays. Whole tasks become
- * collectable as soon as it returns: it is the retained memory that is
- * bounded, not the cost of the read.
+ * collectable as soon as it returns: it is the retained memory that is bounded,
+ * not the cost of the read.
  */
 export async function allTaskCards(): Promise<TaskCard[]> {
   return (await listTasks()).map(cardOf)
@@ -290,8 +290,8 @@ function bus(): BroadcastChannel | null {
 
       if (id !== null && id === snapshot.boundId) {
         if (gone) {
-          // The task was deleted elsewhere. Keeping quiet let this tab write
-          // to it, and its write brought it back.
+          // The task was deleted elsewhere. Keeping quiet let this tab write to
+          // it, and its write brought it back.
           setSnapshot({ status: 'missing', task: null, error: null, boundId: id })
         } else if (version > (snapshot.task?.version ?? 0)) {
           scheduleReread(id, version)
@@ -314,9 +314,9 @@ function announce(id: string | null, version: number, gone = false): void {
 
 // A burst of announcements must not produce a burst of re-reads: measured on a
 // 20,000 step task, 50 announcements cost 1702 ms of which 1668 thrown away
-// (deserializing the record, not normalizing it) and delayed local writes, which
-// share the queue, by a factor of 51. One re-read per task is enough: the highest
-// version announced decides whether to re-read.
+// (deserializing the record, not normalizing it) and delayed local writes,
+// which share the queue, by a factor of 51. One re-read per task is enough: the
+// highest version announced decides whether to re-read.
 const pendingRereads = new Map<string, number>()
 
 function scheduleReread(id: string, version: number): void {
@@ -327,7 +327,8 @@ function scheduleReread(id: string, version: number): void {
   void enqueue(async () => {
     const target = pendingRereads.get(id) ?? 0
     pendingRereads.delete(id)
-    // The open task can have changed between the announcement and its turn in the queue.
+    // The open task can have changed between the announcement and its turn in
+    // the queue.
     if (id !== snapshot.boundId) return
     if (target <= (snapshot.task?.version ?? 0)) return
     await resyncFromDisk(id)

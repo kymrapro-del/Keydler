@@ -129,6 +129,15 @@ pre {
   font-size: 0.875rem;
 }
 
+.landing__credits {
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.landing__credits--models {
+  color: var(--c-text-muted);
+}
+
 .page-head {
   display: flex;
   flex-direction: column;
@@ -845,4 +854,21 @@ kbd {
   margin-top: var(--sp-2);
   padding-left: var(--sp-3);
   border-left: 2px solid var(--c-border);
+}
+
+.page-credits {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--c-border);
+  color: var(--c-text-muted);
+  font-size: 0.8125rem;
+}
+
+.page-credits__design,
+.page-credits__models {
+  margin: 0;
+}
+
+.page-credits__models {
+  margin-top: var(--sp-1);
 }

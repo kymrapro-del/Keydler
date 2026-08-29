@@ -12,36 +12,36 @@
 | `npm run format` | Prettier, writing                                            |
 | `npm run check`  | Types, lint, format, tests, build (what CI runs)             |
 
-`npm run check` must pass before any release. CI runs exactly the same
-steps: a remote failure must always be reproducible locally.
+`npm run check` must pass before any release. CI runs exactly the same steps: a
+remote failure must always be reproducible locally.
 
 ## Rules that do not move
 
-WebMCP registration never lives in a component. It runs once, when
-`src/webmcp` is imported. When React arrives, its strict mode will mount
-components twice in development: a `registerTool` called from a `useEffect`
-would produce tools that are duplicated and then destroyed.
+WebMCP registration never lives in a component. It runs once, when `src/webmcp`
+is imported. When React arrives, its strict mode will mount components twice in
+development: a `registerTool` called from a `useEffect` would produce tools that
+are duplicated and then destroyed.
 
 No hardcoded visual value outside `src/tokens.css`. Rewriting that file is
-enough to change the appearance without touching the logic. That is the
-contract that lets two people work in parallel.
+enough to change the appearance without touching the logic. That is the contract
+that lets two people work in parallel.
 
-The domain knows nothing. `src/domain` imports neither React, nor the DOM,
-nor IndexedDB, nor WebMCP. A layer never knows the one that consumes it.
+The domain knows nothing. `src/domain` imports neither React, nor the DOM, nor
+IndexedDB, nor WebMCP. A layer never knows the one that consumes it.
 
 Domain messages are written for an agent. They stay in English and carry the
 instruction to follow. It is the interface that translates for the person, in
 `src/ui/messages.ts`, never the other way round.
 
-The visible text of the page does not explain the mechanism. A trial showed
-it: an agent that reads a page describing its versioning starts putting the
+The visible text of the page does not explain the mechanism. A trial showed it:
+an agent that reads a page describing its versioning starts putting the
 versioning to the test instead of working. The visible text competes with the
 tool descriptions for its attention, and it wins.
 
 ## Writing a test that proves something
 
-A test that passes before and after a fix proves nothing. For any behavior
-fix, check that it fails on the version from before:
+A test that passes before and after a fix proves nothing. For any behavior fix,
+check that it fails on the version from before:
 
 ```bash
 git stash push -q <fixed file>
@@ -73,6 +73,6 @@ evidence at the same time as it sanitizes the trial.
 
 ## Commit messages
 
-Subject in the imperative. The body explains the _why_ when it is not
-obvious: the _what_ is already in the diff. A fix states the observed symptom,
-not just the line that changed.
+Subject in the imperative. The body explains the _why_ when it is not obvious:
+the _what_ is already in the diff. A fix states the observed symptom, not just
+the line that changed.

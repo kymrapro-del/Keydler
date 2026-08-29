@@ -8,9 +8,8 @@ import { __renderNow, mount } from '../src/ui/bench'
 import type { Step, TaskState } from '../src/domain/types'
 
 /**
- * Le banc de détail : où passe le temps DANS un chemin, plutôt que combien
- * coûte le chemin entier. Il sert à décider s'il vaut la peine de toucher à
- * quelque chose — et souvent à décider que non.
+ * Where the time goes INSIDE a path, rather than what the whole path costs. It
+ * answers whether something is worth touching, and usually says no.
  */
 
 function steps(n: number, preuve = true): Step[] {
@@ -68,8 +67,8 @@ async function wipe(): Promise<void> {
   ])
 }
 
-describe('détail', () => {
-  it('où passe le temps dans une écriture', async () => {
+describe('detail', () => {
+  it('where the time goes in a write', async () => {
     for (const n of [500, 4000]) {
       const task: TaskState = { ...buildCoreTask(), id: 'w', steps: steps(n) }
       await wipe()
@@ -82,17 +81,17 @@ describe('détail', () => {
       await timed('saveTask AVEC contrôle de version', () => saveTask(task, task.version))
       await timed('saveTask SANS contrôle de version', () => saveTask(task))
       await timed('loadTask (get + normalize)', () => loadTask('w'))
-      // Le clone était DANS la mesure : `normalizeTask` paraissait coûter
-      // 26,34 ms là où il en coûte 1,18 — un facteur 22, et il pointait vers
-      // le mauvais correctif (« accélérer normalize » au lieu de « lire moins
-      // souvent »). Le clone est fait une fois, hors du chronomètre.
+      // The clone was INSIDE the measurement: normalizeTask looked like it cost
+      // 26.34 ms where it costs 1.18, a factor of 22, and it pointed at the
+      // wrong fix (speed up normalize, rather than read less often). The clone
+      // happens once now, outside the timer.
       const cloné = structuredClone(toStored(task))
       sync('normalizeTask seul', () => normalizeTask(cloné), 5)
       sync('structuredClone seul', () => structuredClone(toStored(task)), 5)
     }
   }, 300_000)
 
-  it('où passe le temps dans un rendu', async () => {
+  it('where the time goes in a render', async () => {
     await wipe()
     store.__resetStore()
     await store.init()
@@ -113,7 +112,7 @@ describe('détail', () => {
     sync('querySelectorAll sur tous les boutons', () => root.querySelectorAll('button').length)
   }, 300_000)
 
-  it('un rendu qui change vraiment, sur un gros cahier', async () => {
+  it('a render that actually changes, on a large task', async () => {
     await wipe()
     store.__resetStore()
     await store.init()
@@ -132,9 +131,9 @@ describe('détail', () => {
     }
     console.log(`\n  rendu changeant (le cahier bouge)   : ${median(durées).toFixed(2)} ms`)
 
-    // Le cas qui compte vraiment : le cahier ne bouge PAS, mais l'écran si —
-    // une frappe dans la recherche, une liste que l'on déplie. C'est là que
-    // tout ce qui dépend du seul cahier peut être réutilisé.
+    // The case that matters: the task does NOT move but the screen does, a
+    // keystroke in the search box, a list unfolded. That is where everything
+    // depending on the task alone can be reused.
     const champ = root.querySelector<HTMLInputElement>('#search')
     const interactifs: number[] = []
     for (let i = 0; i < 12; i++) {
@@ -151,7 +150,7 @@ describe('détail', () => {
     )
   }, 300_000)
 
-  it('démarrage', async () => {
+  it('startup', async () => {
     for (const [nombre, taille] of [
       [1, 200],
       [1, 20000],
@@ -169,7 +168,7 @@ describe('détail', () => {
       await store.init()
       const avec = performance.now() - t0
 
-      // Le chemin de repli : plus de `lastTaskId`, donc listTasks() entier.
+      // The fallback path: no lastTaskId left, so a full listTasks().
       await db.delete('meta', 'lastTaskId')
       store.__resetStore()
       const t1 = performance.now()
@@ -182,16 +181,16 @@ describe('détail', () => {
     }
   }, 300_000)
 
-  it('mémoire retenue par la liste des cahiers', async () => {
+  it('memory retained by the task list', async () => {
     const mo = (n: number) => `${(n / 1024 / 1024).toFixed(1)} Mo`
     await wipe()
     for (let i = 0; i < 20; i++) {
       await putTask({ ...buildCoreTask(), id: `t${i}`, title: `T${i}`, steps: steps(2000) })
     }
 
-    // Le tas d'un worker est trop bruyant pour trancher ici. On mesure donc ce
-    // qui est RETENU par sa taille sérialisée : un mandataire déterministe, et
-    // proportionnel à ce que la page garde ouvert en permanence.
+    // A worker heap is too noisy to decide anything here, so what is RETAINED
+    // is measured by its serialised size: deterministic, and proportional to
+    // what the page holds open all the time.
     const entiers = JSON.stringify(await store.allTasks()).length
     const fiches = JSON.stringify(await store.allTaskCards()).length
 
@@ -202,7 +201,7 @@ describe('détail', () => {
     )
   }, 300_000)
 
-  it('mémoire tenue par un cahier', async () => {
+  it('memory held by one task', async () => {
     const mo = (n: number) => `${(n / 1024 / 1024).toFixed(1)} Mo`
     for (const n of [1000, 20000]) {
       global.gc?.()

@@ -1,8 +1,8 @@
-// `keydler.com` and `www.keydler.com` are two ORIGINS: storage is
-// partitioned by origin and the origin trial token only enables WebMCP on
-// the right one. A Redirect Rule would be simpler, but this deployment token
-// only has `workers_routes`, not ruleset writes (403). The Worker serves no
-// file: nothing would guarantee that the CSP in `_headers` survives an assets
+// `keydler.com` and `www.keydler.com` are two ORIGINS: storage is partitioned
+// by origin and the origin trial token only enables WebMCP on the right one. A
+// Redirect Rule would be simpler, but this deployment token only has
+// `workers_routes`, not ruleset writes (403). The Worker serves no file:
+// nothing would guarantee that the CSP in `_headers` survives an assets
 // binding. The fragment, carried over by the browser, survives the hop.
 const CANONIQUE = 'keydler.com'
 
@@ -27,10 +27,9 @@ export default {
       status: 301,
       headers: {
         location: url.toString(),
-        // A 301 is cached even without this header. One hour tempers it:
-        // this mount is temporary, and being able to switch back to www if
-        // the apex goes down beats a redirect carved into the
-        // visitors' caches.
+        // A 301 is cached even without this header. One hour tempers it: this
+        // mount is temporary, and being able to switch back to www if the apex
+        // goes down beats a redirect carved into the visitors' caches.
         'cache-control': 'public, max-age=3600',
         'referrer-policy': 'no-referrer',
         'x-content-type-options': 'nosniff',

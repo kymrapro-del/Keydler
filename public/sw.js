@@ -1,8 +1,7 @@
-// Réécrit à la construction par `scripts/precache.mjs`, qui y met les noms
-// réels des fichiers produits : ils portent une empreinte, donc ils ne peuvent
-// pas être écrits à la main. Le nom du cache porte la même empreinte : sans
-// cela, `activate` ne supprimait jamais rien et une entrée fautive survivait à
-// tous les déploiements.
+// Rewritten at build time by `scripts/precache.mjs`, which puts the real names
+// of the produced files in here: they carry a fingerprint, so they cannot be
+// written by hand. The cache name carries the same fingerprint. Without that,
+// `activate` never deleted anything and a bad entry outlived every deployment.
 const CACHE = 'keydler-dev'
 const SHELL = ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png']
 
@@ -36,10 +35,10 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Sans ce contrôle, un hôte qui rend 404 sur une adresse profonde
-          // voyait sa page d'erreur écrite PAR-DESSUS `/index.html` : le repli
-          // hors ligne servait ensuite ce 404 pour toute navigation, y compris
-          // la racine, et rien ne le rattrapait.
+          // Without this check, a host answering 404 on a deep link had its
+          // error page written OVER `/index.html`: the offline fallback then
+          // served that 404 for every navigation, the root included, and
+          // nothing caught it.
           if (response.ok) {
             const copy = response.clone()
             caches.open(CACHE).then((cache) => cache.put('/index.html', copy))

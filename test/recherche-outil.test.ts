@@ -74,8 +74,8 @@ describe('search_task', () => {
     const found = textOf(await call(searchTaskTool, { query: 'quantum-flux-capacitor' }))
     expect(found).toContain('NO MATCH')
     expect(found).toContain('quantum-flux-capacitor')
-    // An empty search does not prove nothing was tried: the log may simply
-    // use other words.
+    // An empty search does not prove nothing was tried: the log may simply use
+    // other words.
     expect(found.toLowerCase()).toContain('does not prove')
   })
 

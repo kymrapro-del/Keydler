@@ -282,7 +282,7 @@ describe('the whole device does not grow the page either', () => {
     // The task list is re-read asynchronously after the render.
     await waitUntil(
       () => (root.textContent ?? '').includes(`${count} tasks on this device`),
-      'la liste des cahiers',
+      'the task list',
     )
     __renderNow()
   }
@@ -322,16 +322,16 @@ describe('the task list does not hold on to the tasks', () => {
     for (const lourd of ['steps', 'audit', 'mutations', 'decisions', 'rejected', 'constraints']) {
       expect(Object.keys(carte), lourd).not.toContain(lourd)
     }
-    // And what must survive the trimming survives: the badge is computed
-    // before the task is released.
+    // And what must survive the trimming survives: the badge is computed before
+    // the task is released.
     expect(carte.needs.some((n) => n.kind === 'question')).toBe(true)
   })
 })
 
 // The technical panel shows what `resume_task` would return: 5 ms on a task of
-// 20,000 steps, recomputed on every keystroke, hence memoized. A memo that misses
-// its invalidation shows stale state, worse than slow in a product whose subject
-// is exactly that.
+// 20,000 steps, recomputed on every keystroke, hence memoized. A memo that
+// misses its invalidation shows stale state, worse than slow in a product whose
+// subject is exactly that.
 describe('the preview of what the agent reads stays current', () => {
   function apercu(): string {
     const pre = [...root.querySelectorAll('pre')].find((p) => p.textContent?.includes('TASK ID'))

@@ -77,7 +77,7 @@ describe('the version invariant', () => {
     const task = seedTask()
     try {
       logStep(task, { action: 'a', result: 'b', basedOnVersion: 45 }, 'agent', ctx())
-      expect.unreachable('l’écriture aurait dû être refusée')
+      expect.unreachable('the write should have been refused')
     } catch (error) {
       expect(error).toBeInstanceOf(StaleStateError)
       const message = (error as StaleStateError).message
@@ -349,7 +349,8 @@ describe('the briefing budget under pressure', () => {
 
     const shown = output.split('\n').filter((l) => l.includes('Contrainte ')).length
     expect(shown).toBeGreaterThanOrEqual(12)
-    // Without this bound, the same measurement gave 37,800 tokens at 2000 rules.
+    // Without this bound, the same measurement gave 37,800 tokens at 2000
+    // rules.
     expect(estimateTokens(output)).toBeLessThan(1000)
   })
 

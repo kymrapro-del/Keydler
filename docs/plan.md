@@ -33,11 +33,10 @@ So that Kymra can work without ever touching the logic, and Moon without ever
 waiting on the style guide:
 
 - **No visual value hard-coded in a component.** Color, spacing, typography,
-  radius, shadow: everything goes through CSS variables declared in a single
-  token file.
+  radius, shadow: everything goes through CSS variables declared in a single token
+  file.
 - **Moon delivers that file with neutral values**, readable and accessible, but
-  with no aesthetic pretension. It is a starting point, not a design
-  proposal.
+  with no aesthetic pretension. It is a starting point, not a design proposal.
 - **Kymra rewrites that file**, and nothing else. The rest of the code does not
   move, the tests keep passing.
 - **The markup is semantic** (headings, lists, forms, regions) so that
@@ -100,14 +99,14 @@ model.
 The criterion splits into two distinct tests, which must not be confused.
 
 **Test A: registration.** Chrome with `chrome://flags/#enable-webmcp-testing`,
-then DevTools → Application tab → WebMCP section. Registered tools
-appear there and can be invoked by hand. No agent needed, no deployment:
-`localhost` is a secure context.
+then DevTools → Application tab → WebMCP section. Registered tools appear there
+and can be invoked by hand. No agent needed, no deployment: `localhost` is a
+secure context.
 
 **Test B: discovery by an agent.** An MCP bridge
-(`@mcp-b/chrome-devtools-mcp`) exposes the page's tools to an MCP client:
-Claude Code or Codex CLI, both runnable under Linux. Fresh conversation, tab
-open, the instruction “continue”.
+(`@mcp-b/chrome-devtools-mcp`) exposes the page's tools to an MCP client: Claude
+Code or Codex CLI, both runnable under Linux. Fresh conversation, tab open, the
+instruction “continue”.
 
 > **Exit criterion.** Test A passes, and in a fresh conversation with no
 > history, the agent goes looking for the page's tools and calls `resume_task`.
@@ -232,8 +231,8 @@ repository. It is the simplest point to settle and the costliest to forget.
 
 ## 6. The cuts, in order
 
-Decided coldly now so as not to improvise them on September 1. We cut first
-what does not show on screen, and never the central mechanism.
+Decided coldly now so as not to improvise them on September 1. We cut first what
+does not show on screen, and never the central mechanism.
 
 1. **The log export**: useful in real life, invisible in a demonstration.
 2. **The `machine_verified` degree**: three degrees instead of four.

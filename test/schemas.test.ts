@@ -135,8 +135,8 @@ describe('what the description must carry for lack of an annotation', () => {
 describe('the shipped descriptions', () => {
   it('let no interpolation empty a reference', () => {
     // `${name}` in a TypeScript template evaluates silently: the global
-    // variable `name` is '' in a browser, and the agent receives
-    // "write as , and what it is for". Nothing crashes.
+    // variable `name` is '' in a browser, and the agent receives "write as ,
+    // and what it is for". Nothing crashes.
     for (const tool of ALL_TOOLS) {
       expect(tool.description, tool.name).not.toMatch(/\bas ,|\{\}|as\s+,/)
       expect(tool.description, tool.name).not.toMatch(/ {2,},/)

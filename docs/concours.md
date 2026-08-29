@@ -2,8 +2,8 @@
 
 Research carried out by three agents in parallel on the primary sources: the
 Devpost page and its tabs, OpenAI's FAQ, the Chrome documentation, the
-specification repository, and the GitHub repositories created during the
-contest window.
+specification repository, and the GitHub repositories created during the contest
+window.
 
 This document keeps only what is sourced. What could not be established is
 listed at the end, and that section is not short.
@@ -25,10 +25,10 @@ single update published by the organizers states that the description, the
 video, the repository and the live site are frozen at the close, and that “any
 edit, no matter how minor, risks your eligibility for prizes”.
 
-Practical consequence: no commit on the submitted repository and no
-redeployment after September 3, 13:00 PT, and the freeze probably has to hold
-until the announcement. The last commit must be laid down several hours before,
-not in the last minute.
+Practical consequence: no commit on the submitted repository and no redeployment
+after September 3, 13:00 PT, and the freeze probably has to hold until the
+announcement. The last commit must be laid down several hours before, not in the
+last minute.
 
 ## The video is more demanding than the rules page suggests
 
@@ -54,8 +54,8 @@ _and_ the URL must work cold.
 
 ## The demonstration environment can produce an empty demo
 
-OpenAI's documentation states that site tools require GPT-5.6 Sol or Terra;
-Luna has WebMCP disabled. ChatGPT's built-in browser also discovers no tool
+OpenAI's documentation states that site tools require GPT-5.6 Sol or Terra; Luna
+has WebMCP disabled. ChatGPT's built-in browser also discovers no tool
 registered inside an iframe, even same-origin, and does not support the
 declarative API.
 
@@ -69,15 +69,15 @@ This is the most useful conclusion of this research, and it is unpleasant.
 
 Of 397 described repositories created during the contest window, 65 (~16%)
 foreground human approval, proposal gating or consent, more than commerce (27),
-forms (30) or games (21). Two projects implement a blocking authorization
-almost identically. One project, Remnic Canvas, overlaps two of Keydler's three
+forms (30) or games (21). Two projects implement a blocking authorization almost
+identically. One project, Remnic Canvas, overlaps two of Keydler's three
 pillars: local memory in IndexedDB exposed through WebMCP, surviving across
 conversations, where every write is a proposal the human approves, with a live
 demo and a public Devpost page.
 
-Persistent memory is six times rarer (11 out of 397), and the direct
-competitors on that ground are five or six. Credential opacity also has its
-direct analogues.
+Persistent memory is six times rarer (11 out of 397), and the direct competitors
+on that ground are five or six. Credential opacity also has its direct
+analogues.
 
 **Honest position**: nothing in the combination is unoccupied, except the
 combination itself and the content model (_completed work, rules to follow,
@@ -90,10 +90,10 @@ times.
 
 A research agent recommended adopting `title`, `getTools()`, `toolchange`,
 `additionalProperties: false` and the 1.5k budgets. All five are already in
-place. It admitted it had never read the source. Verified:
-`src/webmcp/tools.ts` carries thirteen titles, `register.ts:137` calls
-`getTools()`, `register.ts:174` listens for `toolchange`, `schemas.ts` has six
-`additionalProperties: false`, and `src/domain/budget.ts` holds the budgets.
+place. It admitted it had never read the source. Verified: `src/webmcp/tools.ts`
+carries thirteen titles, `register.ts:137` calls `getTools()`, `register.ts:174`
+listens for `toolchange`, `schemas.ts` has six `additionalProperties: false`,
+and `src/domain/budget.ts` holds the budgets.
 
 What survives from that agent, and is verifiable:
 
@@ -101,17 +101,16 @@ What survives from that agent, and is verifiable:
   on the judging surface, since ChatGPT's browser discovers no iframe tool.
   Adopting it changes nothing a judge could observe.
 - **`destructiveHint`, `idempotentHint`, `openWorldHint`, `outputSchema`,
-  resources, prompts, sampling, `requestUserInteraction()`** do not exist in
-  the WebMCP WebIDL and are silently ignored. Adding them would be noise that a
-  judge who writes specifications would notice.
+  resources, prompts, sampling, `requestUserInteraction()`** do not exist in the
+  WebMCP WebIDL and are silently ignored. Adding them would be noise that a judge
+  who writes specifications would notice.
 
 ## Two worries we can drop
 
 - **The project predating the contest**: the 97 commits all date from
   August 26 or after, none before the 25th. Nothing to declare.
 - **License**: an MIT `LICENSE` at the root. Still to confirm that GitHub shows
-  it in the “About” box and that the repository is public. One click, not a
-  task.
+  it in the “About” box and that the repository is public. One click, not a task.
 
 ---
 
@@ -130,9 +129,9 @@ What survives from that agent, and is verifiable:
   opening broadcast.
 - **No numeric scoring scale** beyond “four criteria of equal weight”.
 - **The competitive landscape is inferred from GitHub metadata, not from
-  submissions.** 457 repositories in the window, 60 of them with no
-  description, excluded from the counts: a project identical to Keydler may be
-  among them. Devpost search blocks robots. The READMEs were read, never the
-  code nor the demos: in a ten-day contest, the gap between the two is common.
+  submissions.** 457 repositories in the window, 60 of them with no description,
+  excluded from the counts: a project identical to Keydler may be among them.
+  Devpost search blocks robots. The READMEs were read, never the code nor the
+  demos: in a ten-day contest, the gap between the two is common.
 - **The attrition between repository creation and actual submission** is
   unknown.

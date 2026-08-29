@@ -18,8 +18,8 @@ function check(nom, condition, observe) {
 
 /**
  * What we observe without being able to fix it: it has to show on every run,
- * but must not fail a gate, otherwise the gate becomes noise that everyone
- * ends up ignoring.
+ * but must not fail a gate, otherwise the gate becomes noise that everyone ends
+ * up ignoring.
  */
 function constater(nom, value, remarque) {
   constats.push({ nom, value, remarque })
@@ -170,7 +170,8 @@ check('une icône est déclarée', racine.corps.includes('rel="icon"'))
 check('une couleur de thème est déclarée', racine.corps.includes('name="theme-color"'))
 check('la page se dimensionne sur mobile', racine.corps.includes('name="viewport"'))
 
-// -------------------------------------------------------------- discovery files
+// -------------------------------------------------------------- discovery
+// files
 for (const [path, type, libelle] of [
   ['/robots.txt', 'text/plain', 'robots.txt'],
   ['/sitemap.xml', 'xml', 'sitemap.xml'],
@@ -269,11 +270,11 @@ check(
 const sw = await chercher('/sw.js')
 check('le service worker répond 200', sw.statut === 200, sw.statut)
 // `public/_headers` asks for `no-cache` on `/sw.js` and Cloudflare serves
-// `max-age=14400`: it edge-caches the file by its extension
-// (`cf-cache-status: REVALIDATED`, against `DYNAMIC` for `index.html`, which the
-// same rule does reach). Fixing it needs a right on the zone that the
-// deployment token does not have; registration therefore passes
-// `updateViaCache: 'none'` and the browser ignores its HTTP cache for this script.
+// `max-age=14400`: it edge-caches the file by its extension (`cf-cache-status:
+// REVALIDATED`, against `DYNAMIC` for `index.html`, which the same rule does
+// reach). Fixing it needs a right on the zone that the deployment token does
+// not have; registration therefore passes `updateViaCache: 'none'` and the
+// browser ignores its HTTP cache for this script.
 constater(
   "l'hébergeur garde le service worker en cache",
   entete(sw, 'cache-control'),
@@ -329,7 +330,8 @@ if (script) {
   check('le script est servi compressé', /br|gzip|zstd/.test(codage), codage || '(aucun)')
 }
 
-// -------------------------------------------------------------------- functions
+// --------------------------------------------------------------------
+// functions
 function scriptDe(html) {
   return /src="(\/assets\/[^"]+\.js)"/.exec(html)?.[1] ?? ''
 }

@@ -1,0 +1,10 @@
+Copyright (c) 2026 Moon1pact.
+
+The files in this folder that are original Keydler works include, without
+limitation:
+
+  - og.png
+  - favicon.ico
+  - icons/                     (see icons/COPYRIGHT.txt)
+
+They ship with the Keydler repository under the MIT License in LICENSE.

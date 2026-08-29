@@ -109,7 +109,7 @@ describe('the switcher says what is waiting, task by task', () => {
   })
 
   it('flags the blocked task from the one you are looking at', async () => {
-    await waitUntil(() => !!switcher()?.textContent?.includes('Migration work'), 'la liste', 3000)
+    await waitUntil(() => !!switcher()?.textContent?.includes('Migration work'), 'the list', 3000)
     __renderNow()
 
     const line = [...switcher()!.querySelectorAll('li')].find((li) =>
@@ -123,7 +123,7 @@ describe('the switcher says what is waiting, task by task', () => {
 
   it('puts no badge on a task that is waiting for nothing', async () => {
     await store.createAndOpenTask('Third task', 'x')
-    await waitUntil(() => !!switcher()?.textContent?.includes('Quiet task'), 'la liste', 3000)
+    await waitUntil(() => !!switcher()?.textContent?.includes('Quiet task'), 'the list', 3000)
     __renderNow()
 
     const line = [...switcher()!.querySelectorAll('li')].find((li) =>

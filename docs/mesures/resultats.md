@@ -16,8 +16,8 @@ runs would not have changed it.
 
 ### Why this was wrong
 
-I had picked classic anti-patterns, believing they were the default reflex.
-They are the opposite: they are the mistakes every capable model has learned to
+I had picked classic anti-patterns, believing they were the default reflex. They
+are the opposite: they are the mistakes every capable model has learned to
 avoid, and that it rules out by name without being asked.
 
 So there was nothing to measure: the control could only score zero.
@@ -74,8 +74,8 @@ Isolated trial build, log loaded through `?mesure=N`, instruction `continue`.
 The agent set the `HttpOnly` cookie aside, quoting the local reason word for
 word: “_No cookie is involved at all, so the failure already recorded as
 rejected (different apex domain, mobile web view dropping third-party cookies)
-simply cannot recur._” It settled on a non-extractable `CryptoKey` in
-IndexedDB, and explicitly checked the “no new dependency” constraint.
+simply cannot recur._” It settled on a non-extractable `CryptoKey` in IndexedDB,
+and explicitly checked the “no new dependency” constraint.
 
 ### Task 2: pagination · ruled-out approach not proposed again
 
@@ -91,8 +91,8 @@ exactly the intended effect.
 The agent explored `?mesure=1` through `8`, read IndexedDB, recovered the
 records of runs 1 and 2, and deduced the whole setup. It then refused to play
 the run out: “_I am the wrong instrument: I have now read scenario 3's trap and
-constraint in detail, so I am unblinded and any answer I gave would be
-worthless as a measurement._”
+constraint in detail, so I am unblinded and any answer I gave would be worthless
+as a measurement._”
 
 A correct refusal, and the second failure of my isolation. After the source read
 through `fetch`, this time it was the setup itself that was enumerable: the
@@ -107,20 +107,20 @@ be replayed by URL.
 ### Four defects found by this run, all verified and fixed
 
 1. **The provenance of a rejection was not given back to the agent.**
-   Constraints carried `[human]` / `[agent]`, rejections carried nothing: a
-   human veto and an agent's conjecture read identically. This is the most
-   serious one: an agent that wrongly rules out the good approach invisibly
-   poisons every conversation that follows, and two measurement logs already
-   carried rejections written by agents.
+   Constraints carried `[human]` / `[agent]`, rejections carried nothing: a human
+   veto and an agent's conjecture read identically. This is the most serious one:
+   an agent that wrongly rules out the good approach invisibly poisons every
+   conversation that follows, and two measurement logs already carried rejections
+   written by agents.
 2. **The “Reset” button only emptied the call log**, without touching the log
-   itself. An operator running one trial after another would have thought they
-   were starting from scratch. Renamed.
+   itself. An operator running one trial after another would have thought they were
+   starting from scratch. Renamed.
 3. **Each load of `?mesure=N` added a row** instead of rewriting the same one. A
    measurement store that grows on every load is not usable. Stable identifier.
 4. **A step with no evidence at all appeared nowhere**, while the queue showed
-   only the steps that were already backed: priority inverted. You cannot
-   “verify” what has nothing to verify, but it has to be flagged. A “Claimed
-   without evidence” section was added.
+   only the steps that were already backed: priority inverted. You cannot “verify”
+   what has nothing to verify, but it has to be flagged. A “Claimed without
+   evidence” section was added.
 
 ### Tasks 3 to 8 · ruled-out approach not proposed again in the six cases
 
@@ -144,8 +144,8 @@ Database emptied before each run, a single log in memory, instruction
 ### What this number does not say
 
 - **Eight runs per condition, same model, same instruction.** The results are
-  correlated: these are not sixteen independent observations. No percentage and
-  no interval will be drawn from them.
+  correlated: these are not sixteen independent observations. No percentage and no
+  interval will be drawn from them.
 - **The control does not show incompetence.** Its eight answers are good and
   argued: `HttpOnly` cookie, cursor pagination, Redis token bucket, `COPY`,
   exponential backoff, minor units, unique index, single-flight. They are the
@@ -186,14 +186,14 @@ most likely mistake for anyone who thinks they are fixing it_”.
 
 ## Note on the missing exhibits
 
-The watch logs themselves (what each agent actually wrote into the log) were
-not kept for tasks 1 to 7. I was emptying IndexedDB between two runs to
-guarantee isolation, and no export existed then: the reset destroyed the
-exhibit at the same time as it cleaned up the run.
+The watch logs themselves (what each agent actually wrote into the log) were not
+kept for tasks 1 to 7. I was emptying IndexedDB between two runs to guarantee
+isolation, and no export existed then: the reset destroyed the exhibit at the
+same time as it cleaned up the run.
 
 What remains is each agent's report, quoted above. That is enough for the binary
-record, which is the measurement, but not enough for a third party to
-re-examine the recorded decisions.
+record, which is the measurement, but not enough for a third party to re-examine
+the recorded decisions.
 
 The export now exists, and the protocol requires running it before any reset. A
 later campaign will deposit its files here.

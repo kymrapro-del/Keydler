@@ -29,8 +29,8 @@
 
 ## Audits
 
-Two adversarial passes over the product, each looking for what the tests
-could not see.
+Two adversarial passes over the product, each looking for what the tests could
+not see.
 
 - 🔍 [audits/premier.md](audits/premier.md)
 - 🔍 [audits/second.md](audits/second.md)

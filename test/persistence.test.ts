@@ -43,8 +43,8 @@ describe('persistence', () => {
 
   // The fallback (no last log known any more) used to pull back EVERY log on
   // the machine only to keep one; it now walks down the index by date. The
-  // dates are set by hand: two logs created within the same millisecond have
-  // no “most recent”, and the product does not promise one.
+  // dates are set by hand: two logs created within the same millisecond have no
+  // “most recent”, and the product does not promise one.
   async function poser(id: string, updatedAt: number, schemaVersion = SCHEMA_VERSION) {
     await putTask({ ...buildCoreTask(), id, title: id, updatedAt } as never)
     const db = await getDb()

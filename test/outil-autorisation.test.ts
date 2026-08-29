@@ -10,7 +10,7 @@ import * as store from '../src/store/taskStore'
 import { call, clearDatabase, currentTask, textOf, waitUntil, writeArgs } from './helpers'
 
 async function decide(what: 'allowed' | 'denied') {
-  await waitUntil(() => pendingApprovals(currentTask()).length > 0, 'la demande à être écrite')
+  await waitUntil(() => pendingApprovals(currentTask()).length > 0, 'the request to be written')
   const id = pendingApprovals(currentTask())[0].id
   await store.mutate((s) => decideApproval(s, id, what))
 }
@@ -101,7 +101,7 @@ describe('request_approval', () => {
       controller.signal,
     )
 
-    await waitUntil(() => pendingApprovals(currentTask()).length > 0, 'la demande')
+    await waitUntil(() => pendingApprovals(currentTask()).length > 0, 'the request')
     controller.abort()
 
     const result = await pending

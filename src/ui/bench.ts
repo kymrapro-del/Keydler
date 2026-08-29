@@ -421,6 +421,12 @@ function renderLanding(): string {
         Everything stays in this browser. No account, no server.
         <a href="${WORKSPACE_PATH}" id="go-workspace" class="btn btn--quiet">Your workspace</a>
       </p>
+      <p class="muted landing__credits">
+        Google Fonts · Material Design 3 · Google Icons
+      </p>
+      <p class="muted landing__credits landing__credits--models">
+        Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna
+      </p>
     </section>`
 }
 
@@ -841,9 +847,9 @@ const FILTER_LABEL: Record<MatchKind, string> = {
 }
 
 function renderFilters(all: Match[]): string {
-  // One pass to count, rather than one per category: on a word that is
-  // frequent in a big log the results run into the thousands, and there are
-  // eight categories.
+  // One pass to count, rather than one per category: on a word that is frequent
+  // in a big log the results run into the thousands, and there are eight
+  // categories.
   const counts = new Map<MatchKind, number>()
   for (const m of all) counts.set(m.kind, (counts.get(m.kind) ?? 0) + 1)
   const present = [...counts.keys()]
@@ -1274,9 +1280,9 @@ function renderHandoff(task: TaskState): string {
     return undoButton ? `<p class="handoff">${undoButton}</p>` : ''
   }
 
-  // The warning has to land BEFORE the click, not after: once the address is
-  // in the clipboard the decision is made. And it only appears when it is
-  // true: a warning shown for no reason teaches people to stop reading it.
+  // The warning has to land BEFORE the click, not after: once the address is in
+  // the clipboard the decision is made. And it only appears when it is true: a
+  // warning shown for no reason teaches people to stop reading it.
   const carried = attachedEvidenceCount(task)
   const carriedNote =
     carried > 0
@@ -1736,7 +1742,11 @@ function renderDashboard(task: TaskState): string {
     ${searching() ? '' : renderEvidence(task)}
     ${searching() ? '' : renderActivity(task)}
     ${searching() ? '' : renderHistory(task)}
-    ${renderTechnical(task)}`
+    ${renderTechnical(task)}
+    <footer class="page-credits">
+      <p class="page-credits__design">Google Fonts · Material Design 3 · Google Icons</p>
+      <p class="page-credits__models">Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna</p>
+    </footer>`
 }
 
 // What a "Sign in" button is replaced by here: the browser IS the account, but
@@ -1746,8 +1756,8 @@ function renderDashboard(task: TaskState): string {
 function renderWorkspace(): string {
   const n = allTasks.length
   // `TaskCard` carries neither the step count nor the version, by design:
-  // putting them back would re-read every log on the device to draw a list.
-  // The next action is what helps you recognise your own one anyway.
+  // putting them back would re-read every log on the device to draw a list. The
+  // next action is what helps you recognise your own one anyway.
   const rows = allTasks
     .map(
       (t) => `<li class="row">
@@ -1826,6 +1836,12 @@ function renderWorkspace(): string {
       <div class="actions">
         <button type="button" id="leave-workspace" class="btn btn--quiet">Back</button>
       </div>
+      <p class="muted landing__credits">
+        Google Fonts · Material Design 3 · Google Icons
+      </p>
+      <p class="muted landing__credits landing__credits--models">
+        Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna
+      </p>
     </section>`
 }
 
@@ -1854,9 +1870,9 @@ function renderBody(): string {
     return `${alarm}${renderLanding()}`
   }
 
-  // The creation form takes the whole screen, even when a log is already
-  // open: without this, "New task" showed nothing from a dashboard, the form
-  // living only in the landing screen.
+  // The creation form takes the whole screen, even when a log is already open:
+  // without this, "New task" showed nothing from a dashboard, the form living
+  // only in the landing screen.
   if (creating) return renderLanding()
   if (atWorkspace) return renderWorkspace()
   return task ? renderDashboard(task) : renderLanding()
@@ -2334,7 +2350,8 @@ function bindSupervision(): void {
 
   const searchField = document.querySelector<HTMLInputElement>('#search')
   searchField?.addEventListener('input', () => {
-    // A filter kept from one search to the next makes it look like nothing matched.
+    // A filter kept from one search to the next makes it look like nothing
+    // matched.
     searchFilter = 'all'
     scheduleRender()
   })
@@ -2591,9 +2608,9 @@ function bindSupervision(): void {
       },
       (error: unknown) => {
         linkPending = false
-        // "The passphrase is wrong" and "this link is unreadable" are not
-        // said the same way to someone who has just typed a passphrase: one is
-        // fixed by trying again, the other is not.
+        // "The passphrase is wrong" and "this link is unreadable" are not said
+        // the same way to someone who has just typed a passphrase: one is fixed
+        // by trying again, the other is not.
         humanError =
           error instanceof WrongPassphraseError
             ? 'That passphrase does not open this link. Ask them to repeat it: the link itself is fine.'
@@ -2763,12 +2780,12 @@ function bindTechnical(): void {
   document.querySelector('#reset-witness')?.addEventListener('click', () => resetCalls())
 
   // A link rather than a button: it changes the address, so middle-click,
-  // Ctrl+click and "open in a new tab" have to work, and a screen reader has
-  // to announce it as a destination. It is also the only <a href> on the page,
-  // so the only crawl path a search engine sees.
+  // Ctrl+click and "open in a new tab" have to work, and a screen reader has to
+  // announce it as a destination. It is also the only <a href> on the page, so
+  // the only crawl path a search engine sees.
   document.querySelector('#go-workspace')?.addEventListener('click', (e) => {
-    // Only the plain click is intercepted: modifiers and the middle button
-    // must keep the browser's native behaviour.
+    // Only the plain click is intercepted: modifiers and the middle button must
+    // keep the browser's native behaviour.
     const clic = e as MouseEvent
     if (clic.metaKey || clic.ctrlKey || clic.shiftKey || clic.altKey || clic.button !== 0) return
     e.preventDefault()
@@ -2777,8 +2794,8 @@ function bindTechnical(): void {
   })
 
   document.querySelector('#leave-workspace')?.addEventListener('click', () => {
-    // Back where you came from: to a log if a log is open, to the landing
-    // page otherwise. `reflectAddress` brings the address back in step.
+    // Back where you came from: to a log if a log is open, to the landing page
+    // otherwise. `reflectAddress` brings the address back in step.
     atWorkspace = false
     renderNow()
   })
@@ -2873,8 +2890,7 @@ function render(): void {
   }
 
   // Marked "seen" only if the tab is really on screen. A tab in the background
-  // while an agent is working is exactly the absence this digest has to
-  // report.
+  // while an agent is working is exactly the absence this digest has to report.
   if (openTask && awaySince === null && looking()) markSeen(openTask.id, openTask.version)
 
   if (!storageRead) {
@@ -2889,8 +2905,8 @@ function render(): void {
     linkRead = true
     const packed = readLinkFragment()
     if (packed && isSealedLink(packed)) {
-      // Nothing is attempted: without the passphrase there is nothing to
-      // read, not even the title. That is the property being sold.
+      // Nothing is attempted: without the passphrase there is nothing to read,
+      // not even the title. That is the property being sold.
       sealedLink = packed
     } else if (packed) {
       linkPending = true
@@ -2913,10 +2929,10 @@ function render(): void {
   const waiting = openTask ? pendingApprovals(openTask).length + openQuestions(openTask).length : 0
   document.title = attentionTitle(document.title, waiting, looking())
 
-  // Without the open log's version: the switcher rows do not depend on it,
-  // and putting it in there re-read EVERY log on the device on every write:
-  // 61 ms and 15.9 MB read to produce 9 kB of cards, measured on 20 logs of
-  // 2000 steps.
+  // Without the open log's version: the switcher rows do not depend on it, and
+  // putting it in there re-read EVERY log on the device on every write: 61 ms
+  // and 15.9 MB read to produce 9 kB of cards, measured on 20 logs of 2000
+  // steps.
   const listKey = openTask ? `${openTask.id}:${store.tasksRevision()}` : ''
   if (openTask && allTasksFor !== listKey) refreshTaskList(listKey)
   if ((openTask?.id ?? null) !== credentialsFor) {
