@@ -598,6 +598,10 @@ main:has(.workspace-shell) {
   margin: 0;
 }
 
+.product-footer__credits--models {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
 @media (max-width: 1040px) {
   .workspace-shell {
     grid-template-columns: 240px minmax(0, 1fr);

@@ -67,6 +67,27 @@ and illustrations drawn on the page are original Keydler assets. The
 Google Icons name is credited because the design follows that system.
 
 ------------------------------------------------------------------------------
+People
+------------------------------------------------------------------------------
+
+  kymrapro-del                 Design, prompt engineer, idea
+  moon1pact                    Lead developer, prompt engineer, core motor
+
+------------------------------------------------------------------------------
+Models
+------------------------------------------------------------------------------
+
+  Claude Opus 5 (Anthropic)    Planning, role assignment, role-play, security
+  Claude Sonnet 5 (Anthropic)  Code, systems, and networks
+  GPT-5.6 Sol (OpenAI)         Security, audit, and bug hunting
+                               (limited by the Cyber programme's restrictions)
+  Grok 4.6 Extra High Fast     Minor graphic corrections and adjustments
+    (Cursor)
+  GPT-5.6 Luna (Figma)         Fast production tasks already taught by the
+                               designer: background removal, layer merge,
+                               artboard management, and the footer only
+
+------------------------------------------------------------------------------
 Other bundled code
 ------------------------------------------------------------------------------
 

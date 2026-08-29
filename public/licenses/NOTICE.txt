@@ -16,3 +16,10 @@ This interface uses:
 
 The Material Symbols font is not redistributed. Marks drawn on the page
 are original Keydler assets.
+
+People: kymrapro-del (design, prompt engineer, idea);
+moon1pact (lead developer, prompt engineer, core motor).
+
+Models: Claude Opus 5 and Claude Sonnet 5 (Anthropic);
+GPT-5.6 Sol (OpenAI); Grok 4.6 Extra High Fast (Cursor);
+GPT-5.6 Luna (Figma).

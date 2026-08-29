@@ -550,6 +550,27 @@ Those choices still set real boundaries:
 
 Internal documents and code comments are in French; the product is in English.
 
+## People and models
+
+Two people own the product. The models below assisted, each in a named role.
+
+### Team
+
+| Person | Role |
+| --- | --- |
+| **[kymrapro-del](https://github.com/kymrapro-del)** | Design, prompt engineer, idea |
+| **moon1pact** | Lead developer, prompt engineer, core motor |
+
+### Models
+
+| Model | Role |
+| --- | --- |
+| **Claude Opus 5** · Anthropic | Planning, role assignment, role-play, and security |
+| **Claude Sonnet 5** · Anthropic | Code, systems, and networks |
+| **GPT-5.6 Sol** · OpenAI | Security, audit, and bug hunting. Limited by the Cyber programme's restrictions |
+| **Grok 4.6 Extra High Fast** · Cursor | Minor graphic corrections and adjustments |
+| **GPT-5.6 Luna** · Figma | Fast tasks already taught by the designer: background removal, layer merge, artboard management, and the footer only |
+
 ## License
 
 [![License](https://img.shields.io/badge/license-MIT-3d4ec8)](LICENSE)

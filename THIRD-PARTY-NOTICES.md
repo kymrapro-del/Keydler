@@ -67,3 +67,15 @@ The interface follows [Material Design 3](https://m3.material.io/) and
 [Material Symbols (Google Icons)](https://fonts.google.com/icons), both by
 Google LLC, Apache License 2.0. Keydler does not ship the Material Symbols
 font files. See [NOTICE](NOTICE).
+
+## People and models
+
+Keydler was built by **kymrapro-del** (design, prompt engineer, idea) and
+**moon1pact** (lead developer, prompt engineer, core motor), with
+
+- Claude Opus 5 and Claude Sonnet 5 (Anthropic)
+- GPT-5.6 Sol (OpenAI)
+- Grok 4.6 Extra High Fast (Cursor)
+- GPT-5.6 Luna (Figma)
+
+Roles are listed in [NOTICE](NOTICE) and the README.

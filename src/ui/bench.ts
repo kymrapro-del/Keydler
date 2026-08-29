@@ -712,6 +712,9 @@ function renderLanding(): string {
           <p class="marketing-footer__credits">
             Google Fonts · Material Design 3 · Google Icons
           </p>
+          <p class="marketing-footer__credits marketing-footer__credits--models">
+            Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna
+          </p>
         </div>
         <p class="marketing-footer__wordmark" aria-hidden="true">Keydler</p>
       </footer>
@@ -2248,6 +2251,7 @@ function renderProductShell(task: TaskState): string {
           <span>Keydler · WebMCP memory workspace · © 2026</span>
           <span>${getCloudState().user ? 'Authenticated workspace · RLS enforced' : 'Local-first · no account required'}</span>
           <p class="product-footer__credits">Google Fonts · Material Design 3 · Google Icons</p>
+          <p class="product-footer__credits product-footer__credits--models">Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna</p>
         </footer>
       </div>
     </div>`

@@ -11,7 +11,7 @@
     "name": "Moon1pact"
   },
   "copyrightYear": 2026,
-  "creditText": "Google Sans Flex from Google Fonts. Interface follows Material Design 3 and Google Icons.",
+  "creditText": "Google Sans Flex from Google Fonts. Interface follows Material Design 3 and Google Icons. Built by kymrapro-del and moon1pact, with Claude Opus 5, Claude Sonnet 5, GPT-5.6 Sol, Cursor Grok 4.6 Extra High Fast, and GPT-5.6 Luna.",
   "description": "Free, local-first supervised task memory for you and your AI, exposed to agents through WebMCP.",
   "sameAs": ["https://github.com/kymrapro-del/ChatGPT-WebMCP"],
   "featureList": [

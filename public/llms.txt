@@ -23,3 +23,10 @@ Brand assets (wordmark, mark, illustrations, icons) are original Keydler works.
 The interface uses Google Sans Flex from Google Fonts (SIL OFL 1.1, self-hosted),
 Material Design 3, and Google Icons (Material Symbols). Those works belong to
 Google LLC.
+
+People: kymrapro-del (design, prompt engineer, idea);
+moon1pact (lead developer, prompt engineer, core motor).
+
+Models: Claude Opus 5 and Claude Sonnet 5 (Anthropic);
+GPT-5.6 Sol (OpenAI); Grok 4.6 Extra High Fast (Cursor);
+GPT-5.6 Luna (Figma).

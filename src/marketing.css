@@ -1275,6 +1275,10 @@
   color: rgb(255 255 255 / 70%);
 }
 
+.marketing-footer__credits--models {
+  color: rgb(255 255 255 / 58%);
+}
+
 .marketing-footer__wordmark {
   display: block;
   overflow: hidden;
