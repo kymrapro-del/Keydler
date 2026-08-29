@@ -78,8 +78,9 @@ describe('first visit', () => {
   it('explains the benefit before the mechanism, and without jargon', async () => {
     await settled()
 
-    expect(text()).toContain('Give your AI a memory that survives the conversation.')
-    expect(text()).toContain('completed work, rules to follow, and mistakes not to repeat')
+    expect(text()).toContain('Your next agent conversation starts where the last one stopped.')
+    expect(text()).toContain('completed work, binding rules, evidence, and dead ends')
+    expect(text()).toContain('reads and updates it directly through WebMCP')
 
     for (const jargon of ['based_on_version', 'mutation_id', 'IndexedDB', 'AbortController']) {
       expect(text(), jargon).not.toContain(jargon)
@@ -89,8 +90,26 @@ describe('first visit', () => {
   it('offers both ways in, the main one first', async () => {
     await settled()
     const primary = root.querySelector<HTMLButtonElement>('.btn--primary')
-    expect(primary?.textContent?.trim()).toBe('Create a task')
-    expect(button('Try the demo')).toBeTruthy()
+    expect(primary?.textContent?.trim()).toBe('Explore the live demo')
+    expect(button('Create a task')).toBeTruthy()
+  })
+
+  it('makes the WebMCP implementation visible before a task is opened', async () => {
+    await settled()
+
+    expect(root.querySelector('.webmcp-badge')?.textContent).toContain('WebMCP ready · 13 tools')
+    expect(text()).toContain('Why WebMCP matters')
+    expect(text()).toContain('resume_task')
+    expect(text()).toContain('A stale write is refused')
+  })
+
+  it('contains no account or authentication actions', async () => {
+    await settled()
+    const labels = [...root.querySelectorAll('a, button')]
+      .map((element) => element.textContent?.trim() ?? '')
+      .join(' ')
+
+    expect(labels).not.toMatch(/log in|login|sign in|sign up|register|account/i)
   })
 })
 
@@ -186,7 +205,7 @@ describe('creating a task', () => {
     await settled(8)
 
     const guide = root.querySelector('.card--guide')!
-    expect(guide.textContent).toContain('Ready for your AI')
+    expect(guide.textContent).toContain('Ready for WebMCP')
     expect(guide.textContent).toContain('Continue this task.')
 
     for (const jargon of ['based_on_version', 'mutation_id', 'IndexedDB']) {
@@ -197,9 +216,9 @@ describe('creating a task', () => {
 })
 
 describe('demo', () => {
-  it('“Try the demo” loads the prepared notebook', async () => {
+  it('“Explore the live demo” loads the prepared notebook', async () => {
     await settled()
-    button('Try the demo').click()
+    button('Explore the live demo').click()
     await settled(8)
 
     const task = store.currentTask()!
@@ -297,7 +316,9 @@ describe('dashboard', () => {
   it('keeps the technical details collapsed by default', async () => {
     const details = root.querySelector<HTMLDetailsElement>('details.technical')!
     expect(details.open).toBe(false)
-    expect(details.querySelector('summary')?.textContent?.trim()).toBe('Technical details')
+    expect(details.querySelector('summary')?.textContent?.trim()).toBe(
+      'WebMCP status and developer details',
+    )
 
     const body = details.textContent ?? ''
     expect(body).toContain('Task ID')

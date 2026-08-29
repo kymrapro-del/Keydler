@@ -1,12 +1,16 @@
 :root {
   color-scheme: light dark;
 
-  --c-bg: #ffffff;
-  --c-surface: #f6f6f7;
-  --c-border: #d6d6da;
-  --c-text: #1a1a1e;
-  --c-text-muted: #5c5c66;
-  --c-accent: #3d4ec8;
+  --c-bg: #fbfbfd;
+  --c-surface: #f3f4f8;
+  --c-surface-raised: #ffffff;
+  --c-border: #d9dce7;
+  --c-border-strong: #c4c8d8;
+  --c-text: #171821;
+  --c-text-muted: #5e6271;
+  --c-accent: #4054d6;
+  --c-accent-strong: #3043bd;
+  --c-accent-soft: #eef0ff;
 
   --c-ok-bg: #e6f4ea;
   --c-ok-text: #17603a;
@@ -26,25 +30,33 @@
   --sp-6: 32px;
 
   --sp-7: 48px;
+  --sp-8: 64px;
+  --sp-9: 88px;
 
   --radius-sm: 6px;
   --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
 
-  --measure: 680px;
-  --dashboard: 880px;
+  --measure: 1120px;
+  --dashboard: 960px;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 6%);
+  --shadow-card: 0 1px 2px rgb(20 24 42 / 5%), 0 10px 30px rgb(20 24 42 / 4%);
+  --shadow-raised: 0 18px 55px rgb(34 40 76 / 10%);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --c-bg: #131316;
-    --c-surface: #1c1c20;
-    --c-border: #34343a;
-    --c-text: #e6e6ea;
-    --c-text-muted: #a0a0ac;
-    --c-accent: #a3adf5;
+    --c-bg: #111217;
+    --c-surface: #1a1c24;
+    --c-surface-raised: #171920;
+    --c-border: #30333f;
+    --c-border-strong: #444858;
+    --c-text: #f1f2f7;
+    --c-text-muted: #a8acba;
+    --c-accent: #aab4ff;
+    --c-accent-strong: #c2c9ff;
+    --c-accent-soft: #202643;
 
     --c-ok-bg: #14301f;
     --c-ok-text: #8fd6ab;
@@ -53,17 +65,22 @@
     --c-error-bg: #3a1512;
     --c-error-text: #f2b8b5;
 
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 35%);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 35%), 0 14px 36px rgb(0 0 0 / 18%);
+    --shadow-raised: 0 22px 70px rgb(0 0 0 / 32%);
   }
 }
 
 :root[data-theme='dark'] {
-  --c-bg: #131316;
-  --c-surface: #1c1c20;
-  --c-border: #34343a;
-  --c-text: #e6e6ea;
-  --c-text-muted: #a0a0ac;
-  --c-accent: #a3adf5;
+  --c-bg: #111217;
+  --c-surface: #1a1c24;
+  --c-surface-raised: #171920;
+  --c-border: #30333f;
+  --c-border-strong: #444858;
+  --c-text: #f1f2f7;
+  --c-text-muted: #a8acba;
+  --c-accent: #aab4ff;
+  --c-accent-strong: #c2c9ff;
+  --c-accent-soft: #202643;
 
   --c-ok-bg: #14301f;
   --c-ok-text: #8fd6ab;
@@ -72,5 +89,6 @@
   --c-error-bg: #3a1512;
   --c-error-text: #f2b8b5;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 35%);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 35%), 0 14px 36px rgb(0 0 0 / 18%);
+  --shadow-raised: 0 22px 70px rgb(0 0 0 / 32%);
 }

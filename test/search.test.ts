@@ -246,7 +246,8 @@ describe('on screen', () => {
 
   it('injects no HTML from the query', async () => {
     await search('<img src=x onerror=alert(1)>')
-    expect(root.querySelector('img')).toBeNull()
+    expect(root.querySelector('img[src="x"]')).toBeNull()
+    expect(root.querySelector('img[onerror]')).toBeNull()
     expect(root.innerHTML).toContain('&lt;img')
   })
 

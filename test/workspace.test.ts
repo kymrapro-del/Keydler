@@ -42,6 +42,11 @@ describe('the way in from the home screen', () => {
     const porte = root.querySelector('#go-workspace')
     expect(porte?.tagName).toBe('A')
     expect(porte?.getAttribute('href')).toBe(WORKSPACE_PATH)
+
+    ;(porte as HTMLAnchorElement).click()
+    __renderNow()
+    expect(location.pathname).toBe(WORKSPACE_PATH)
+    expect(root.textContent).toContain('Your workspace lives in this browser')
     unmount()
   })
 })

@@ -95,6 +95,7 @@ import {
   onRegistrationChange,
   recentlyActive,
   resetCalls,
+  currentTaskIdFromLocation,
   isWorkspacePath,
   taskPath,
   taskUrl,
@@ -225,6 +226,38 @@ function renderThemeToggle(): string {
   const choice = readTheme()
   return `<button type="button" id="toggle-theme" class="btn btn--quiet"
             aria-label="${themeLabel(choice)}. Click to switch.">${themeLabel(choice)}</button>`
+}
+
+function renderBrandBar(view: 'home' | 'workspace' | 'task'): string {
+  const task = store.currentTask()
+  const returnPath = task ? taskPath(task.id) : '/'
+
+  return `<div class="topbar">
+      <div class="brand" aria-label="Keydler">
+        <img class="brand__mark" src="/icons/icon.svg" alt="" width="36" height="36" />
+        <span class="brand__name">Keydler</span>
+      </div>
+      <nav class="topbar__nav" aria-label="Primary navigation">
+        ${
+          view === 'workspace'
+            ? `<a class="nav-link" href="${returnPath}" id="leave-workspace">${task ? 'Back to task' : 'Back home'}</a>
+               <span class="nav-link nav-link--active" aria-current="page">Workspace</span>`
+            : `<a class="nav-link" href="${WORKSPACE_PATH}" id="go-workspace">Workspace</a>`
+        }
+        ${renderThemeToggle()}
+      </nav>
+    </div>`
+}
+
+function renderWebMcpBadge(): string {
+  const { phase, toolNames } = getRegistrationState()
+  const active = phase === 'registered' || phase === 'partial'
+  const count = active ? toolNames.length : ALL_TOOLS.length
+
+  return `<span class="webmcp-badge${active ? ' webmcp-badge--active' : ''}">
+      <span class="webmcp-badge__dot" aria-hidden="true"></span>
+      ${active ? `WebMCP active · ${count} tools` : `WebMCP ready · ${count} tools`}
+    </span>`
 }
 
 function query(): string {
@@ -373,11 +406,16 @@ function alertBlock(): string {
 
 function renderLanding(): string {
   const form = creating
-    ? `<form id="create-task" class="form" novalidate>
+    ? `<form id="create-task" class="form create-panel" novalidate>
+         <div class="create-panel__head">
+           <p class="section-kicker">New shared memory</p>
+           <h2>Give the work a clear starting point.</h2>
+           <p class="muted">The next action is the first thing an agent reads.</p>
+         </div>
          <div class="field">
            <label for="new-title">Task title</label>
            <input id="new-title" type="text" autocomplete="off"
-                  placeholder="Refactor the authentication module" />
+                  placeholder="Ship the reporting export" />
          </div>
          <div class="field">
            <label for="new-next">Next action</label>
@@ -395,48 +433,112 @@ function renderLanding(): string {
            <button type="button" id="cancel-create" class="btn">Cancel</button>
          </div>
        </form>`
-    : `<div class="actions">
-         <button type="button" id="start-create" class="btn btn--primary">Create a task</button>
-         <button type="button" id="seed" class="btn">Try the demo</button>
+    : `<div class="actions landing__actions">
+         <button type="button" id="seed" class="btn btn--primary">Explore the live demo</button>
+         <button type="button" id="start-create" class="btn">Create a task</button>
        </div>`
 
-  return `<section class="landing">
-      <div class="eyebrow-row">
-        <p class="landing__eyebrow">Keydler</p>
-        ${renderThemeToggle()}
-      </div>
-      <h1 class="landing__headline">Give your AI a memory that survives the conversation.</h1>
-      <p class="landing__lede">
-        Keydler keeps completed work, rules to follow, and mistakes not to
-        repeat. A new conversation can read it and continue from the right place.
-      </p>
+  return `<section class="landing landing--home">
+      ${renderBrandBar('home')}
       ${alertBlock()}
       ${renderOffline()}
       ${renderSealedOffer()}
       ${renderOffer()}
       ${renderShortcuts()}
-      ${form}
-      <p class="muted landing__note">
-        Everything stays in this browser. No account, no server.
-        <a href="${WORKSPACE_PATH}" id="go-workspace" class="btn btn--quiet">Your workspace</a>
-      </p>
-      <p class="muted landing__credits">
-        Google Fonts · Material Design 3 · Google Icons
-      </p>
-      <p class="muted landing__credits landing__credits--models">
-        Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna
-      </p>
+      <div class="landing-hero">
+        <div class="landing-hero__copy">
+          ${renderWebMcpBadge()}
+          <p class="landing__eyebrow">Shared task memory for humans and agents</p>
+          <h1 class="landing__headline">Your next agent conversation starts where the last one stopped.</h1>
+          <p class="landing__lede">
+            Keydler keeps completed work, binding rules, evidence, and dead ends in one
+            browser-local log. Your agent reads and updates it directly through WebMCP.
+          </p>
+          ${form}
+          <ul class="landing__trust" aria-label="Product principles">
+            <li>Browser-local</li>
+            <li>No backend</li>
+            <li>Human supervised</li>
+          </ul>
+        </div>
+        <div class="webmcp-story" aria-label="How Keydler uses WebMCP">
+          <div class="webmcp-story__head">
+            <div>
+              <p class="section-kicker">A WebMCP hand-off</p>
+              <h2>One task. Every conversation.</h2>
+            </div>
+            <img src="/icons/icon.svg" alt="" width="44" height="44" />
+          </div>
+          <ol class="webmcp-flow">
+            <li>
+              <span class="webmcp-flow__step">01</span>
+              <div><strong>The agent reads the task</strong><code>resume_task</code></div>
+            </li>
+            <li>
+              <span class="webmcp-flow__step">02</span>
+              <div><strong>You add a binding rule</strong><span>“Keep the public API unchanged.”</span></div>
+            </li>
+            <li class="webmcp-flow__refusal">
+              <span class="webmcp-flow__step">03</span>
+              <div><strong>A stale write is refused</strong><span>The agent re-reads, then adapts.</span></div>
+            </li>
+          </ol>
+          <p class="webmcp-story__note">The page is the shared tool surface, not a dashboard bolted onto an API.</p>
+        </div>
+      </div>
+
+      <section class="landing-section" aria-labelledby="webmcp-title">
+        <div class="landing-section__intro">
+          <p class="section-kicker">Why WebMCP matters</p>
+          <h2 id="webmcp-title">The agent works with the same state you can see and correct.</h2>
+          <p>
+            Structured tools replace fragile screen guessing. Human corrections take effect
+            immediately, while agent proposals remain proposals until you accept them.
+          </p>
+        </div>
+        <div class="benefit-grid">
+          <article class="benefit-card">
+            <span class="benefit-card__number">13</span>
+            <h3>Purpose-built tools</h3>
+            <p>Read state, record work, attach evidence, ask questions, and request approval.</p>
+          </article>
+          <article class="benefit-card">
+            <span class="benefit-card__number">v1 → v2</span>
+            <h3>Conflict-aware writes</h3>
+            <p>A version check stops an agent from writing over a rule you added mid-task.</p>
+          </article>
+          <article class="benefit-card">
+            <span class="benefit-card__number">0</span>
+            <h3>Servers required</h3>
+            <p>The task log stays in this browser and remains directly inspectable by you.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="landing-cta" aria-labelledby="cta-title">
+        <div>
+          <p class="section-kicker">See the full human-agent loop</p>
+          <h2 id="cta-title">Open a prepared task and understand Keydler in under a minute.</h2>
+        </div>
+        <button type="button" id="seed-footer" class="btn btn--primary">Explore the live demo</button>
+      </section>
+
+      <footer class="site-footer">
+        <span>Keydler</span>
+        <span>Browser-local · Open source · Powered by WebMCP</span>
+      </footer>
     </section>`
 }
 
 function renderReadyForAI(task: TaskState): string {
   if (task.steps.length > 0) return ''
   return `<section class="card card--guide" aria-labelledby="guide-title">
-      <h2 id="guide-title" class="card__title">Ready for your AI</h2>
-      <p>Open this page with a WebMCP-enabled agent and say:</p>
+      <h2 id="guide-title" class="card__title">Ready for WebMCP</h2>
+      <p>Open this page with a WebMCP-enabled agent, then say:</p>
       <p class="quote">Continue this task.</p>
       <p class="muted">
-        The agent will read this log before working and update it as it progresses.
+        The agent can call <code>resume_task</code> to read this log before working,
+        then update the same state you see here as it progresses.
       </p>
     </section>`
 }
@@ -794,7 +896,7 @@ function renderDontRetry(task: TaskState): string {
            <div class="field">
              <label for="new-rejection-reason">Why it failed</label>
              <input id="new-rejection-reason" type="text" autocomplete="off" aria-required="true"
-                    placeholder="Breaks refresh token rotation under concurrent logins" />
+                    placeholder="Breaks refresh token rotation under concurrent requests" />
            </div>
            <button type="submit" class="btn">Rule it out</button>
          </form>
@@ -1270,9 +1372,7 @@ function renderHandoff(task: TaskState): string {
        <span class="muted">You ${escapeHtml(undo)}.</span>`
     : ''
 
-  if (task.status !== 'active') {
-    return undoButton ? `<p class="handoff">${undoButton}</p>` : ''
-  }
+  if (task.status !== 'active') return undoButton ? `<div class="handoff">${undoButton}</div>` : ''
 
   // Before the click, not after: once the address is in the clipboard the
   // decision is made. Shown only when true, so it keeps being read.
@@ -1287,20 +1387,31 @@ function renderHandoff(task: TaskState): string {
            carries before you send this on. Sealed credentials never travel.</span>`
       : ''
 
-  return `<p class="handoff">
-      <button type="button" id="copy-handoff" class="btn">Copy the hand-off for your agent</button>
-      <span class="muted">Copies this page’s address and “Continue this task.”</span>
-      <button type="button" id="copy-link" class="btn btn--quiet">Copy a link that carries this log</button>
-      <button type="button" id="copy-sealed-link" class="btn btn--quiet">Copy a protected link</button>
-      <span class="muted">
-        A protected link is sealed with a passphrase you give them another way.
-        Nobody can tell who opens a link (that would need a server), but a
-        sealed one is useless to anyone who does not know the phrase.
-      </span>
-      ${carriedNote}
-      <button type="button" id="copy-state" class="btn btn--quiet">Copy the log as text</button>
-      ${undoButton}
-    </p>`
+  return `<section class="handoff" aria-labelledby="handoff-title">
+      <div class="handoff__copy">
+        <p class="section-kicker">Agent hand-off</p>
+        <h2 id="handoff-title">Continue this task in any conversation.</h2>
+        <p class="muted">The hand-off copies this page’s address and the prompt “Continue this task.”</p>
+      </div>
+      <div class="handoff__controls">
+        <button type="button" id="copy-handoff" class="btn btn--primary">Copy the hand-off for your agent</button>
+        <details class="handoff__more">
+          <summary>More sharing options</summary>
+          <div class="handoff__menu">
+            <button type="button" id="copy-link" class="btn">Copy a link that carries this log</button>
+            <button type="button" id="copy-sealed-link" class="btn">Copy a protected link</button>
+            <button type="button" id="copy-state" class="btn">Copy the log as text</button>
+          </div>
+          <p class="muted">
+            A protected link is sealed with a passphrase you share separately.
+            Nobody can tell who opens a link (that would need a server), but a
+            protected one is unreadable without that phrase.
+          </p>
+          ${carriedNote}
+        </details>
+        ${undoButton}
+      </div>
+    </section>`
 }
 
 const KIND_HINTS: Record<SecretKind, { name: string; purpose: string }> = {
@@ -1655,7 +1766,7 @@ function renderTechnical(task: TaskState | null): string {
                restart the browser, then reload this page.</p>`
 
   return `<details class="technical">
-      <summary>Technical details</summary>
+      <summary>WebMCP status and developer details</summary>
       <div class="technical__body">
         ${webmcp}
         <p class="mono">Registered: ${escapeHtml(toolNames.join(' · ')) || '(none)'}</p>
@@ -1680,7 +1791,7 @@ function renderTechnical(task: TaskState | null): string {
         }
         ${renderToolInspector()}
         <div class="actions">
-          <button type="button" id="export-one" class="btn">Export this task</button>
+          ${task ? '<button type="button" id="export-one" class="btn">Export this task</button>' : ''}
           <button type="button" id="export-all" class="btn">Export all tasks</button>
           <button type="button" id="reset-witness" class="btn">Clear the call log</button>
           ${task ? '<button type="button" id="delete" class="btn btn--danger">Delete this task</button>' : ''}
@@ -1694,10 +1805,11 @@ function renderTechnical(task: TaskState | null): string {
 }
 
 function renderDashboard(task: TaskState): string {
-  return `<header class="page-head">
-      <div class="eyebrow-row">
-        <p class="page-head__eyebrow">Keydler</p>
-        ${renderThemeToggle()}
+  return `${renderBrandBar('task')}
+    <header class="page-head">
+      <div class="page-head__status">
+        ${renderWebMcpBadge()}
+        ${renderLastWrite(task)}
       </div>
       ${
         editingIs('title')
@@ -1708,7 +1820,6 @@ function renderDashboard(task: TaskState): string {
                        aria-label="Rename this task">Rename</button>
              </div>`
       }
-      ${renderLastWrite(task)}
       ${renderAgentLive()}
       ${renderSwitcher(task)}
       ${renderSearchBox()}
@@ -1736,14 +1847,14 @@ function renderDashboard(task: TaskState): string {
     ${searching() ? '' : renderActivity(task)}
     ${searching() ? '' : renderHistory(task)}
     ${renderTechnical(task)}
-    <footer class="page-credits">
-      <p class="page-credits__design">Google Fonts · Material Design 3 · Google Icons</p>
-      <p class="page-credits__models">Claude Opus 5 &amp; Sonnet 5 · GPT-5.6 Sol · Cursor Grok 4.6 Extra High Fast · GPT-5.6 Luna</p>
+    <footer class="site-footer page-credits">
+      <span>Keydler</span>
+      <span>Browser-local · Human supervised · Powered by WebMCP</span>
     </footer>`
 }
 
-// What replaces a "Sign in" button: the browser is the account, and nothing
-// said so. A second device gets a file, not a link: 60 steps seal to 17,349
+// The workspace makes the browser-local storage model explicit. A second
+// device gets a file, not a link: 60 steps seal to 17,349
 // characters against a 16,000 URL limit, and 85,657 as a file.
 function renderWorkspace(): string {
   const n = allTasks.length
@@ -1765,16 +1876,13 @@ function renderWorkspace(): string {
     )
     .join('')
 
-  return `<section class="landing">
-      <div class="eyebrow-row">
-        <p class="landing__eyebrow">Keydler</p>
-        ${renderThemeToggle()}
-      </div>
+  return `<section class="landing landing--workspace">
+      ${renderBrandBar('workspace')}
       <h1 class="landing__headline">Your workspace lives in this browser.</h1>
       <p class="landing__lede">
-        There is nothing to sign in to. Keydler has no account and no server:
-        opening this site on this device is the whole of it. What you write is
-        never sent anywhere: there is nowhere to send it, and this page's
+        Keydler has no account and no server. Opening this site on this device is
+        the whole workspace. What you write is never sent anywhere: there is
+        nowhere to send it, and this page's
         content security policy blocks every other origin.
       </p>
       ${alertBlock()}
@@ -1811,7 +1919,9 @@ function renderWorkspace(): string {
           in an address, and a log of sixty steps does not.
         </p>
         <div class="actions">
-          <button type="button" id="export-all" class="btn">Export all logs</button>
+          <button type="button" id="export-all" class="btn"${
+            n === 0 ? ' disabled title="Create or import a task first"' : ''
+          }>Export all logs</button>
         </div>
       </section>
 
@@ -1824,10 +1934,10 @@ function renderWorkspace(): string {
           clear, and before you switch browsers.
         </p>
       </section>
-
-      <div class="actions">
-        <button type="button" id="leave-workspace" class="btn btn--quiet">Back</button>
-      </div>
+      <footer class="site-footer">
+        <span>Keydler</span>
+        <span>Browser-local · Open source · Powered by WebMCP</span>
+      </footer>
     </section>`
 }
 
@@ -1952,10 +2062,11 @@ function bindCreation(): void {
       )
   })
 
-  document.querySelector('#seed')?.addEventListener('click', () => {
-    const n = Number(new URLSearchParams(location.search).get('measure'))
-    void store.openPreparedTask(n ? buildMeasureTask(n) : buildDemoTask())
-  })
+  for (const seed of document.querySelectorAll('#seed, #seed-footer'))
+    seed.addEventListener('click', () => {
+      const n = Number(new URLSearchParams(location.search).get('measure'))
+      void store.openPreparedTask(n ? buildMeasureTask(n) : buildDemoTask())
+    })
 }
 
 function bindSupervision(): void {
@@ -2765,20 +2876,27 @@ function bindTechnical(): void {
 
   // A link, not a button: it changes the address, so middle-click, Ctrl+click
   // and "open in a new tab" must work, and a screen reader must announce a
-  // destination. Also the only <a href> on the page, so the only crawl path.
+  // destination. Keeping it as a link also gives crawlers a real route.
   document.querySelector('#go-workspace')?.addEventListener('click', (e) => {
     // Only the plain click is intercepted: modifiers and the middle button must
     // keep the browser's native behaviour.
     const clic = e as MouseEvent
     if (clic.metaKey || clic.ctrlKey || clic.shiftKey || clic.altKey || clic.button !== 0) return
     e.preventDefault()
+    history.pushState(null, '', WORKSPACE_PATH)
     atWorkspace = true
     renderNow()
   })
 
-  document.querySelector('#leave-workspace')?.addEventListener('click', () => {
+  document.querySelector('#leave-workspace')?.addEventListener('click', (e) => {
     // Back to where the visit started: a log if one is open, the landing page
     // otherwise. `reflectAddress` brings the address back in step.
+    const click = e as MouseEvent
+    if (click.metaKey || click.ctrlKey || click.shiftKey || click.altKey || click.button !== 0)
+      return
+    e.preventDefault()
+    const task = store.currentTask()
+    history.pushState(null, '', task ? taskPath(task.id) : '/')
     atWorkspace = false
     renderNow()
   })
@@ -3018,6 +3136,16 @@ function onNetworkChange(): void {
   scheduleRender()
 }
 
+function onHistoryNavigation(): void {
+  atWorkspace = isWorkspacePath(location.pathname)
+  const id = currentTaskIdFromLocation()
+  if (id && id !== store.boundTaskId()) {
+    void store.openTask(id)
+    return
+  }
+  scheduleRender()
+}
+
 function looking(): boolean {
   return typeof document.visibilityState !== 'string' || document.visibilityState === 'visible'
 }
@@ -3189,6 +3317,7 @@ export function mount(target: HTMLElement): () => void {
   document.addEventListener('visibilitychange', onVisibilityChange)
   window.addEventListener('online', onNetworkChange)
   window.addEventListener('offline', onNetworkChange)
+  window.addEventListener('popstate', onHistoryNavigation)
 
   return () => {
     document.removeEventListener('keydown', focusSearchOnSlash)
@@ -3197,6 +3326,7 @@ export function mount(target: HTMLElement): () => void {
     document.removeEventListener('visibilitychange', onVisibilityChange)
     window.removeEventListener('online', onNetworkChange)
     window.removeEventListener('offline', onNetworkChange)
+    window.removeEventListener('popstate', onHistoryNavigation)
     hideRevealed()
     clearNotice()
     for (const off of subscriptions) off()
