@@ -4,8 +4,8 @@ import paquetBrut from '../package.json?raw'
 import ci from '../.github/workflows/ci.yml?raw'
 import { ALL_TOOLS } from '../src/webmcp/tools'
 
-// Chaque fichier d'épreuve, lu tel quel : c'est la seule façon de compter les
-// déclarations sans faire tourner la suite depuis l'intérieur d'elle-même.
+// Every test file read as text. Counting declarations from inside the suite
+// itself is not possible, so they are counted from the source.
 const fichiersDEpreuve = Object.values(
   import.meta.glob('./**/*.test.ts', { eager: true, query: '?raw', import: 'default' }),
 ) as string[]

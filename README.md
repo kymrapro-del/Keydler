@@ -10,7 +10,7 @@ and mistakes not to repeat, even when the conversation changes.**
 _Conversations reset. The work should not._
 
 [![CI](https://github.com/kymrapro-del/ChatGPT-WebMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/kymrapro-del/ChatGPT-WebMCP/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-928-3d4ec8)](docs/verification.md)
+[![Tests](https://img.shields.io/badge/tests-931-3d4ec8)](docs/verification.md)
 [![WebMCP tools](https://img.shields.io/badge/WebMCP%20tools-13-3d4ec8)](#the-tools)
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-1-3d4ec8)](package.json)
 [![Backend](https://img.shields.io/badge/backend-none-3d4ec8)](SECURITY.md)

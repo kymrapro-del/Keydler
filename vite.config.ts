@@ -3,14 +3,13 @@ import { defineConfig } from 'vitest/config'
 import { tokensDe } from './scripts/jeton.mjs'
 
 /**
- * Sans jeton, le greffon ne faisait rien — silencieusement. Une variable
- * d'environnement mal orthographiée chez l'hébergeur produisait donc un site
- * d'apparence saine où `document.modelContext` n'existe jamais, et où la seule
- * chose que voit un juge est « WebMCP is not available in this browser ».
- * Toutes les vérifications restaient vertes.
+ * With no token the plugin did nothing, and said nothing. A misspelled
+ * environment variable at the host produced a healthy-looking site where
+ * `document.modelContext` never exists, and where all a judge sees is "WebMCP
+ * is not available in this browser". Every check stayed green.
  *
- * Un jeton d'origin trial n'est pas un secret : il est imprimé tel quel dans
- * le HTML servi. Le taire n'apportait rien ; échouer fort apporte tout.
+ * An origin trial token is not a secret: it is printed as-is in the served
+ * HTML. Hiding it bought nothing. Failing loudly buys everything.
  */
 function originTrialMeta(brut: string | undefined, production: boolean): Plugin {
   const tokens = tokensDe(brut)
@@ -52,11 +51,11 @@ export default defineConfig(({ mode }) => {
     ],
     build: {
       target: 'es2022',
-      // Jamais par défaut : `npm run build` est ce que les hébergeurs
-      // détectent tout seuls, et la carte de source pesait 519 ko — plus que
-      // tout le reste du site réuni. Elle rend aussi la source entière lisible
-      // par un agent qui pilote le navigateur, ce que les campagnes de mesure
-      // supposent impossible. `SOURCEMAP=1` la redemande.
+      // Never by default: `npm run build` is what hosts detect on their own,
+      // and the source map weighed 519 KB, more than the rest of the site put
+      // together. It also makes the whole source readable by an agent driving
+      // the browser, which the measurement campaigns treat as impossible.
+      // `SOURCEMAP=1` asks for it back.
       sourcemap: process.env.SOURCEMAP === '1',
     },
     test: {
