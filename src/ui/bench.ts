@@ -253,10 +253,15 @@ function renderWebMcpBadge(): string {
   const { phase, toolNames } = getRegistrationState()
   const active = phase === 'registered' || phase === 'partial'
   const count = active ? toolNames.length : ALL_TOOLS.length
+  const label = active
+    ? count === READ_TOOLS.length
+      ? `${count} read tools`
+      : `${count} tools`
+    : `${count} task tools`
 
   return `<span class="webmcp-badge${active ? ' webmcp-badge--active' : ''}">
       <span class="webmcp-badge__dot" aria-hidden="true"></span>
-      ${active ? `WebMCP active · ${count} tools` : `WebMCP ready · ${count} tools`}
+      ${active ? 'WebMCP active' : 'WebMCP ready'} · ${label}
     </span>`
 }
 
@@ -484,6 +489,10 @@ function renderLanding(): string {
             </li>
           </ol>
           <p class="webmcp-story__note">The page is the shared tool surface, not a dashboard bolted onto an API.</p>
+          <p class="webmcp-story__tools">
+            <strong>4 read tools</strong> are always available. An active task adds
+            <strong>9 write tools</strong>, for 13 total.
+          </p>
         </div>
       </div>
 

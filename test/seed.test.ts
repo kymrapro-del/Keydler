@@ -43,6 +43,12 @@ describe('the demo log', () => {
     expect(buildDemoTask().next).toContain('approach C')
   })
 
+  it('starts with a concrete definition of done', () => {
+    const task = buildDemoTask()
+    expect(task.goal).toBe('Session-bound tokens ship.')
+    expect(renderTaskState(task)).toContain('DONE WHEN')
+  })
+
   it('covers all three levels of evidence', () => {
     const counts = evidenceCounts(buildDemoTask())
     expect(counts.human_verified).toBeGreaterThan(0)

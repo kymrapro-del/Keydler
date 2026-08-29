@@ -97,10 +97,14 @@ describe('first visit', () => {
   it('makes the WebMCP implementation visible before a task is opened', async () => {
     await settled()
 
-    expect(root.querySelector('.webmcp-badge')?.textContent).toContain('WebMCP ready · 13 tools')
+    expect(root.querySelector('.webmcp-badge')?.textContent).toContain(
+      'WebMCP ready · 13 task tools',
+    )
     expect(text()).toContain('Why WebMCP matters')
     expect(text()).toContain('resume_task')
     expect(text()).toContain('A stale write is refused')
+    expect(text()).toContain('4 read tools are always available')
+    expect(text()).toContain('9 write tools')
   })
 
   it('contains no account or authentication actions', async () => {

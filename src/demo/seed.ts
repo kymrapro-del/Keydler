@@ -11,6 +11,7 @@ import {
   pendingApprovals,
   rejectApproach,
   requestApproval,
+  setGoal,
   setConstraintStanding,
   setRejectionStanding,
   verifyEvidence,
@@ -164,10 +165,12 @@ export function buildCoreTask(): TaskState {
 export function buildDemoTask(): TaskState {
   let task = buildCoreTask()
 
+  task = setGoal(task, 'Session-bound tokens ship.')
+
   task = askHuman(
     task,
     {
-      question: 'Should mobile sessions expires on the same 15-minute window as web?',
+      question: 'Should mobile sessions expire on the same 15-minute window as web?',
       why: 'It is a product call, not a technical one, and it changes the rollout.',
       basedOnVersion: task.version,
     },

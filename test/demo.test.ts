@@ -18,6 +18,7 @@ describe('the demo log shows what the product can do', () => {
     expect(answeredQuestions(task).length).toBeGreaterThan(0)
     expect(answeredQuestions(task)[0].answer).toBeTruthy()
     expect(answeredQuestions(task)[0].why).toBeTruthy()
+    expect(answeredQuestions(task)[0].question).toContain('sessions expire')
   })
 
   it('carries an approval request settled by the human', () => {
