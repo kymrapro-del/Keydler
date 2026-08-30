@@ -78,9 +78,9 @@ describe('first visit', () => {
   it('explains the benefit before the mechanism, and without jargon', async () => {
     await settled()
 
-    expect(text()).toContain('Your next agent conversation starts where the last one stopped.')
+    expect(text()).toContain('Give every agent the context it must not lose.')
     expect(text()).toContain('completed work, binding rules, evidence, and dead ends')
-    expect(text()).toContain('reads and updates it directly through WebMCP')
+    expect(text()).toContain('Every new conversation reads the same browser-local memory')
 
     for (const jargon of ['based_on_version', 'mutation_id', 'IndexedDB', 'AbortController']) {
       expect(text(), jargon).not.toContain(jargon)
@@ -105,6 +105,18 @@ describe('first visit', () => {
     expect(text()).toContain('A stale write is refused')
     expect(text()).toContain('4 read tools are always available')
     expect(text()).toContain('9 write tools')
+  })
+
+  it('uses the original Keydler artwork to explain the product', async () => {
+    await settled()
+
+    const sources = [...root.querySelectorAll<HTMLImageElement>('img')].map((image) => image.src)
+    for (const asset of ['mascot.webp', 'controls.webp', 'puzzle.webp', 'ledger.webp']) {
+      expect(
+        sources.some((source) => source.endsWith(`/assets/brand/${asset}`)),
+        asset,
+      ).toBe(true)
+    }
   })
 
   it('contains no account or authentication actions', async () => {

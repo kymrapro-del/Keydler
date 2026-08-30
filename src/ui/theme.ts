@@ -43,6 +43,6 @@ export function applyTheme(choice: ThemeChoice): void {
   }
   const meta = document.createElement('meta')
   meta.name = 'theme-color'
-  meta.content = resolved === 'dark' ? '#131316' : '#ffffff'
+  meta.content = resolved === 'dark' ? '#10140d' : '#f4f6ee'
   document.head.append(meta)
 }

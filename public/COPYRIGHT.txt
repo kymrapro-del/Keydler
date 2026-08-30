@@ -6,5 +6,6 @@ limitation :
   - og.png
   - favicon.ico
   - icons/                     (see icons/COPYRIGHT.txt)
+  - assets/brand/              (see assets/brand/COPYRIGHT.txt)
 
 They ship with the Keydler repository under the MIT License in LICENSE.

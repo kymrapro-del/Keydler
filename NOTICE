@@ -15,6 +15,7 @@ Moon1pact. That includes, without limitation:
 
   - docs/assets/               product screenshots used in the README
   - public/icons/              application icons (SVG and PNG)
+  - public/assets/brand/       Keydler illustrations, objects, and motion assets
   - public/og.png              Open Graph image
   - public/favicon.ico         favicon
 

@@ -56,13 +56,13 @@ describe('theme choice', () => {
   it('keeps the browser bar color current', () => {
     applyTheme('dark')
     const dark = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-    expect(dark!.content).toBe('#131316')
+    expect(dark!.content).toBe('#10140d')
 
     applyTheme('light')
     const metas = document.querySelectorAll('meta[name="theme-color"]')
     // Only one: stacking the tags would leave the browser to choose.
     expect(metas).toHaveLength(1)
-    expect((metas[0] as HTMLMetaElement).content).toBe('#ffffff')
+    expect((metas[0] as HTMLMetaElement).content).toBe('#f4f6ee')
   })
 
   it('names the state in plain words', () => {

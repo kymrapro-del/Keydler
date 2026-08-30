@@ -97,7 +97,15 @@ describe('the other headers', () => {
     // been deleted: the classic white screen after a deployment.
     expect(headers).toMatch(/\/assets\/\*\n\s+Cache-Control: public, max-age=31536000, immutable/)
     for (const f of ['/index.html', '/sw.js', '/manifest.webmanifest']) {
-      expect(headers, f).toMatch(new RegExp(`${f}\\n\\s+Cache-Control: no-cache`))
+      expect(headers, f).toMatch(new RegExp(`${f}\\n\\s+Cache-Control: no-cache, no-transform`))
     }
+  })
+
+  it('prevents edge transformations on application documents', () => {
+    // Cloudflare respects `no-transform` and leaves the strict CSP document
+    // untouched instead of injecting a browser detection script.
+    expect(headers).toMatch(
+      /\/\*\n(?:.|\n)*?Cache-Control: public, max-age=0, must-revalidate, no-transform/,
+    )
   })
 })

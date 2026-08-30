@@ -233,10 +233,10 @@ function renderBrandBar(view: 'home' | 'workspace' | 'task'): string {
   const returnPath = task ? taskPath(task.id) : '/'
 
   return `<div class="topbar">
-      <div class="brand" aria-label="Keydler">
-        <img class="brand__mark" src="/icons/icon.svg" alt="" width="36" height="36" />
+      <a class="brand" href="/" aria-label="Keydler home">
+        <img class="brand__mark" src="/assets/brand/mark.jpg" alt="" width="36" height="36" />
         <span class="brand__name">Keydler</span>
-      </div>
+      </a>
       <nav class="topbar__nav" aria-label="Primary navigation">
         ${
           view === 'workspace'
@@ -244,9 +244,28 @@ function renderBrandBar(view: 'home' | 'workspace' | 'task'): string {
                <span class="nav-link nav-link--active" aria-current="page">Workspace</span>`
             : `<a class="nav-link" href="${WORKSPACE_PATH}" id="go-workspace">Workspace</a>`
         }
+        <a class="topbar__source" href="https://github.com/kymrapro-del/ChatGPT-WebMCP"
+           target="_blank" rel="noopener noreferrer" aria-label="View the source on GitHub">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 17 17 7" />
+            <path d="M8 7h9v9" />
+          </svg>
+        </a>
         ${renderThemeToggle()}
       </nav>
     </div>`
+}
+
+function renderSiteFooter(message: string): string {
+  return `<footer class="site-footer">
+      <div class="site-footer__meta">
+        <span>${message}</span>
+        <a href="https://github.com/kymrapro-del/ChatGPT-WebMCP"
+           target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+      <p class="site-footer__wordmark" aria-hidden="true">Keydler</p>
+    </footer>`
 }
 
 function renderWebMcpBadge(): string {
@@ -450,14 +469,27 @@ function renderLanding(): string {
       ${renderSealedOffer()}
       ${renderOffer()}
       ${renderShortcuts()}
-      <div class="landing-hero">
+      <section id="landing-hero" class="landing-hero brand-panel${
+        creating ? ' landing-hero--creating' : ''
+      }" aria-labelledby="landing-title">
+        <div class="brand-panel__decor" aria-hidden="true">
+          <img class="brand-shape brand-shape--cube" src="/assets/brand/cube.webp" alt=""
+               width="384" height="378" decoding="async" />
+          <img class="brand-shape brand-shape--cylinder" src="/assets/brand/cylinder.webp" alt=""
+               width="384" height="348" decoding="async" />
+          <img class="brand-shape brand-shape--gem" src="/assets/brand/gem.webp" alt=""
+               width="459" height="468" decoding="async" />
+        </div>
         <div class="landing-hero__copy">
           ${renderWebMcpBadge()}
-          <p class="landing__eyebrow">Shared task memory for humans and agents</p>
-          <h1 class="landing__headline">Your next agent conversation starts where the last one stopped.</h1>
+          <p class="landing__eyebrow">Keydler · open source memory for WebMCP agents</p>
+          <h1 id="landing-title" class="landing__headline">
+            Give every agent the context it must <mark class="brand-highlight">not</mark> lose.
+          </h1>
           <p class="landing__lede">
             Keydler keeps completed work, binding rules, evidence, and dead ends in one
-            browser-local log. Your agent reads and updates it directly through WebMCP.
+            supervised workspace. Every new conversation reads the same browser-local memory
+            and continues through WebMCP.
           </p>
           ${form}
           <ul class="landing__trust" aria-label="Product principles">
@@ -472,7 +504,7 @@ function renderLanding(): string {
               <p class="section-kicker">A WebMCP hand-off</p>
               <h2>One task. Every conversation.</h2>
             </div>
-            <img src="/icons/icon.svg" alt="" width="44" height="44" />
+            <img src="/assets/brand/mark.jpg" alt="" width="44" height="44" />
           </div>
           <ol class="webmcp-flow">
             <li>
@@ -494,48 +526,84 @@ function renderLanding(): string {
             <strong>9 write tools</strong>, for 13 total.
           </p>
         </div>
-      </div>
+      </section>
 
-      <section class="landing-section" aria-labelledby="webmcp-title">
+      <section id="how-it-works" class="landing-section identity-section" aria-labelledby="webmcp-title">
         <div class="landing-section__intro">
           <p class="section-kicker">Why WebMCP matters</p>
-          <h2 id="webmcp-title">The agent works with the same state you can see and correct.</h2>
+          <h2 id="webmcp-title">The agent works with the same memory you can see and correct.</h2>
           <p>
-            Structured tools replace fragile screen guessing. Human corrections take effect
-            immediately, while agent proposals remain proposals until you accept them.
+            Typed tools replace fragile screen guessing. Your corrections take effect immediately,
+            while an agent's proposals remain proposals until you accept them.
           </p>
         </div>
-        <div class="benefit-grid">
-          <article class="benefit-card">
-            <span class="benefit-card__number">13</span>
-            <h3>Purpose-built tools</h3>
-            <p>Read state, record work, attach evidence, ask questions, and request approval.</p>
+        <div class="reason-stack">
+          <article class="reason-card reason-card--human">
+            <img class="reason-card__mascot" src="/assets/brand/mascot.webp" alt=""
+                 width="292" height="309" loading="lazy" decoding="async" />
+            <div class="reason-card__copy">
+              <span class="reason-card__step">01 · Human directed</span>
+              <h3>The human sets the memory</h3>
+              <p>Rules, rejected approaches, and verified evidence stay visible and editable.</p>
+            </div>
+            <img class="reason-card__art" src="/assets/brand/controls.webp" alt=""
+                 width="571" height="375" loading="lazy" decoding="async" />
           </article>
-          <article class="benefit-card">
-            <span class="benefit-card__number">v1 → v2</span>
-            <h3>Conflict-aware writes</h3>
-            <p>A version check stops an agent from writing over a rule you added mid-task.</p>
+          <article class="reason-card reason-card--tools">
+            <div class="reason-card__copy">
+              <span class="reason-card__step">02 · Typed tools</span>
+              <h3>The agent reads structured context</h3>
+              <p>WebMCP exposes compact operations instead of asking a model to guess the interface.</p>
+            </div>
+            <img class="reason-card__art" src="/assets/brand/puzzle.webp" alt=""
+                 width="513" height="298" loading="lazy" decoding="async" />
           </article>
-          <article class="benefit-card">
-            <span class="benefit-card__number">0</span>
-            <h3>Servers required</h3>
-            <p>The task log stays in this browser and remains directly inspectable by you.</p>
+          <article class="reason-card reason-card--writes">
+            <div class="reason-card__copy">
+              <span class="reason-card__step">03 · Conflict aware</span>
+              <h3>Every write stays supervised</h3>
+              <p>Stale writes are refused, retries do not duplicate, and the audit remains readable.</p>
+            </div>
+            <img class="reason-card__art" src="/assets/brand/ledger.webp" alt=""
+                 width="495" height="337" loading="lazy" decoding="async" />
           </article>
         </div>
       </section>
 
-      <section class="landing-cta" aria-labelledby="cta-title">
+      <section id="webmcp-tools" class="tool-anatomy" aria-labelledby="tools-title">
+        <div class="tool-anatomy__copy">
+          <p class="section-kicker">WebMCP under the hood</p>
+          <h2 id="tools-title">Four tools orient the agent. Nine let it work.</h2>
+          <p>
+            The overview stays safe and readable. Opening a task adds the supervised write tools
+            needed to record progress, attach proof, ask questions, and request approval.
+          </p>
+        </div>
+        <div class="tool-equation" aria-label="4 read tools plus 9 write tools equals 13 tools">
+          <div><strong>4</strong><span>read tools<br />always available</span></div>
+          <b aria-hidden="true">+</b>
+          <div><strong>9</strong><span>write tools<br />inside a task</span></div>
+          <b aria-hidden="true">=</b>
+          <div class="tool-equation__total"><strong>13</strong><span>purpose-built<br />WebMCP tools</span></div>
+        </div>
+        <div class="tool-belt" aria-label="Example WebMCP tools">
+          <span>resume_task</span><i>✦</i><span>task_detail</span><i>✦</i><span>log_step</span>
+          <i>✦</i><span>add_constraint</span><i>✦</i><span>attach_evidence</span>
+          <i>✦</i><span>request_approval</span>
+        </div>
+      </section>
+
+      <section class="landing-cta brand-panel" aria-labelledby="cta-title">
+        <img class="landing-cta__art" src="/assets/brand/gem.webp" alt=""
+             width="459" height="468" loading="lazy" decoding="async" />
         <div>
-          <p class="section-kicker">See the full human-agent loop</p>
+          <p class="section-kicker">See the complete hand-off</p>
           <h2 id="cta-title">Open a prepared task and understand Keydler in under a minute.</h2>
         </div>
         <button type="button" id="seed-footer" class="btn btn--primary">Explore the live demo</button>
       </section>
 
-      <footer class="site-footer">
-        <span>Keydler</span>
-        <span>Browser-local · Open source · Powered by WebMCP</span>
-      </footer>
+      ${renderSiteFooter('Browser-local · Open source · Powered by WebMCP')}
     </section>`
 }
 
@@ -1856,10 +1924,9 @@ function renderDashboard(task: TaskState): string {
     ${searching() ? '' : renderActivity(task)}
     ${searching() ? '' : renderHistory(task)}
     ${renderTechnical(task)}
-    <footer class="site-footer page-credits">
-      <span>Keydler</span>
-      <span>Browser-local · Human supervised · Powered by WebMCP</span>
-    </footer>`
+    <div class="page-credits">
+      ${renderSiteFooter('Browser-local · Human supervised · Powered by WebMCP')}
+    </div>`
 }
 
 // The workspace makes the browser-local storage model explicit. A second
@@ -1887,66 +1954,78 @@ function renderWorkspace(): string {
 
   return `<section class="landing landing--workspace">
       ${renderBrandBar('workspace')}
-      <h1 class="landing__headline">Your workspace lives in this browser.</h1>
-      <p class="landing__lede">
-        Keydler has no account and no server. Opening this site on this device is
-        the whole workspace. What you write is never sent anywhere: there is
-        nowhere to send it, and this page's
-        content security policy blocks every other origin.
-      </p>
+      <header class="workspace-hero brand-panel">
+        <div>
+          ${renderWebMcpBadge()}
+          <p class="section-kicker">Local memory desk</p>
+          <h1>Your workspace lives in this browser.</h1>
+          <p>
+            Keydler has no account and no server. Opening this site on this device is
+            the whole workspace. What you write is never sent anywhere: there is
+            nowhere to send it, and this page's content security policy blocks every other origin.
+          </p>
+        </div>
+        <img class="workspace-hero__art" src="/assets/brand/ledger.webp" alt=""
+             width="495" height="337" decoding="async" />
+      </header>
       ${alertBlock()}
 
-      <section class="card" aria-labelledby="here-title">
-        <h2 id="here-title" class="card__title">
-          ${n === 0 ? 'Nothing is stored here yet' : `${n} ${plural(n, 'log', 'logs')} on this device`}
-        </h2>
-        ${
-          n === 0
-            ? `<p class="muted">
-                 Start one, or bring one in from a file you exported elsewhere.
-               </p>`
-            : `<ul class="rows">${rows}</ul>`
-        }
-        <div class="actions">
-          <button type="button" id="new-task" class="btn btn--primary">New task</button>
-          <button type="button" id="import" class="btn">Import a file</button>
-          <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown"
-                 aria-label="Choose an exported file to import" hidden />
-        </div>
-      </section>
+      <div class="workspace-board">
+        <section class="workspace-section workspace-section--logs" aria-labelledby="here-title">
+          <p class="workspace-section__kicker">On this device</p>
+          <h2 id="here-title">
+            ${n === 0 ? 'Nothing is stored here yet' : `${n} ${plural(n, 'log', 'logs')} on this device`}
+          </h2>
+          ${
+            n === 0
+              ? `<p class="muted">
+                   Start one, or bring one in from a file you exported elsewhere.
+                 </p>`
+              : `<ul class="rows">${rows}</ul>`
+          }
+          <div class="actions">
+            <button type="button" id="new-task" class="btn btn--primary">New task</button>
+            <button type="button" id="import" class="btn">Import a file</button>
+            <input id="import-file" type="file" accept=".md,.markdown,.json,text/markdown"
+                   aria-label="Choose an exported file to import" hidden />
+          </div>
+        </section>
 
-      <section class="card" aria-labelledby="move-title">
-        <h2 id="move-title" class="card__title">Moving to another device</h2>
-        <p class="muted">
-          Exporting writes every log on this device into one file. Importing it
-          somewhere else brings them in. From that moment the two run
-          separately: nothing keeps them in step, and no copy of either exists
-          anywhere but on the devices holding it.
-        </p>
-        <p class="muted">
-          Send a file rather than a link when the log is real: a link has to fit
-          in an address, and a log of sixty steps does not.
-        </p>
-        <div class="actions">
-          <button type="button" id="export-all" class="btn"${
-            n === 0 ? ' disabled title="Create or import a task first"' : ''
-          }>Export all logs</button>
-        </div>
-      </section>
+        <section class="workspace-section" aria-labelledby="move-title">
+          <p class="workspace-section__kicker">Portable by file</p>
+          <h2 id="move-title">Moving to another device</h2>
+          <p class="muted">
+            Exporting writes every log on this device into one file. Importing it
+            somewhere else brings them in. From that moment the two run
+            separately: nothing keeps them in step, and no copy of either exists
+            anywhere but on the devices holding it.
+          </p>
+          <p class="muted">
+            Send a file rather than a link when the log is real: a link has to fit
+            in an address, and a log of sixty steps does not.
+          </p>
+          <div class="actions">
+            <button type="button" id="export-all" class="btn"${
+              n === 0 ? ' disabled title="Create or import a task first"' : ''
+            }>Export all logs</button>
+          </div>
+        </section>
 
-      <section class="card" aria-labelledby="cost-title">
-        <h2 id="cost-title" class="card__title">What that costs you</h2>
-        <p class="muted">
-          Clearing this site's data deletes every log here, and there is no
-          copy on a server to restore from. That is the same property that
-          keeps your work private, seen from the other side. Export before you
-          clear, and before you switch browsers.
-        </p>
-      </section>
-      <footer class="site-footer">
-        <span>Keydler</span>
-        <span>Browser-local · Open source · Powered by WebMCP</span>
-      </footer>
+        <aside class="workspace-caution" aria-labelledby="cost-title">
+          <img src="/assets/brand/cylinder.webp" alt="" width="384" height="348"
+               loading="lazy" decoding="async" />
+          <div>
+            <p class="workspace-section__kicker">Local means local</p>
+            <h2 id="cost-title">What that costs you</h2>
+            <p>
+              Clearing this site's data deletes every log here, and there is no
+              copy on a server to restore from. Export before you clear, and before
+              you switch browsers.
+            </p>
+          </div>
+        </aside>
+      </div>
+      ${renderSiteFooter('Browser-local · Open source · Powered by WebMCP')}
     </section>`
 }
 

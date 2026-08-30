@@ -17,42 +17,59 @@ export const svgFingerprint = (text) => createHash('sha256').update(text, 'utf8'
 // Dark palette from `src/tokens.css`, copied on purpose: the image is produced
 // outside the CSS pipeline, and a value that changes over there has to be
 // carried here knowingly.
-const BACKGROUND = '#131316'
-const SURFACE = '#1c1c20'
-const BORDER = '#34343a'
-const TEXT = '#e6e6ea'
-const MUTED = '#a0a0ac'
-const ACCENT = '#a3adf5'
+const BACKGROUND = '#0d120a'
+const PANEL_START = '#285315'
+const PANEL_END = '#9dcc55'
+const TEXT = '#ffffff'
+const MUTED = '#d8e3d1'
+const ACCENT = '#d7f1a4'
+const HIGHLIGHT = '#f4d76f'
+const ON_HIGHLIGHT = '#355016'
 
 const font = "system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif"
 
 export const buildSvg =
   () => `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="${PANEL_START}"/>
+      <stop offset="1" stop-color="${PANEL_END}"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#071204" stop-opacity="0.62"/>
+      <stop offset="0.68" stop-color="#071204" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#071204" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
   <rect width="1200" height="630" fill="${BACKGROUND}"/>
-  <rect x="72" y="150" width="1056" height="330" rx="18" fill="${SURFACE}" stroke="${BORDER}" stroke-width="2"/>
+  <rect x="62" y="54" width="1076" height="522" rx="34" fill="url(#brand)"/>
+  <rect x="62" y="54" width="1076" height="522" rx="34" fill="url(#shade)"/>
 
-  <text x="120" y="112" font-family="${font}" font-size="26" font-weight="700"
-        letter-spacing="4" fill="${ACCENT}">KEYDLER</text>
+  <text x="112" y="116" font-family="${font}" font-size="22" font-weight="700"
+        letter-spacing="4" fill="${ACCENT}">KEYDLER · WEBMCP TASK MEMORY</text>
 
-  <text x="120" y="268" font-family="${font}" font-size="58" font-weight="700" fill="${TEXT}">
-    A shared memory for you
+  <text x="112" y="224" font-family="${font}" font-size="62" font-weight="720" fill="${TEXT}">
+    Give every agent the context
   </text>
-  <text x="120" y="336" font-family="${font}" font-size="58" font-weight="700" fill="${TEXT}">
-    and your AI.
+  <text x="112" y="296" font-family="${font}" font-size="62" font-weight="720" fill="${TEXT}">
+    it must
+  </text>
+  <rect x="326" y="241" width="150" height="70" rx="8" fill="${HIGHLIGHT}"/>
+  <text x="346" y="296" font-family="${font}" font-size="62" font-weight="760" fill="${ON_HIGHLIGHT}">NOT</text>
+  <text x="495" y="296" font-family="${font}" font-size="62" font-weight="720" fill="${TEXT}">lose.</text>
+
+  <text x="112" y="372" font-family="${font}" font-size="26" fill="${MUTED}">
+    Completed work, binding rules, evidence, and dead ends,
+  </text>
+  <text x="112" y="410" font-family="${font}" font-size="26" fill="${MUTED}">
+    read and updated by your agent through WebMCP.
   </text>
 
-  <text x="120" y="400" font-family="${font}" font-size="27" fill="${MUTED}">
-    Completed work, rules to follow, and mistakes not to repeat,
-  </text>
-  <text x="120" y="438" font-family="${font}" font-size="27" fill="${MUTED}">
-    read and written by your agent over WebMCP, supervised by you.
-  </text>
-
-  <text x="120" y="568" font-family="${font}" font-size="24" fill="${MUTED}">
+  <text x="112" y="518" font-family="${font}" font-size="24" fill="${MUTED}">
     keydler.com
   </text>
-  <text x="1080" y="568" text-anchor="end" font-family="${font}" font-size="24" fill="${MUTED}">
-    No account. No server.
+  <text x="1084" y="518" text-anchor="end" font-family="${font}" font-size="24" font-weight="650" fill="${ACCENT}">
+    4 read tools + 9 write tools = 13
   </text>
 </svg>
 `
