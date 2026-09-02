@@ -198,16 +198,16 @@ Then call `log_step` again with the same `mutation_id` and a different `action`.
 
 ## Record sheet
 
-| #   | Check                                       | Browser / version | Mode noted | Result   | Notes                                                                |
-| --- | ------------------------------------------- | ----------------- | ---------- | -------- | -------------------------------------------------------------------- |
-| 0   | Mode displayed in the status panel          |                   |            |          |                                                                      |
-| 1   | 5 tools with no task                        |                   |            |          |                                                                      |
-| 2   | Agent calls `create_task` unprompted        | Edge 152          | static     | **FAIL** | Never touched the page. Answered from knowledge. See verification.md |
-| 3   | 13 tools on an active task, no reload       |                   |            |          |                                                                      |
-| 4   | `complete_task` does return its answer      |                   |            |          |                                                                      |
-| 5   | Reopening : writes working again            |                   |            |          |                                                                      |
-| 6   | Cancellation : no mutation, refusal audited |                   |            |          |                                                                      |
-| 7   | Exact replay / argument collision           |                   |            |          |                                                                      |
+| #   | Check                                       | Browser / version | Mode noted | Result                | Notes                                                                       |
+| --- | ------------------------------------------- | ----------------- | ---------- | --------------------- | --------------------------------------------------------------------------- |
+| 0   | Mode displayed in the status panel          |                   |            |                       |                                                                             |
+| 1   | 5 tools with no task                        |                   |            |                       |                                                                             |
+| 2   | Agent calls `create_task` unprompted        | Edge 152 + bridge | static     | **FAIL, bridge only** | Never enumerated the page's tools. Not ChatGPT's path : see verification.md |
+| 3   | 13 tools on an active task, no reload       |                   |            |                       |                                                                             |
+| 4   | `complete_task` does return its answer      |                   |            |                       |                                                                             |
+| 5   | Reopening : writes working again            |                   |            |                       |                                                                             |
+| 6   | Cancellation : no mutation, refusal audited |                   |            |                       |                                                                             |
+| 7   | Exact replay / argument collision           |                   |            |                       |                                                                             |
 
 Report the readings in `docs/verification.md`, with the exact browser version. A
 point that was not observed is recorded as “not verified”, never as “assumed

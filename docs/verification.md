@@ -2111,8 +2111,8 @@ assumed.
 page is named, which is the wording the product itself prints in its hand-off
 panel and the wording the demonstration uses at 1:00. That is a separate run.
 
-**Consequence for the demonstration.** The 0:35 beat is filmed as the fallback
-written into the script : the task is created by hand, on camera, and the
-narration says the agent did not reach for the tool. The 1:25 beat, where a
+**Consequence for the demonstration.** Until the same check is run in ChatGPT
+with Sol, the 0:35 beat is filmed as the fallback written into the script : the
+task is created by hand, on camera, and the narration says so. The 1:25 beat, where a
 human rule refuses a write mid-flight, is untouched by this : the agent is
 already holding the page by then.
