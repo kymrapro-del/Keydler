@@ -116,7 +116,7 @@ beside it.
 Tell the agent, in your own words, what you are working on :
 
 > `We need rate limiting on our HTTP API. Pick a mechanism. We can't add any
-new infrastructure, and Redis is out: operations refused it.`
+new infrastructure, and Redis is out, operations refused it.`
 
 What to point at as it happens :
 
