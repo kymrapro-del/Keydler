@@ -51,18 +51,21 @@ jobs:
       - name: Refuse to ship a build that is not deployable
         run: npm run artifact
 
-      # Cloudflare Pages, which is what actually serves keydler.com. The Worker
-      # in `wrangler.jsonc` is what its own first line calls it, "prepared
-      # fallback deployment, not the preferred setup": a plain `wrangler deploy`
-      # aims at that Worker instead, and asks for Workers Scripts permissions
-      # this deployment has no reason to hold.
-      - name: Deploy to Cloudflare Pages
+      # The Worker in `wrangler.jsonc` is what serves keydler.com : it holds the
+      # route on the apex, and `dist/` rides on its `assets` binding. The
+      # comment at the top of that file calls it a fallback because the
+      # preferred fix would be DNS pointing at Pages, and that never happened;
+      # the fallback is the production path.
+      #
+      # Wrangler 4 is pinned : the action installs 3 by default, which has no
+      # assets-only Worker and stops on "Missing entry-point".
+      - name: Deploy the Worker that serves keydler.com
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.128.0'
-          command: pages deploy dist --project-name=keydler --branch=main
+          command: deploy
 
       # The suite runs in jsdom over source code, and this project has paid for
       # that four times : green tests while a browser found the defect in a
