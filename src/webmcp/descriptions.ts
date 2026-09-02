@@ -148,8 +148,8 @@ was decided, and what remains out of scope.`
  * `resume_task`, and the text of the refusals. This says only what to put in.
  */
 export const BASED_ON_VERSION_DESCRIPTION =
-  'The version from your most recent resume_task. If the task has moved since, ' +
-  'the write is refused. Call resume_task again.'
+  'The version from your last read. If the task moved since, the write is ' +
+  'refused: call what_changed for just the delta, then retry.'
 
 export const MUTATION_ID_DESCRIPTION =
   'A fresh unique id for THIS write. If you get no reply, retry with the SAME ' +
