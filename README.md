@@ -9,6 +9,9 @@ and mistakes not to repeat, even when the conversation changes.**
 
 _Conversations reset. The work should not._
 
+Measured : without this log an agent proposed the ruled-out approach again in
+**8 cases out of 8**. With it, in **0**.
+
 [![CI](https://github.com/kymrapro-del/keydler/actions/workflows/ci.yml/badge.svg)](https://github.com/kymrapro-del/keydler/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-945-3d4ec8)](docs/verification.md)
 [![WebMCP tools](https://img.shields.io/badge/WebMCP%20tools-14-3d4ec8)](#the-tools)
@@ -17,9 +20,10 @@ _Conversations reset. The work should not._
 [![License](https://img.shields.io/badge/license-MIT-3d4ec8)](LICENSE)
 
 **[keydler.com](https://keydler.com)** &nbsp;·&nbsp;
-[How it works](#why-webmcp-is-the-point) &nbsp;·&nbsp; [The fourteen
-tools](#the-tools) &nbsp;·&nbsp; [Documentation](docs/) &nbsp;·&nbsp;
-[Security](SECURITY.md)
+[How it works](#why-webmcp-is-the-point) &nbsp;·&nbsp;
+[The measurement](#the-measurement) &nbsp;·&nbsp;
+[The fourteen tools](#the-tools) &nbsp;·&nbsp;
+[Documentation](docs/) &nbsp;·&nbsp; [Security](SECURITY.md)
 
 </div>
 
@@ -124,7 +128,47 @@ sequenceDiagram
 > The refusal is the feature. Without it an agent would overwrite the rule you
 > had just set and never know it, and you would find out from the result.
 
+## The measurement
+
+Eight tasks, two conditions, one binary question : after context loss, is the
+explicitly ruled-out approach proposed again?
+
+> Without the log : 8 out of 8. With the log : 0 out of 8.
+
+Protocol in [`docs/protocols/measurement.md`](docs/protocols/measurement.md), tasks in
+[`docs/measurements/tasks.md`](docs/measurements/tasks.md), raw results in
+[`docs/measurements/results.md`](docs/measurements/results.md).
+
+**What this number is not.** It is exploratory, not statistical :
+
+- Eight runs per condition, same model, same instruction. The results are
+  correlated : they are not sixteen independent observations, and no percentage
+  will be derived from them.
+- **The control is not incompetent.** Its eight answers are good and
+  well-argued : `HttpOnly` cookie, cursor pagination, Redis token bucket, `COPY`,
+  exponential backoff, integer minor units, unique index, single-flight. They are
+  textbook answers. They are wrong _here_, and only here, for a local reason no
+  model could guess.
+
+That is the design principle, found by getting it wrong first : an earlier
+version ruled out classic anti-patterns and the control scored zero, because a
+capable agent avoids those on its own. What has to be ruled out is not the bad
+answer. It is the good answer, set aside for a local reason.
+
+What the number hides is worth more than the number : no agent avoided the
+ruled-out approach by dodging a keyword. They read the reason and kept the part
+still valid : “what was rejected is the Redis backing, not the bucket algorithm”.
+That is the direct justification for one design choice : the domain refuses a
+rejection without a reason.
+
 ## What it looks like
+
+> [!NOTE]
+> **These images predate the Material 3 rebuild and the removal of the landing
+> screen.** They show the panels and the wording faithfully, and the colours and
+> the first screen not at all. They are kept rather than deleted because what
+> they explain is still what the product does; they are due to be retaken
+> against the deployed build.
 
 **First visit**
 
@@ -291,20 +335,14 @@ defend against everything :
 - For production credentials, use a real secret manager. This is for wiring up a
   task without pasting a key into a conversation.
 
-## What else is on the page
-
-Credentials the agent can name but never read, the activity counter, search
-across every task, the history of refused writes : every panel and the reason it
-exists are laid out in [docs/interface.md](docs/interface.md).
+Every other panel, and the reason it exists, is laid out in
+[docs/interface.md](docs/interface.md) : the activity counter, search across
+every task, and the history of refused writes.
 
 ## Audits
 
-[`docs/contest.md`](docs/contest.md) is what nine agents established about the
-challenge itself from primary sources : the deadline freeze that is not on the
-rules page, the video requirements that are stricter than they look, and the
-uncomfortable finding that "the agent proposes, the human decides" is the single
-most crowded pitch in the field rather than a differentiator. It also lists, at
-length, what could not be established.
+Three passes over this repository, each one written down with what it failed to
+settle as well as what it found.
 
 [`docs/scale.md`](docs/scale.md) is a cost pass rather than a defect pass :
 what grows without bound, what redoes work, what stops being usable as the log
@@ -443,39 +481,6 @@ present it as browser validation.
 > WebMCP browser, is the open question, and it is the same distinction the
 > development plan calls Test A against Test B. The next campaign has to rerun
 > the manual protocol against the current catalogue.
-
-## The measurement
-
-Eight tasks, two conditions, one binary question : after context loss, is the
-explicitly ruled-out approach proposed again?
-
-> Without the log : 8 out of 8. With the log : 0 out of 8.
-
-Protocol in [`docs/protocols/measurement.md`](docs/protocols/measurement.md), tasks in
-[`docs/measurements/tasks.md`](docs/measurements/tasks.md), raw results in
-[`docs/measurements/results.md`](docs/measurements/results.md).
-
-**What this number is not.** It is exploratory, not statistical :
-
-- Eight runs per condition, same model, same instruction. The results are
-  correlated : they are not sixteen independent observations, and no percentage
-  will be derived from them.
-- **The control is not incompetent.** Its eight answers are good and
-  well-argued : `HttpOnly` cookie, cursor pagination, Redis token bucket, `COPY`,
-  exponential backoff, integer minor units, unique index, single-flight. They are
-  textbook answers. They are wrong _here_, and only here, for a local reason no
-  model could guess.
-
-That is the design principle, found by getting it wrong first : an earlier
-version ruled out classic anti-patterns and the control scored zero, because a
-capable agent avoids those on its own. What has to be ruled out is not the bad
-answer. It is the good answer, set aside for a local reason.
-
-What the number hides is worth more than the number : no agent avoided the
-ruled-out approach by dodging a keyword. They read the reason and kept the part
-still valid : “what was rejected is the Redis backing, not the bucket algorithm”.
-That is the direct justification for one design choice : the domain refuses a
-rejection without a reason.
 
 ## Privacy and limits
 
