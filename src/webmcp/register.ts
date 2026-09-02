@@ -5,7 +5,7 @@ import {
   type ModelContextLike,
   type ModelContextTool,
 } from './adapter'
-import { READ_TOOLS, WRITE_TOOLS } from './tools'
+import { createTaskTool, READ_TOOLS, WRITE_TOOLS } from './tools'
 import { detectLifecycle, type ToolLifecycle } from './lifecycle'
 
 export { detectLifecycle, DYNAMIC_UNREGISTER_MIN_CHROMIUM } from './lifecycle'
@@ -58,7 +58,13 @@ export function onRegistrationChange(listener: () => void): () => void {
 export function toolsForCurrentState(): ModelContextTool[] {
   const { status, task } = store.getSnapshot()
   const writable = status === 'ready' && task !== null && task.status === 'active'
-  return writable ? [...READ_TOOLS, ...WRITE_TOOLS] : [...READ_TOOLS]
+
+  // `create_task` is the mirror of the write set : it exists exactly when they
+  // do not. Without a task there is nothing to write against, and an agent that
+  // has just been told what to work on would otherwise have to send the human
+  // to a form. With one open it disappears, so a second log cannot be opened
+  // for work that already has one.
+  return writable ? [...READ_TOOLS, ...WRITE_TOOLS] : [...READ_TOOLS, createTaskTool]
 }
 
 const registered = new Map<string, AbortController>()

@@ -25,8 +25,8 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <meta name="theme-color" content="#f4f6ee" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#10140d" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fbf8ff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#11131b" media="(prefers-color-scheme: dark)" />
     <script>
       // Before the first paint, read here and not in the module. Otherwise
       // the page would show for a fraction of a second in the system theme
@@ -46,6 +46,24 @@
       aria-atomic="true"
     ></div>
     <div id="app"></div>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Material Design 3 : Roboto is the type scale's typeface, Material Symbols
+      the icon set. `display=swap` on the text face shows the fallback while it
+      loads; `display=block` on the icon face hides the glyph slot instead,
+      because the fallback for an icon ligature is its own name, and a page
+      briefly reading `arrow_forward` in words is worse than a blank of the
+      same size.
+    -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
+    />
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

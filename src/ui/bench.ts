@@ -89,6 +89,7 @@ import {
 } from '../domain/secret'
 import { ALL_TOOLS, READ_TOOLS } from '../webmcp/tools'
 import {
+  checkAvailability,
   getRegistrationState,
   getWitness,
   onCall,
@@ -244,7 +245,7 @@ function renderBrandBar(view: 'home' | 'workspace' | 'task'): string {
                <span class="nav-link nav-link--active" aria-current="page">Workspace</span>`
             : `<a class="nav-link" href="${WORKSPACE_PATH}" id="go-workspace">Workspace</a>`
         }
-        <a class="topbar__source" href="https://github.com/kymrapro-del/ChatGPT-WebMCP"
+        <a class="topbar__source" href="https://github.com/kymrapro-del/keydler"
            target="_blank" rel="noopener noreferrer" aria-label="View the source on GitHub">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -261,27 +262,61 @@ function renderSiteFooter(message: string): string {
   return `<footer class="site-footer">
       <div class="site-footer__meta">
         <span>${message}</span>
-        <a href="https://github.com/kymrapro-del/ChatGPT-WebMCP"
-           target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a class="repo-badge" href="https://github.com/kymrapro-del/keydler"
+           target="_blank" rel="noopener noreferrer">
+          <svg class="repo-badge__mark" viewBox="0 0 16 16" width="16" height="16"
+               aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+              0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01
+              1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95
+              0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0
+              1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0
+              3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01
+              0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+          </svg>
+          <span>Read the source on GitHub</span>
+        </a>
       </div>
       <p class="site-footer__wordmark" aria-hidden="true">Keydler</p>
     </footer>`
 }
 
+function webMcpBadge(modifier: string, label: string): string {
+  return `<span class="webmcp-badge${modifier}">
+      <span class="webmcp-badge__dot" aria-hidden="true"></span>
+      ${label}
+    </span>`
+}
+
 function renderWebMcpBadge(): string {
   const { phase, toolNames } = getRegistrationState()
-  const active = phase === 'registered' || phase === 'partial'
-  const count = active ? toolNames.length : ALL_TOOLS.length
-  const label = active
-    ? count === READ_TOOLS.length
-      ? `${count} read tools`
-      : `${count} tools`
-    : `${count} task tools`
 
-  return `<span class="webmcp-badge${active ? ' webmcp-badge--active' : ''}">
-      <span class="webmcp-badge__dot" aria-hidden="true"></span>
-      ${active ? 'WebMCP active' : 'WebMCP ready'} · ${label}
-    </span>`
+  if (phase === 'registered' || phase === 'partial') {
+    const count = toolNames.length
+    const label = count === READ_TOOLS.length ? `${count} read tools` : `${count} tools`
+    return webMcpBadge(' webmcp-badge--active', `WebMCP active · ${label}`)
+  }
+
+  // Ask the browser, not the phase. Registration is fired at module load but
+  // resolves asynchronously, so `pending` covers both "about to register" and
+  // "this browser has no WebMCP at all", and the second one must not read as
+  // the first. A badge announcing "ready" where the API is absent claims
+  // something the page cannot honour, which is the one thing this product
+  // exists to object to.
+  const availability = checkAvailability()
+  const tools = `${ALL_TOOLS.length} task tools`
+
+  if (phase === 'failed') {
+    return webMcpBadge(' webmcp-badge--off', 'WebMCP registration failed')
+  }
+
+  if (!availability.supported) {
+    return availability.reason === 'insecure-context'
+      ? webMcpBadge(' webmcp-badge--off', `WebMCP needs HTTPS · ${tools}`)
+      : webMcpBadge(' webmcp-badge--off', `WebMCP unavailable · ${tools}`)
+  }
+
+  return webMcpBadge('', `WebMCP ready · ${tools}`)
 }
 
 function query(): string {
@@ -428,13 +463,27 @@ function alertBlock(): string {
     : ''
 }
 
+/**
+ * `standalone` is false when the landing is composed above an open task. Two
+ * things change, and both are structural rather than cosmetic : the hero
+ * headline drops to `h2` so the task title keeps the page's only `h1`, and the
+ * footer is left to the dashboard so one page carries one footer.
+ */
+/**
+ * The screen before a task exists. Not a landing page, and not a demonstration :
+ * this product's surface is the task itself, so the way in is the form that
+ * creates a real one. The WebMCP status rides along, so a visitor whose browser
+ * cannot register tools learns it here rather than after wiring up an agent.
+ */
 function renderLanding(): string {
-  const form = creating
-    ? `<form id="create-task" class="form create-panel" novalidate>
+  const form = `<form id="create-task" class="form create-panel" novalidate>
          <div class="create-panel__head">
-           <p class="section-kicker">New shared memory</p>
-           <h2>Give the work a clear starting point.</h2>
-           <p class="muted">The next action is the first thing an agent reads.</p>
+           ${renderWebMcpBadge()}
+           <h1 id="landing-title">Open the task your agent will read.</h1>
+           <p class="muted">
+             The next action is the first thing an agent reads. Once this task exists,
+             this page is the surface it reads and writes through WebMCP.
+           </p>
          </div>
          <div class="field">
            <label for="new-title">Task title</label>
@@ -452,157 +501,20 @@ function renderLanding(): string {
                   placeholder="Never modify the database schema" />
          </div>
          ${carryableRules()}
-         <div class="actions">
+         <div class="actions landing__actions">
            <button type="submit" class="btn btn--primary">Create task</button>
-           <button type="button" id="cancel-create" class="btn">Cancel</button>
+           ${creating ? '<button type="button" id="cancel-create" class="btn">Cancel</button>' : ''}
          </div>
        </form>`
-    : `<div class="actions landing__actions">
-         <button type="button" id="seed" class="btn btn--primary">Explore the live demo</button>
-         <button type="button" id="start-create" class="btn">Create a task</button>
-       </div>`
 
-  return `<section class="landing landing--home">
+  return `<section class="landing landing--home" aria-labelledby="landing-title">
       ${renderBrandBar('home')}
       ${alertBlock()}
       ${renderOffline()}
       ${renderSealedOffer()}
       ${renderOffer()}
       ${renderShortcuts()}
-      <section id="landing-hero" class="landing-hero brand-panel${
-        creating ? ' landing-hero--creating' : ''
-      }" aria-labelledby="landing-title">
-        <div class="brand-panel__decor" aria-hidden="true">
-          <img class="brand-shape brand-shape--cube" src="/assets/brand/cube.webp" alt=""
-               width="384" height="378" decoding="async" />
-          <img class="brand-shape brand-shape--cylinder" src="/assets/brand/cylinder.webp" alt=""
-               width="384" height="348" decoding="async" />
-          <img class="brand-shape brand-shape--gem" src="/assets/brand/gem.webp" alt=""
-               width="459" height="468" decoding="async" />
-        </div>
-        <div class="landing-hero__copy">
-          ${renderWebMcpBadge()}
-          <p class="landing__eyebrow">Keydler · open source memory for WebMCP agents</p>
-          <h1 id="landing-title" class="landing__headline">
-            Give every agent the context it must <mark class="brand-highlight">not</mark> lose.
-          </h1>
-          <p class="landing__lede">
-            Keydler keeps completed work, binding rules, evidence, and dead ends in one
-            supervised workspace. Every new conversation reads the same browser-local memory
-            and continues through WebMCP.
-          </p>
-          ${form}
-          <ul class="landing__trust" aria-label="Product principles">
-            <li>Browser-local</li>
-            <li>No backend</li>
-            <li>Human supervised</li>
-          </ul>
-        </div>
-        <div class="webmcp-story" aria-label="How Keydler uses WebMCP">
-          <div class="webmcp-story__head">
-            <div>
-              <p class="section-kicker">A WebMCP hand-off</p>
-              <h2>One task. Every conversation.</h2>
-            </div>
-            <img src="/assets/brand/mark.jpg" alt="" width="44" height="44" />
-          </div>
-          <ol class="webmcp-flow">
-            <li>
-              <span class="webmcp-flow__step">01</span>
-              <div><strong>The agent reads the task</strong><code>resume_task</code></div>
-            </li>
-            <li>
-              <span class="webmcp-flow__step">02</span>
-              <div><strong>You add a binding rule</strong><span>“Keep the public API unchanged.”</span></div>
-            </li>
-            <li class="webmcp-flow__refusal">
-              <span class="webmcp-flow__step">03</span>
-              <div><strong>A stale write is refused</strong><span>The agent re-reads, then adapts.</span></div>
-            </li>
-          </ol>
-          <p class="webmcp-story__note">The page is the shared tool surface, not a dashboard bolted onto an API.</p>
-          <p class="webmcp-story__tools">
-            <strong>4 read tools</strong> are always available. An active task adds
-            <strong>9 write tools</strong>, for 13 total.
-          </p>
-        </div>
-      </section>
-
-      <section id="how-it-works" class="landing-section identity-section" aria-labelledby="webmcp-title">
-        <div class="landing-section__intro">
-          <p class="section-kicker">Why WebMCP matters</p>
-          <h2 id="webmcp-title">The agent works with the same memory you can see and correct.</h2>
-          <p>
-            Typed tools replace fragile screen guessing. Your corrections take effect immediately,
-            while an agent's proposals remain proposals until you accept them.
-          </p>
-        </div>
-        <div class="reason-stack">
-          <article class="reason-card reason-card--human">
-            <img class="reason-card__mascot" src="/assets/brand/mascot.webp" alt=""
-                 width="292" height="309" loading="lazy" decoding="async" />
-            <div class="reason-card__copy">
-              <span class="reason-card__step">01 · Human directed</span>
-              <h3>The human sets the memory</h3>
-              <p>Rules, rejected approaches, and verified evidence stay visible and editable.</p>
-            </div>
-            <img class="reason-card__art" src="/assets/brand/controls.webp" alt=""
-                 width="571" height="375" loading="lazy" decoding="async" />
-          </article>
-          <article class="reason-card reason-card--tools">
-            <div class="reason-card__copy">
-              <span class="reason-card__step">02 · Typed tools</span>
-              <h3>The agent reads structured context</h3>
-              <p>WebMCP exposes compact operations instead of asking a model to guess the interface.</p>
-            </div>
-            <img class="reason-card__art" src="/assets/brand/puzzle.webp" alt=""
-                 width="513" height="298" loading="lazy" decoding="async" />
-          </article>
-          <article class="reason-card reason-card--writes">
-            <div class="reason-card__copy">
-              <span class="reason-card__step">03 · Conflict aware</span>
-              <h3>Every write stays supervised</h3>
-              <p>Stale writes are refused, retries do not duplicate, and the audit remains readable.</p>
-            </div>
-            <img class="reason-card__art" src="/assets/brand/ledger.webp" alt=""
-                 width="495" height="337" loading="lazy" decoding="async" />
-          </article>
-        </div>
-      </section>
-
-      <section id="webmcp-tools" class="tool-anatomy" aria-labelledby="tools-title">
-        <div class="tool-anatomy__copy">
-          <p class="section-kicker">WebMCP under the hood</p>
-          <h2 id="tools-title">Four tools orient the agent. Nine let it work.</h2>
-          <p>
-            The overview stays safe and readable. Opening a task adds the supervised write tools
-            needed to record progress, attach proof, ask questions, and request approval.
-          </p>
-        </div>
-        <div class="tool-equation" aria-label="4 read tools plus 9 write tools equals 13 tools">
-          <div><strong>4</strong><span>read tools<br />always available</span></div>
-          <b aria-hidden="true">+</b>
-          <div><strong>9</strong><span>write tools<br />inside a task</span></div>
-          <b aria-hidden="true">=</b>
-          <div class="tool-equation__total"><strong>13</strong><span>purpose-built<br />WebMCP tools</span></div>
-        </div>
-        <div class="tool-belt" aria-label="Example WebMCP tools">
-          <span>resume_task</span><i>✦</i><span>task_detail</span><i>✦</i><span>log_step</span>
-          <i>✦</i><span>add_constraint</span><i>✦</i><span>attach_evidence</span>
-          <i>✦</i><span>request_approval</span>
-        </div>
-      </section>
-
-      <section class="landing-cta brand-panel" aria-labelledby="cta-title">
-        <img class="landing-cta__art" src="/assets/brand/gem.webp" alt=""
-             width="459" height="468" loading="lazy" decoding="async" />
-        <div>
-          <p class="section-kicker">See the complete hand-off</p>
-          <h2 id="cta-title">Open a prepared task and understand Keydler in under a minute.</h2>
-        </div>
-        <button type="button" id="seed-footer" class="btn btn--primary">Explore the live demo</button>
-      </section>
-
+      ${form}
       ${renderSiteFooter('Browser-local · Open source · Powered by WebMCP')}
     </section>`
 }
@@ -2059,6 +1971,11 @@ function renderBody(): string {
   // the landing screen.
   if (creating) return renderLanding()
   if (atWorkspace) return renderWorkspace()
+
+  // The task is the product. With one open, the page is the tool surface an
+  // agent reads and writes, and nothing is stacked above it : no pitch, no
+  // second screen. Without one, the short starter above says so and offers the
+  // two ways to open one.
   return task ? renderDashboard(task) : renderLanding()
 }
 
@@ -3039,7 +2956,16 @@ function announce(): void {
   if (!region) return
 
   const task = store.getSnapshot().task
-  if (!task) return
+
+  // Leaving the region as it was left the previous screen's sentence standing:
+  // moving to the workspace still announced "0 steps recorded" about a task no
+  // longer on screen. A live region nobody clears is a screen that lies to the
+  // one person who cannot check it.
+  if (!task) {
+    lastAnnouncement = ''
+    region.textContent = ''
+    return
+  }
 
   const refusal = lastRefusal(task)
   const sentence =
@@ -3187,10 +3113,19 @@ let painted: string | null = null
 function scheduleRender(): void {
   if (renderScheduled) return
   renderScheduled = true
+
+  // `requestAnimationFrame` never fires in a hidden tab, and a hidden tab is
+  // exactly the case this product is built for : the human is in their agent's
+  // conversation while writes land here. Nothing needs painting behind a
+  // hidden tab, but `render()` also sets the attention title, which is the one
+  // signal that reaches someone looking elsewhere. Scheduled on a timer while
+  // hidden, the title moves; on a frame while visible, the paint stays smooth.
+  const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
   const schedule =
-    typeof requestAnimationFrame === 'function'
+    !hidden && typeof requestAnimationFrame === 'function'
       ? requestAnimationFrame
       : (fn: () => void) => setTimeout(fn, 0)
+
   pendingFrame = schedule(() => {
     pendingFrame = null
     renderScheduled = false

@@ -65,8 +65,27 @@ describe('the witness knows whether the agent read before writing', () => {
       recordCall(tool.name, false)
       const expected = READ_TOOLS.includes(tool)
       expect(getWitness().sawRead, tool.name).toBe(expected)
-      expect(WRITE_TOOLS.includes(tool), tool.name).toBe(!expected)
+      // `create_task` is the one write outside WRITE_TOOLS : it is available
+      // exactly when they are not, because it is what creates the task they
+      // need.
+      if (tool.name !== 'create_task') {
+        expect(WRITE_TOOLS.includes(tool), tool.name).toBe(!expected)
+      }
     }
+  })
+
+  /**
+   * Creating the task cannot be preceded by a read : there is nothing to read.
+   * Counting it as a blind write would make the page report that an agent wrote
+   * without looking, in the only case where looking was impossible.
+   */
+  it('does not count creating the task as a write that skipped the read', () => {
+    resetCalls()
+    recordCall('create_task', false)
+    expect(getWitness().blindWrites).toBe(0)
+
+    recordCall('log_step', false)
+    expect(getWitness().blindWrites).toBe(1)
   })
 
   it('starts over from zero when the call log is cleared', () => {

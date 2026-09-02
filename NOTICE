@@ -39,9 +39,10 @@ The interface follows:
 Those works belong to Google LLC. Material Design 3 and Material Symbols
 are licensed under the Apache License 2.0.
 
-The served Keydler page does not load a webfont, a CDN, or the Material
-Symbols font. The typeface is the reader's system UI font. The names
-above are design credits, not bundled files.
+The served Keydler page loads Roboto and Material Symbols Outlined from
+Google Fonts, under the SIL Open Font License 1.1. They are fetched at
+runtime, not bundled in this repository. No script is loaded from any CDN.
+Material Design 3 itself is followed as a specification, not a dependency.
 
 ------------------------------------------------------------------------------
 People

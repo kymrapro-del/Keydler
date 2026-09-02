@@ -9,23 +9,26 @@ and mistakes not to repeat, even when the conversation changes.**
 
 _Conversations reset. The work should not._
 
-[![CI](https://github.com/kymrapro-del/ChatGPT-WebMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/kymrapro-del/ChatGPT-WebMCP/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-931-3d4ec8)](docs/verification.md)
-[![WebMCP tools](https://img.shields.io/badge/WebMCP%20tools-13-3d4ec8)](#the-tools)
+[![CI](https://github.com/kymrapro-del/keydler/actions/workflows/ci.yml/badge.svg)](https://github.com/kymrapro-del/keydler/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-945-3d4ec8)](docs/verification.md)
+[![WebMCP tools](https://img.shields.io/badge/WebMCP%20tools-14-3d4ec8)](#the-tools)
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-1-3d4ec8)](package.json)
 [![Backend](https://img.shields.io/badge/backend-none-3d4ec8)](SECURITY.md)
 [![License](https://img.shields.io/badge/license-MIT-3d4ec8)](LICENSE)
 
 **[keydler.com](https://keydler.com)** &nbsp;·&nbsp;
-[How it works](#why-webmcp-is-the-point) &nbsp;·&nbsp; [The thirteen
+[How it works](#why-webmcp-is-the-point) &nbsp;·&nbsp; [The fourteen
 tools](#the-tools) &nbsp;·&nbsp; [Documentation](docs/) &nbsp;·&nbsp;
 [Security](SECURITY.md)
 
 </div>
 
 > [!NOTE]
-> No account, no server, no network calls. Everything stays in the browser, and
-> the page itself is the tool surface an agent talks to.
+> No account and no server. Your task data never leaves the browser : the
+> application makes no outbound request of its own. The page does fetch the
+> Material typeface and icon set from Google Fonts, which tells Google your IP
+> address the way any site using them does, and carries nothing about your
+> work. The page itself is the tool surface an agent talks to.
 
 ---
 
@@ -51,12 +54,12 @@ the right place. You correct it while the agent works.
 npm install && npm run dev
 ```
 
-1. Open the page and click Try the demo, or Create a task and give it a
-   title, a next action, and one rule.
-2. Open the same page with a WebMCP-enabled agent and say “Continue this
-   task.”
-3. While the agent works, add a rule. Its next write is refused, it re-reads the
-   log, and it adapts.
+1. Open the page with a WebMCP-enabled agent and tell it what you are working
+   on. It calls `create_task` and opens the log itself : you do not fill in a
+   form. Or fill the form in front of you, if you would rather.
+2. Say “Continue this task.” It calls `resume_task` before working.
+3. While it works, add a rule. Its next write is refused, it re-reads the log,
+   and it adapts.
 
 Step 3 is the whole product.
 
@@ -217,8 +220,13 @@ GitHub theme.
 
 ## The tools
 
-Four read, nine write. The count is not a goal. Each tool dilutes the list an
-agent must read in order to choose, so each has to pay for itself.
+Four read, nine write, and one that opens the log when none exists. The count
+is not a goal. Each tool dilutes the list an agent must read in order to choose,
+so each has to pay for itself.
+
+They are never all offered at once. Without a task, an agent sees the four reads
+and `create_task`; with one open, it sees the reads and the nine writes, and
+`create_task` steps aside so a second log cannot be opened for the same work.
 
 | Tool               | Role                                                                              |
 | ------------------ | --------------------------------------------------------------------------------- |
@@ -235,6 +243,7 @@ agent must read in order to choose, so each has to pay for itself.
 | `attach_evidence`  | Proof that arrived after the step was logged                                      |
 | `set_next_action`  | Redirect the task without inventing a step to hang it on                          |
 | `complete_task`    | Close with a hand-over summary                                                    |
+| `create_task`      | Open the log when none exists, so the human never has to fill a form first        |
 
 ## Credentials the agent can name but not read
 
@@ -348,16 +357,16 @@ and, at the same length, what is known and left alone.
   guardrails. Ten of the thirteen descriptions were over, and one parameter was
   more than twice the limit, repeated on nine tools. A test now holds all four
   bounds, including a floor, so nothing is trimmed into silence to fit. Read back
-  through `getTools()` in Brave 151: 16, 499 and 146 against limits of 30, 500 and
-
-150. The briefing is the one that does not fit (1528 characters, 1.9% over), and
-     that overage is written down rather than shaved off.
-
+  through `getTools()` in Brave 151: 16, 499 and 146 against limits of 30, 500
+  and 150. The briefing is the one that does not fit (1528 characters, 1.9%
+  over), and that overage is written down rather than shaved off.
 - **The page is locked down at the edge.** `public/_headers` (Cloudflare Pages,
   Netlify) and `vercel.json` carry the same policy, and a test keeps them from
   drifting apart. The content policy starts at `default-src 'none'` and opens only
-  this origin. The app makes no outbound request, loads no font, uses no `data:`
-  image and sets no `style=` attribute, so nothing has to be opened for it. The
+  this origin plus the two Google Fonts hosts, one for the stylesheet and one for
+  the font files. `connect-src` stays `'self'`, so the application still cannot
+  send anything anywhere. The app makes no outbound request of its own, uses no
+  `data:` image and sets no `style=` attribute. The
   one inline script, the theme bootstrap, is allowed by its hash; `unsafe-inline`
   never appears. Framing is refused outright, which is what stops a hidden frame
   making someone click Allow on an approval they cannot see. Verified in Brave
@@ -423,6 +432,17 @@ WebMCP agent will select page tools.
 The automated suite exercises a fake `ModelContext` written from the spec IDL. A
 fake cannot fail in a way it was not written to fail, and this README does not
 present it as browser validation.
+
+> [!IMPORTANT]
+> **That run covered thirteen tools. `create_task` is the fourteenth, added
+> after it, and it has never been exercised in a browser that carries WebMCP
+> natively.** It is covered by the suite, and it was driven end to end against a
+> fake `ModelContext` installed by hand : the log opened, the constraint and the
+> rejection landed as proposals, and the page redrew. That establishes the code
+> path and nothing more. Whether an agent reaches for it on its own, in a real
+> WebMCP browser, is the open question, and it is the same distinction the
+> development plan calls Test A against Test B. The next campaign has to rerun
+> the manual protocol against the current catalogue.
 
 ## The measurement
 
@@ -490,12 +510,12 @@ That also sets the boundaries, and they are real :
 | `src/domain`      | Pure task model and mutations : no DOM, no storage, no WebMCP              |
 | `src/store`       | The single in-memory source of truth, and the write queue                  |
 | `src/persistence` | IndexedDB, with defensive reads and schema migration                       |
-| `src/webmcp`      | API adapter, schemas, descriptions, thirteen tools, registration lifecycle |
+| `src/webmcp`      | API adapter, schemas, descriptions, fourteen tools, registration lifecycle |
 | `src/ui`          | The dashboard                                                              |
 | `bench`           | The scaling harness : `npm run bench`, never part of `npm test`            |
 | `docs`            | Protocols, test journal, measurement, demo script                          |
 
-Internal documents and code comments are in French; the product is in English.
+Everything is in English : source, comments, documentation, tests and fixtures.
 
 ## People and models
 
@@ -537,11 +557,14 @@ Every Keydler asset carries its own copyright notice :
 The interface follows **[Google Fonts](https://fonts.google.com/)**,
 **[Material Design 3](https://m3.material.io/)** and
 **[Google Icons](https://fonts.google.com/icons)** (Material Symbols). Those
-works belong to Google LLC. They are design credits : the served page loads no
-webfont and no icon font.
+works belong to Google LLC. The served page loads Roboto and Material Symbols
+from Google Fonts under the Open Font License; the type scale, the shapes and
+the colour roles are implemented from the specification rather than a component
+library.
 
 One dependency reaches the browser, [`idb`](https://github.com/jakearchibald/idb)
 under ISC, and its notice is reproduced in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) because ISC asks for it and the
-code really does ship. Nothing else in the bundle comes from anywhere else : no
-web fonts, no CDN, no external assets.
+code really does ship. Nothing else in the bundle comes from anywhere else : the
+two Google Fonts stylesheets are the only remote requests the page makes, and
+there is no CDN for scripts and no other external asset.

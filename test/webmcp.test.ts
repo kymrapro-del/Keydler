@@ -32,7 +32,7 @@ afterEach(() => {
 })
 
 describe('inventory', () => {
-  it('exposes four read tools and nine write tools', () => {
+  it('exposes four read tools, nine write tools, and the one that creates the task', () => {
     expect(READ_TOOLS.map((t) => t.name)).toEqual([
       'resume_task',
       'what_changed',
@@ -50,7 +50,7 @@ describe('inventory', () => {
       'request_approval',
       'complete_task',
     ])
-    expect(ALL_TOOLS).toHaveLength(13)
+    expect(ALL_TOOLS).toHaveLength(14)
   })
 
   it('never announces an annotation WebMCP does not carry', () => {
@@ -120,6 +120,7 @@ describe('availability', () => {
       'what_changed',
       'read_task_detail',
       'search_task',
+      'create_task',
     ])
 
     Reflect.deleteProperty(navigator, 'modelContext')
@@ -193,12 +194,19 @@ describe('tool lifecycle', () => {
     const fake = installModelContext()
     await registerTools()
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
+    expect(fake.names()).toEqual([
+      'create_task',
+      'read_task_detail',
+      'resume_task',
+      'search_task',
+      'what_changed',
+    ])
     expect(toolsForCurrentState().map((t) => t.name)).toEqual([
       'resume_task',
       'what_changed',
       'read_task_detail',
       'search_task',
+      'create_task',
     ])
   })
 
@@ -214,12 +222,15 @@ describe('tool lifecycle', () => {
     await store.createAndOpenTask('Task', 'Continue')
     await settle()
 
+    // In static mode nothing is ever withdrawn, so `create_task` stays listed
+    // beside the writes it made possible even though it now refuses.
     expect(fake.names()).toEqual([
       'add_constraint',
       'add_decision',
       'ask_human',
       'attach_evidence',
       'complete_task',
+      'create_task',
       'log_step',
       'read_task_detail',
       'reject_approach',
@@ -347,7 +358,7 @@ describe('tool lifecycle', () => {
 
     expect(first.phase).toBe('registered')
     expect(second.phase).toBe('registered')
-    expect(fake.attempts).toHaveLength(ALL_TOOLS.length)
+    expect(fake.attempts).toHaveLength(ALL_TOOLS.length - 1) // create_task steps aside once a task is open
   })
 
   it('rejects a registration whose signal is already aborted', async () => {

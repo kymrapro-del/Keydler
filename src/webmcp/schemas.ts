@@ -152,6 +152,22 @@ export const ATTACH_EVIDENCE_SCHEMA = writeSchema(
   ['step_id', 'evidence'],
 )
 
+/**
+ * No `based_on_version` : there is no state to be stale against yet. The
+ * mutation id stays, so a retried creation replays its reply instead of
+ * opening a second log for the same work.
+ */
+export const CREATE_TASK_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: boundedText('What the work is, in one line. The human will read this first.', 200),
+    next_action: boundedText('The single next action to take, stated so it can be acted on.', 400),
+    mutation_id: mutationIdProperty,
+  },
+  required: ['title', 'next_action', 'mutation_id'],
+  additionalProperties: false,
+} as const
+
 export const SET_NEXT_ACTION_SCHEMA = writeSchema(
   { next: boundedText('The next action, in one sentence.', 400) },
   ['next'],

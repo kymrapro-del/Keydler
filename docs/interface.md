@@ -123,7 +123,7 @@ on the page : every panel, and the reason it exists.
   rejections, one button per kind narrows them, with a count each. The filter
   resets when the query changes, so a stale filter never makes a hit look like a
   miss.
-- **See exactly what an agent reads.** Technical details holds the thirteen
+- **See exactly what an agent reads.** Technical details holds the fourteen
   registered tool objects verbatim, the same descriptions and JSON schemas that
   reach an agent through WebMCP, not a summary written for the page. A reader with
   no agent to hand can check every claim in this README against the source of

@@ -25,12 +25,27 @@ const directive = (csp: string, name: string) =>
     .find((d) => d === name || d.startsWith(`${name} `)) ?? ''
 
 describe('the content security policy', () => {
-  it('starts from nothing and opens only this origin', () => {
+  it('starts from nothing and opens only this origin, and Google Fonts', () => {
     for (const csp of [cspHeaders, cspVercel]) {
       expect(directive(csp, 'default-src')).toBe("default-src 'none'")
-      for (const name of ['style-src', 'img-src', 'connect-src', 'manifest-src', 'worker-src']) {
+      for (const name of ['img-src', 'connect-src', 'manifest-src', 'worker-src']) {
         expect(directive(csp, name), name).toBe(`${name} 'self'`)
       }
+    }
+  })
+
+  /**
+   * The interface follows Material Design 3 and uses its typeface and icon
+   * set, which are served by Google. Exactly two origins are opened for that,
+   * one per directive, and neither carries anything executable : a stylesheet
+   * host and a font host. `connect-src` stays `'self'`, so the application
+   * still cannot send anything anywhere.
+   */
+  it('opens the two font origins and nothing more', () => {
+    for (const csp of [cspHeaders, cspVercel]) {
+      expect(directive(csp, 'style-src')).toBe("style-src 'self' https://fonts.googleapis.com")
+      expect(directive(csp, 'font-src')).toBe('font-src https://fonts.gstatic.com')
+      expect(directive(csp, 'connect-src')).toBe("connect-src 'self'")
     }
   })
 

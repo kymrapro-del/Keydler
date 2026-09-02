@@ -42,7 +42,7 @@ export const MEASURES: readonly MeasureSpec[] = [
     title: 'Insert an uploaded CSV of customer records into the database',
     next: 'Choose and implement the ingestion mechanism',
     condemned: 'COPY into a staging table',
-    reason: 'the database user has no COPY privilege on this creadter',
+    reason: 'the database user has no COPY privilege on this cluster',
     constraint: 'Stay under a 512 MB memory ceiling',
   },
   {
@@ -69,7 +69,7 @@ export const MEASURES: readonly MeasureSpec[] = [
     next: 'Choose and implement the deduplication mechanism',
     condemned: 'Unique index with ON CONFLICT',
     reason:
-      'the table is partitioned by month, and a unique index across partitions is not supported on this creadter',
+      'the table is partitioned by month, and a unique index across partitions is not supported on this cluster',
     constraint: 'Keep the existing table',
   },
   {

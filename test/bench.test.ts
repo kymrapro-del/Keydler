@@ -75,48 +75,79 @@ afterEach(() => {
 })
 
 describe('first visit', () => {
-  it('explains the benefit before the mechanism, and without jargon', async () => {
+  it('says what the screen is, without jargon', async () => {
     await settled()
 
-    expect(text()).toContain('Give every agent the context it must not lose.')
-    expect(text()).toContain('completed work, binding rules, evidence, and dead ends')
-    expect(text()).toContain('Every new conversation reads the same browser-local memory')
+    expect(text()).toContain('Open the task your agent will read')
+    expect(text()).toContain('the first thing an agent reads')
 
     for (const jargon of ['based_on_version', 'mutation_id', 'IndexedDB', 'AbortController']) {
       expect(text(), jargon).not.toContain(jargon)
     }
   })
 
-  it('offers both ways in, the main one first', async () => {
+  /**
+   * There used to be two ways in, and the prominent one opened a prepared
+   * demonstration. A demonstration is not the product : the first screen now
+   * offers the form that creates a real task, and nothing else.
+   */
+  it('offers one way in, and it creates a real task', async () => {
     await settled()
+
     const primary = root.querySelector<HTMLButtonElement>('.btn--primary')
-    expect(primary?.textContent?.trim()).toBe('Explore the live demo')
-    expect(button('Create a task')).toBeTruthy()
+    expect(primary?.textContent?.trim()).toBe('Create task')
+    expect(root.querySelector('#create-task')).toBeTruthy()
+    expect(root.querySelector('#new-title')).toBeTruthy()
+
+    const labels = [...root.querySelectorAll('button')].map((b) => b.textContent?.trim())
+    expect(labels).not.toContain('Explore the live demo')
   })
 
-  it('makes the WebMCP implementation visible before a task is opened', async () => {
+  /**
+   * The badge used to read “WebMCP ready” in every state that was not
+   * `registered`, so a browser carrying no WebMCP at all was told the page was
+   * ready to serve tools it could never register. The honest message is the
+   * point of the product, and the badge is the most prominent place it appears.
+   */
+  it('says WebMCP is unavailable when the browser carries no API', async () => {
     await settled()
 
-    expect(root.querySelector('.webmcp-badge')?.textContent).toContain(
-      'WebMCP ready · 13 task tools',
+    const badge = root.querySelector('.webmcp-badge')
+    expect(badge?.textContent).toContain('WebMCP unavailable · 14 task tools')
+    expect(badge?.textContent).not.toContain('ready')
+    expect(badge?.className).toContain('webmcp-badge--off')
+  })
+
+  it('states the WebMCP position before a task is opened', async () => {
+    await settled()
+    expect(root.querySelector('.webmcp-badge')?.textContent).toContain('14 task tools')
+  })
+
+  /**
+   * The product's surface is the task, not a page about the task. The first
+   * screen used to carry a pitch, three illustrated cards and a tool catalogue
+   * above the only two actions that do anything. None of it is the product, and
+   * a visitor who lands here wants the surface, so it is gone.
+   */
+  it('sells nothing : no pitch, no decoration, only the way in', async () => {
+    await settled()
+
+    // The brand mark in the top bar is the chrome, not decoration. Everything
+    // else that was on this screen existed to illustrate a pitch.
+    const decorative = [...root.querySelectorAll('img')].filter(
+      (image) => !image.classList.contains('brand__mark'),
     )
-    expect(text()).toContain('Why WebMCP matters')
-    expect(text()).toContain('resume_task')
-    expect(text()).toContain('A stale write is refused')
-    expect(text()).toContain('4 read tools are always available')
-    expect(text()).toContain('9 write tools')
-  })
-
-  it('uses the original Keydler artwork to explain the product', async () => {
-    await settled()
-
-    const sources = [...root.querySelectorAll<HTMLImageElement>('img')].map((image) => image.src)
-    for (const asset of ['mascot.webp', 'controls.webp', 'puzzle.webp', 'ledger.webp']) {
-      expect(
-        sources.some((source) => source.endsWith(`/assets/brand/${asset}`)),
-        asset,
-      ).toBe(true)
+    expect(decorative).toHaveLength(0)
+    for (const pitch of [
+      'Why WebMCP matters',
+      'Give every agent the context',
+      '4 read tools are always available',
+    ]) {
+      expect(text(), pitch).not.toContain(pitch)
     }
+
+    const actions = [...root.querySelectorAll('button')].map((b) => b.textContent?.trim())
+    expect(actions).toContain('Create task')
   })
 
   it('contains no account or authentication actions', async () => {
@@ -130,15 +161,29 @@ describe('first visit', () => {
 })
 
 describe('creating a task', () => {
+  // The creation form is the first screen : with no task on the device there
+  // is nothing else to show, so there is no longer a button to open it.
   async function openForm() {
-    await settled()
-    button('Create a task').click()
     await settled()
   }
 
-  it('gives focus to the first field when the form opens', async () => {
+  /**
+   * Focus used to land on the title because the form opened on a click, which
+   * is where a click should send it. The form is now the screen itself, and
+   * moving focus on load would carry a screen reader past the heading and past
+   * the WebMCP status before either had been read. The field is the first thing
+   * a Tab reaches, which is enough.
+   */
+  it('does not steal focus on load, and puts the title first in the order', async () => {
     await openForm()
-    expect(document.activeElement?.id).toBe('new-title')
+
+    expect(document.activeElement?.id).not.toBe('new-title')
+
+    // The top bar legitimately comes first on the page; the title is the first
+    // thing reachable inside the form itself.
+    const form = root.querySelector('#create-task')!
+    const focusable = [...form.querySelectorAll<HTMLElement>('input, textarea, select, button')]
+    expect(focusable[0]?.id).toBe('new-title')
   })
 
   it('creates a real task and keeps the title, the next action and the first rule', async () => {
@@ -232,9 +277,22 @@ describe('creating a task', () => {
 })
 
 describe('demo', () => {
-  it('“Explore the live demo” loads the prepared notebook', async () => {
+  /**
+   * The prepared notebook survives as a fixture and as the measurement's
+   * starting state, reachable through `?measure=N`. What is gone is the button
+   * that offered it as a way into the product : opening a demonstration is not
+   * using the product, and the first screen now creates a real task instead.
+   */
+  it('is no longer offered as a way into the product', async () => {
     await settled()
-    button('Explore the live demo').click()
+
+    const labels = [...root.querySelectorAll('button')].map((b) => b.textContent?.trim())
+    expect(labels).not.toContain('Explore the live demo')
+    expect(root.querySelector('#seed')).toBeNull()
+  })
+
+  it('still builds a coherent prepared task, used by the measurement', async () => {
+    await store.openPreparedTask(buildDemoTask())
     await settled(8)
 
     const task = store.currentTask()!
@@ -288,8 +346,9 @@ describe('dashboard', () => {
     const pending = proposedRejections(store.currentTask()!)[0]
     expect(acceptedRejections(store.currentTask()!).map((r) => r.id)).not.toContain(pending.id)
 
+    const before = store.currentTask()!.version
     root.querySelector<HTMLButtonElement>(`[data-accept="${pending.id}"]`)!.click()
-    await settled()
+    await written(before)
 
     expect(acceptedRejections(store.currentTask()!).map((r) => r.id)).toContain(pending.id)
     expect(store.currentTask()!.audit.at(-1)).toMatchObject({
@@ -300,8 +359,9 @@ describe('dashboard', () => {
 
   it('declines a proposal without erasing it', async () => {
     const pending = proposedRejections(store.currentTask()!)[0]
+    const before = store.currentTask()!.version
     root.querySelector<HTMLButtonElement>(`[data-decline="${pending.id}"]`)!.click()
-    await settled()
+    await written(before)
 
     const after = store.currentTask()!
     expect(proposedRejections(after)).toHaveLength(0)
@@ -321,8 +381,9 @@ describe('dashboard', () => {
   it('confirms evidence, the only path to “verified”', async () => {
     const verify = root.querySelector<HTMLButtonElement>('[data-verify]')!
     const id = verify.dataset.verify!
+    const before = store.currentTask()!.version
     verify.click()
-    await settled()
+    await written(before)
 
     const step = store.currentTask()!.steps.find((s) => s.id === id)!
     expect(step.confidence).toBe('human_verified')
@@ -484,14 +545,44 @@ describe('closed task', () => {
 
   it('lets the human reopen what the agent closed', async () => {
     const prompt = vi.spyOn(window, 'prompt').mockReturnValue('Rotation still needs measuring')
+    const before = store.currentTask()!.version
     button('Reopen this task').click()
-    await settled()
+    await written(before)
 
     const task = store.currentTask()!
     expect(task.status).toBe('active')
     expect(task.next).toBe('Rotation still needs measuring')
     expect(text()).toContain('Rotation still needs measuring')
     prompt.mockRestore()
+  })
+})
+
+describe('the WebMCP badge tells the truth about the browser', () => {
+  it('reads “ready” only where the API is actually present', async () => {
+    installModelContext()
+    __resetRegistration()
+    await settled()
+
+    const badge = root.querySelector('.webmcp-badge')
+    expect(badge?.textContent).toContain('WebMCP ready · 14 task tools')
+    expect(badge?.className).not.toContain('webmcp-badge--off')
+
+    removeModelContext()
+  })
+
+  it('reads “active” once the tools are registered, and counts them', async () => {
+    installModelContext()
+    __resetRegistration()
+    await store.openPreparedTask(buildDemoTask())
+    await registerTools()
+    await settled()
+
+    const badge = root.querySelector('.webmcp-badge')
+    expect(badge?.textContent).toContain(`WebMCP active · ${ALL_TOOLS.length - 1} tools`)
+    expect(badge?.className).toContain('webmcp-badge--active')
+
+    __resetRegistration()
+    removeModelContext()
   })
 })
 
@@ -562,5 +653,52 @@ describe('a success message does not settle in', () => {
     // A notice that stays claims, a minute later, that an action has just
     // happened. It has to be read as false.
     expect(root.querySelector('.notice--ok')).toBeNull()
+  })
+})
+
+describe('the live region does not outlive its screen', () => {
+  let root: HTMLElement
+  let unmount: () => void
+
+  beforeEach(async () => {
+    store.__resetStore()
+    resetCalls()
+    await clearDatabase()
+    await store.init()
+    history.replaceState(null, '', '/')
+    document.body.innerHTML = '<div id="announcements"></div><div id="app"></div>'
+    root = document.querySelector<HTMLElement>('#app')!
+    unmount = mount(root)
+  })
+
+  afterEach(() => {
+    unmount()
+    history.replaceState(null, '', '/')
+  })
+
+  /**
+   * `announce()` returned early with no task and left the previous screen's
+   * sentence standing, so leaving a task still announced "0 steps recorded"
+   * about a task no longer shown. A live region nobody clears is a screen that
+   * lies to the one person who cannot check it.
+   */
+  it('clears the announcement when no task is on screen', async () => {
+    await store.openPreparedTask(buildDemoTask())
+    for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0))
+    __renderNow()
+
+    const region = document.querySelector('#announcements')!
+    expect(region.textContent?.trim()).not.toBe('')
+
+    // `init()` reopens the last task from IndexedDB, so the store has to be
+    // genuinely empty for the screen to carry no task at all.
+    store.__resetStore()
+    await clearDatabase()
+    await store.init()
+    for (let i = 0; i < 6; i++) await new Promise((r) => setTimeout(r, 0))
+    __renderNow()
+
+    expect(store.currentTask()).toBeNull()
+    expect(region.textContent?.trim()).toBe('')
   })
 })

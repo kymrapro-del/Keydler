@@ -105,12 +105,22 @@ What survives from that agent, and is verifiable :
   WebMCP WebIDL and are silently ignored. Adding them would be noise that a judge
   who writes specifications would notice.
 
-## Two worries we can drop
+## One worry we can drop, one we cannot
 
-- **The project predating the contest**: the 97 commits all date from
-  August 26 or after, none before the 25th. Nothing to declare.
-- **License**: an MIT `LICENSE` at the root. Still to confirm that GitHub shows
-  it in the “About” box and that the repository is public. One click, not a task.
+- **The project predating the contest**: nothing to declare, and it survives the
+  history rewrite. `main` now carries 22 commits, from August 26 to August 30 :
+  the count published in the first version of this note, 97, described the
+  history before the rewrite and is no longer what a judge would read. The
+  ungroomed history is kept whole on `sauvegarde-historique`, 117 commits, and
+  its first commit is also dated August 26. Every branch in the repository
+  starts on the 26th, so the claim holds whichever one is looked at. Quote the
+  branch along with the number, or the number contradicts what `git log` shows.
+- **License**: an MIT `LICENSE` at the root, still there. What was listed here
+  as “one click, not a task” is not done : as of September 1 the repository
+  answers 404 to an anonymous visitor, so it is private, and GitHub shows no
+  “About” box to a judge at all. The live site links to it from its footer, so
+  the 404 is reachable from the submitted URL. This belongs to the blocking
+  list, not to the worries we can drop.
 
 ---
 

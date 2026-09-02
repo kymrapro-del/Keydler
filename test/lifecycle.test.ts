@@ -79,11 +79,19 @@ describe('closing and reopening', () => {
     expect(verified.steps[0].confidence).toBe('human_verified')
   })
 
-  it('says plainly there is nothing to resume, without misleading advice', () => {
+  /**
+   * This readout used to send the agent back to the human : "ask them to open a
+   * task in the dashboard". That was the only honest advice while nothing could
+   * create one. `create_task` exists now, so the same sentence would make an
+   * agent interrupt someone for work it can do itself, which is the opposite of
+   * what this product is for.
+   */
+  it('points at the tool that opens a task, not at the human', () => {
     const output = renderNoTask()
     expect(output).toContain('NO ACTIVE TASK')
     expect(output).toContain('nothing to resume')
     expect(output).not.toContain('call\nlog_step')
-    expect(output).toContain('call resume_task again')
+    expect(output).toContain('create_task')
+    expect(output).not.toMatch(/ask the human/i)
   })
 })

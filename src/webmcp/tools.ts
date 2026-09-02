@@ -35,6 +35,7 @@ import { failure, text, type ModelContextTool, type ToolResult } from './adapter
 import { recordCall } from './witness'
 import { taskUrl } from './location'
 import {
+  CREATE_TASK_SCHEMA,
   ADD_CONSTRAINT_SCHEMA,
   ADD_DECISION_SCHEMA,
   ASK_HUMAN_SCHEMA,
@@ -50,6 +51,7 @@ import {
   WHAT_CHANGED_SCHEMA,
 } from './schemas'
 import {
+  CREATE_TASK_DESCRIPTION,
   ADD_CONSTRAINT_DESCRIPTION,
   ADD_DECISION_DESCRIPTION,
   ASK_HUMAN_DESCRIPTION,
@@ -465,6 +467,50 @@ export const setNextActionTool: ModelContextTool = {
   },
 }
 
+/**
+ * The one write available before anything exists. Everything else in this
+ * catalogue needs an open task, so without this tool an agent that has just
+ * been told what to work on can do nothing but ask the human to fill a form.
+ * The point of the product is that the human supervises, not that they type.
+ */
+export const createTaskTool: ModelContextTool = {
+  name: 'create_task',
+  title: 'Open the shared log',
+  description: CREATE_TASK_DESCRIPTION,
+  inputSchema: CREATE_TASK_SCHEMA,
+  annotations: { readOnlyHint: false },
+  async execute(input, options) {
+    const operation = 'create_task'
+    try {
+      if (options?.signal?.aborted) throw new CancelledError(operation)
+
+      const open = store.currentTask()
+      if (open && open.status === 'active') {
+        recordCall(operation, true)
+        return failure(
+          `A task is already open on this page: ${open.title}\n` +
+            'Nothing was created. Call resume_task to read it, then write against ' +
+            'the version it gives you. A second log would split the memory in two.',
+        )
+      }
+
+      const title = requireText('title', input.title, 200)
+      const next = requireText('next_action', input.next_action, 400)
+      requireMutationId(input.mutation_id)
+
+      const task = await store.createAndOpenTask(title, next)
+      recordCall(operation, false)
+
+      // The readout comes back with the reply so the agent holds a version
+      // immediately, and does not have to spend a second call to start writing.
+      return text(`OK: task created.\n\n${renderTaskState(task)}`)
+    } catch (error) {
+      recordCall(operation, true)
+      return toToolError(error)
+    }
+  },
+}
+
 export const APPROVAL_TIMEOUT = 120_000
 
 let approvalTimeout = APPROVAL_TIMEOUT
@@ -700,4 +746,8 @@ export const WRITE_TOOLS: readonly ModelContextTool[] = [
   completeTaskTool,
 ] as const
 
-export const ALL_TOOLS: readonly ModelContextTool[] = [...READ_TOOLS, ...WRITE_TOOLS] as const
+export const ALL_TOOLS: readonly ModelContextTool[] = [
+  ...READ_TOOLS,
+  createTaskTool,
+  ...WRITE_TOOLS,
+] as const

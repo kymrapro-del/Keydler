@@ -8,6 +8,38 @@ by typing into a console.
 
 If a beat cannot be reproduced on the day, cut it. Do not fake it.
 
+## What the contest requires of the video
+
+From [`contest.md`](contest.md), and none of it is optional :
+
+- **Under three minutes**, on YouTube, set to **Public**. “Unlisted” has no
+  source saying it counts.
+- **Audio narration is mandatory.** A screen capture with music is explicitly
+  declared non-compliant. Text-to-speech is allowed, so a clean synthetic read
+  beats a rushed live one.
+- **Show the project working in the first ten to fifteen seconds.** Judges may
+  rule on the video alone.
+
+That last rule is why this script opens on the refusal rather than on the
+problem. The problem is worth twenty seconds, but not the first twenty : a judge
+who has already watched fifty entries decides early whether this one runs.
+
+## The budget
+
+Target **2:50**, not 2:59. The beats below add up to 2:50 with nothing to spare,
+and the two optional beats at the end are only for a run that comes in short.
+Overruns get cut from the close, never from the interruption beat at 1:25.
+
+| Time        | Beat                                | Cuttable    |
+| ----------- | ----------------------------------- | ----------- |
+| 0:00 – 0:15 | Cold open : the refusal, working    | never       |
+| 0:15 – 0:35 | The problem                         | to 12 s     |
+| 0:35 – 1:00 | Set up the task                     | to 15 s     |
+| 1:00 – 1:25 | A new conversation picks it up      | no          |
+| 1:25 – 2:05 | The human interrupts, and it adapts | **never**   |
+| 2:05 – 2:30 | The measurement                     | no          |
+| 2:30 – 2:50 | Close                               | first to go |
+
 ---
 
 ## Setup, before recording
@@ -37,7 +69,28 @@ claude mcp add chrome-devtools -- npx chrome-devtools-mcp@latest --browserUrl ht
 
 ---
 
-## 0:00 – 0:20 · The problem
+## 0:00 – 0:15 · Cold open : the thing working
+
+**Film this beat last**, once the run at 1:25 has actually happened. It is that
+moment, cut to fifteen seconds and placed first. No logo, no title card, no
+setup : a judge decides in the first ten seconds whether this project runs.
+
+**On screen :** the split screen, both halves moving. The agent writes, the
+page turns it away, the agent re-reads and adapts. Show the refusal banner
+plainly enough to read.
+
+> “A human changed one rule while the agent was working. The agent’s next write
+> was refused, it re-read the page, and it adapted. That is Keydler, and it is a
+> web page.”
+
+Then, and only then, the title.
+
+**Do not** narrate the mechanism here. No versions, no tool names, no IndexedDB.
+The beat has one job : prove the thing runs.
+
+---
+
+## 0:15 – 0:35 · The problem
 
 **On screen :** an agent conversation, mid-work, then a new empty one.
 
@@ -50,7 +103,7 @@ Do not mention WebMCP yet. Do not mention versions, storage, or tools.
 
 ---
 
-## 0:20 – 0:45 · Set up the task
+## 0:35 – 1:00 · Set up the task
 
 **On screen :** the first screen of Keydler, then **Create a task**.
 
@@ -77,7 +130,7 @@ nothing : a good agent avoids those on its own.
 
 ---
 
-## 0:45 – 1:10 · A new conversation picks it up
+## 1:00 – 1:25 · A new conversation picks it up
 
 **On screen :** a brand-new agent conversation, with the page open.
 
@@ -102,7 +155,7 @@ and no claim in this repository says the call is guaranteed.
 
 ---
 
-## 1:10 – 1:50 · The human interrupts
+## 1:25 – 1:50 · The human interrupts
 
 **On screen :** the page, while the agent is still working.
 
@@ -132,7 +185,7 @@ This is the beat the whole product exists for. Give it time.
 
 ---
 
-## 1:50 – 2:20 · The agent adapts
+## 1:50 – 2:05 · The agent adapts
 
 **On screen :** the conversation.
 
@@ -149,6 +202,51 @@ If the agent calls `resume_task` instead, that is fine and still correct; say so
 rather than retaking. Both paths work, and one is cheaper.
 
 ---
+
+## 2:05 – 2:30 · The measurement
+
+**On screen :** [`docs/measurements/results.md`](measurements/results.md),
+scrolled to the result, then the two-column table of what the control proposed.
+
+This is the beat that separates Keydler from the field. Our own research found
+that “the agent proposes, the human decides” is the single most crowded pitch in
+this contest : a judge will have read it fifty times by the time they reach us.
+A number nobody else measured is what they will not have read.
+
+> “We measured it. Eight tasks, each with one approach ruled out for a local
+> reason. Without the log, the agent proposed the ruled-out approach again in
+> eight cases out of eight. With the log, in zero.
+>
+> And the control is not incompetent. Its eight answers are the textbook ones,
+> well argued. They are wrong only here, for a reason no model could guess.”
+
+**Say the limit out loud, on camera.** It costs four seconds and it is worth
+more than the number :
+
+> “Eight runs per condition, one model. That is exploratory, not statistical.”
+
+A judge who spots an inflated number discards the entry. A judge who hears the
+author bound their own claim trusts the rest of it. The protocol and the raw
+logs are in the repository, so this is checkable rather than asserted.
+
+---
+
+## 2:30 – 2:50 · Close
+
+**On screen :** the dashboard, whole.
+
+> “Rules in force. Work done, with what backs it. Approaches ruled out, with
+> why. On a web page the agent reads through WebMCP, and that I can correct
+> while it works.
+>
+> Conversations reset. The work should not.”
+
+---
+
+## Beats to add only if the cut comes in under 2:50
+
+None of these belongs in a three-minute cut that already covers the beats above.
+Each one is real, and each one is worth a rerecord only if there is room.
 
 ## Optional beat · It asks permission, and waits
 
@@ -185,7 +283,7 @@ every later conversation reads.
 
 ---
 
-## 2:20 – 2:40 · Evidence, and who gets to trust it
+## Optional beat · Evidence, and who gets to trust it
 
 **On screen :** the page, **Evidence to review**.
 
@@ -198,18 +296,6 @@ Read it. Then click **Approve**. The label becomes **Verified by you**.
 
 > “The agent can attach proof. It cannot mark its own work verified. That word
 > costs a human reading it, and that is the only way it can be earned.”
-
----
-
-## 2:40 – 2:55 · Close
-
-**On screen :** the dashboard, whole.
-
-> “Rules in force. Work done, with what backs it. Approaches ruled out, with
-> why. On a web page the agent reads through WebMCP, and that I can correct
-> while it works.
->
-> Conversations reset. The work should not.”
 
 ---
 
@@ -238,3 +324,32 @@ levels, one of each. It is built by the domain’s own mutations
 Use it when the recording has to be short, or when a live agent is not
 available. Use the hand-created task above when there is time : watching someone
 type the rule that later stops the agent is the clearest version of the story.
+
+---
+
+## Before you publish
+
+Recording :
+
+- [ ] Split screen, page left, agent right, both visible the whole time
+- [ ] The trial build (`npm run trial`), never the dev server : a browser-only
+      agent can `fetch` the whole source off the dev server, and one measurement
+      run was voided for exactly that
+- [ ] Empty task list at the start, and the browser zoomed enough that the
+      refusal banner is readable at 360p
+- [ ] The cold open filmed last, cut from the real 1:25 beat
+
+Audio :
+
+- [ ] Narration on the whole runtime, not just the open. Music alone is
+      non-compliant
+- [ ] Synthetic narration is allowed. Prefer one clean synthetic read over a
+      live take with dead air
+- [ ] The measurement's limit sentence is spoken, not only captioned
+
+Publishing :
+
+- [ ] Under three minutes. Check the final export, not the timeline
+- [ ] YouTube, visibility **Public**, not Unlisted
+- [ ] The live URL and the repository are reachable from the description
+- [ ] Uploaded before the freeze, with hours to spare, not minutes

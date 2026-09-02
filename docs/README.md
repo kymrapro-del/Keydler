@@ -41,7 +41,7 @@ How to reproduce the work rather than take its word.
 
 | Protocol                                                 | For                                                               |
 | -------------------------------------------------------- | ----------------------------------------------------------------- |
-| [protocols/webmcp-manual.md](protocols/webmcp-manual.md) | Driving the thirteen tools by hand in a WebMCP browser            |
+| [protocols/webmcp-manual.md](protocols/webmcp-manual.md) | Driving the fourteen tools by hand in a WebMCP browser            |
 | [protocols/measurement.md](protocols/measurement.md)     | Running the measurement campaign the numbers come from            |
 | [protocols/resumption.md](protocols/resumption.md)       | Handing the task to a fresh agent, which is the product's own use |
 

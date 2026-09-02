@@ -9,6 +9,14 @@ const MAX_RETENUS = 20
  */
 const READS = new Set(['resume_task', 'what_changed', 'read_task_detail', 'search_task'])
 
+/**
+ * A write, but never a blind one : it is what brings the task into existence,
+ * so there was nothing to read before it. Counting it against the "read before
+ * writing" figure would make the one number this page reports about agent
+ * behaviour wrong in the only case where the agent had no choice.
+ */
+const CREATES = new Set(['create_task'])
+
 let total = 0
 let refusedCalls = 0
 let recents: Call[] = []
@@ -22,7 +30,7 @@ export function recordCall(tool: string, refused: boolean): void {
 
   if (READS.has(tool)) {
     if (!refused) sawRead = true
-  } else if (!sawRead && !refused) {
+  } else if (!CREATES.has(tool) && !sawRead && !refused) {
     blindWrites += 1
   }
 

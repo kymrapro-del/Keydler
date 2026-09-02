@@ -1,109 +1,192 @@
+/*
+ * Material Design 3, the real token architecture.
+ *
+ * The source of truth is the `--md-sys-color-*` scheme, named exactly as
+ * Material Web names it, so the palette can be regenerated from a seed colour
+ * by any Material tool and dropped in here without touching a component. The
+ * product's own `--c-*` names are kept as aliases underneath : 1200 lines of
+ * stylesheet already speak them, and an alias costs nothing.
+ *
+ * Seed : indigo, the scheme read off moddy.app, which runs Material Web with
+ * the official catalog tokens. Swapping the scheme for another seed means
+ * replacing the `--md-sys-color-*` block and nothing else.
+ *
+ * The reference typeface is Google Sans with Roboto behind it, and the icons
+ * are Material Symbols, all from Google Fonts. The served page keeps a
+ * `default-src 'none'` policy that opens two remote origins for those and
+ * nothing else.
+ */
+
 :root {
   color-scheme: light dark;
 
-  --c-bg: #f4f6ee;
-  --c-surface: #e9eee2;
-  --c-surface-raised: #ffffff;
-  --c-border: #cfd8c5;
-  --c-border-strong: #afbd9f;
-  --c-text: #182014;
-  --c-text-muted: #5b6655;
-  --c-accent: #5f8e31;
-  --c-accent-strong: #355f17;
-  --c-accent-soft: #e1efd0;
-  --c-primary-bg: #375f1a;
-  --c-primary-hover: #294c10;
-  --c-primary-text: #ffffff;
+  /* -- Material reference typeface ------------------------------------- */
+  --md-ref-typeface-plain: 'Google Sans', Roboto, system-ui, -apple-system, sans-serif;
 
-  --brand-night: #0d120a;
-  --brand-panel-start: #285315;
-  --brand-panel-end: #9dcc55;
-  --brand-highlight: #f4d76f;
-  --brand-highlight-text: #355016;
+  /* -- Material system colours, light scheme ---------------------------- */
+  --md-sys-color-primary: #4a5bb9;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #dde1ff;
+  --md-sys-color-on-primary-container: #001551;
+  --md-sys-color-secondary-container: #dde1ff;
+  --md-sys-color-surface: #fbf8ff;
+  --md-sys-color-on-surface: #1b1b21;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container: #efedf4;
+  --md-sys-color-surface-container-high: #e9e7ef;
+  --md-sys-color-on-surface-variant: #45464f;
+  --md-sys-color-outline: #767680;
+  --md-sys-color-outline-variant: #c6c5d0;
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-tertiary: #1c6c48;
+  --md-sys-color-tertiary-container: #c7f0d9;
 
-  --c-ok-bg: #e6f4ea;
-  --c-ok-text: #17603a;
-  --c-warn-bg: #fdf3d8;
-  --c-warn-text: #6b5200;
-  --c-error-bg: #fce8e6;
-  --c-error-text: #8c1d18;
+  /* -- Material shape scale --------------------------------------------- */
+  --md-sys-shape-corner-extra-small: 4px;
+  --md-sys-shape-corner-small: 8px;
+  --md-sys-shape-corner-medium: 12px;
+  --md-sys-shape-corner-large: 16px;
+  --md-sys-shape-corner-extra-large: 28px;
+  --md-sys-shape-corner-full: 999px;
 
-  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* -- Material type scale ---------------------------------------------- */
+  --md-sys-typescale-display-large-size: 57px;
+  --md-sys-typescale-display-medium-size: 45px;
+  --md-sys-typescale-headline-small-size: 24px;
+  --md-sys-typescale-title-large-size: 22px;
+  --md-sys-typescale-title-medium-size: 16px;
+  --md-sys-typescale-body-large-size: 16px;
+  --md-sys-typescale-body-medium-size: 14px;
+  --md-sys-typescale-label-large-size: 14px;
+  --md-sys-typescale-label-small-size: 11px;
+
+  /* -- Material state layer opacities ----------------------------------- */
+  --md-sys-state-hover-opacity: 8%;
+  --md-sys-state-focus-opacity: 12%;
+  --md-sys-state-pressed-opacity: 12%;
+
+  /* == The product's names, aliased onto the scheme above ================ */
+
+  --c-bg: var(--md-sys-color-surface);
+  --c-surface: var(--md-sys-color-surface-container);
+  --c-surface-raised: var(--md-sys-color-surface-container-lowest);
+  --c-border: var(--md-sys-color-outline-variant);
+  --c-border-strong: var(--md-sys-color-outline);
+  --c-text: var(--md-sys-color-on-surface);
+  --c-text-muted: var(--md-sys-color-on-surface-variant);
+  --c-accent: var(--md-sys-color-primary);
+  --c-accent-strong: var(--md-sys-color-on-primary-container);
+  --c-accent-soft: var(--md-sys-color-primary-container);
+  --c-primary-bg: var(--md-sys-color-primary);
+  --c-primary-hover: #3a4aa0;
+  --c-primary-text: var(--md-sys-color-on-primary);
+
+  --brand-night: var(--md-sys-color-surface);
+  --brand-panel-start: var(--md-sys-color-primary-container);
+  --brand-panel-end: var(--md-sys-color-surface-container);
+  --brand-highlight: var(--md-sys-color-primary-container);
+  --brand-highlight-text: var(--md-sys-color-on-primary-container);
+
+  --c-ok-bg: var(--md-sys-color-tertiary-container);
+  --c-ok-text: var(--md-sys-color-tertiary);
+  --c-warn-bg: #fbf0cf;
+  --c-warn-text: #5c4700;
+  --c-error-bg: var(--md-sys-color-error-container);
+  --c-error-text: var(--md-sys-color-error);
+
+  --state-hover: var(--md-sys-state-hover-opacity);
+  --state-focus: var(--md-sys-state-focus-opacity);
+  --state-pressed: var(--md-sys-state-pressed-opacity);
+
+  --type-label-size: var(--md-sys-typescale-label-large-size);
+  --type-label-tracking: 0.006em;
+  --type-body-size: var(--md-sys-typescale-body-large-size);
+  --type-title-size: var(--md-sys-typescale-title-medium-size);
+
+  --font-sans: var(--md-ref-typeface-plain);
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', monospace;
 
+  /* Material spacing, the catalog steps. */
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
   --sp-4: 16px;
   --sp-5: 24px;
   --sp-6: 32px;
-
   --sp-7: 48px;
   --sp-8: 64px;
   --sp-9: 88px;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-sm: var(--md-sys-shape-corner-small);
+  --radius-md: var(--md-sys-shape-corner-medium);
+  --radius-lg: var(--md-sys-shape-corner-large);
+  --radius-xl: var(--md-sys-shape-corner-extra-large);
 
   --measure: 1120px;
   --dashboard: 960px;
 
-  --shadow-card: 0 1px 2px rgb(21 35 15 / 6%), 0 10px 30px rgb(21 35 15 / 5%);
-  --shadow-raised: 0 18px 55px rgb(12 28 7 / 16%);
+  /* Material elevation, levels 1 and 3. */
+  --shadow-card: 0 1px 2px rgb(23 29 18 / 8%), 0 6px 18px rgb(23 29 18 / 6%);
+  --shadow-raised: 0 8px 28px rgb(23 29 18 / 14%);
 }
 
+/* == Dark scheme ======================================================== */
+
+/* Only the `--md-sys-color-*` block changes. Every alias above follows,
+   which is the whole point of naming the scheme rather than the components. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --c-bg: #10140d;
-    --c-surface: #1a2115;
-    --c-surface-raised: #171d13;
-    --c-border: #384331;
-    --c-border-strong: #56634d;
-    --c-text: #edf1e7;
-    --c-text-muted: #b6c0ad;
-    --c-accent: #b8db92;
-    --c-accent-strong: #d0efaa;
-    --c-accent-soft: #293b1b;
-    --c-primary-bg: #afd18c;
-    --c-primary-hover: #c6e8a0;
-    --c-primary-text: #1d3703;
+    --md-sys-color-primary: #b8c3ff;
+    --md-sys-color-on-primary: #002486;
+    --md-sys-color-primary-container: #0034b6;
+    --md-sys-color-on-primary-container: #d4daff;
+    --md-sys-color-secondary-container: #2e3b74;
+    --md-sys-color-surface: #11131b;
+    --md-sys-color-on-surface: #e2e1ed;
+    --md-sys-color-surface-container-lowest: #0c0e15;
+    --md-sys-color-surface-container: #1e1f28;
+    --md-sys-color-surface-container-high: #282932;
+    --md-sys-color-on-surface-variant: #c4c5d7;
+    --md-sys-color-outline: #8e90a1;
+    --md-sys-color-outline-variant: #444655;
+    --md-sys-color-error: #ffb4ab;
+    --md-sys-color-error-container: #93000a;
+    --md-sys-color-tertiary: #8fd6ab;
+    --md-sys-color-tertiary-container: #1d4a33;
 
-    --c-ok-bg: #14301f;
-    --c-ok-text: #8fd6ab;
-    --c-warn-bg: #332a0c;
-    --c-warn-text: #e8c65c;
-    --c-error-bg: #3a1512;
-    --c-error-text: #f2b8b5;
+    --c-primary-hover: #d4daff;
+    --c-warn-bg: #3c2f00;
+    --c-warn-text: #f0d58a;
 
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 35%), 0 14px 36px rgb(0 0 0 / 18%);
-    --shadow-raised: 0 22px 70px rgb(0 0 0 / 32%);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 35%), 0 10px 28px rgb(0 0 0 / 20%);
+    --shadow-raised: 0 16px 48px rgb(0 0 0 / 32%);
   }
 }
 
 :root[data-theme='dark'] {
-  --c-bg: #10140d;
-  --c-surface: #1a2115;
-  --c-surface-raised: #171d13;
-  --c-border: #384331;
-  --c-border-strong: #56634d;
-  --c-text: #edf1e7;
-  --c-text-muted: #b6c0ad;
-  --c-accent: #b8db92;
-  --c-accent-strong: #d0efaa;
-  --c-accent-soft: #293b1b;
-  --c-primary-bg: #afd18c;
-  --c-primary-hover: #c6e8a0;
-  --c-primary-text: #1d3703;
+  --md-sys-color-primary: #b8c3ff;
+  --md-sys-color-on-primary: #002486;
+  --md-sys-color-primary-container: #0034b6;
+  --md-sys-color-on-primary-container: #d4daff;
+  --md-sys-color-secondary-container: #2e3b74;
+  --md-sys-color-surface: #11131b;
+  --md-sys-color-on-surface: #e2e1ed;
+  --md-sys-color-surface-container-lowest: #0c0e15;
+  --md-sys-color-surface-container: #1e1f28;
+  --md-sys-color-surface-container-high: #282932;
+  --md-sys-color-on-surface-variant: #c4c5d7;
+  --md-sys-color-outline: #8e90a1;
+  --md-sys-color-outline-variant: #444655;
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-tertiary: #8fd6ab;
+  --md-sys-color-tertiary-container: #1d4a33;
 
-  --c-ok-bg: #14301f;
-  --c-ok-text: #8fd6ab;
-  --c-warn-bg: #332a0c;
-  --c-warn-text: #e8c65c;
-  --c-error-bg: #3a1512;
-  --c-error-text: #f2b8b5;
+  --c-primary-hover: #d4daff;
+  --c-warn-bg: #3c2f00;
+  --c-warn-text: #f0d58a;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 35%), 0 14px 36px rgb(0 0 0 / 18%);
-  --shadow-raised: 0 22px 70px rgb(0 0 0 / 32%);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 35%), 0 10px 28px rgb(0 0 0 / 20%);
+  --shadow-raised: 0 16px 48px rgb(0 0 0 / 32%);
 }

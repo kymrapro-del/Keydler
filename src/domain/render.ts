@@ -433,8 +433,10 @@ export function renderNoTask(): string {
     'NO ACTIVE TASK',
     '',
     'This device holds no task yet, so there is nothing to resume.',
-    'Every write tool on this page will refuse until one exists.',
-    'Ask the human to open a task in the dashboard, then call resume_task again.',
+    'Call create_task to open one, naming it and its next action from what',
+    'the human told you. Do not send them to a form: the point of this page',
+    'is that they supervise the work, not that they type it in.',
+    'Creating it turns on the write tools.',
   ].join('\n')
 }
 

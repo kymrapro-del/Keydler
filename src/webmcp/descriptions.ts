@@ -1,6 +1,6 @@
 /**
  * Chrome recommends 500 characters per tool description and 150 per parameter
- * description: not hard limits, but there are thirteen to read at once. A
+ * description: not hard limits, but there are fourteen to read at once. A
  * description instructs, the README explains; `test/budgets-webmcp.test.ts`
  * holds these bounds.
  */
@@ -154,3 +154,13 @@ export const BASED_ON_VERSION_DESCRIPTION =
 export const MUTATION_ID_DESCRIPTION =
   'A fresh unique id for THIS write. If you get no reply, retry with the SAME ' +
   'mutation_id and arguments: the write happens once. Never reuse one.'
+
+export const CREATE_TASK_DESCRIPTION = `Open the shared log for a task, when none is open yet.
+
+Call this first when resume_task says no task is open and the human has
+described work to do. Do not ask them to fill a form: name the task and
+its next action yourself, from what they told you.
+
+Creating it turns on the write tools. Add what you already know with
+add_constraint and reject_approach straight after: both are recorded as
+proposals for the human to accept, which is what keeps them supervised.`

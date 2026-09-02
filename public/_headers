@@ -1,8 +1,10 @@
 # Security headers read by Cloudflare Pages and Netlify.
 #
-# The application makes no outbound request, loads no remote font, uses no
-# data image and sets no inline style. The policy can start from
-# `default-src 'none'` and open only resources served by this origin.
+# The application makes no outbound request of its own, uses no data image and
+# sets no inline style. It does load the Material typeface and icon set from
+# Google Fonts, so the policy starts from `default-src 'none'` and opens
+# exactly two remote origins : the stylesheet host and the font host. Nothing
+# else is reachable, and no other directive is widened.
 #
 # The page holds encrypted credentials and thirteen agent tools. An injected
 # script could reach everything the user sees, while framing could disguise an
@@ -12,7 +14,7 @@
 # theme bootstrap script.
 
 /*
-  Content-Security-Policy: default-src 'none'; script-src 'self' '__CSP_SCRIPT_HASH__'; style-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self' '__CSP_SCRIPT_HASH__'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY

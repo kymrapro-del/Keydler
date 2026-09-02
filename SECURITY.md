@@ -2,7 +2,9 @@
 
 # Security
 
-**No server, no account, no network calls. That removes most of what a security
+**No server and no account. Your data makes no network call : the only remote
+requests the page makes are for the Material typeface and icon set on Google
+Fonts, which carry nothing about your work. That removes most of what a security
 policy usually covers, and creates a different set of things worth stating.**
 
 </div>

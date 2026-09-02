@@ -83,7 +83,13 @@ describe('static mode: the contest target', () => {
     await registerTools()
 
     expect(getRegistrationState().lifecycle.mode).toBe('static')
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
+    expect(fake.names()).toEqual([
+      'create_task',
+      'read_task_detail',
+      'resume_task',
+      'search_task',
+      'what_changed',
+    ])
   })
 
   // The French said two, and the assertion has always expected four. Naming
@@ -98,7 +104,13 @@ describe('static mode: the contest target', () => {
     const fake = installModelContext()
     await registerTools()
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
+    expect(fake.names()).toEqual([
+      'create_task',
+      'read_task_detail',
+      'resume_task',
+      'search_task',
+      'what_changed',
+    ])
   })
 
   it('NEVER removes a tool during the life of the document', async () => {
@@ -115,7 +127,7 @@ describe('static mode: the contest target', () => {
     await settle(8)
 
     expect(textOf(result)).toContain('OK: complete_task recorded.')
-    expect(fake.names()).toHaveLength(ALL_TOOLS.length)
+    expect(fake.names()).toHaveLength(ALL_TOOLS.length) // static mode withdraws nothing
     expect(getRegistrationState().toolNames).toHaveLength(ALL_TOOLS.length)
   })
 
@@ -142,12 +154,12 @@ describe('static mode: the contest target', () => {
   it('adds the writes instead when a task opens', async () => {
     const fake = installModelContext()
     await registerTools()
-    expect(fake.names()).toHaveLength(READ_TOOLS.length)
+    expect(fake.names()).toHaveLength(READ_TOOLS.length + 1) // + create_task
 
     await store.createAndOpenTask('Task', 'Continue')
     await settle(4)
 
-    expect(fake.names()).toHaveLength(ALL_TOOLS.length)
+    expect(fake.names()).toHaveLength(ALL_TOOLS.length) // static mode withdraws nothing
     expect(fake.names()).toContain('log_step')
   })
 })
@@ -167,7 +179,13 @@ describe('dynamic mode: Chromium 153 and beyond', () => {
     )
     await settle(6)
 
-    expect(fake.names()).toEqual(['read_task_detail', 'resume_task', 'search_task', 'what_changed'])
+    expect(fake.names()).toEqual([
+      'create_task',
+      'read_task_detail',
+      'resume_task',
+      'search_task',
+      'what_changed',
+    ])
   })
 
   it('hands them back at reopening', async () => {
@@ -176,12 +194,12 @@ describe('dynamic mode: Chromium 153 and beyond', () => {
     await registerTools()
     await store.mutate((s) => completeTask(s, { summary: 'Clos.', basedOnVersion: null }, 'human'))
     await settle(4)
-    expect(fake.names()).toHaveLength(READ_TOOLS.length)
+    expect(fake.names()).toHaveLength(READ_TOOLS.length + 1) // + create_task
 
     await store.mutate((s) => reopenTask(s, 'Work remains'))
     await settle(4)
 
-    expect(fake.names()).toHaveLength(ALL_TOOLS.length)
+    expect(fake.names()).toHaveLength(ALL_TOOLS.length - 1) // create_task steps aside
     expect(store.currentTask()!.id).toBe(task.id)
   })
 })

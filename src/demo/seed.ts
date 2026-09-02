@@ -159,8 +159,13 @@ export function buildCoreTask(): TaskState {
 }
 
 /**
- * The demo behind the "Try the demo" button: the base, pread one answered
- * question, one denied approval and one disputed step.
+ * The prepared task : the base, plus one answered question, one denied approval
+ * and one disputed step.
+ *
+ * No button offers it any more. It survives as a fixture for the suite and as
+ * the starting state of the measurement campaigns, which reach it through
+ * `?measure=N`. It is built by the domain's own mutations, so the state it
+ * produces is reproducible rather than hand-written.
  */
 export function buildDemoTask(): TaskState {
   let task = buildCoreTask()

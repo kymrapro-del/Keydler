@@ -1,0 +1,68 @@
+name: Deploy
+
+# Every commit on `main` goes to https://keydler.com, and only after the same
+# gate the contributor runs locally. A deploy that skipped `npm run check`
+# would put a red build in front of a judge.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, and never cancel one in flight : an interrupted
+# `wrangler deploy` can leave the Worker holding half an upload.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # The off switch for the submission freeze. Set the repository variable
+    # DEPLOY_FROZEN to `true` (Settings, Secrets and variables, Actions,
+    # Variables) and every later push stops deploying without touching this
+    # file. The contest freezes the live site at the close, and an accidental
+    # redeploy after that point risks eligibility.
+    if: vars.DEPLOY_FROZEN != 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The same command as CI, and as a contributor's last move before
+      # pushing. It builds without the origin trial token on purpose, so the
+      # build below is the one that ships.
+      - name: check
+        run: ALLOW_NO_ORIGIN_TRIAL=1 npm run check
+
+      # `.env.production` is tracked, so the origin trial token comes from the
+      # repository rather than from a secret. It is public by nature : every
+      # served page prints it. `npm run build` fails loudly if it is missing,
+      # which is what stops a healthy-looking deploy where WebMCP never exists.
+      - name: Production build, carrying the origin trial token
+        run: npm run build
+
+      - name: Refuse to ship a build that is not deployable
+        run: npm run artifact
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
+      # The suite runs in jsdom over source code, and this project has paid for
+      # that four times : green tests while a browser found the defect in a
+      # minute. This asks the live origin instead, and fails the run if the
+      # thing a judge will open is wrong.
+      - name: Probe the live site
+        run: |
+          sleep 10
+          npm run probe
