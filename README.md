@@ -164,11 +164,12 @@ rejection without a reason.
 ## What it looks like
 
 > [!NOTE]
-> **These images predate the Material 3 rebuild and the removal of the landing
-> screen.** They show the panels and the wording faithfully, and the colours and
-> the first screen not at all. They are kept rather than deleted because what
-> they explain is still what the product does; they are due to be retaken
-> against the deployed build.
+> The first three images below were taken against
+> [keydler.com](https://keydler.com) itself, on the build that is deployed. The
+> rest, inside the fold, predate the Material 3 rebuild : they show the panels
+> and the wording faithfully, and the colours not at all. They are kept because
+> what they explain is still what the product does, and each needs a state that
+> only a person clicking through can produce.
 
 **First visit**
 
