@@ -2028,3 +2028,52 @@ case for “no log open while some exist”. That state is unreachable (`init()`
 reopens the last one, `deleteCurrentTask()` reopens another), and a mutant
 survived in it. The branch is gone, and the test that claimed to cover it now
 says what it really proves.
+
+---
+
+## 2 September 2026, native run against production, Edge 152
+
+**Machine.** Microsoft Edge 152.0.4191.53 / Chromium 152, macOS 26.5.1, driven
+through the DevTools protocol on `https://keydler.com`. **No browser flag.** The
+deployed origin carries a valid origin trial token, so WebMCP activated on its
+own, which is what a visitor gets.
+
+`navigator.userAgentData` reports Chromium 152, so the page selected **static
+mode**, as designed below 153. The checks below follow that column.
+
+### What the native API does that a fake never would
+
+`executeTool` refused a tool name outright : `The provided value is not of type
+'RegisteredTool'`. It wants the object handed back by `getTools()`, its second
+argument must be a **JSON string** and not an object, and its answer comes back
+serialized rather than as a structure. The suite's fake accepts all three of the
+lenient forms. This is the fourth time a real browser has said something the
+fake could not.
+
+`getTools()` returns plain records carrying `annotations`, `description`,
+`inputSchema`, `name`, `origin`, `title` and `window`. There is no `execute` on
+them.
+
+### Readings
+
+| #   | Check                                | Result       | Notes                                                                                                                                  |
+| --- | ------------------------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 0   | Mode displayed                       | static       | Chromium 152, as expected below 153                                                                                                    |
+| 1   | 5 tools with no task                 | PASS         | `create_task`, `read_task_detail`, `resume_task`, `search_task`, `what_changed`. Badge `WebMCP active · 5 tools`                       |
+| 2   | Agent calls `create_task` unprompted | NOT VERIFIED | Needs an MCP client and a fresh conversation, not a console                                                                            |
+| 3   | Tools on an active task              | PASS         | 14, `create_task` still listed and refusing, as static mode requires                                                                   |
+| 4   | `complete_task` returns its answer   | PASS         | `OK: complete_task recorded.`, then `TASK CLOSED`; list stays at 14; `log_step` refuses with `already completed`                       |
+| 5   | Reopening : writes working again     | NOT VERIFIED | Needs the human click and its prompt                                                                                                   |
+| 6   | Cancellation during a queue wait     | NOT VERIFIED | Needs the client's interrupt                                                                                                           |
+| 7   | Exact replay / argument collision    | PASS         | Replay carried its note and moved no version; a different `action` under the same `mutation_id` was refused with `different arguments` |
+
+Four checks passed, three not verified. None failed.
+
+### One observation, not a defect
+
+`create_task` called while the human is looking at `/workspace` creates the task
+and reports the right `URL` in `resume_task`, and the address bar stays on
+`/workspace`. Called from the first screen, which is the case that matters, the
+address becomes `/t/:id` and the title appears. The workspace is a list of every
+log on the device, and jumping away from it because an agent wrote somewhere
+would take the human off the screen they chose. Recorded rather than changed.

@@ -473,9 +473,14 @@ fake cannot fail in a way it was not written to fail, and this README does not
 present it as browser validation.
 
 > [!IMPORTANT]
-> **That run covered thirteen tools. `create_task` is the fourteenth, added
-> after it, and it has never been exercised in a browser that carries WebMCP
-> natively.** It is covered by the suite, and it was driven end to end against a
+> **`create_task` has now been exercised in a browser that carries WebMCP
+> natively**, on 2 September against the deployed site : Edge 152, no flag, the
+> origin trial doing the work. It created the log, the tool list moved to
+> fourteen in static mode, and the replay and closure guarantees held. What is
+> still open is whether an agent reaches for it **unprompted**, which needs an
+> MCP client rather than a console and is recorded as not verified.
+>
+> The earlier note read : It is covered by the suite, and it was driven end to end against a
 > fake `ModelContext` installed by hand : the log opened, the constraint and the
 > rejection landed as proposals, and the page redrew. That establishes the code
 > path and nothing more. Whether an agent reaches for it on its own, in a real
