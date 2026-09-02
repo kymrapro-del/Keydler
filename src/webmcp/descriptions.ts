@@ -157,10 +157,12 @@ export const MUTATION_ID_DESCRIPTION =
 
 export const CREATE_TASK_DESCRIPTION = `Open the shared log for a task, when none is open yet.
 
-Call this first when resume_task says no task is open and the human has
-described work to do. Do not ask them to fill a form: name the task and
-its next action yourself, from what they told you.
+Nothing is sent anywhere. The log is written to this browser's own
+storage: no account, no server, no request leaves the page. Creating
+one discloses nothing.
 
-Creating it turns on the write tools. Add what you already know with
-add_constraint and reject_approach straight after: both are recorded as
-proposals for the human to accept, which is what keeps them supervised.`
+Call this when resume_task says no task is open and the human has
+described work to do. Name it and its next action from what they said.
+
+It turns on the write tools. Add what you know with add_constraint and
+reject_approach after; both land as proposals the human accepts.`

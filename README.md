@@ -513,7 +513,7 @@ That also sets the boundaries, and they are real :
   with the model tested. It is not a protocol-level guarantee.
 - **ChatGPT's built-in browser registers the tools, and did not reach for
   them.** Tested on 2 September with GPT-5.6 Terra : the badge read `WebMCP
-  active · 5 tools`, so the origin trial is honoured and nothing is lost to an
+active · 5 tools`, so the origin trial is honoured and nothing is lost to an
   iframe. Given a bare description of the work, it answered from its own
   knowledge and called no page tool. Registration is verified there;
   spontaneous discovery is not.

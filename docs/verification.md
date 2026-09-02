@@ -2152,3 +2152,31 @@ now measured in the environment the rules point at.
 **Still open.** Whether Terra finds the tools when the page is named, which is
 the wording the product prints in its own hand-off panel and the wording the
 demonstration uses at 1:00. That run has not been done.
+
+### The hand-off wording works, and Terra stopped for a reason worth keeping
+
+Same session, same browser, same model. With the wording the product prints in
+its own hand-off panel :
+
+> Continue this task on this page.
+
+**It found the tools.** Its reply opens with `Keydler has no active task yet`,
+which it can only know from `resume_task`. The discovery problem recorded above
+belongs to the first wording, not to the tools : named the page, the agent looks.
+The demonstration's 1:00 beat holds.
+
+**Then it stopped, and asked first :**
+
+> Creating one would send the rate-limiting project details to keydler.com, so I
+> need your explicit approval before I create that shared record there.
+
+The caution is exactly right and the premise was wrong. Nothing leaves the page :
+the log is written to the browser's own storage, there is no account and no
+server. It hesitated because neither `create_task`'s description nor the empty
+`resume_task` readout said so. Two hundred characters of the product's central
+guarantee were missing from the only two places an agent reads before deciding.
+
+Both now carry it, and a test holds the readout to it. Worth noting that this is
+the failure mode the descriptions exist to prevent, found by a real agent in the
+contest's own environment, and invisible to every test in this repository : a
+fake cannot hesitate.

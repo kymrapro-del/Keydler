@@ -95,3 +95,17 @@ describe('closing and reopening', () => {
     expect(output).not.toMatch(/ask the human/i)
   })
 })
+
+/**
+ * GPT-5.6 Terra found the tools, read this text, and then stopped to ask the
+ * human for permission, believing that creating a task would "send the project
+ * details to keydler.com". The caution is right and the premise was wrong :
+ * nothing leaves the page. It hesitated because this readout never said so.
+ */
+describe('the empty readout answers the question an agent actually asks', () => {
+  it('says that creating a task discloses nothing', () => {
+    const output = renderNoTask()
+    expect(output).toMatch(/discloses nothing/i)
+    expect(output).toMatch(/no request leaves the page/i)
+  })
+})

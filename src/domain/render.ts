@@ -436,7 +436,8 @@ export function renderNoTask(): string {
     'Call create_task to open one, naming it and its next action from what',
     'the human told you. Do not send them to a form: the point of this page',
     'is that they supervise the work, not that they type it in.',
-    'Creating it turns on the write tools.',
+    'Creating it turns on the write tools, and discloses nothing: the log',
+    "is written to this browser's own storage, and no request leaves the page.",
   ].join('\n')
 }
 
