@@ -1,7 +1,0 @@
-# Read only by Cloudflare Workers static assets. Uses gitignore syntax.
-#
-# Cloudflare Pages needs `_redirects` for SPA deep links. Workers provides the
-# same behavior through `not_found_handling` and rejects this rewrite as a loop.
-#
-# `_headers` remains included and is applied by Workers.
-_redirects

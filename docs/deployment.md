@@ -23,10 +23,21 @@ itself. That is a backstop, not a substitute : a 301 happens before the page
 loads, this happens after.
 
 The address moves to `/t/:id` as soon as a task is open, so a host without an
-SPA rewrite 404s on every reload, bookmark and shared link. `public/_redirects`
-covers Netlify and Cloudflare Pages, `vercel.json` covers Vercel; anything else
-needs the equivalent. This is invisible locally : `vite preview` rewrites by
-itself, a bare static server does not.
+SPA rewrite 404s on every reload, bookmark and shared link. The Worker that
+serves this site does it through `not_found_handling` in `wrangler.jsonc`, and
+`vercel.json` covers Vercel; anything else needs the equivalent. This is
+invisible locally : `vite preview` rewrites by itself, a bare static server does
+not.
+
+`public/_redirects` used to carry the same rewrite for Netlify and Cloudflare
+Pages, and it is gone. The Workers assets validator refuses `/* /index.html 200`
+as an infinite loop, and refuses it at the very end of a deploy, after every
+file has been uploaded. `public/.assetsignore` was meant to keep the file out of
+that one delivery and stopped being enough at Wrangler 4.128 : the validator
+reads the rewrite whether or not the file is uploaded. Since the Worker has
+`not_found_handling` and Vercel has its own rewrite, the file served no target
+that is actually deployed. A host that needs it again should get it back with a
+rewrite that does not name `/index.html`.
 
 `npm run build` and `npm run build:trial` both run `scripts/precache.mjs`, which
 writes the built asset names into `dist/sw.js`, and `scripts/headers.mjs`, which

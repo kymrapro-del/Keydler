@@ -1,6 +1,0 @@
-# Tasks use `/t/:id`. This SPA fallback keeps reloads, bookmarks and shared
-# links on the application instead of the host's 404 page.
-/*  /index.html  200
-
-# Host redirects do not belong here because Cloudflare Pages matches paths only.
-# Vercel handles the redirect in `vercel.json`; the browser also canonicalizes it.
