@@ -122,17 +122,28 @@ What to point at as it happens :
 
 1. It calls `resume_task`, which answers that no task is open and names
    `create_task`.
-2. It calls `create_task` itself. The address becomes `/t/…`.
-3. It files the rule and the ruled-out approach through `add_constraint` and
+2. **It stops and asks for your consent before writing.** Observed on
+   2 September with GPT-5.6 Terra in ChatGPT's built-in browser : it read the
+   page, then asked to confirm before creating anything. Nothing here staged
+   that. Let it sit on screen for a beat before you answer.
+3. You confirm. It calls `create_task`, and the address becomes `/t/…`.
+4. It files the rule and the ruled-out approach through `add_constraint` and
    `reject_approach`, **with the reason you gave it**.
-4. The page shows **NEEDS YOU · 2 proposals to accept or decline**.
+5. The page shows **NEEDS YOU · 2 proposals to accept or decline**.
 
-> “I did not fill in a form. I said what the work was, and it opened the log
-> itself. What it wrote is a proposal until I accept it, which is the part that
-> keeps me in charge.”
+> “I filled in no form. I said what the work was, and it read the page on its
+> own. Then it stopped, and asked me before writing anything. I did not build
+> that : the agent decided this needed my consent. I confirm, and what it writes
+> stays a proposal until I accept it.”
 
 Accept the two proposals on camera. That is one click each, and it is the
 supervision.
+
+**Why the pause is worth more than a smooth run.** The agent cannot verify our
+claim that nothing leaves the page ; it only has our word, written by us, in our
+own tool description. One that took a website at its word there would be a worse
+agent. So the hesitation is correct, and it puts the product's own thesis on
+screen without a line of code written for it.
 
 **The fallback, if the agent does not call `create_task`.** Create the task by
 hand, on camera, and say plainly that the agent did not reach for the tool. The
