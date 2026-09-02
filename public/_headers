@@ -22,11 +22,25 @@
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
   Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), serial=(), usb=(), xr-spatial-tracking=()
-  Cache-Control: public, max-age=0, must-revalidate, no-transform
 
-# Fingerprinted assets are immutable.
+# No `Cache-Control` on `/*`. Cloudflare's Workers assets do not let a more
+# specific rule replace this one, they concatenate both, and the served header
+# came out as
+#   public, max-age=0, must-revalidate, no-transform, public, max-age=31536000, immutable
+# which breaks twice. `no-transform` leaked onto the hashed assets and stopped
+# the edge compressing them, so 186 kB of JavaScript went over the wire instead
+# of 55. And the first `max-age` wins, so the year-long immutable cache was
+# never applied to anything. Each path now carries its own policy, and only its
+# own.
+
+# Fingerprinted assets are immutable, and must stay compressible.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Everything else is an application document: revalidated, and left untouched
+# by the edge so the strict CSP document keeps the bytes it was signed with.
+/
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
 
 # These files change between deployments and must be revalidated.
 /index.html

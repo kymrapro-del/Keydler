@@ -116,11 +116,24 @@ describe('the other headers', () => {
     }
   })
 
-  it('prevents edge transformations on application documents', () => {
-    // Cloudflare respects `no-transform` and leaves the strict CSP document
-    // untouched instead of injecting a browser detection script.
+  /**
+   * Cloudflare respects `no-transform` and leaves the strict CSP document
+   * untouched instead of injecting a browser detection script.
+   *
+   * It belongs to the document paths and to nothing else. Workers assets
+   * concatenate the `/*` rule with the more specific one rather than letting
+   * the specific one win, and the served header came out as
+   * `max-age=0, must-revalidate, no-transform, max-age=31536000, immutable`.
+   * That leaked `no-transform` onto the hashed assets and stopped the edge
+   * compressing them, and the first `max-age` won, so nothing was ever cached
+   * for the year the second one asked for.
+   */
+  it('prevents edge transformations on documents, and only on documents', () => {
     expect(headers).toMatch(
-      /\/\*\n(?:.|\n)*?Cache-Control: public, max-age=0, must-revalidate, no-transform/,
+      /\n\/\n\s+Cache-Control: public, max-age=0, must-revalidate, no-transform/,
     )
+
+    const wildcard = headers.slice(headers.indexOf('\n/*\n')).split(/\n(?=\S)/)[0]
+    expect(wildcard, 'no Cache-Control belongs on /*').not.toMatch(/Cache-Control/)
   })
 })
