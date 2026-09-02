@@ -39,11 +39,26 @@
 
 # Everything else is an application document: revalidated, and left untouched
 # by the edge so the strict CSP document keeps the bytes it was signed with.
+#
+# The charset is declared in the header as well as in the document. A page whose
+# encoding is only announced in its own bytes has to be sniffed before it can be
+# read, and `nosniff` is set: say it in the one place a browser reads first.
 /
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+# Deep links render the application, not a 404, and carry the same document.
+/t/*
+  Content-Type: text/html; charset=utf-8
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+/workspace
+  Content-Type: text/html; charset=utf-8
   Cache-Control: public, max-age=0, must-revalidate, no-transform
 
 # These files change between deployments and must be revalidated.
 /index.html
+  Content-Type: text/html; charset=utf-8
   Cache-Control: no-cache, no-transform
 /sw.js
   Cache-Control: no-cache, no-transform

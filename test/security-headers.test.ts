@@ -112,7 +112,10 @@ describe('the other headers', () => {
     // been deleted: the classic white screen after a deployment.
     expect(headers).toMatch(/\/assets\/\*\n\s+Cache-Control: public, max-age=31536000, immutable/)
     for (const f of ['/index.html', '/sw.js', '/manifest.webmanifest']) {
-      expect(headers, f).toMatch(new RegExp(`${f}\\n\\s+Cache-Control: no-cache, no-transform`))
+      // Other headers may sit between the path and its cache policy.
+      expect(headers, f).toMatch(
+        new RegExp(`${f}\\n(?:\\s+[\\w-]+:.*\\n)*?\\s+Cache-Control: no-cache, no-transform`),
+      )
     }
   })
 
@@ -130,7 +133,7 @@ describe('the other headers', () => {
    */
   it('prevents edge transformations on documents, and only on documents', () => {
     expect(headers).toMatch(
-      /\n\/\n\s+Cache-Control: public, max-age=0, must-revalidate, no-transform/,
+      /\n\/\n(?:\s+[\w-]+:.*\n)*?\s+Cache-Control: public, max-age=0, must-revalidate, no-transform/,
     )
 
     const wildcard = headers.slice(headers.indexOf('\n/*\n')).split(/\n(?=\S)/)[0]
