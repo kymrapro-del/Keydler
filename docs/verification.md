@@ -2116,3 +2116,39 @@ with Sol, the 0:35 beat is filmed as the fallback written into the script : the
 task is created by hand, on camera, and the narration says so. The 1:25 beat, where a
 human rule refuses a write mid-flight, is untouched by this : the agent is
 already holding the page by then.
+
+### 2 September 2026, ChatGPT's built-in browser, GPT-5.6 Terra
+
+**The contest's own environment, at last.** ChatGPT desktop 26.831.20005 on
+macOS 26.5.1, model **Terra**, page opened in the application's built-in
+browser at `https://keydler.com`.
+
+**The page is the tool surface there.** The badge read `WebMCP active · 5
+tools`. The origin trial is honoured, the five read-and-create tools register,
+and nothing is lost to an iframe. Until today the README said this browser had
+never been tested ; it has now, and it works.
+
+**Terra did not reach for the tools.** Given the demonstration's wording and
+nothing else :
+
+> We need rate limiting on our HTTP API. Pick a mechanism. We cannot add any new
+> infrastructure, and Redis is out, operations refused it.
+
+it answered from its own knowledge. A good answer, and a more decisive one than
+the bridge run produced : an in-process token bucket keyed by authenticated
+principal, IP only as a fallback, explicit numbers, `429` with `Retry-After` and
+the standard `RateLimit-*` headers, and the per-replica multiplication spelled
+out as the unavoidable cost of the constraint. It called no page tool. The
+address never left `/`, and nothing appeared under `NEEDS YOU`.
+
+**What this settles, and it is the strongest version of the finding.** The tools
+were registered, visible to the model's own environment, and described exactly
+as this project intended. It still did not look. So the gap is not the bridge,
+not the origin trial, and not the descriptions : an agent asked a design question
+answers the design question, and has no reason to inspect a page nobody
+mentioned. The README's "nothing guarantees an agent will call `resume_task`" is
+now measured in the environment the rules point at.
+
+**Still open.** Whether Terra finds the tools when the page is named, which is
+the wording the product prints in its own hand-off panel and the wording the
+demonstration uses at 1:00. That run has not been done.
