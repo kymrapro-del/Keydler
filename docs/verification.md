@@ -2077,3 +2077,42 @@ and reports the right `URL` in `resume_task`, and the address bar stays on
 address becomes `/t/:id` and the title appears. The workspace is a list of every
 log on the device, and jumping away from it because an agent wrote somewhere
 would take the human off the screen they chose. Recorded rather than changed.
+
+### Check 2, run and failed : the agent did not reach for the page
+
+2 September 2026. Fresh Claude Code session started from the home directory, so
+it had never read this repository. `chrome-devtools` connected, 31 tools
+available, verified through `/mcp` after the run. Edge open on
+`https://keydler.com`, no task, badge reading `WebMCP active · 5 tools`.
+
+The prompt was the demonstration's own wording, and nothing else :
+
+> We need rate limiting on our HTTP API. Pick a mechanism. We cannot add any new
+> infrastructure, and Redis is out, operations refused it.
+
+**It never touched the page.** No `resume_task`, no `create_task`, no browser
+tool call at all. It answered from its own knowledge, and answered well : an
+in-memory token bucket, refilled lazily, with the multi-instance caveat spelled
+out and three ways round it. Then it asked how many instances the API runs on.
+
+This is a fair result and not a surprising one. It was asked an architecture
+question, and an architecture question is what it answered. Nothing in the
+sentence said a page was waiting, and an agent has no reason to enumerate the
+tools of a browser tab nobody mentioned. A tool description can only work on an
+agent that is already looking at the page ; it cannot make one look.
+
+**What this settles.** `create_task` is reachable, and the earlier native run
+proves it works when called. It is not _discovered_ from a bare description of
+the work. The README's existing sentence, "nothing guarantees an agent will call
+`resume_task`", now covers `create_task` too, and it is measured rather than
+assumed.
+
+**What it does not settle.** Whether the same agent finds the tools when the
+page is named, which is the wording the product itself prints in its hand-off
+panel and the wording the demonstration uses at 1:00. That is a separate run.
+
+**Consequence for the demonstration.** The 0:35 beat is filmed as the fallback
+written into the script : the task is created by hand, on camera, and the
+narration says the agent did not reach for the tool. The 1:25 beat, where a
+human rule refuses a write mid-flight, is untouched by this : the agent is
+already holding the page by then.
