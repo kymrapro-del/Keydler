@@ -103,25 +103,47 @@ Do not mention WebMCP yet. Do not mention versions, storage, or tools.
 
 ---
 
-## 0:35 – 1:00 · Set up the task
+## 0:35 – 1:00 · The agent opens the log
 
-**On screen :** the first screen of Keydler, then **Create a task**.
+**Before filming this beat, rerun the manual protocol.** `create_task` was
+added after the last browser verification, so nothing yet establishes that an
+agent reaches for it on its own in a real WebMCP browser. If it does not, film
+the fallback below instead and say so. Do not stage it.
 
-Fill in, by hand, visibly :
+**On screen :** the first screen of Keydler, empty, and the agent conversation
+beside it.
+
+Tell the agent, in your own words, what you are working on :
+
+> `We need rate limiting on our HTTP API. Pick a mechanism. We can't add any
+new infrastructure, and Redis is out: operations refused it.`
+
+What to point at as it happens :
+
+1. It calls `resume_task`, which answers that no task is open and names
+   `create_task`.
+2. It calls `create_task` itself. The address becomes `/t/…`.
+3. It files the rule and the ruled-out approach through `add_constraint` and
+   `reject_approach`, **with the reason you gave it**.
+4. The page shows **NEEDS YOU · 2 proposals to accept or decline**.
+
+> “I did not fill in a form. I said what the work was, and it opened the log
+> itself. What it wrote is a proposal until I accept it, which is the part that
+> keeps me in charge.”
+
+Accept the two proposals on camera. That is one click each, and it is the
+supervision.
+
+**The fallback, if the agent does not call `create_task`.** Create the task by
+hand, on camera, and say plainly that the agent did not reach for the tool. The
+honest version is more convincing than a retake, and no claim in this
+repository says the call is guaranteed.
 
 - **Task title**: `Add rate limiting to our HTTP API`
 - **Next action**: `Choose and implement the rate limiting mechanism`
 - **First rule**: `Do not add any new infrastructure`
-
-Create it. The address becomes `/t/…`, and the page shows **Ready for your AI**.
-
-Then, in **Don’t retry**, add one ruled-out approach with its reason :
-
 - **Approach to rule out**: `Token bucket backed by Redis`
 - **Why it failed**: `there is no Redis in this environment and operations refused to add one`
-
-> “Three things : what to do next, one rule, and one approach that is off the
-> table, with the reason. That reason is the part that matters.”
 
 **Why this example works.** A token bucket in Redis is the _right_ answer.
 A capable model proposes it unprompted. It is wrong only _here_, for a local
@@ -315,15 +337,20 @@ imply :
 
 ## The demo notebook
 
-**Try the demo** loads a prepared task
+`?measure=N` loads a prepared task
 (_Refactor the authentication module_) with three rules in force, two ruled-out
 approaches, one agent proposal still awaiting a decision, and the three evidence
 levels, one of each. It is built by the domain’s own mutations
 (`src/demo/seed.ts`), so anyone can reproduce exactly the state on screen.
 
-Use it when the recording has to be short, or when a live agent is not
-available. Use the hand-created task above when there is time : watching someone
-type the rule that later stops the agent is the clearest version of the story.
+No button offers it any more : the first screen creates a real task instead,
+because opening a demonstration is not using the product. It survives as the
+measurement's starting state and as a fixture for the suite.
+
+Reach for it only if a live agent is unavailable on the day, and say on camera
+that it is a prepared state. The beat at 1:25 is worth more than a populated
+screen : watching a rule stop an agent mid-write is the story, and a prepared
+notebook cannot show it.
 
 ---
 
