@@ -245,7 +245,7 @@ function renderBrandBar(view: 'home' | 'workspace' | 'task'): string {
                <span class="nav-link nav-link--active" aria-current="page">Workspace</span>`
             : `<a class="nav-link" href="${WORKSPACE_PATH}" id="go-workspace">Workspace</a>`
         }
-        <a class="topbar__source" href="https://github.com/kymrapro-del/keydler"
+        <a class="topbar__source" href="https://github.com/kymrapro-del/Keydler"
            target="_blank" rel="noopener noreferrer" aria-label="View the source on GitHub">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -262,7 +262,7 @@ function renderSiteFooter(message: string): string {
   return `<footer class="site-footer">
       <div class="site-footer__meta">
         <span>${message}</span>
-        <a class="repo-badge" href="https://github.com/kymrapro-del/keydler"
+        <a class="repo-badge" href="https://github.com/kymrapro-del/Keydler"
            target="_blank" rel="noopener noreferrer">
           <svg class="repo-badge__mark" viewBox="0 0 16 16" width="16" height="16"
                aria-hidden="true" focusable="false">

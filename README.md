@@ -12,7 +12,7 @@ _Conversations reset. The work should not._
 Measured : without this log an agent proposed the ruled-out approach again in
 **8 cases out of 8**. With it, in **0**.
 
-[![CI](https://github.com/kymrapro-del/keydler/actions/workflows/ci.yml/badge.svg)](https://github.com/kymrapro-del/keydler/actions/workflows/ci.yml)
+[![CI](https://github.com/kymrapro-del/Keydler/actions/workflows/ci.yml/badge.svg)](https://github.com/kymrapro-del/Keydler/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-945-3d4ec8)](docs/verification.md)
 [![WebMCP tools](https://img.shields.io/badge/WebMCP%20tools-14-3d4ec8)](#the-tools)
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-1-3d4ec8)](package.json)
